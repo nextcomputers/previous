@@ -54,11 +54,19 @@ void System_Timer_Read(void) { // tuned for power-on test
     if (ConfigureParams.System.nCpuLevel == 3) {
 //        eventcounter = (nCyclesMainCounter/((128/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF; // debugging code
         IoMem_WriteLong(IoAccessCurrentAddress&0x1FFFF, (nCyclesMainCounter/((128/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF);
+        
+#if 1   // HACK for ROM version 0.8.31
+        if (get_long(0x0000FFA8)==0x00010004) {
+            IoMem_WriteLong(IoAccessCurrentAddress&0x1FFFF, (nCyclesMainCounter/((10000/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF);
+//            eventcounter = (nCyclesMainCounter/((128/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF; // debugging code
+        }
+#endif
+        
     } else { // System has 68040 CPU
 //        eventcounter = (nCyclesMainCounter/((64/ConfigureParams.System.nCpuFreq)*9))&0xFFFFF; // debugging code
         IoMem_WriteLong(IoAccessCurrentAddress&0x1FFFF, (nCyclesMainCounter/((64/ConfigureParams.System.nCpuFreq)*9))&0xFFFFF);
     }
-//    printf("DIFFERENCE = %i\n",eventcounter-lasteventc);
+//    printf("DIFFERENCE = %i PC = %08X\n",eventcounter-lasteventc,m68k_getpc());
 }
 
 /* Floppy Disk Drive - Work on this later */
