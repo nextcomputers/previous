@@ -55,11 +55,9 @@ void System_Timer_Read(void) { // tuned for power-on test
 //        eventcounter = (nCyclesMainCounter/((128/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF; // debugging code
         IoMem_WriteLong(IoAccessCurrentAddress&0x1FFFF, (nCyclesMainCounter/((128/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF);
         
-#if 1   // HACK for ROM version 0.8.31
-        if (get_long(0x0000FFA8)==0x00010004) {
-            IoMem_WriteLong(IoAccessCurrentAddress&0x1FFFF, (nCyclesMainCounter/((10000/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF);
-//            eventcounter = (nCyclesMainCounter/((128/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF; // debugging code
-        }
+#if 0   // HACK for ROM version 0.8.31 power-on test, WARNING: this causes slowdown of emulation
+        IoMem_WriteLong(IoAccessCurrentAddress&0x1FFFF, (nCyclesMainCounter/((10000/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF);
+//        eventcounter = (nCyclesMainCounter/((10000/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF; // debugging code
 #endif
         
     } else { // System has 68040 CPU
