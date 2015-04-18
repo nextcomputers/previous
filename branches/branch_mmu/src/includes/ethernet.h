@@ -41,3 +41,4 @@ struct {
 
 void ENET_IO_Handler(void);
 void Ethernet_Reset(void);
+void enet_receive(Uint8 *pkt, int len);
