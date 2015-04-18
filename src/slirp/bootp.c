@@ -39,6 +39,10 @@ typedef struct {
 BOOTPClient bootp_clients[NB_ADDR];
 
 static const uint8_t rfc1533_cookie[] = { RFC1533_COOKIE };
+#if BOOTP_VEND_NEXT
+static const uint8_t magic_next[] = {'N','e','X','T'};
+#endif
+
 
 static BOOTPClient *get_new_addr(struct in_addr *paddr)
 {
@@ -173,9 +177,18 @@ static void bootp_reply(struct bootp_t *bp)
     rbp->bp_siaddr = saddr.sin_addr; /* Server IP address */
 
     q = rbp->bp_vend;
+#if BOOTP_VEND_NEXT
+    memcpy(q, magic_next, 4);
+    q += 4;
+    *q++ = 1;
+    *q++ = 0;
+    *q++ = 0;
+    memset(q, 0, 56);
+    q += 56;
+    *q++ = 0;
+#else
     memcpy(q, rfc1533_cookie, 4);
     q += 4;
-
     if (dhcp_msg_type == DHCPDISCOVER) {
         *q++ = RFC2132_MSG_TYPE;
         *q++ = 1;
@@ -226,8 +239,8 @@ static void bootp_reply(struct bootp_t *bp)
         }
     }
     *q++ = RFC1533_END;
-    
-    m->m_len = sizeof(struct bootp_t) - 
+#endif
+    m->m_len = sizeof(struct bootp_t) -
         sizeof(struct ip) - sizeof(struct udphdr);
     udp_output2(NULL, m, &saddr, &daddr, IPTOS_LOWDELAY);
 }

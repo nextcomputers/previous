@@ -1,5 +1,11 @@
 /* bootp/dhcp defines */
 
+/* 16/04/2015 - andreas_g:
+ * Define to 1 to enable NeXT compatible bootp reply
+ */
+#define BOOTP_VEND_NEXT 1
+
+
 #define BOOTP_SERVER	67
 #define BOOTP_CLIENT	68
 
@@ -111,7 +117,11 @@ struct bootp_t {
     uint8_t bp_hwaddr[16];
     uint8_t bp_sname[64];
     uint8_t bp_file[128];
+#if BOOTP_VEND_NEXT
+    uint8_t bp_vend[BOOTP_VENDOR_LEN];
+#else
     uint8_t bp_vend[DHCP_OPT_LEN];
+#endif
 } PACKED__;
 
 #ifdef PRAGMA_PACK_SUPPORTED
