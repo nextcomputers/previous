@@ -1,5 +1,5 @@
 set(SOURCES
-	cfgopts.c clocks_timings.c configuration.c options.c  change.c
+	bmap.c cfgopts.c clocks_timings.c configuration.c options.c  change.c
 	control.c cycInt.c cycles.c dialog.c dma.c esp.c ethernet.c file.c
 	ioMem.c ioMemTabNEXT.c memorySnapShot.c keymap.c kms.c
 	m68000.c main.c mo.c nextMemory.c paths.c 
