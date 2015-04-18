@@ -168,6 +168,12 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
         }
     }
     
+    /* Did we change Ethernet connection? */
+    if (current->Ethernet.bEthernetConnected != changed->Ethernet.bEthernetConnected) {
+        printf("ethernet options reset\n");
+        return true;
+    }
+    
     /* Else no reset is required */
     printf("No Reset needed!\n");
     return false;

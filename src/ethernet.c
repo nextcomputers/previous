@@ -395,7 +395,9 @@ void ENET_IO_Handler(void) {
         Log_Printf(LOG_WARN, "Stopping Ethernet Transmitter/Receiver");
         enet_stopped=true;
         /* Stop SLIRP */
-        enet_slirp_stop();
+        if (ConfigureParams.Ethernet.bEthernetConnected) {
+            enet_slirp_stop();
+        }
         return;
     }
     
@@ -413,7 +415,9 @@ void ENET_IO_Handler(void) {
                 /* Fall through to receiving state */
             } else if (enet.tx_mode&TXMODE_DIS_LOOP) {
                 /* Receive from real world network */
-                enet_slirp_queue_poll();
+                if (ConfigureParams.Ethernet.bEthernetConnected) {
+                    enet_slirp_queue_poll();
+                }
                 break;
             } else
                 break;
@@ -458,7 +462,9 @@ void ENET_IO_Handler(void) {
             print_buf(enet_tx_buffer.data, enet_tx_buffer.size);
             if (enet.tx_mode&TXMODE_DIS_LOOP) {
                 /* Send to real world network */
-                enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
+                if (ConfigureParams.Ethernet.bEthernetConnected) {
+                    enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
+                }
                 enet_tx_buffer.size=0;
             } else {
                 /* Loop back */
@@ -479,7 +485,9 @@ void enet_reset(void) {
         enet_stopped=false;
         CycInt_AddRelativeInterrupt(ENET_IO_DELAY, INT_CPU_CYCLE, INTERRUPT_ENET_IO);
         /* Start SLIRP */
-        enet_slirp_start();
+        if (ConfigureParams.Ethernet.bEthernetConnected) {
+            enet_slirp_start();
+        }
     }
 }
 
