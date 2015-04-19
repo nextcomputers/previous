@@ -491,11 +491,21 @@ void enet_reset(void) {
     }
 }
 
-void Ethernet_Reset(void) {
-    enet.reset=EN_RESET;
-    enet_stopped=true;
-    enet_rx_buffer.size=enet_tx_buffer.size=0;
-    enet_rx_buffer.limit=enet_tx_buffer.limit=2048;
-    /* Stop SLIRP */
-    enet_slirp_stop();
+void Ethernet_Reset(bool hard) {
+    if (hard) {
+        enet.reset=EN_RESET;
+        enet_stopped=true;
+        enet_rx_buffer.size=enet_tx_buffer.size=0;
+        enet_rx_buffer.limit=enet_tx_buffer.limit=2048;
+        /* Stop SLIRP */
+        enet_slirp_stop();
+    } else {
+        if (ConfigureParams.Ethernet.bEthernetConnected && !(enet.reset&EN_RESET)) {
+            /* Start SLIRP */
+            enet_slirp_start();
+        } else {
+            /* Stop SLIRP */
+            enet_slirp_stop();
+        }
+    }
 }
