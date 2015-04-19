@@ -145,10 +145,12 @@ uae_u32 bmap_get(uae_u32 bmap_reg) {
 void bmap_put(uae_u32 bmap_reg, uae_u32 val) {
     switch (bmap_reg) {
         case BMAP_DATA_RW:
-            if (val==BMAP_TP) {
-                Log_Printf(LOG_WARN, "[BMAP] Switching to twisted pair ethernet.");
-            } else if (val==~BMAP_TP) {
-                Log_Printf(LOG_WARN, "[BMAP] Switching to thin ethernet.");
+            if ((val&BMAP_TP) != (NEXTbmap[bmap_reg]&BMAP_TP)) {
+                if ((val&BMAP_TP)==BMAP_TP) {
+                    Log_Printf(LOG_WARN, "[BMAP] Switching to twisted pair ethernet.");
+                } else if ((val&BMAP_TP)==0) {
+                    Log_Printf(LOG_WARN, "[BMAP] Switching to thin ethernet.");
+                }
             }
             break;
             
