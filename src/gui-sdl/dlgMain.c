@@ -108,7 +108,7 @@ int Dialog_MainDlg(bool *bReset, bool *bLoadedSnapshot)
 			DlgEthernet_Main();
 			break;
 		 case MAINDLG_HARDDISK:
-			DlgHardDisk_Main();
+			DlgSCSI_Main();
 			break;
 		 case MAINDLG_ROM:
 			DlgRom_Main();
