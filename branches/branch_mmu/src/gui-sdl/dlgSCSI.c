@@ -1,10 +1,10 @@
 /*
-  Hatari - dlgHardDisk.c
+  Previous - dlgSCSI.c
 
   This file is distributed under the GNU Public License, version 2 or at
   your option any later version. Read the file gpl.txt for details.
 */
-const char DlgHardDisk_fileid[] = "Hatari dlgHardDisk.c : " __DATE__ " " __TIME__;
+const char DlgSCSI_fileid[] = "Previous dlgSCSI.c : " __DATE__ " " __TIME__;
 
 #include <assert.h>
 #include "main.h"
@@ -31,7 +31,7 @@ const char DlgHardDisk_fileid[] = "Hatari dlgHardDisk.c : " __DATE__ " " __TIME_
 
 
 /* The SCSI dialog: */
-static SGOBJ diskdlg[] =
+static SGOBJ scsidlg[] =
 {
     { SGBOX, 0, 0, 0,0, 64,29, NULL },
 	{ SGTEXT, 0, 0, 27,1, 10,1, "SCSI disks" },
@@ -126,33 +126,33 @@ void DlgSCSI_DrawDevtypeSelect(void) {
     for (i = 0; i < ESP_MAX_DEVS; i++) {
         switch (ConfigureParams.SCSI.target[i].nDeviceType) {
             case DEVTYPE_HARDDISK:
-                diskdlg[PUT_BUTTON(i,SCSIDLG_DEVTYPE)].txt = "Harddisk";
-                diskdlg[PUT_BUTTON(i,SCSIDLG_SELECT)].txt = "Select";
+                scsidlg[PUT_BUTTON(i,SCSIDLG_DEVTYPE)].txt = "Harddisk";
+                scsidlg[PUT_BUTTON(i,SCSIDLG_SELECT)].txt = "Select";
                 break;
             case DEVTYPE_CD:
-                diskdlg[PUT_BUTTON(i,SCSIDLG_DEVTYPE)].txt = " CD-ROM ";
+                scsidlg[PUT_BUTTON(i,SCSIDLG_DEVTYPE)].txt = " CD-ROM ";
                 if (ConfigureParams.SCSI.target[i].bDiskInserted) {
-                    diskdlg[PUT_BUTTON(i,SCSIDLG_SELECT)].txt = "Eject";
+                    scsidlg[PUT_BUTTON(i,SCSIDLG_SELECT)].txt = "Eject";
                 } else {
-                    diskdlg[PUT_BUTTON(i,SCSIDLG_SELECT)].txt = "Insert";
+                    scsidlg[PUT_BUTTON(i,SCSIDLG_SELECT)].txt = "Insert";
                 }
                 break;
             case DEVTYPE_FLOPPY:
-                diskdlg[PUT_BUTTON(i,SCSIDLG_DEVTYPE)].txt = " Floppy ";
-                diskdlg[PUT_BUTTON(i,SCSIDLG_SELECT)].txt = "Insert";
+                scsidlg[PUT_BUTTON(i,SCSIDLG_DEVTYPE)].txt = " Floppy ";
+                scsidlg[PUT_BUTTON(i,SCSIDLG_SELECT)].txt = "Insert";
                 if (ConfigureParams.SCSI.target[i].bDiskInserted) {
-                    diskdlg[PUT_BUTTON(i,SCSIDLG_SELECT)].txt = "Eject";
+                    scsidlg[PUT_BUTTON(i,SCSIDLG_SELECT)].txt = "Eject";
                 } else {
-                    diskdlg[PUT_BUTTON(i,SCSIDLG_SELECT)].txt = "Insert";
+                    scsidlg[PUT_BUTTON(i,SCSIDLG_SELECT)].txt = "Insert";
                 }
                 break;
             case DEVTYPE_NONE:
-                diskdlg[PUT_BUTTON(i,SCSIDLG_DEVTYPE)].txt = "        ";
-                diskdlg[PUT_BUTTON(i,SCSIDLG_SELECT)].txt = "Select";
+                scsidlg[PUT_BUTTON(i,SCSIDLG_DEVTYPE)].txt = "        ";
+                scsidlg[PUT_BUTTON(i,SCSIDLG_SELECT)].txt = "Select";
                 break;
                 
             default:
-                diskdlg[PUT_BUTTON(i,SCSIDLG_DEVTYPE)].txt = " Error! ";
+                scsidlg[PUT_BUTTON(i,SCSIDLG_DEVTYPE)].txt = " Error! ";
                 break;
         }
     }
@@ -161,13 +161,13 @@ void DlgSCSI_DrawDevtypeSelect(void) {
 /**
  * Show and process the hard disk dialog.
  */
-void DlgHardDisk_Main(void)
+void DlgSCSI_Main(void)
 {
     int but;
     int i;
     char dlgname_scsi[ESP_MAX_DEVS][64];
 
-	SDLGui_CenterDlg(diskdlg);
+	SDLGui_CenterDlg(scsidlg);
 
 	/* Set up dialog to actual values: */
     DlgSCSI_DrawDevtypeSelect();
@@ -176,51 +176,54 @@ void DlgHardDisk_Main(void)
     for (i = 0; i < ESP_MAX_DEVS; i++) {
         if (ConfigureParams.SCSI.target[i].bDiskInserted) {
             File_ShrinkName(dlgname_scsi[i], ConfigureParams.SCSI.target[i].szImageName,
-                            diskdlg[PUT_BUTTON(i,SCSIDLG_NAME)].w);
+                            scsidlg[PUT_BUTTON(i,SCSIDLG_NAME)].w);
         } else {
             dlgname_scsi[i][0] = '\0';
         }
-        diskdlg[PUT_BUTTON(i,SCSIDLG_NAME)].txt = dlgname_scsi[i];
+        scsidlg[PUT_BUTTON(i,SCSIDLG_NAME)].txt = dlgname_scsi[i];
     }
     
 	/* Draw and process the dialog */
 	do
 	{
-		but = SDLGui_DoDialog(diskdlg, NULL);
+		but = SDLGui_DoDialog(scsidlg, NULL);
         
-        switch (GET_BUTTON(but)) {
-            case SCSIDLG_LEFT:
-                ConfigureParams.SCSI.target[GET_TARGET(but)].nDeviceType+=NUM_DEVTYPES-1;
-                ConfigureParams.SCSI.target[GET_TARGET(but)].nDeviceType%=NUM_DEVTYPES;
-                DlgSCSI_DrawDevtypeSelect();
-                break;
-            case SCSIDLG_RIGHT:
-                ConfigureParams.SCSI.target[GET_TARGET(but)].nDeviceType++;
-                ConfigureParams.SCSI.target[GET_TARGET(but)].nDeviceType%=NUM_DEVTYPES;
-                DlgSCSI_DrawDevtypeSelect();
-                break;
-            case SCSIDLG_SELECT:
-                if ((ConfigureParams.SCSI.target[GET_TARGET(but)].nDeviceType == DEVTYPE_CD ||
-                     ConfigureParams.SCSI.target[GET_TARGET(but)].nDeviceType == DEVTYPE_FLOPPY) &&
-                    ConfigureParams.SCSI.target[GET_TARGET(but)].bDiskInserted) {
-                    if (DlgAlert_Query(SCSIDLG_EJECT_WARNING)) {
-                        ConfigureParams.SCSI.target[GET_TARGET(but)].bDiskInserted = false;
-                        ConfigureParams.SCSI.target[GET_TARGET(but)].szImageName[0] = '\0';
-                        diskdlg[PUT_BUTTON(GET_TARGET(but),SCSIDLG_NAME)].txt[0] = '\0';
+        if (but>=SCSIDLG_OFFSET && but<((SCSIDLG_INTERVAL*ESP_MAX_DEVS)+SCSIDLG_OFFSET)) {
+            
+            switch (GET_BUTTON(but)) {
+                case SCSIDLG_LEFT:
+                    ConfigureParams.SCSI.target[GET_TARGET(but)].nDeviceType+=NUM_DEVTYPES-1;
+                    ConfigureParams.SCSI.target[GET_TARGET(but)].nDeviceType%=NUM_DEVTYPES;
+                    DlgSCSI_DrawDevtypeSelect();
+                    break;
+                case SCSIDLG_RIGHT:
+                    ConfigureParams.SCSI.target[GET_TARGET(but)].nDeviceType++;
+                    ConfigureParams.SCSI.target[GET_TARGET(but)].nDeviceType%=NUM_DEVTYPES;
+                    DlgSCSI_DrawDevtypeSelect();
+                    break;
+                case SCSIDLG_SELECT:
+                    if ((ConfigureParams.SCSI.target[GET_TARGET(but)].nDeviceType == DEVTYPE_CD ||
+                         ConfigureParams.SCSI.target[GET_TARGET(but)].nDeviceType == DEVTYPE_FLOPPY) &&
+                        ConfigureParams.SCSI.target[GET_TARGET(but)].bDiskInserted) {
+                        if (DlgAlert_Query(SCSIDLG_EJECT_WARNING)) {
+                            ConfigureParams.SCSI.target[GET_TARGET(but)].bDiskInserted = false;
+                            ConfigureParams.SCSI.target[GET_TARGET(but)].szImageName[0] = '\0';
+                            scsidlg[PUT_BUTTON(GET_TARGET(but),SCSIDLG_NAME)].txt[0] = '\0';
+                        }
+                    } else if (SDLGui_FileConfSelect(dlgname_scsi[GET_TARGET(but)],
+                                                     ConfigureParams.SCSI.target[GET_TARGET(but)].szImageName,
+                                                     scsidlg[PUT_BUTTON(GET_TARGET(but),SCSIDLG_NAME)].w, false)) {
+                        ConfigureParams.SCSI.target[GET_TARGET(but)].bDiskInserted = true;
+                        if (ConfigureParams.SCSI.target[GET_TARGET(but)].nDeviceType == DEVTYPE_NONE) {
+                            ConfigureParams.SCSI.target[GET_TARGET(but)].nDeviceType = DEVTYPE_HARDDISK;
+                        }
                     }
-                } else if (SDLGui_FileConfSelect(dlgname_scsi[GET_TARGET(but)],
-                                                 ConfigureParams.SCSI.target[GET_TARGET(but)].szImageName,
-                                                 diskdlg[PUT_BUTTON(GET_TARGET(but),SCSIDLG_NAME)].w, false)) {
-                    ConfigureParams.SCSI.target[GET_TARGET(but)].bDiskInserted = true;
-                    if (ConfigureParams.SCSI.target[GET_TARGET(but)].nDeviceType == DEVTYPE_NONE) {
-                        ConfigureParams.SCSI.target[GET_TARGET(but)].nDeviceType = DEVTYPE_HARDDISK;
-                    }
-                }
-                DlgSCSI_DrawDevtypeSelect();
-                break;
-
-            default:
-                break;
+                    DlgSCSI_DrawDevtypeSelect();
+                    break;
+                    
+                default:
+                    break;
+            }
         }
 	}
 	while (but != SCSIDLG_EXIT && but != SDLGUI_QUIT
