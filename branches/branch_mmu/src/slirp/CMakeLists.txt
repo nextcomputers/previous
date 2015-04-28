@@ -13,6 +13,8 @@ if(HAVE_UNISTD_H)
 	add_definitions(-DHAVE_UNISTD_H)
 endif(HAVE_UNISTD_H)
 
+check_function_exists(strdup HAVE_STRDUP)
+
 add_definitions(-DHAVE_STRERROR)
 
 add_library(Slirp
