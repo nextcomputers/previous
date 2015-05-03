@@ -106,21 +106,6 @@ static SGOBJ modlg[] =
 }*/
 
 
-/* Draw protection */
-void DlgOptical_DrawReadonly(void) {
-    /* Write protection true or false? */
-    if (ConfigureParams.MO.drive[0].bWriteProtected)
-        modlg[MODLG_READONLY0].txt = "read-only";
-    else
-        modlg[MODLG_READONLY0].txt = "";
-#if DUAL_MO_DRIVE
-    if (ConfigureParams.MO.drive[1].bWriteProtected)
-        modlg[MODLG_READONLY1].txt = "read-only";
-    else
-        modlg[MODLG_READONLY1].txt = "";
-#endif
-}
-
 /**
  * Show and process the hard disk dialog.
  */
@@ -167,11 +152,21 @@ void DlgOptical_Main(void)
         modlg[MODLG_CONNECTED1].state &= ~SG_SELECTED;
 #endif
     
-    DlgOptical_DrawReadonly();
-    
 	/* Draw and process the dialog */
 	do
 	{
+        /* Write protection true or false? */
+        if (ConfigureParams.MO.drive[0].bWriteProtected)
+            modlg[MODLG_READONLY0].txt = "read-only";
+        else
+            modlg[MODLG_READONLY0].txt = "";
+#if DUAL_MO_DRIVE
+        if (ConfigureParams.MO.drive[1].bWriteProtected)
+            modlg[MODLG_READONLY1].txt = "read-only";
+        else
+            modlg[MODLG_READONLY1].txt = "";
+#endif
+
 		but = SDLGui_DoDialog(modlg, NULL);
 
 		switch (but)
@@ -186,7 +181,6 @@ void DlgOptical_Main(void)
                             ConfigureParams.MO.drive[0].bDriveConnected = true;
                             modlg[MODLG_CONNECTED0].state |= SG_SELECTED;
                         }
-                        DlgOptical_DrawReadonly();
                         MO_Insert(0);
                     }
                 } else {
@@ -196,7 +190,6 @@ void DlgOptical_Main(void)
                         sprintf(inserteject0, "Insert");
                         ConfigureParams.MO.drive[0].szImageName[0] = '\0';
                         dlgname_mo[0][0] = '\0';
-                        DlgOptical_DrawReadonly();
                         MO_Eject(0);
                     }
                 }
@@ -209,7 +202,6 @@ void DlgOptical_Main(void)
                     ConfigureParams.MO.drive[0].bWriteProtected = false;
                     ConfigureParams.MO.drive[0].szImageName[0] = '\0';
                     dlgname_mo[0][0] = '\0';
-                    DlgOptical_DrawReadonly();
                 } else {
                     ConfigureParams.MO.drive[0].bDriveConnected = true;
                 }
@@ -225,7 +217,6 @@ void DlgOptical_Main(void)
                             ConfigureParams.MO.drive[1].bDriveConnected = true;
                             modlg[MODLG_CONNECTED1].state |= SG_SELECTED;
                         }
-                        DlgOptical_DrawReadonly();
                         MO_Insert(1);
                     }
                 } else {
@@ -235,7 +226,6 @@ void DlgOptical_Main(void)
                         sprintf(inserteject1, "Insert");
                         ConfigureParams.MO.drive[1].szImageName[0] = '\0';
                         dlgname_mo[1][0] = '\0';
-                        DlgOptical_DrawReadonly();
                         MO_Eject(1);
                     }
                 }
@@ -248,7 +238,6 @@ void DlgOptical_Main(void)
                     ConfigureParams.MO.drive[1].bWriteProtected = false;
                     ConfigureParams.MO.drive[1].szImageName[0] = '\0';
                     dlgname_mo[1][0] = '\0';
-                    DlgOptical_DrawReadonly();
                 } else {
                     ConfigureParams.MO.drive[1].bDriveConnected = true;
                 }
