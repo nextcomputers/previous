@@ -192,29 +192,21 @@ void DlgMissing_Rom(void) {
 /**
  * Show and process the Missing Disk dialog.
  */
-void DlgMissing_Disk(int type, int num, char *imgname, bool *inserted, bool *wp)
+void DlgMissing_Disk(char type[], int num, char *imgname, bool *inserted, bool *wp)
 {
     int but;
     
-    char dlgname_missingdisk[47];
+    char dlgname_missingdisk[64];
     char missingdisk_alert[64];
     char missingdisk_disk[64];
-    char typename[16];
-    
-    switch (type) {
-        case 0: sprintf(typename, "SCSI disk"); break;
-        case 1: sprintf(typename, "MO disk"); break;
-        case 2: sprintf(typename, "Floppy"); break;
-        default: sprintf(typename, "Error"); break;
-    }
-    
+
     SDLGui_CenterDlg(missingdiskdlg);
     
     /* Set up dialog to actual values: */
-    sprintf(missingdisk_alert, "%s drive %i: disk image not found!", typename, num);
+    sprintf(missingdisk_alert, "%s drive %i: disk image not found!", type, num);
     missingdiskdlg[DLGMISDSK_ALERT].txt = missingdisk_alert;
     
-    sprintf(missingdisk_disk, "%s %i:", typename, num);
+    sprintf(missingdisk_disk, "%s %i:", type, num);
     missingdiskdlg[DLGMISDSK_DRIVE].txt = missingdisk_disk;
     
     File_ShrinkName(dlgname_missingdisk, imgname, missingdiskdlg[DLGMISDSK_NAME].w);

@@ -131,7 +131,8 @@ void Dialog_CheckFiles(void) {
         while ((ConfigureParams.SCSI.target[i].nDeviceType!=DEVTYPE_NONE) &&
                ConfigureParams.SCSI.target[i].bDiskInserted &&
                !File_Exists(ConfigureParams.SCSI.target[i].szImageName)) {
-            DlgMissing_Disk(0, i, ConfigureParams.SCSI.target[i].szImageName,
+            DlgMissing_Disk("SCSI disk", i,
+                            ConfigureParams.SCSI.target[i].szImageName,
                             &ConfigureParams.SCSI.target[i].bDiskInserted,
                             &ConfigureParams.SCSI.target[i].bWriteProtected);
             if (ConfigureParams.SCSI.target[i].nDeviceType==DEVTYPE_HARDDISK &&
@@ -151,7 +152,8 @@ void Dialog_CheckFiles(void) {
         while (ConfigureParams.MO.drive[i].bDriveConnected &&
                ConfigureParams.MO.drive[i].bDiskInserted &&
                !File_Exists(ConfigureParams.MO.drive[i].szImageName)) {
-            DlgMissing_Disk(1, i, ConfigureParams.MO.drive[i].szImageName,
+            DlgMissing_Disk("MO disk", i,
+                            ConfigureParams.MO.drive[i].szImageName,
                             &ConfigureParams.MO.drive[i].bDiskInserted,
                             &ConfigureParams.MO.drive[i].bWriteProtected);
             if (bQuitProgram) {
