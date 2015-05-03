@@ -180,14 +180,12 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
 bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *changed, bool bForceReset)
 {
 	bool NeedReset;
-	bool bReInitGemdosDrive = false;
 	bool bReInitSCSIEmu = false;
     bool bReInitMOEmu = false;
+    bool bReInitFloppyEmu = false;
 	bool bReInitEnetEmu = false;
 	bool bReInitIoMem = false;
 	bool bScreenModeChange = false;
-	bool bReInitMidi = false;
-	bool bFloppyInsert[MAX_FLOPPYDRIVES];
 	int i;
 
 	Dprintf("Changes for:\n");
@@ -203,9 +201,9 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
             (current->SCSI.target[i].bDiskInserted != changed->SCSI.target[i].bDiskInserted ||
              current->SCSI.target[i].bWriteProtected != changed->SCSI.target[i].bWriteProtected ||
              strcmp(current->SCSI.target[i].szImageName, changed->SCSI.target[i].szImageName))) {
-                bReInitSCSIEmu = true;
-                break;
-            }
+            bReInitSCSIEmu = true;
+            break;
+        }
     }
     
     /* Do we need to change MO disks? */
