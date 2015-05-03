@@ -129,9 +129,15 @@ void Dialog_CheckFiles(void) {
     /* Check if SCSI disk images exist. Present a dialog to select missing files. */
     for (i = 0; i < ESP_MAX_DEVS; i++) {
         while ((ConfigureParams.SCSI.target[i].nDeviceType!=DEVTYPE_NONE) &&
-               ConfigureParams.SCSI.target[i].bDiskInserted
-               && !File_Exists(ConfigureParams.SCSI.target[i].szImageName)) {
-            DlgMissing_SCSIdisk(i);
+               ConfigureParams.SCSI.target[i].bDiskInserted &&
+               !File_Exists(ConfigureParams.SCSI.target[i].szImageName)) {
+            DlgMissing_Disk(0, i, ConfigureParams.SCSI.target[i].szImageName,
+                            &ConfigureParams.SCSI.target[i].bDiskInserted,
+                            &ConfigureParams.SCSI.target[i].bWriteProtected);
+            if (ConfigureParams.SCSI.target[i].nDeviceType==DEVTYPE_HARDDISK &&
+                !ConfigureParams.SCSI.target[i].bDiskInserted) {
+                ConfigureParams.SCSI.target[i].nDeviceType=DEVTYPE_NONE;
+            }
             if (bQuitProgram) {
                 Main_RequestQuit();
                 if (bQuitProgram)
@@ -142,10 +148,12 @@ void Dialog_CheckFiles(void) {
     
     /* Check if MO disk images exist. Present a dialog to select missing files. */
     for (i = 0; i < MO_MAX_DRIVES; i++) {
-        while (ConfigureParams.MO.drive[i].bDiskInserted &&
-               ConfigureParams.MO.drive[i].bDriveConnected &&
+        while (ConfigureParams.MO.drive[i].bDriveConnected &&
+               ConfigureParams.MO.drive[i].bDiskInserted &&
                !File_Exists(ConfigureParams.MO.drive[i].szImageName)) {
-            DlgMissing_MOdisk(i);
+            DlgMissing_Disk(1, i, ConfigureParams.MO.drive[i].szImageName,
+                            &ConfigureParams.MO.drive[i].bDiskInserted,
+                            &ConfigureParams.MO.drive[i].bWriteProtected);
             if (bQuitProgram) {
                 Main_RequestQuit();
                 if (bQuitProgram)
