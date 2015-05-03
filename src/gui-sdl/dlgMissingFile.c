@@ -199,7 +199,7 @@ void DlgMissing_Disk(int type, int num, char *imgname, bool *inserted, bool *wp)
     char dlgname_missingdisk[47];
     char missingdisk_alert[64];
     char missingdisk_disk[64];
-    char typename[8];
+    char typename[16];
     
     switch (type) {
         case 0: sprintf(typename, "SCSI disk"); break;
