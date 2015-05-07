@@ -25,6 +25,7 @@ const char IoMemTabST_fileid[] = "Previous ioMemTabST.c : " __DATE__ " " __TIME_
 #include "mo.h"
 #include "kms.h"
 #include "ramdac.h"
+#include "floppy.h"
 
 
 
@@ -64,11 +65,6 @@ void System_Timer_Read(void) { // tuned for power-on test
         IoMem_WriteLong(IoAccessCurrentAddress&0x1FFFF, (nCyclesMainCounter/((64/ConfigureParams.System.nCpuFreq)*9))&0xFFFFF);
     }
 //    printf("DIFFERENCE = %i PC = %08X\n",eventcounter-lasteventc,m68k_getpc());
-}
-
-/* Floppy Disk Drive - Work on this later */
-void FDD_Main_Status_Read (void) {
-    IoMem[IoAccessCurrentAddress & 0x1FFFF] = 0x00;
 }
 
 
@@ -357,17 +353,17 @@ const INTERCEPT_ACCESS_FUNC IoMemTable_NEXT[] =
 //  { 0x0201400f, SIZE_BYTE, SCSI_CMD_Read, SCSI_CMD_Write },
     
     /* Floppy Controller (82077AA) */
-    { 0x02014100, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
-    { 0x02014101, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
-    { 0x02014102, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
+    { 0x02014100, SIZE_BYTE, FLP_StatA_Read, IoMem_WriteWithoutInterceptionButTrace },
+    { 0x02014101, SIZE_BYTE, FLP_StatB_Read, IoMem_WriteWithoutInterceptionButTrace },
+    { 0x02014102, SIZE_BYTE, FLP_DataOut_Read, FLP_DataOut_Write },
     { 0x02014103, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
-    { 0x02014104, SIZE_BYTE, FDD_Main_Status_Read, IoMem_WriteWithoutInterceptionButTrace },
-    { 0x02014105, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
+    { 0x02014104, SIZE_BYTE, FLP_Status_Read, FLP_DataRate_Write },
+    { 0x02014105, SIZE_BYTE, FLP_FIFO_Read, FLP_FIFO_Write },
     { 0x02014106, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
-    { 0x02014107, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
+    { 0x02014107, SIZE_BYTE, FLP_DataIn_Read, FLP_Configuration_Write },
 
     /* Floppy External Control */
-    { 0x02014108, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
+    { 0x02014108, SIZE_BYTE, FLP_Control_Read, FLP_Select_Write },
 
     /* Serial Communication Controller (Z8530) */
 	{ 0x02018000, SIZE_BYTE, SCC_Read, SCC_Write },

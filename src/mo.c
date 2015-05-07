@@ -1271,7 +1271,7 @@ void mo_drive_cmd(void) {
                 break;
         }
     }
-    Statusbar_BlinkLed(DEVICE_LED_ODFD);
+    Statusbar_BlinkLed(DEVICE_LED_OD);
 }
 
 
