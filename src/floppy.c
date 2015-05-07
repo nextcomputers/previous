@@ -13,7 +13,7 @@
 #include "statusbar.h"
 
 
-#define LOG_FLP_REG_LEVEL   LOG_WARN
+#define LOG_FLP_REG_LEVEL   LOG_DEBUG
 #define LOG_FLP_CMD_LEVEL   LOG_WARN
 
 #define IO_SEG_MASK	0x1FFFF
@@ -247,15 +247,6 @@ int flp_io_drv = 0;
 #define IC_INV_CMD  0x80
 
 
-/* Media IDs for control register */
-
-#define MEDIA_ID_NONE   0
-#define MEDIA_ID_720K   3
-#define MEDIA_ID_1440K  2
-#define MEDIA_ID_2880K  1
-#define MEDIA_ID_MSK    3
-
-
 
 void floppy_reset(bool hard) {
     Log_Printf(LOG_WARN,"[Floppy] Reset.");
@@ -333,19 +324,6 @@ void floppy_interrupt(void) {
 #define SIZE_1440K  1474560
 #define SIZE_2880K  2949120
 
-Uint8 get_floppy_size(int drive) {
-    if (!flpdrv[drive].inserted) {
-        return MEDIA_ID_NONE;
-    } else {
-        switch (flpdrv[drive].floppysize) {
-            case SIZE_720K: return MEDIA_ID_720K;
-            case SIZE_1440K: return MEDIA_ID_1440K;
-            case SIZE_2880K: return MEDIA_ID_2880K;
-            default: return MEDIA_ID_NONE;
-        }
-    }
-}
-
 #define NUM_CYLINDERS   80
 #define TRACKS_PER_CYL  2
 
@@ -360,7 +338,29 @@ Sint32 physical_to_logical_sector(int cyl, int head, int sec, int blocksize) {
 }
 
 
-/* Helpers */
+/* -- Helpers -- */
+
+/* Media IDs for control register */
+#define MEDIA_ID_NONE   0
+#define MEDIA_ID_720K   3
+#define MEDIA_ID_1440K  2
+#define MEDIA_ID_2880K  1
+#define MEDIA_ID_MSK    3
+
+Uint8 get_media_id(int drive) {
+    if (!flpdrv[drive].inserted) {
+        return MEDIA_ID_NONE;
+    } else {
+        switch (flpdrv[drive].floppysize) {
+            case SIZE_720K: return MEDIA_ID_720K;
+            case SIZE_1440K: return MEDIA_ID_1440K;
+            case SIZE_2880K: return MEDIA_ID_2880K;
+            default: return MEDIA_ID_NONE;
+        }
+    }
+}
+
+/* Validate data rate */
 #define CCR_RATE250     0x02
 #define CCR_RATE500     0x00
 #define CCR_RATE1000    0x03
@@ -407,27 +407,21 @@ void send_rw_status(int drive) {
 
 void floppy_read(void) {
     int drive = cmd_data[0]&0x03;
-    int h = (cmd_data[0]&0x04)>>2;
+    int head = (cmd_data[0]&0x04)>>2;
     flpdrv[drive].cyl = cmd_data[1];
     flpdrv[drive].head = cmd_data[2];
     flpdrv[drive].sector = cmd_data[3];
     flpdrv[drive].blocksize = cmd_data[4];
     
-    int last_sec = cmd_data[5];
-    int gap = cmd_data[6]; /* gpl */
-    int dtl = cmd_data[7]; /* dtl */
+    if (flpdrv[drive].head!=head)
+        abort();
     
     Uint32 sec_size = 0x80<<flpdrv[drive].blocksize;
-    
-    Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Drive = %i",drive);
-
-    Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Read: Head %i, Cylinder=%i, Head=%i, Sector=%i, Blocksize=%i",
-               h,flpdrv[drive].cyl,flpdrv[drive].head,flpdrv[drive].sector,sec_size);
-    Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Read: Last sector = %i",last_sec);
-    Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Read: Gap=%i, DTL=%i",gap,dtl);
-    
+    Uint32 num_sectors = cmd_data[5]-flpdrv[drive].sector+1;
     Uint32 logical_sec = physical_to_logical_sector(flpdrv[drive].cyl,flpdrv[drive].head,flpdrv[drive].sector,sec_size);
-    Uint32 num_sectors = last_sec-flpdrv[drive].sector+1;
+    
+    Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Read: Cylinder=%i, Head=%i, Sector=%i, Blocksize=%i",
+               flpdrv[drive].cyl,flpdrv[drive].head,flpdrv[drive].sector,sec_size);
     Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Read %i sectors at offset %i",num_sectors,logical_sec);
     
     flp.st[0] = flp.st[1] = flp.st[2] = 0;
@@ -437,6 +431,7 @@ void floppy_read(void) {
         flp_io_state = FLP_STATE_INTERRUPT;
     } else {
         flp_sector_counter = num_sectors;
+        flp_io_drv = drive;
         flp_io_state = FLP_STATE_READ;
     }
     CycInt_AddRelativeInterrupt(1000, INT_CPU_CYCLE, INTERRUPT_FLP_IO);
@@ -461,6 +456,7 @@ void floppy_read_sector(void) {
     } else {
         Log_Printf(LOG_WARN, "[Floppy] Read error. Bad sector offset (%i).",logical_sec);
         flp_sector_counter=0; /* stop the transfer */
+        flp.st[0] = IC_ABNORMAL;
         flp.st[1] = ST1_ND;
     }
     
@@ -471,10 +467,10 @@ void floppy_read_sector(void) {
 
 void floppy_read_id(void) {
     int drive = cmd_data[0]&0x03;
-    int h = (cmd_data[0]&0x04)>>2;
-    
+    int head = (cmd_data[0]&0x04)>>2;
+    flpdrv[drive].head = head;
+
     Uint32 sec_size = 0x80<<flpdrv[drive].blocksize;
-    flpdrv[drive].head = h;
 
     Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Read ID: Cylinder=%i, Head=%i, Sector=%i, Blocksize=%i",
                flpdrv[drive].cyl,flpdrv[drive].head,flpdrv[drive].sector,sec_size);
@@ -490,27 +486,21 @@ void floppy_read_id(void) {
 
 void floppy_write(void) {
     int drive = cmd_data[0]&0x03;
-    int h = (cmd_data[0]&0x04)>>2;
+    int head = (cmd_data[0]&0x04)>>2;
     flpdrv[drive].cyl = cmd_data[1];
     flpdrv[drive].head = cmd_data[2];
     flpdrv[drive].sector = cmd_data[3];
     flpdrv[drive].blocksize = cmd_data[4];
     
-    int last_sec = cmd_data[5];
-    int gap = cmd_data[6]; /* gpl */
-    int dtl = cmd_data[7]; /* dtl */
+    if (flpdrv[drive].head!=head)
+        abort();
     
     Uint32 sec_size = 0x80<<flpdrv[drive].blocksize;
-    
-    Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Drive = %i",drive);
-    
-    Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Write: Head %i, Cylinder=%i, Head=%i, Sector=%i, Blocksize=%i",
-               h,flpdrv[drive].cyl,flpdrv[drive].head,flpdrv[drive].sector,sec_size);
-    Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Write: Last sector = %i",last_sec);
-    Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Write: Gap=%i, DTL=%i",gap,dtl);
-    
+    Uint32 num_sectors = cmd_data[5]-flpdrv[drive].sector+1;
     Uint32 logical_sec = physical_to_logical_sector(flpdrv[drive].cyl,flpdrv[drive].head,flpdrv[drive].sector,sec_size);
-    Uint32 num_sectors = last_sec-flpdrv[drive].sector+1;
+
+    Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Write: Cylinder=%i, Head=%i, Sector=%i, Blocksize=%i",
+               flpdrv[drive].cyl,flpdrv[drive].head,flpdrv[drive].sector,sec_size);
     Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Write %i sectors at offset %i",num_sectors,logical_sec);
     
     flp.st[0] = flp.st[1] = flp.st[2] = 0;
@@ -521,6 +511,7 @@ void floppy_write(void) {
     } else {
         flp_buffer.limit = sec_size;
         flp_sector_counter = num_sectors;
+        flp_io_drv = drive;
         flp_io_state = FLP_STATE_WRITE;
     }
     CycInt_AddRelativeInterrupt(1000, INT_CPU_CYCLE, INTERRUPT_FLP_IO);
@@ -556,6 +547,9 @@ void floppy_write_sector(void) {
 
 void floppy_format(void) {
     int drive = cmd_data[0]&0x03;
+    int head = (cmd_data[0]&0x04)>>2;
+    
+    Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Format: Cylinder=%i, Head=%i",flpdrv[drive].cyl,head);
     
     flp.st[0] = flp.st[1] = flp.st[2] = 0;
 
@@ -594,13 +588,11 @@ void floppy_recalibrate(void) {
 
 void floppy_seek(void) {
     int drive = cmd_data[0]&0x03;
-    int h = (cmd_data[0]&0x04)>>2;
+    int head = (cmd_data[0]&0x04)>>2;
 
     flpdrv[drive].cyl = flp.pcn = cmd_data[1];
     
-    Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Drive = %i",drive);
-
-    Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Seek: Head %i to cylinder %i",h,flpdrv[drive].cyl);
+    Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Seek: Head %i to cylinder %i",head,flpdrv[drive].cyl);
 
     flp.st[0] = flp.st[1] = flp.st[2] = 0;
 
@@ -699,7 +691,11 @@ void floppy_execute_cmd(void) {
             break;
         case CMD_SEEK:
             Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Seek");
-            floppy_seek();
+            if (command&0x80) {
+                abort(); /* relative seek */
+            } else {
+                floppy_seek();
+            }
             break;
         case CMD_CONFIGURE:
             Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Configure");
@@ -796,7 +792,7 @@ void floppy_dor_write(Uint8 val) {
         if (val&(0x10<<flp.sel)) { /* motor enable */
             Log_Printf(LOG_FLP_CMD_LEVEL,"[Floppy] Starting motor of drive %i.",flp.sel);
             flp.ctrl &= ~MEDIA_ID_MSK;
-            flp.ctrl |= get_floppy_size(flp.sel);
+            flp.ctrl |= get_media_id(flp.sel);
             flpdrv[flp.sel].spinning = true;
         } else {
             Log_Printf(LOG_FLP_CMD_LEVEL,"[Floppy] Stopping motor of drive %i.",flp.sel);
@@ -957,7 +953,7 @@ int Floppy_Insert(int drive) {
     
     flpdrv[drive].inserted=true;
     flpdrv[drive].spinning=false;
-    //flpdrv[drive].protected=true; /* FIXME: remove once writing works */
+    flpdrv[drive].protected=true; /* FIXME: remove once writing works */
 
     Log_Printf(LOG_WARN, "Floppy Disk%i: %s, %iK\n",drive,
                ConfigureParams.Floppy.drive[drive].szImageName,flpdrv[drive].floppysize/1024);
