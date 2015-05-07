@@ -27,6 +27,7 @@ const char Change_fileid[] = "Hatari change.c : " __DATE__ " " __TIME__;
 #include "hatari-glue.h"
 #include "scsi.h"
 #include "mo.h"
+#include "floppy.h"
 #include "ethernet.h"
 
 #define DEBUG 1
@@ -167,6 +168,14 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
         }
     }
     
+    /* Did we change floppy drive? */
+    for (drive = 0; drive < FLP_MAX_DRIVES; drive++) {
+        if (current->Floppy.drive[drive].bDriveConnected != changed->Floppy.drive[drive].bDriveConnected) {
+            printf("floppy drive reset\n");
+            return true;
+        }
+    }
+    
     /* Else no reset is required */
     printf("No Reset needed!\n");
     return false;
@@ -215,6 +224,15 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
         }
     }
     
+    /* Do we need to change floppy disks? */
+    for (i = 0; i < FLP_MAX_DRIVES; i++) {
+        if (!NeedReset &&
+            (current->Floppy.drive[i].bDriveConnected != changed->Floppy.drive[i].bDriveConnected)) {
+            bReInitFloppyEmu = true;
+            break;
+        }
+    }
+    
     /* Do we need to change Ethernet connection? */
     if (!NeedReset && current->Ethernet.bEthernetConnected != changed->Ethernet.bEthernetConnected) {
         bReInitEnetEmu = true;
@@ -257,6 +275,12 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
     if (bReInitMOEmu) {
         Dprintf("- MO drives<\n");
         MO_Reset();
+    }
+    
+    /* Re-init floppy disks? */
+    if (bReInitFloppyEmu) {
+        Dprintf("- Floppy drives<\n");
+        Floppy_Reset();
     }
     
     if (bReInitEnetEmu) {

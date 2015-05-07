@@ -18,6 +18,7 @@
 #include "dma.h"
 #include "configuration.h"
 #include "ethernet.h"
+#include "floppy.h"
 #include "mmu_common.h"
 
 
@@ -444,11 +445,11 @@ void R2MDMA_InterruptHandler(void) {
 
 /* DMA Read and Write Memory Functions */
 
-/* Channel SCSI */
+/* Channel SCSI (used for SCSI and Floppy) */
 void dma_esp_write_memory(void) {
     Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Write to memory at $%08x, %i bytes (ESP counter %i)",
                dma[CHANNEL_SCSI].next,dma[CHANNEL_SCSI].limit-dma[CHANNEL_SCSI].next,esp_counter);
-
+    
     if (!(dma[CHANNEL_SCSI].csr&DMA_ENABLE)) {
         Log_Printf(LOG_WARN, "[DMA] Channel SCSI: Error! DMA not enabled!");
         return;
@@ -476,10 +477,18 @@ void dma_esp_write_memory(void) {
         if (dma[CHANNEL_SCSI].next%DMA_BURST_SIZE) {
             Log_Printf(LOG_WARN, "[DMA] Channel SCSI: Start memory address is not 16 byte aligned ($%08X).",
                        dma[CHANNEL_SCSI].next);
-            while ((dma[CHANNEL_SCSI].next+espdma_buf_size)%DMA_BURST_SIZE && esp_counter>0 && SCSIbus.phase==PHASE_DI) {
-                espdma_buf[espdma_buf_size]=SCSIdisk_Send_Data();
-                esp_counter--;
-                espdma_buf_size++;
+            if (floppy_select) {
+                while ((dma[CHANNEL_SCSI].next+espdma_buf_size)%DMA_BURST_SIZE && flp_buffer.size>0) {
+                    espdma_buf[espdma_buf_size]=flp_buffer.data[flp_buffer.limit-flp_buffer.size];
+                    flp_buffer.size--;
+                    espdma_buf_size++;
+                }
+            } else {
+                while ((dma[CHANNEL_SCSI].next+espdma_buf_size)%DMA_BURST_SIZE && esp_counter>0 && SCSIbus.phase==PHASE_DI) {
+                    espdma_buf[espdma_buf_size]=SCSIdisk_Send_Data();
+                    esp_counter--;
+                    espdma_buf_size++;
+                }
             }
             espdma_buf_limit=espdma_buf_size;
             while (espdma_buf_size>0) {
@@ -491,10 +500,18 @@ void dma_esp_write_memory(void) {
 
         while (dma[CHANNEL_SCSI].next<=dma[CHANNEL_SCSI].limit && !(espdma_buf_size%DMA_BURST_SIZE)) {
             /* Fill DMA internal buffer */
-            while (espdma_buf_size<DMA_BURST_SIZE && esp_counter>0 && SCSIbus.phase==PHASE_DI) {
-                espdma_buf[espdma_buf_size]=SCSIdisk_Send_Data();
-                esp_counter--;
-                espdma_buf_size++;
+            if (floppy_select) {
+                while (espdma_buf_size<DMA_BURST_SIZE && flp_buffer.size>0) {
+                    espdma_buf[espdma_buf_size]=flp_buffer.data[flp_buffer.limit-flp_buffer.size];
+                    flp_buffer.size--;
+                    espdma_buf_size++;
+                }
+            } else {
+                while (espdma_buf_size<DMA_BURST_SIZE && esp_counter>0 && SCSIbus.phase==PHASE_DI) {
+                    espdma_buf[espdma_buf_size]=SCSIdisk_Send_Data();
+                    esp_counter--;
+                    espdma_buf_size++;
+                }
             }
             ESP_DMA_set_status();
             
@@ -521,25 +538,53 @@ void dma_esp_write_memory(void) {
 }
 
 void dma_esp_flush_buffer(void) {
-
+#if 1
     TRY(prb) {
         if (dma[CHANNEL_SCSI].next<dma[CHANNEL_SCSI].limit && espdma_buf_size>0) {
             Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Flush buffer to memory at $%08x, 4 bytes",dma[CHANNEL_SCSI].next);
-
+            
             /* Write one long word to memory */
             NEXTMemory_WriteLong(dma[CHANNEL_SCSI].next, dma_getlong(espdma_buf, espdma_buf_limit-espdma_buf_size));
             dma[CHANNEL_SCSI].next+=4;
             espdma_buf_size-=4;
-        } else if (espdma_buf_size==0) {
+        } else if (dma[CHANNEL_SCSI].next<dma[CHANNEL_SCSI].limit && espdma_buf_size==0) {
             Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Not flushing buffer (empty)");
+            if (floppy_select) {
+                dma[CHANNEL_SCSI].next+=4;
+            }
         }
     } CATCH(prb) {
         dma[CHANNEL_SCSI].csr &= ~DMA_ENABLE;
         dma[CHANNEL_SCSI].csr |= (DMA_COMPLETE|DMA_BUSEXC);
     } ENDTRY
+#else
+    if (!(dma[CHANNEL_SCSI].csr&DMA_ENABLE)) {
+        Log_Printf(LOG_WARN, "[DMA] Channel SCSI: Not flushing buffer. DMA not enabled.");
+        return;
+    }
+
+    TRY(prb) {
+        if (dma[CHANNEL_SCSI].next<dma[CHANNEL_SCSI].limit) {
+            Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Flush buffer to memory at $%08x, 4 bytes",dma[CHANNEL_SCSI].next);
+            if (espdma_buf_size>0) {
+                /* Write one long word to memory */
+                NEXTMemory_WriteLong(dma[CHANNEL_SCSI].next, dma_getlong(espdma_buf, espdma_buf_limit-espdma_buf_size));
+                espdma_buf_size-=4;
+            }
+            dma[CHANNEL_SCSI].next+=4;
+        } else {
+            Log_Printf(LOG_WARN, "[DMA] Channel SCSI: Not flushing buffer. DMA done.");
+        }
+    } CATCH(prb) {
+        dma[CHANNEL_SCSI].csr &= ~DMA_ENABLE;
+        dma[CHANNEL_SCSI].csr |= (DMA_COMPLETE|DMA_BUSEXC);
+    } ENDTRY
+    
+    dma_interrupt(CHANNEL_SCSI);
+#endif
 }
 
-void dma_esp_read_memory(void) {    
+void dma_esp_read_memory(void) {
     Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Read from memory at $%08x, %i bytes (ESP counter %i)",
                dma[CHANNEL_SCSI].next,dma[CHANNEL_SCSI].limit-dma[CHANNEL_SCSI].next,esp_counter);
     
@@ -559,10 +604,18 @@ void dma_esp_read_memory(void) {
     TRY(prb) {
         if (espdma_buf_size>0) {
             Log_Printf(LOG_WARN, "[DMA] Channel SCSI: %i residual bytes in DMA buffer.", espdma_buf_size);
-            while (espdma_buf_size>0) {
-                SCSIdisk_Receive_Data(espdma_buf[espdma_buf_limit-espdma_buf_size]);
-                esp_counter--;
-                espdma_buf_size--;
+            if (floppy_select) {
+                while (espdma_buf_size>0) {
+                    flp_buffer.data[flp_buffer.size]=espdma_buf[espdma_buf_limit-espdma_buf_size];
+                    flp_buffer.size++;
+                    espdma_buf_size--;
+                }
+            } else {
+                while (espdma_buf_size>0) {
+                    SCSIdisk_Receive_Data(espdma_buf[espdma_buf_limit-espdma_buf_size]);
+                    esp_counter--;
+                    espdma_buf_size--;
+                }
             }
         }
 
@@ -576,10 +629,18 @@ void dma_esp_read_memory(void) {
                 espdma_buf_size+=4;
             }
             espdma_buf_limit=espdma_buf_size;
-            while (espdma_buf_size>0 && esp_counter>0 && SCSIbus.phase==PHASE_DO) {
-                SCSIdisk_Receive_Data(espdma_buf[espdma_buf_limit-espdma_buf_size]);
-                esp_counter--;
-                espdma_buf_size--;
+            if (floppy_select) {
+                while (espdma_buf_size>0 && flp_buffer.size<flp_buffer.limit) {
+                    flp_buffer.data[flp_buffer.size]=espdma_buf[espdma_buf_limit-espdma_buf_size];
+                    flp_buffer.size++;
+                    espdma_buf_size--;
+                }
+            } else {
+                while (espdma_buf_size>0 && esp_counter>0 && SCSIbus.phase==PHASE_DO) {
+                    SCSIdisk_Receive_Data(espdma_buf[espdma_buf_limit-espdma_buf_size]);
+                    esp_counter--;
+                    espdma_buf_size--;
+                }
             }
         }
 
@@ -591,10 +652,18 @@ void dma_esp_read_memory(void) {
                 espdma_buf_size+=4;
             }
             /* Empty DMA internal buffer */
-            while (espdma_buf_size>0 && esp_counter>0 && SCSIbus.phase==PHASE_DO) {
-                SCSIdisk_Receive_Data(espdma_buf[DMA_BURST_SIZE-espdma_buf_size]);
-                esp_counter--;
-                espdma_buf_size--;
+            if (floppy_select) {
+                while (espdma_buf_size>0 && flp_buffer.size<flp_buffer.limit) {
+                    flp_buffer.data[flp_buffer.size]=espdma_buf[DMA_BURST_SIZE-espdma_buf_size];
+                    flp_buffer.size++;
+                    espdma_buf_size--;
+                }
+            } else {
+                while (espdma_buf_size>0 && esp_counter>0 && SCSIbus.phase==PHASE_DO) {
+                    SCSIdisk_Receive_Data(espdma_buf[DMA_BURST_SIZE-espdma_buf_size]);
+                    esp_counter--;
+                    espdma_buf_size--;
+                }
             }
             ESP_DMA_set_status();
         }
@@ -608,10 +677,19 @@ void dma_esp_read_memory(void) {
         espdma_buf_limit=espdma_buf_size;
         Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Residual bytes in DMA buffer: %i bytes",espdma_buf_size);
     }
-    if (SCSIbus.phase==PHASE_DO) {
-        Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Warning! Data not yet written to disk.");
-        if (espdma_buf_size!=0) {
-            Log_Printf(LOG_WARN, "[DMA] Channel SCSI: WARNING: Loss of data in DMA buffer possible!");
+    if (floppy_select) {
+        if (flp_buffer.size<flp_buffer.limit) {
+            Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Warning! Data not yet written to floppy.");
+            if (espdma_buf_size!=0) {
+                Log_Printf(LOG_WARN, "[DMA] Channel SCSI: WARNING: Loss of data in DMA buffer possible!");
+            }
+        }
+    } else {
+        if (SCSIbus.phase==PHASE_DO) {
+            Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Warning! Data not yet written to disk.");
+            if (espdma_buf_size!=0) {
+                Log_Printf(LOG_WARN, "[DMA] Channel SCSI: WARNING: Loss of data in DMA buffer possible!");
+            }
         }
     }
     
