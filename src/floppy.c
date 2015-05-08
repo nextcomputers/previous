@@ -279,8 +279,11 @@ void floppy_reset(bool hard) {
 #define CMD_WRITE_DEL   0x09
 #define CMD_READ_TRK    0x02
 #define CMD_VERIFY      0x16
-#define CMD_VERSION     0x1F
+#define CMD_VERSION     0x10
 #define CMD_FORMAT      0x0D
+#define CMD_SCAN_E      0x11
+#define CMD_SCAN_LE     0x19
+#define CMD_SCAN_HE     0x1D
 #define CMD_RECAL       0x07
 #define CMD_INTSTAT     0x08
 #define CMD_SPECIFY     0x03
@@ -290,12 +293,13 @@ void floppy_reset(bool hard) {
 #define CMD_DUMPREG     0x0E
 #define CMD_READ_ID     0x0A
 #define CMD_PERPEND     0x12
+#define CMD_LOCK        0x14
 
 Uint8 cmd_data_size[] = {
     0,0,8,2,1,8,8,1,
     0,8,1,0,8,5,0,2,
-    0,0,1,3,0,0,8,0,
-    0,0,0,0,0,0,0,0
+    0,8,1,3,0,0,8,0,
+    0,8,0,0,0,8,0,0
 };
 
 bool cmd_phase = false;
@@ -312,12 +316,16 @@ void floppy_interrupt(void) {
     if (result_size>0) {
         /* Go to result phase */
         flp.msr |= (STAT_RQM|STAT_DIO);
+    } else {
+        flp.msr |= STAT_RQM;
     }
     
     flp.msr &= ~(STAT_BSY_MASK);
     flp.sra |= SRA_INT;
     set_interrupt(INT_PHONE, SET_INT);
 }
+
+/* -- Helpers -- */
 
 /* Geometry */
 #define SIZE_720K    737280
@@ -336,9 +344,6 @@ Sint32 physical_to_logical_sector(int cyl, int head, int sec, int blocksize) {
     
     return (((cyl*TRACKS_PER_CYL)+head)*spt)+sec-1;
 }
-
-
-/* -- Helpers -- */
 
 /* Media IDs for control register */
 #define MEDIA_ID_NONE   0
@@ -403,7 +408,7 @@ void send_rw_status(int drive) {
     result_size = 7;
 }
 
-/* Floppy commands */
+/* -- Floppy commands -- */
 
 void floppy_read(void) {
     int drive = cmd_data[0]&0x03;
@@ -417,7 +422,7 @@ void floppy_read(void) {
         abort();
     
     Uint32 sec_size = 0x80<<flpdrv[drive].blocksize;
-    Uint32 num_sectors = cmd_data[5]-flpdrv[drive].sector+1;
+    Uint32 num_sectors = cmd_data[5]-cmd_data[3]+1;
     Uint32 logical_sec = physical_to_logical_sector(flpdrv[drive].cyl,flpdrv[drive].head,flpdrv[drive].sector,sec_size);
     
     Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Read: Cylinder=%i, Head=%i, Sector=%i, Blocksize=%i",
@@ -435,34 +440,6 @@ void floppy_read(void) {
         flp_io_state = FLP_STATE_READ;
     }
     CycInt_AddRelativeInterrupt(1000, INT_CPU_CYCLE, INTERRUPT_FLP_IO);
-}
-
-void floppy_read_sector(void) {
-    int drive = flp_io_drv;
-    
-    /* Read from image */
-    Uint32 sec_size = 0x80<<flpdrv[drive].blocksize;
-    Uint32 logical_sec = physical_to_logical_sector(flpdrv[drive].cyl,flpdrv[drive].head,flpdrv[drive].sector,sec_size);
-    
-    if ((logical_sec*sec_size)<flpdrv[drive].floppysize) {
-        Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Read sector at offset %i",logical_sec);
-        
-        /* seek to the position */
-        flp_buffer.size = flp_buffer.limit = sec_size;
-        fseek(flpdrv[drive].dsk, logical_sec*sec_size, SEEK_SET);
-        fread(flp_buffer.data, flp_buffer.size, 1, flpdrv[drive].dsk);
-        flpdrv[drive].sector++;
-        flp_sector_counter--;
-    } else {
-        Log_Printf(LOG_WARN, "[Floppy] Read error. Bad sector offset (%i).",logical_sec);
-        flp_sector_counter=0; /* stop the transfer */
-        flp.st[0] = IC_ABNORMAL;
-        flp.st[1] = ST1_ND;
-    }
-    
-    if (flp_sector_counter==0) {
-        send_rw_status(drive);
-    }
 }
 
 void floppy_read_id(void) {
@@ -496,7 +473,7 @@ void floppy_write(void) {
         abort();
     
     Uint32 sec_size = 0x80<<flpdrv[drive].blocksize;
-    Uint32 num_sectors = cmd_data[5]-flpdrv[drive].sector+1;
+    Uint32 num_sectors = cmd_data[5]-cmd_data[3]+1;
     Uint32 logical_sec = physical_to_logical_sector(flpdrv[drive].cyl,flpdrv[drive].head,flpdrv[drive].sector,sec_size);
 
     Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Write: Cylinder=%i, Head=%i, Sector=%i, Blocksize=%i",
@@ -515,34 +492,6 @@ void floppy_write(void) {
         flp_io_state = FLP_STATE_WRITE;
     }
     CycInt_AddRelativeInterrupt(1000, INT_CPU_CYCLE, INTERRUPT_FLP_IO);
-}
-
-void floppy_write_sector(void) {
-    int drive = flp_io_drv;
-    
-    /* Write to image */
-    Uint32 sec_size = 0x80<<flpdrv[drive].blocksize;
-    Uint32 logical_sec = physical_to_logical_sector(flpdrv[drive].cyl,flpdrv[drive].head,flpdrv[drive].sector,sec_size);
-    
-    if ((logical_sec*sec_size)<flpdrv[drive].floppysize) {
-        Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Write sector at offset %i",logical_sec);
-        
-        /* seek to the position */
-        fseek(flpdrv[drive].dsk, logical_sec*sec_size, SEEK_SET);
-        fwrite(flp_buffer.data, flp_buffer.size, 1, flpdrv[drive].dsk);
-        flp_buffer.size = 0;
-        flpdrv[drive].sector++;
-        flp_sector_counter--;
-    } else {
-        Log_Printf(LOG_WARN, "[Floppy] Write error. Bad sector offset (%i).",logical_sec);
-        flp_sector_counter=0; /* stop the transfer */
-        flp.st[0] = IC_ABNORMAL;
-        flp.st[1] = ST1_ND;
-    }
-
-    if (flp_sector_counter==0) {
-        send_rw_status(drive);
-    }
 }
 
 void floppy_format(void) {
@@ -578,7 +527,6 @@ void floppy_recalibrate(void) {
 
         /* Done */
         flp.st[0] = IC_NORMAL|ST0_SE;
-        flp.msr |= STAT_RQM;
         flp.sra &= ~SRA_TRK0_N;
         
         flp_io_state = FLP_STATE_INTERRUPT;
@@ -586,9 +534,13 @@ void floppy_recalibrate(void) {
     }
 }
 
-void floppy_seek(void) {
+void floppy_seek(Uint8 relative) {
     int drive = cmd_data[0]&0x03;
     int head = (cmd_data[0]&0x04)>>2;
+    
+    if (relative) {
+        abort();
+    }
 
     flpdrv[drive].cyl = flp.pcn = cmd_data[1];
     
@@ -598,7 +550,6 @@ void floppy_seek(void) {
 
     /* Done */
     flp.st[0] = IC_NORMAL|ST0_SE;
-    flp.msr |= STAT_RQM;
     
     flp_io_state = FLP_STATE_INTERRUPT;
     CycInt_AddRelativeInterrupt(1000000, INT_CPU_CYCLE, INTERRUPT_FLP_IO);
@@ -637,6 +588,16 @@ void floppy_perpendicular(void) {
     flp.msr |= STAT_RQM;
 }
 
+void floppy_unimplemented(void) {
+    flp.st[0] = IC_INV_CMD;
+    
+    flp.fifo[0] = flp.st[0];
+    result_size = 1;
+    
+    flp_io_state = FLP_STATE_INTERRUPT;
+    CycInt_AddRelativeInterrupt(10000, INT_CPU_CYCLE, INTERRUPT_FLP_IO);
+}
+
 void floppy_execute_cmd(void) {
     Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Executing %02X",command);
     
@@ -673,6 +634,18 @@ void floppy_execute_cmd(void) {
             Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Format");
             floppy_format();
             break;
+        case CMD_SCAN_E:
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Scan equal");
+            abort();
+            break;
+        case CMD_SCAN_LE:
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Scan lower or equal");
+            abort();
+            break;
+        case CMD_SCAN_HE:
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Scan higher or equal");
+            abort();
+            break;
         case CMD_RECAL:
             Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Recalibrate");
             floppy_recalibrate();
@@ -691,11 +664,7 @@ void floppy_execute_cmd(void) {
             break;
         case CMD_SEEK:
             Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Seek");
-            if (command&0x80) {
-                abort(); /* relative seek */
-            } else {
-                floppy_seek();
-            }
+            floppy_seek(command&0x80);
             break;
         case CMD_CONFIGURE:
             Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Configure");
@@ -713,10 +682,14 @@ void floppy_execute_cmd(void) {
             Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Perpendicular");
             floppy_perpendicular();
             break;
-            
+        case CMD_LOCK:
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Lock");
+            abort();
+            break;
+
         default:
             Log_Printf(LOG_WARN, "[Floppy] Command: Unknown");
-            abort();
+            floppy_unimplemented();
             break;
     }
     Statusbar_BlinkLed(DEVICE_LED_FD);
@@ -824,7 +797,65 @@ Uint8 floppy_sra_read(void) {
 }
 
 
-/* Floppy I/O loop */
+/* -- Floppy I/O functions -- */
+
+
+void floppy_read_sector(void) {
+    int drive = flp_io_drv;
+    
+    /* Read from image */
+    Uint32 sec_size = 0x80<<flpdrv[drive].blocksize;
+    Uint32 logical_sec = physical_to_logical_sector(flpdrv[drive].cyl,flpdrv[drive].head,flpdrv[drive].sector,sec_size);
+    
+    if ((logical_sec*sec_size)<flpdrv[drive].floppysize) {
+        Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Read sector at offset %i",logical_sec);
+        
+        /* seek to the position */
+        flp_buffer.size = flp_buffer.limit = sec_size;
+        fseek(flpdrv[drive].dsk, logical_sec*sec_size, SEEK_SET);
+        fread(flp_buffer.data, flp_buffer.size, 1, flpdrv[drive].dsk);
+        flpdrv[drive].sector++;
+        flp_sector_counter--;
+    } else {
+        Log_Printf(LOG_WARN, "[Floppy] Read error. Bad sector offset (%i).",logical_sec);
+        flp_sector_counter=0; /* stop the transfer */
+        flp.st[0] = IC_ABNORMAL;
+        flp.st[1] = ST1_ND;
+    }
+    
+    if (flp_sector_counter==0) {
+        send_rw_status(drive);
+    }
+}
+
+void floppy_write_sector(void) {
+    int drive = flp_io_drv;
+    
+    /* Write to image */
+    Uint32 sec_size = 0x80<<flpdrv[drive].blocksize;
+    Uint32 logical_sec = physical_to_logical_sector(flpdrv[drive].cyl,flpdrv[drive].head,flpdrv[drive].sector,sec_size);
+    
+    if ((logical_sec*sec_size)<flpdrv[drive].floppysize) {
+        Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Write sector at offset %i",logical_sec);
+        
+        /* seek to the position */
+        fseek(flpdrv[drive].dsk, logical_sec*sec_size, SEEK_SET);
+        fwrite(flp_buffer.data, flp_buffer.size, 1, flpdrv[drive].dsk);
+        flp_buffer.size = 0;
+        flpdrv[drive].sector++;
+        flp_sector_counter--;
+    } else {
+        Log_Printf(LOG_WARN, "[Floppy] Write error. Bad sector offset (%i).",logical_sec);
+        flp_sector_counter=0; /* stop the transfer */
+        flp.st[0] = IC_ABNORMAL;
+        flp.st[1] = ST1_ND;
+    }
+    
+    if (flp_sector_counter==0) {
+        send_rw_status(drive);
+    }
+}
+
 
 void FLP_IO_Handler(void) {
     CycInt_AcknowledgeInterrupt();

@@ -163,7 +163,7 @@ int dnum;
 /* Disk layout */
 #define MO_SEC_PER_TRACK    16
 #define MO_TRACK_OFFSET     4096 /* offset to first logical sector of kernel driver is 4149 */
-#define MO_TRACK_LIMIT      19819-(MO_TRACK_OFFSET) /* no more tracks beyond this offset */
+#define MO_TRACK_LIMIT      (19819-(MO_TRACK_OFFSET)) /* no more tracks beyond this offset */
 
 #define MO_SECTORSIZE_DISK  1296 /* size of encoded sector, like stored on disk */
 #define MO_SECTORSIZE_DATA  1024 /* size of decoded sector, like handled by software */
