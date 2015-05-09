@@ -44,6 +44,8 @@ const char Change_fileid[] = "Hatari change.c : " __DATE__ " " __TIME__;
  */
 bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
 {
+    int i;
+    
     /* Did we change ROM file? */
     if (current->System.nMachineType == NEXT_CUBE030 && strcmp(current->Rom.szRom030FileName, changed->Rom.szRom030FileName)) {
         printf("rom030 reset\n");
@@ -105,7 +107,6 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
     }
     
     /* Did we change memory size? */
-    int i;
     for (i = 0; i < 4; i++) {
         if (current->Memory.nMemoryBankSize[i] != changed->Memory.nMemoryBankSize[i]) {
             printf("memory size reset\n");
@@ -148,29 +149,27 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
     }
     
     /* Did we change SCSI disk? */
-    int target;
-    for (target = 0; target < ESP_MAX_DEVS; target++) {
-        if (current->SCSI.target[target].nDeviceType != changed->SCSI.target[target].nDeviceType ||
-            (current->SCSI.target[target].nDeviceType==DEVTYPE_HARDDISK &&
-             (current->SCSI.target[target].bWriteProtected != changed->SCSI.target[target].bWriteProtected ||
-              strcmp(current->SCSI.target[target].szImageName, changed->SCSI.target[target].szImageName)))) {
+    for (i = 0; i < ESP_MAX_DEVS; i++) {
+        if (current->SCSI.target[i].nDeviceType != changed->SCSI.target[i].nDeviceType ||
+            (current->SCSI.target[i].nDeviceType==DEVTYPE_HARDDISK &&
+             (current->SCSI.target[i].bWriteProtected != changed->SCSI.target[i].bWriteProtected ||
+              strcmp(current->SCSI.target[i].szImageName, changed->SCSI.target[i].szImageName)))) {
                  printf("scsi disk reset\n");
                  return true;
              }
     }
     
     /* Did we change MO drive? */
-    int drive;
-    for (drive = 0; drive < MO_MAX_DRIVES; drive++) {
-        if (current->MO.drive[drive].bDriveConnected != changed->MO.drive[drive].bDriveConnected) {
+    for (i = 0; i < MO_MAX_DRIVES; i++) {
+        if (current->MO.drive[i].bDriveConnected != changed->MO.drive[i].bDriveConnected) {
             printf("mo drive reset\n");
             return true;
         }
     }
     
     /* Did we change floppy drive? */
-    for (drive = 0; drive < FLP_MAX_DRIVES; drive++) {
-        if (current->Floppy.drive[drive].bDriveConnected != changed->Floppy.drive[drive].bDriveConnected) {
+    for (i = 0; i < FLP_MAX_DRIVES; i++) {
+        if (current->Floppy.drive[i].bDriveConnected != changed->Floppy.drive[i].bDriveConnected) {
             printf("floppy drive reset\n");
             return true;
         }
@@ -190,8 +189,6 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
 {
 	bool NeedReset;
 	bool bReInitSCSIEmu = false;
-    bool bReInitMOEmu = false;
-    bool bReInitFloppyEmu = false;
 	bool bReInitEnetEmu = false;
 	bool bReInitIoMem = false;
 	bool bScreenModeChange = false;
@@ -215,23 +212,7 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
         }
     }
     
-    /* Do we need to change MO disks? */
-    for (i = 0; i < MO_MAX_DRIVES; i++) {
-        if (!NeedReset &&
-            (current->MO.drive[i].bDriveConnected != changed->MO.drive[i].bDriveConnected)) {
-            bReInitMOEmu = true;
-            break;
-        }
-    }
-    
-    /* Do we need to change floppy disks? */
-    for (i = 0; i < FLP_MAX_DRIVES; i++) {
-        if (!NeedReset &&
-            (current->Floppy.drive[i].bDriveConnected != changed->Floppy.drive[i].bDriveConnected)) {
-            bReInitFloppyEmu = true;
-            break;
-        }
-    }
+    /* Note: MO and floppy disk insert/eject called from GUI */
     
     /* Do we need to change Ethernet connection? */
     if (!NeedReset && current->Ethernet.bEthernetConnected != changed->Ethernet.bEthernetConnected) {
@@ -269,18 +250,6 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
     if (bReInitSCSIEmu) {
         Dprintf("- SCSI disks<\n");
         SCSI_Reset();
-    }
-    
-    /* Re-init MO disks? */
-    if (bReInitMOEmu) {
-        Dprintf("- MO drives<\n");
-        MO_Reset();
-    }
-    
-    /* Re-init floppy disks? */
-    if (bReInitFloppyEmu) {
-        Dprintf("- Floppy drives<\n");
-        Floppy_Reset();
     }
     
     if (bReInitEnetEmu) {

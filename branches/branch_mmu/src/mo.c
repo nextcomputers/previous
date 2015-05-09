@@ -83,7 +83,7 @@ struct {
     bool protected;
     bool inserted;
     bool connected;
-} modrv[2];
+} modrv[MO_MAX_DRIVES];
 
 int dnum;
 
@@ -1541,7 +1541,7 @@ void mo_spiraling_operation(void) {
     }
     
     int i;
-    for (i=0; i<2; i++) {
+    for (i=0; i<MO_MAX_DRIVES; i++) {
         if (modrv[i].spiraling && !modrv[i].seeking) {
             
             /* If the drive is selected, connect to formatter */
@@ -1575,7 +1575,7 @@ void mo_unimplemented_cmd(void) {
 
 void mo_reset(void) {
     int i;
-    for (i=0; i<2; i++) {
+    for (i=0; i<MO_MAX_DRIVES; i++) {
         if (modrv[i].connected) {
             modrv[i].head=NO_HEAD;
             modrv[i].head_pos=modrv[i].ho_head_pos=0;
@@ -1675,7 +1675,7 @@ void MO_Init(void) {
     Log_Printf(LOG_WARN, "Loading magneto-optical disks:");
     int i;
     
-    for (i=0; i<2; i++) {
+    for (i=0; i<MO_MAX_DRIVES; i++) {
         modrv[i].spinning=false;
         modrv[i].spiraling=false;
         /* Check if files exist. */
