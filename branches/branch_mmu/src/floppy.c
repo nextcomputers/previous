@@ -352,11 +352,19 @@ Uint32 physical_to_logical_sector(Uint8 c, Uint8 h, Uint8 s, int drive) {
     return (((c*TRACKS_PER_CYL)+h)*spt)+s-1;
 }
 
-void check_blocksize(Uint8 blocksize, int drive) {
+void check_blocksize(int drive, Uint8 blocksize) {
     if (blocksize!=flpdrv[drive].blocksize) {
         Log_Printf(LOG_WARN, "[Floppy] Geometry error: Blocksize not supported (%i)!",blocksize);
         flp.st[0] |= IC_ABNORMAL;
         flp.st[1] |= ST1_ND;
+    }
+}
+
+void check_protection(int drive) {
+    if (flpdrv[drive].protected) {
+        Log_Printf(LOG_WARN, "[Floppy] Protection error: Disk is read-only!");
+        flp.st[0] |= IC_ABNORMAL;
+        flp.st[1] |= ST1_NW;
     }
 }
 
@@ -520,6 +528,9 @@ void floppy_write(void) {
     /* Validate data rate */
     check_data_rate(drive);
     
+    /* Check protection */
+    check_protection(drive);
+    
     Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Write: Cylinder=%i, Head=%i, Sector=%i, Blocksize=%i",
                flpdrv[drive].cyl,flpdrv[drive].head,flpdrv[drive].sector,sector_size);
     
@@ -550,17 +561,22 @@ void floppy_format(void) {
     
     Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Format: Cylinder=%i, Head=%i",flpdrv[drive].cyl,head);
     
-    /* Done */
-    flp.st[0] = IC_NORMAL|ST0_SE;
+    /* Validate data rate */
+    check_data_rate(drive);
     
-    send_rw_status(drive);
+    /* Check protection */
+    check_protection(drive);
     
-    /* Hack for reading data */
-    flp_buffer.size = 0;
-    flp_buffer.limit = 4;
-    flp_io_drv = drive;
-    flp_io_state = FLP_STATE_FORMAT;
-    CycInt_AddRelativeInterrupt(100000, INT_CPU_CYCLE, INTERRUPT_FLP_IO);
+    if (flp.st[0]&IC_ABNORMAL) {
+        send_rw_status(drive);
+        flp_io_state = FLP_STATE_INTERRUPT;
+    } else {
+        flp_buffer.size = 0;
+        flp_buffer.limit = 4;
+        flp_io_drv = drive;
+        flp_io_state = FLP_STATE_FORMAT;
+        CycInt_AddRelativeInterrupt(100000, INT_CPU_CYCLE, INTERRUPT_FLP_IO);
+    }
 }
 
 void floppy_read_id(void) {
@@ -905,6 +921,8 @@ void floppy_read_sector(void) {
     if (flp.st[0]&IC_ABNORMAL) {
         Log_Printf(LOG_WARN, "[Floppy] Read error. Bad sector offset (%i).",logical_sec);
         flp_sector_counter=0; /* stop the transfer */
+        flp_io_state = FLP_STATE_INTERRUPT;
+        send_rw_status(drive);
         return;
     } else {
         Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Read sector at offset %i",logical_sec);
@@ -932,6 +950,8 @@ void floppy_write_sector(void) {
     if (flp.st[0]&IC_ABNORMAL) {
         Log_Printf(LOG_WARN, "[Floppy] Write error. Bad sector offset (%i).",logical_sec);
         flp_sector_counter=0; /* stop the transfer */
+        flp_io_state = FLP_STATE_INTERRUPT;
+        send_rw_status(drive);
         return;
     } else {
         Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Write sector at offset %i",logical_sec);
@@ -957,7 +977,7 @@ void floppy_format_sector(void) {
     Uint8 s = flp_buffer.data[2];
     Uint8 bs = flp_buffer.data[3];
     
-    if (c!=flpdrv[drive].cyl || h!=flpdrv[drive].head || bs<2 || bs>3) {
+    if (c!=flpdrv[drive].cyl || h!=flpdrv[drive].head || bs!=flpdrv[drive].blocksize) {
         Log_Printf(LOG_WARN, "[Floppy] Format error. Bad sector data. Stopping.");
         flp_io_state = FLP_STATE_INTERRUPT; /* This is a hack */
         floppy_format_done();
