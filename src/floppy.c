@@ -1118,7 +1118,6 @@ int Floppy_Insert(int drive) {
     
     flpdrv[drive].inserted=true;
     flpdrv[drive].spinning=false;
-    //flpdrv[drive].protected=true; /* FIXME: remove once writing works */
 
     Log_Printf(LOG_WARN, "Floppy Disk%i: %s, %iK\n",drive,
                ConfigureParams.Floppy.drive[drive].szImageName,flpdrv[drive].floppysize/1024);
