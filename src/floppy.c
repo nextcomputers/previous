@@ -354,7 +354,7 @@ Uint32 physical_to_logical_sector(Uint8 c, Uint8 h, Uint8 s, int drive) {
 
 void check_blocksize(Uint8 blocksize, int drive) {
     if (blocksize!=flpdrv[drive].blocksize) {
-        Log_Printf(LOG_WARN, "[Floppy] Geometry error: wrong blocksize (%i)!",blocksize);
+        Log_Printf(LOG_WARN, "[Floppy] Geometry error: Blocksize not supported (%i)!",blocksize);
         flp.st[0] |= IC_ABNORMAL;
         flp.st[1] |= ST1_ND;
     }
@@ -479,6 +479,8 @@ void floppy_read(void) {
         send_rw_status(drive);
         flp_io_state = FLP_STATE_INTERRUPT;
     } else {
+        flp_buffer.size = 0;
+        flp_buffer.limit = sector_size;
         flp_sector_counter = num_sectors;
         flp_io_drv = drive;
         flp_io_state = FLP_STATE_READ;
@@ -531,6 +533,8 @@ void floppy_write(void) {
         send_rw_status(drive);
         flp_io_state = FLP_STATE_INTERRUPT;
     } else {
+        flp_buffer.size = 0;
+        flp_buffer.limit = sector_size;
         flp_sector_counter = num_sectors;
         flp_io_drv = drive;
         flp_io_state = FLP_STATE_WRITE;
@@ -552,7 +556,8 @@ void floppy_format(void) {
     send_rw_status(drive);
     
     /* Hack for reading data */
-    flp_buffer.limit = 512;
+    flp_buffer.size = 0;
+    flp_buffer.limit = 4;
     flp_io_drv = drive;
     flp_io_state = FLP_STATE_FORMAT;
     CycInt_AddRelativeInterrupt(100000, INT_CPU_CYCLE, INTERRUPT_FLP_IO);
@@ -881,6 +886,15 @@ void floppy_rw_nodata(void) {
     send_rw_status(flp_io_drv);
 }
 
+void floppy_format_done(void) {
+    int drive = flp_io_drv;
+    
+    Log_Printf(LOG_WARN, "[Floppy] Format: No more data from DMA. Done.");
+    
+    flp.st[0] = IC_NORMAL;
+    send_rw_status(drive);
+}
+
 void floppy_read_sector(void) {
     int drive = flp_io_drv;
     
@@ -925,6 +939,7 @@ void floppy_write_sector(void) {
         fseek(flpdrv[drive].dsk, logical_sec*sec_size, SEEK_SET);
         fwrite(flp_buffer.data, flp_buffer.size, 1, flpdrv[drive].dsk);
         flp_buffer.size = 0;
+        flp_buffer.limit = sec_size;
         flpdrv[drive].sector++;
         flp_sector_counter--;
     }
@@ -935,47 +950,42 @@ void floppy_write_sector(void) {
     }
 }
 
-#if 0 /* FIXME: Improve format command emulation */
-void floppy_format_done(void) {
-    int drive = flp_io_drv;
-    
-    Log_Printf(LOG_WARN, "[Floppy] Format: No more data from DMA. Done.");
-    
-    flp.st[0] = IC_NORMAL;
-    send_rw_status(drive);
-}
 void floppy_format_sector(void) {
     int drive = flp_io_drv;
     Uint8 c = flp_buffer.data[0];
     Uint8 h = flp_buffer.data[1];
     Uint8 s = flp_buffer.data[2];
-    Uint8 n = flp_buffer.data[3];
+    Uint8 bs = flp_buffer.data[3];
     
-    if (c!=flpdrv[drive].cyl || h!=flpdrv[drive].head || n!=flpdrv[drive].blocksize) {
-        abort();
+    if (c!=flpdrv[drive].cyl || h!=flpdrv[drive].head || bs<2 || bs>3) {
+        Log_Printf(LOG_WARN, "[Floppy] Format error. Bad sector data. Stopping.");
+        flp_io_state = FLP_STATE_INTERRUPT; /* This is a hack */
+        floppy_format_done();
+        flp_buffer.size = 0;
+        return;
     }
     flpdrv[drive].sector = s;
     
     /* Erase data */
-    Uint32 sec_size = 0x80<<flpdrv[drive].blocksize;
+    Uint32 sec_size = 0x80<<bs;
     Uint32 logical_sec = physical_to_logical_sector(flpdrv[drive].cyl,flpdrv[drive].head,flpdrv[drive].sector,drive);
     flp_buffer.size = sec_size;
     memset(flp_buffer.data, 0, flp_buffer.size);
 
-    if (logical_sec>=0) {
+    if (flp.st[0]&IC_ABNORMAL) {
+        Log_Printf(LOG_WARN, "[Floppy] Format error. Bad sector offset (%i).",logical_sec);
+        flp_buffer.size = flp_buffer.limit = 0;
+        send_rw_status(drive);
+    } else {
         Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Format sector at offset %i (%i/%i/%i), blocksize: %i",
                    logical_sec,c,h,s,sec_size);
         fseek(flpdrv[drive].dsk, logical_sec*sec_size, SEEK_SET);
         fwrite(flp_buffer.data, flp_buffer.size, 1, flpdrv[drive].dsk);
         flp_buffer.size = 0;
         flp_buffer.limit = 4;
-    } else {
-        Log_Printf(LOG_WARN, "[Floppy] Format error. Bad sector offset (%i).",logical_sec);
-        flp_buffer.size = flp_buffer.limit = 0;
-        send_rw_status(drive);
     }
 }
-#endif
+
 
 Uint32 old_size;
 
@@ -1019,11 +1029,16 @@ void FLP_IO_Handler(void) {
             break;
             
         case FLP_STATE_FORMAT:
-            dma_esp_read_memory();
-            if (flp_buffer.size>0) {
-                flp_buffer.size=0;
-            } else {
-                flp_io_state = FLP_STATE_INTERRUPT;
+            if (flp_buffer.size<flp_buffer.limit) {
+                old_size = flp_buffer.size;
+                dma_esp_read_memory();
+                if (flp_buffer.size==old_size) {
+                    floppy_format_done();
+                    flp_io_state = FLP_STATE_INTERRUPT;
+                    break;
+                }
+            } else if (flp_buffer.size==flp_buffer.limit) {
+                floppy_format_sector();
             }
             break;
             
