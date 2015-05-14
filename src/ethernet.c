@@ -308,13 +308,13 @@ bool enet_packet_for_me(Uint8 *packet) {
         case RX_NOPACKETS:
             return false;
             
-        case RX_NORMAL:
+        case RX_LIMITED:
             if (recv_broadcast(packet) || recv_me(packet) || recv_local_multicast(packet))
                 return true;
             else
                 return false;
             
-        case RX_LIMITED:
+        case RX_NORMAL:
             if (recv_broadcast(packet) || recv_me(packet) || recv_multicast(packet))
                 return true;
             else
@@ -373,8 +373,8 @@ void print_buf(Uint8 *buf, Uint32 size) {
 #define ENET_FRAMESIZE_MAX  1518    /* 1500 byte data and 14 byte header, 4 byte CRC */
 
 /* Ethernet periodic check */
-#define ENET_IO_DELAY   50000 /* use 1000 for NeXT hardware test */
-#define ENET_IO_SHORT   250
+#define ENET_IO_DELAY   50000   /* use 2000 for NeXT hardware test */
+#define ENET_IO_SHORT   500     /* use 400 for 68030 hardware test */
 
 enum {
     RECV_STATE_WAITING,

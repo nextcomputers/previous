@@ -72,9 +72,6 @@ Uint8 espdma_buf[DMA_BURST_SIZE];
 int modma_buf_size = 0;
 int modma_buf_limit = 0;
 Uint8 modma_buf[DMA_BURST_SIZE];
-int enrxdma_buf_size = 0;
-int enrxdma_buf_limit = 0;
-Uint8 enrxdma_buf[DMA_BURST_SIZE];
 
 
 /* Read and write CSR bits for 68030 based NeXT Computer. */
@@ -375,9 +372,6 @@ void dma_initialize_buffer(int channel) {
         case CHANNEL_DISK:
             modma_buf_size = modma_buf_limit = 0;
             break;
-        case CHANNEL_EN_RX:
-            enrxdma_buf_size = enrxdma_buf_limit = 0;
-            break;
         default:
             break;
     }
@@ -417,7 +411,7 @@ void dma_enet_interrupt(int channel) {
     
     if (dma[channel].csr & DMA_SUPDATE) { /* if we are in chaining mode */
         /* Save pointers */
-        dma[channel].saved_next = dma[channel].next;    /* ? */
+        dma[channel].saved_next = dma[channel].start;   /* ? */
         dma[channel].saved_start = dma[channel].start;  /* ? */
         dma[channel].saved_stop = dma[channel].stop;    /* ? */
         /* Update pointers */
@@ -780,7 +774,7 @@ void dma_mo_read_memory(void) {
 }
 
 
-/* Channel Ethernet */
+/* Channel Ethernet (this channel does not use DMA buffering) */
 #define EN_EOP      0x80000000 /* end of packet */
 #define EN_BOP      0x40000000 /* beginning of packet */
 #define ENADDR(x)   ((x)&~(EN_EOP|EN_BOP))
@@ -793,55 +787,17 @@ void dma_enet_write_memory(void) {
         Log_Printf(LOG_WARN, "[DMA] Channel Ethernet Receive: Error! DMA not enabled!");
         return;
     }
-    if ((dma[CHANNEL_EN_RX].limit%DMA_BURST_SIZE) || (dma[CHANNEL_EN_RX].next%4)) {
+    if ((dma[CHANNEL_EN_RX].limit%DMA_BURST_SIZE) || (dma[CHANNEL_EN_RX].next%DMA_BURST_SIZE)) {
         Log_Printf(LOG_WARN, "[DMA] Channel Ethernet Receive: Error! Bad alignment! (Next: $%08X, Limit: $%08X)",
                    dma[CHANNEL_EN_RX].next, dma[CHANNEL_EN_RX].limit);
         abort();
     }
     
     TRY(prb) {
-        if (enrxdma_buf_size>0) {
-            Log_Printf(LOG_WARN, "[DMA] Channel Ethernet Receive: Starting with %i residual bytes in DMA buffer.", enrxdma_buf_size);
-        }
-        
-        while (dma[CHANNEL_EN_RX].next<=dma[CHANNEL_EN_RX].limit) {
-            /* Fill DMA channel FIFO (only if limit < FIFO size) */
-            if (enrxdma_buf_limit<DMA_BURST_SIZE) {
-                while (enrxdma_buf_limit<DMA_BURST_SIZE && enet_rx_buffer.size>0) {
-                    enrxdma_buf[enrxdma_buf_limit]=enet_rx_buffer.data[enet_rx_buffer.limit-enet_rx_buffer.size];
-                    enet_rx_buffer.size--;
-                    enrxdma_buf_limit++;
-                }
-                enrxdma_buf_size = enrxdma_buf_limit;
-            }
-            
-            if (enrxdma_buf_limit<DMA_BURST_SIZE) {
-                Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel Ethernet Receive: Packet done. Flushing %i bytes.",
-                           enrxdma_buf_size);
-                while (dma[CHANNEL_EN_RX].next<dma[CHANNEL_EN_RX].limit && enrxdma_buf_size>0) {
-                    NEXTMemory_WriteByte(dma[CHANNEL_EN_RX].next, enrxdma_buf[enrxdma_buf_limit-enrxdma_buf_size]);
-                    dma[CHANNEL_EN_RX].next++;
-                    enrxdma_buf_size--;
-                }
-                enrxdma_buf_limit = enrxdma_buf_size; /* Should be 0 */
-
-                if (enrxdma_buf_size>0) {
-                    Log_Printf(LOG_WARN, "[DMA] Channel Ethernet Receive: FIXME: Chaining not supported.");
-                    abort(); /* FIXME: Add chaining support */
-                }
-                break;
-            } else {
-                while (dma[CHANNEL_EN_RX].next<dma[CHANNEL_EN_RX].limit && enrxdma_buf_size>0) {
-                    NEXTMemory_WriteLong(dma[CHANNEL_EN_RX].next, dma_getlong(enrxdma_buf, DMA_BURST_SIZE-enrxdma_buf_size));
-                    dma[CHANNEL_EN_RX].next+=4;
-                    enrxdma_buf_size-=4;
-                }
-                if (enrxdma_buf_size>0) { /* Not complete, stop */
-                    Log_Printf(LOG_WARN, "[DMA] Channel Ethernet Receive: Channel limit reached. Stopping with %i residual bytes.", enrxdma_buf_size);
-                    break;
-                }
-            }
-            enrxdma_buf_limit = enrxdma_buf_size; /* Should be 0 */
+        while (dma[CHANNEL_EN_RX].next<dma[CHANNEL_EN_RX].limit && enet_rx_buffer.size>0) {
+            NEXTMemory_WriteByte(dma[CHANNEL_EN_RX].next, enet_rx_buffer.data[enet_rx_buffer.limit-enet_rx_buffer.size]);
+            enet_rx_buffer.size--;
+            dma[CHANNEL_EN_RX].next++;
         }
     } CATCH(prb) {
         Log_Printf(LOG_WARN, "[DMA] Channel Ethernet Receive: Bus error while writing to %08x",dma[CHANNEL_EN_RX].next);
@@ -849,10 +805,15 @@ void dma_enet_write_memory(void) {
         dma[CHANNEL_EN_RX].csr |= (DMA_COMPLETE|DMA_BUSEXC);
     } ENDTRY
     
+    if (enet_rx_buffer.size>0) {
+        Log_Printf(LOG_WARN, "[DMA] Channel Ethernet Receive: FIXME: Chaining not supported.");
+        abort(); /* FIXME: Add chaining support */
+    }
+
     dma_enet_interrupt(CHANNEL_EN_RX);
 }
 
-void dma_enet_read_memory(void) { /* This channel does not use DMA buffering */
+void dma_enet_read_memory(void) {
     if (dma[CHANNEL_EN_TX].csr&DMA_ENABLE) {
         Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel Ethernet Transmit: Read from memory at $%08x, %i bytes",
                    dma[CHANNEL_EN_TX].next,ENADDR(dma[CHANNEL_EN_TX].limit)-dma[CHANNEL_EN_TX].next);
