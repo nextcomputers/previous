@@ -976,7 +976,7 @@ void ECC_IO_Handler(void) {
                 return;
             }
             if (ecc_buffer[eccout].size==0) {
-                dma_mo_flush_buffer(); /* Flush buffer, FIXME: find better way */
+                dma_mo_write_memory(); /* Flush buffer */
                 ecc_sequence_done();
                 return;
             }
