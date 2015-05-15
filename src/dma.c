@@ -728,9 +728,6 @@ void dma_mo_read_memory(void) {
 void dma_enet_interrupt(int channel) {
     int interrupt = get_interrupt_type(channel);
     
-    /* Save next to saved limit (this is packet limit) */
-    dma[channel].saved_limit = dma[channel].next;
-    
     dma[channel].csr |= DMA_COMPLETE;
     
     if (dma[channel].csr & DMA_SUPDATE) { /* if we are in chaining mode */
@@ -745,15 +742,8 @@ void dma_enet_interrupt(int channel) {
     set_interrupt(interrupt, SET_INT);
 }
 
-/* This is done by hardware on ethernet transceiver error (coll, short, etc) */
-/* TODO: check if this is true */
-void dma_enet_write_retry(void) {
-    dma[CHANNEL_EN_RX].next = dma[CHANNEL_EN_RX].saved_next;
-    dma[CHANNEL_EN_RX].limit = dma[CHANNEL_EN_RX].saved_limit;
-    dma[CHANNEL_EN_RX].start = dma[CHANNEL_EN_RX].saved_start;
-    dma[CHANNEL_EN_RX].stop = dma[CHANNEL_EN_RX].saved_stop;
-}
-
+/* This is done by hardware on ethernet transmitter error (coll, short, etc) */
+/* TODO: check if this is true and call from transmitter */
 void dma_enet_read_retry(void) {
     dma[CHANNEL_EN_TX].next = dma[CHANNEL_EN_TX].saved_next;
     dma[CHANNEL_EN_TX].limit = dma[CHANNEL_EN_TX].saved_limit;
@@ -787,9 +777,12 @@ void dma_enet_write_memory(bool eop) {
         dma[CHANNEL_EN_RX].csr |= (DMA_COMPLETE|DMA_BUSEXC);
     } ENDTRY
     
-    if (enet_rx_buffer.size==0 && eop) { /* TODO: check if this is correct */
-        Log_Printf(LOG_WARN, "[DMA] Channel Ethernet Receive: Last buffer of chain done.");
-        dma[CHANNEL_EN_RX].next|=EN_BOP;
+    if (enet_rx_buffer.size==0) {
+        if (eop) { /* TODO: check if this is correct */
+            Log_Printf(LOG_WARN, "[DMA] Channel Ethernet Receive: Last buffer of chain done.");
+            dma[CHANNEL_EN_RX].next|=EN_BOP;
+        }
+        dma[CHANNEL_EN_RX].saved_limit = dma[CHANNEL_EN_RX].next;
     }
 
     dma_enet_interrupt(CHANNEL_EN_RX);
