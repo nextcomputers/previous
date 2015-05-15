@@ -406,29 +406,6 @@ void dma_interrupt(int channel) {
     }
 }
 
-void dma_enet_interrupt(int channel) {
-    int interrupt = get_interrupt_type(channel);
-    
-    /* Save next to saved limit (this is packet limit) */
-    dma[channel].saved_limit = dma[channel].next;
-    
-    dma[channel].csr |= DMA_COMPLETE;
-    
-    if (dma[channel].csr & DMA_SUPDATE) { /* if we are in chaining mode */
-        /* Save pointers */
-        dma[channel].saved_next = dma[channel].start;   /* ? */
-        dma[channel].saved_start = dma[channel].start;  /* ? */
-        dma[channel].saved_stop = dma[channel].stop;    /* ? */
-        /* Update pointers */
-        dma[channel].next = dma[channel].start;
-        dma[channel].limit = dma[channel].stop;
-        /* Set bits in CSR */
-        dma[channel].csr &= ~DMA_SUPDATE; /* 1st done */
-    } else {
-        dma[channel].csr &= ~DMA_ENABLE; /* all done */
-    }
-    set_interrupt(interrupt, SET_INT);
-}
 
 /* Functions for delayed interrupts */
 
@@ -748,7 +725,43 @@ void dma_mo_read_memory(void) {
 #define EN_BOP      0x40000000 /* beginning of packet */
 #define ENADDR(x)   ((x)&~(EN_EOP|EN_BOP))
 
-void dma_enet_write_memory(void) {
+void dma_enet_interrupt(int channel) {
+    int interrupt = get_interrupt_type(channel);
+    
+    /* Save next to saved limit (this is packet limit) */
+    dma[channel].saved_limit = dma[channel].next;
+    
+    dma[channel].csr |= DMA_COMPLETE;
+    
+    if (dma[channel].csr & DMA_SUPDATE) { /* if we are in chaining mode */
+        /* Update pointers */
+        dma[channel].next = dma[channel].start;
+        dma[channel].limit = dma[channel].stop;
+        /* Set bits in CSR */
+        dma[channel].csr &= ~DMA_SUPDATE; /* 1st done */
+    } else {
+        dma[channel].csr &= ~DMA_ENABLE; /* all done */
+    }
+    set_interrupt(interrupt, SET_INT);
+}
+
+/* This is done by hardware on ethernet transceiver error (coll, short, etc) */
+/* TODO: check if this is true */
+void dma_enet_write_retry(void) {
+    dma[CHANNEL_EN_RX].next = dma[CHANNEL_EN_RX].saved_next;
+    dma[CHANNEL_EN_RX].limit = dma[CHANNEL_EN_RX].saved_limit;
+    dma[CHANNEL_EN_RX].start = dma[CHANNEL_EN_RX].saved_start;
+    dma[CHANNEL_EN_RX].stop = dma[CHANNEL_EN_RX].saved_stop;
+}
+
+void dma_enet_read_retry(void) {
+    dma[CHANNEL_EN_TX].next = dma[CHANNEL_EN_TX].saved_next;
+    dma[CHANNEL_EN_TX].limit = dma[CHANNEL_EN_TX].saved_limit;
+    dma[CHANNEL_EN_TX].start = dma[CHANNEL_EN_TX].saved_start;
+    dma[CHANNEL_EN_TX].stop = dma[CHANNEL_EN_TX].saved_stop;
+}
+
+void dma_enet_write_memory(bool eop) {
     Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel Ethernet Receive: Write to memory at $%08x, %i bytes",
                dma[CHANNEL_EN_RX].next,dma[CHANNEL_EN_RX].limit-dma[CHANNEL_EN_RX].next);
     
@@ -774,15 +787,15 @@ void dma_enet_write_memory(void) {
         dma[CHANNEL_EN_RX].csr |= (DMA_COMPLETE|DMA_BUSEXC);
     } ENDTRY
     
-    if (enet_rx_buffer.size>0) {
-        Log_Printf(LOG_WARN, "[DMA] Channel Ethernet Receive: FIXME: Chaining not supported.");
-        abort(); /* FIXME: Add chaining support */
+    if (enet_rx_buffer.size==0 && eop) { /* TODO: check if this is correct */
+        Log_Printf(LOG_WARN, "[DMA] Channel Ethernet Receive: Last buffer of chain done.");
+        dma[CHANNEL_EN_RX].next|=EN_BOP;
     }
 
     dma_enet_interrupt(CHANNEL_EN_RX);
 }
 
-void dma_enet_read_memory(void) {
+bool dma_enet_read_memory(void) {
     if (dma[CHANNEL_EN_TX].csr&DMA_ENABLE) {
         Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel Ethernet Transmit: Read from memory at $%08x, %i bytes",
                    dma[CHANNEL_EN_TX].next,ENADDR(dma[CHANNEL_EN_TX].limit)-dma[CHANNEL_EN_TX].next);
@@ -799,13 +812,14 @@ void dma_enet_read_memory(void) {
             dma[CHANNEL_EN_TX].csr |= (DMA_COMPLETE|DMA_BUSEXC);
         } ENDTRY
         
-        if (!(dma[CHANNEL_EN_TX].limit&EN_EOP)) {
-            Log_Printf(LOG_WARN, "[DMA] Channel Ethernet Transmit: FIXME: Chaining not supported.");
-            abort(); /* FIXME: Add chaining support */
+        if (dma[CHANNEL_EN_TX].limit&EN_EOP) {
+            Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel Ethernet Transmit: Packet done.");
+            dma_enet_interrupt(CHANNEL_EN_TX);
+            return true;
         }
-        
         dma_enet_interrupt(CHANNEL_EN_TX);
     }
+    return false;
 }
 
 
