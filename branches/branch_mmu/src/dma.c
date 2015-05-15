@@ -45,7 +45,7 @@ enum {
 int get_channel(Uint32 address);
 int get_interrupt_type(int channel);
 void dma_interrupt(int channel);
-void dma_initialize_buffer(int channel);
+void dma_initialize_buffer(int channel, Uint8 offset);
 
 
 struct {
@@ -223,7 +223,7 @@ void DMA_CSR_Write(void) {
         dma[channel].csr &= ~(DMA_COMPLETE | DMA_SUPDATE | DMA_ENABLE);
     }
     if (writecsr&DMA_INITBUF) {
-        dma_initialize_buffer(channel);
+        dma_initialize_buffer(channel, 0);
     }
     if (writecsr&DMA_SETSUPDATE) {
         dma[channel].csr |= DMA_SUPDATE;
@@ -357,20 +357,25 @@ void DMA_Init_Read(void) { // 0x02004210
 void DMA_Init_Write(void) {
     int channel = get_channel(IoAccessCurrentAddress-0x4200);
     dma[channel].next = IoMem_ReadLong(IoAccessCurrentAddress & IO_SEG_MASK);
-    dma_initialize_buffer(channel);
+    dma_initialize_buffer(channel, dma[channel].next&0xF);
     Log_Printf(LOG_DMA_LEVEL,"DMA Init write at $%08x val=$%08x PC=$%08x\n", IoAccessCurrentAddress, dma[channel].next, m68k_getpc());
 }
 
 /* Initialize DMA internal buffer */
 
-void dma_initialize_buffer(int channel) {
+void dma_initialize_buffer(int channel, Uint8 offset) {
+    if (offset>0) {
+        Log_Printf(LOG_WARN, "DMA Initializing buffer with offset %i", offset);
+    }
     switch (channel) {
         case CHANNEL_SCSI:
             esp_dma.status = 0x00; /* just a guess */
-            espdma_buf_size = espdma_buf_limit = 0;
+            espdma_buf_size = 0;
+            espdma_buf_limit = offset;
             break;
         case CHANNEL_DISK:
-            modma_buf_size = modma_buf_limit = 0;
+            modma_buf_size = 0;
+            modma_buf_limit = offset;
             break;
         default:
             break;
@@ -468,15 +473,16 @@ void dma_esp_write_memory(void) {
                         espdma_buf[espdma_buf_limit]=flp_buffer.data[flp_buffer.limit-flp_buffer.size];
                         flp_buffer.size--;
                         espdma_buf_limit++;
+                        espdma_buf_size++;
                     }
                 } else {
                     while (espdma_buf_limit<DMA_BURST_SIZE && esp_counter>0 && SCSIbus.phase==PHASE_DI) {
                         espdma_buf[espdma_buf_limit]=SCSIdisk_Send_Data();
                         esp_counter--;
                         espdma_buf_limit++;
+                        espdma_buf_size++;
                     }
                 }
-                espdma_buf_size = espdma_buf_limit;
             }
             
             if (espdma_buf_limit<DMA_BURST_SIZE) { /* Not complete, stop */
@@ -565,8 +571,8 @@ void dma_esp_read_memory(void) {
                     dma_putlong(NEXTMemory_ReadLong(dma[CHANNEL_SCSI].next), espdma_buf, espdma_buf_limit);
                     dma[CHANNEL_SCSI].next+=4;
                     espdma_buf_limit+=4;
+                    espdma_buf_size+=4;
                 }
-                espdma_buf_size = espdma_buf_limit;
             }
             
             if (espdma_buf_limit<DMA_BURST_SIZE) { /* Not complete, stop */
@@ -641,8 +647,8 @@ void dma_mo_write_memory(void) {
                     modma_buf[modma_buf_limit]=ecc_buffer[eccout].data[ecc_buffer[eccout].limit-ecc_buffer[eccout].size];
                     ecc_buffer[eccout].size--;
                     modma_buf_limit++;
+                    modma_buf_size++;
                 }
-                modma_buf_size = modma_buf_limit;
             }
             
             if (modma_buf_limit<DMA_BURST_SIZE) { /* Not complete, stop */
@@ -698,8 +704,8 @@ void dma_mo_read_memory(void) {
                     dma_putlong(NEXTMemory_ReadLong(dma[CHANNEL_DISK].next), modma_buf, modma_buf_limit);
                     dma[CHANNEL_DISK].next+=4;
                     modma_buf_limit+=4;
+                    modma_buf_size+=4;
                 }
-                modma_buf_size = modma_buf_limit;
             }
             
             if (modma_buf_limit<DMA_BURST_SIZE) { /* Not complete, stop */

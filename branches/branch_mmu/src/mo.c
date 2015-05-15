@@ -24,6 +24,7 @@
 #include "mo.h"
 #include "sysReg.h"
 #include "dma.h"
+#include "floppy.h"
 #include "file.h"
 #include "rs.h"
 #include "statusbar.h"
@@ -304,8 +305,8 @@ void MO_IntStatus_Write(void) {
     if ((mo.intstatus&mo.intmask)==0) {
         set_interrupt(INT_DISK, RELEASE_INT);
     }
-    if (val&MOINT_GPO) {
-        Log_Printf(LOG_WARN,"[OSP] General purpose output (unimplemented)\n");
+    if (ConfigureParams.System.nMachineType==NEXT_CUBE030) {
+        set_floppy_select(val&MOINT_GPO, true);
     }
     if (val&MOINT_RESET) {
         Log_Printf(LOG_MO_CMD_LEVEL,"[MO] Hard reset\n");
