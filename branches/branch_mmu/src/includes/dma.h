@@ -31,8 +31,8 @@ void dma_esp_flush_buffer(void);
 void dma_mo_write_memory(void);
 void dma_mo_read_memory(void);
 
-void dma_enet_write_memory(void);
-void dma_enet_read_memory(void);
+void dma_enet_write_memory(bool eop);
+bool dma_enet_read_memory(void);
 
 void dma_m2m_write_memory(void);
 
