@@ -180,7 +180,13 @@ void FLP_Configuration_Write(void) {
 }
 
 void FLP_Control_Read(void) { // 0x02014108
-    IoMem[IoAccessCurrentAddress & IO_SEG_MASK] = flp.ctrl;
+    Uint8 val;
+    if (ConfigureParams.System.nMachineType==NEXT_CUBE030)
+        val=flp.ctrl&~CTRL_DRV_ID;
+    else
+        val=flp.ctrl;
+    
+    IoMem[IoAccessCurrentAddress & IO_SEG_MASK] = val;
     Log_Printf(LOG_FLP_REG_LEVEL,"[Floppy] Control read at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
 }
 
@@ -189,11 +195,8 @@ void FLP_Select_Write(void) {
     val = IoMem[IoAccessCurrentAddress & IO_SEG_MASK];
     Log_Printf(LOG_DEBUG,"[Floppy] Select write at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
 
-    floppy_select = val&CTRL_82077;
-    if (floppy_select) {
-        Log_Printf(LOG_FLP_REG_LEVEL,"[Floppy] Selecting floppy controller");
-    } else {
-        Log_Printf(LOG_FLP_REG_LEVEL,"[Floppy] Selecting SCSI controller");
+    if (ConfigureParams.System.nMachineType!=NEXT_CUBE030) {
+        set_floppy_select(val&CTRL_82077,false);
     }
     
     if (val&CTRL_EJECT) {
@@ -202,6 +205,15 @@ void FLP_Select_Write(void) {
     }
 }
 
+void set_floppy_select(Uint8 sel, bool osp) {
+    if (sel) {
+        Log_Printf(LOG_WARN,"[%s] Selecting floppy controller",osp?"OSP":"Floppy");
+        floppy_select = 1;
+    } else {
+        Log_Printf(LOG_FLP_REG_LEVEL,"[%s] Selecting SCSI controller",osp?"OSP":"Floppy");
+        floppy_select = 0;
+    }
+}
 
 enum {
     FLP_STATE_WRITE,
