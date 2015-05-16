@@ -484,7 +484,7 @@ void HardclockReadCSR(void) {
 
 
 /* Event counter register */
-#define EVENTC_DEBUG 1
+#define EVENTC_DEBUG 0
 Uint32 lasteventc; /* debugging code */
 
 Uint32 eventcounter;
@@ -496,12 +496,12 @@ void System_Timer_Read(void) { /* tuned for power-on test */
 #endif
     if (ConfigureParams.System.nCpuLevel == 3) {
         if (NEXTRom[0xFFAB]==0x04) { // HACK for ROM version 0.8.31 power-on test, WARNING: this causes slowdown of emulation
-            eventcounter = (nCyclesMainCounter/(500/nCpuFreqDivider))&0xFFFFF;
+            eventcounter = (nCyclesMainCounter/(240/nCpuFreqDivider))&0xFFFFF;
         } else {
-            eventcounter = (nCyclesMainCounter/(100/nCpuFreqDivider))&0xFFFFF;
+            eventcounter = (nCyclesMainCounter/(48/nCpuFreqDivider))&0xFFFFF;
         }
     } else { // System has 68040 CPU
-        eventcounter = (nCyclesMainCounter/(150/nCpuFreqDivider))&0xFFFFF;
+        eventcounter = (nCyclesMainCounter/(72/nCpuFreqDivider))&0xFFFFF;
     }
     IoMem_WriteLong(IoAccessCurrentAddress&IO_SEG_MASK, eventcounter);
     
