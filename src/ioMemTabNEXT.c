@@ -28,45 +28,9 @@ const char IoMemTabST_fileid[] = "Previous ioMemTabST.c : " __DATE__ " " __TIME_
 #include "floppy.h"
 
 
-
-/* Hack from QEMU-NeXT, Correct this later with the data below */
-
-/* system timer */
-struct timer_reg {
-	unsigned char	t_counter_latch[2];	/* counted up at 1 MHz */
-	unsigned char	: 8;
-	unsigned char	: 8;
-	unsigned char	t_enable : 1,		/* counter enable */
-    t_update : 1,		/* copy latch to counter */
-    : 6;
-};
-
 /* Functions to be moved to other places */
-void System_Timer_Read(void);
-void FDD_Main_Status_Read(void);
 void DSP_icr_Read(void);
 void DSP_icr_Write(void);
-
-Uint32 eventcounter; // debugging code
-Uint32 lasteventc; // debugging code
-
-void System_Timer_Read(void) { // tuned for power-on test
-//    lasteventc = eventcounter; // debugging code
-    if (ConfigureParams.System.nCpuLevel == 3) {
-        if (NEXTRom[0xFFAB]==0x04) { // HACK for ROM version 0.8.31 power-on test, WARNING: this causes slowdown of emulation
-//            eventcounter = (nCyclesMainCounter/((1280/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF; // debugging code
-            IoMem_WriteLong(IoAccessCurrentAddress&0x1FFFF, (nCyclesMainCounter/((1280/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF);
-        } else {
-//            eventcounter = (nCyclesMainCounter/((128/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF; // debugging code
-            IoMem_WriteLong(IoAccessCurrentAddress&0x1FFFF, (nCyclesMainCounter/((128/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF);
-        }
-    } else { // System has 68040 CPU
-//        eventcounter = (nCyclesMainCounter/((64/ConfigureParams.System.nCpuFreq)*9))&0xFFFFF; // debugging code
-        IoMem_WriteLong(IoAccessCurrentAddress&0x1FFFF, (nCyclesMainCounter/((64/ConfigureParams.System.nCpuFreq)*9))&0xFFFFF);
-    }
-//    printf("DIFFERENCE = %i PC = %08X\n",eventcounter-lasteventc,m68k_getpc());
-}
-
 
 static Uint32 DSP_icr=0;
 
