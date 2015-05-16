@@ -158,7 +158,7 @@ static inline void M68000_AddCycles(int cycles)
 {
 	cycles = (cycles + 3) & ~3;
 #if USE_FREQ_DIVIDER
-    cycles = (cycles * 2) / nCpuFreqDivider;
+    cycles = cycles / nCpuFreqDivider;
 #else
     cycles = cycles >> nCpuFreqShift;
 #endif
@@ -253,7 +253,7 @@ static inline void M68000_AddCyclesWithPairing(int cycles)
 		cycles = (cycles + 3) & ~3;		/* no pairing, round current instr to 4 cycles */
 	}
 #if USE_FREQ_DIVIDER
-    cycles = (cycles * 2) / nCpuFreqDivider;
+    cycles = cycles / nCpuFreqDivider;
 #else
 	cycles = cycles >> nCpuFreqShift;
 #endif

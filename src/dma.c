@@ -493,11 +493,11 @@ void dma_esp_write_memory(void) {
 
 void dma_esp_flush_buffer(void) {
     if (!(dma[CHANNEL_SCSI].csr&DMA_ENABLE)) {
-        Log_Printf(LOG_WARN, "[DMA] Channel SCSI: Not flushing buffer. DMA not enabled.");
+        Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Not flushing buffer. DMA not enabled.");
         return;
     }
     if (dma[CHANNEL_SCSI].direction!=DMA_DEV2M) {
-        Log_Printf(LOG_WARN, "[DMA] Channel SCSI: Not flushing buffer. Bad direction!");
+        Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Not flushing buffer. Bad direction!");
         return;
     }
 
