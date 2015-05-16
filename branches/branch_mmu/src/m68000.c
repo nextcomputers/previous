@@ -25,6 +25,7 @@ Uint32 BusErrorAddress;         /* Stores the offending address for bus-/address
 Uint32 BusErrorPC;              /* Value of the PC when bus error occurs */
 bool bBusErrorReadWrite;        /* 0 for write error, 1 for read error */
 int nCpuFreqShift;              /* Used to emulate higher CPU frequencies: 0=8MHz, 1=16MHz, 2=32Mhz */
+int nCpuFreqDivider;            /* Used to emulate higher CPU frequencies: 2=8MHz, 4=16MHz, 8=32Mhz */
 int nWaitStateCycles;           /* Used to emulate the wait state cycles of certain IO registers */
 int BusMode = BUS_MODE_CPU;	/* Used to tell which part is owning the bus (cpu, blitter, ...) */
 
@@ -201,6 +202,28 @@ void M68000_Start(void)
  */
 void M68000_CheckCpuSettings(void)
 {
+#if USE_FREQ_DIVIDER
+    if (ConfigureParams.System.nCpuFreq < 20)
+    {
+        ConfigureParams.System.nCpuFreq = 16;
+        nCpuFreqDivider = 4;
+    }
+    else if (ConfigureParams.System.nCpuFreq < 24)
+    {
+        ConfigureParams.System.nCpuFreq = 20;
+        nCpuFreqDivider = 5;
+    }
+    else if (ConfigureParams.System.nCpuFreq < 32)
+    {
+        ConfigureParams.System.nCpuFreq = 25;
+        nCpuFreqDivider = 6;
+    }
+    else
+    {
+        ConfigureParams.System.nCpuFreq = 33;
+        nCpuFreqDivider = 8;
+    }
+#else
 	if (ConfigureParams.System.nCpuFreq < 12)
 	{
 		ConfigureParams.System.nCpuFreq = 8;
@@ -216,6 +239,7 @@ void M68000_CheckCpuSettings(void)
 		ConfigureParams.System.nCpuFreq = 16;
 		nCpuFreqShift = 1;
 	}
+#endif
 	changed_prefs.cpu_level = ConfigureParams.System.nCpuLevel;
 	changed_prefs.cpu_compatible = ConfigureParams.System.bCompatibleCpu;
 
