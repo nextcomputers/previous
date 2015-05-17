@@ -761,9 +761,10 @@ void nvram_init(void) {
     Uint8 simm[4];
     Uint8 parity = 0xF0;
     if (ConfigureParams.System.bTurbo) {
+        parity = 0x00;
         for (i = 0; i<4; i++) {
             switch (MemBank_Size[i]>>20) {
-                case 0: simm[i] = SIMM_EMPTY; parity &= ~(0x10<<i); break;
+                case 0: simm[i] = SIMM_EMPTY; break;
                 case 2: simm[i] = SIMM_2MB_T; break;
                 case 8: simm[i] = SIMM_8MB_T; break;
                 case 32: simm[i] = SIMM_32MB_T; break;

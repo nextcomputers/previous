@@ -63,8 +63,10 @@ void DSP_icr_Write (void) {
 const INTERCEPT_ACCESS_FUNC IoMemTable_NEXT[] =
 {
     /* These registers are read on turbo machines, they are somehow related to SCR1 */
-    { 0x02000000, SIZE_WORD, TurboSCR1_Read0, IoMem_WriteWithoutInterceptionButTrace },
-    { 0x02000002, SIZE_WORD, TurboSCR1_Read2, IoMem_WriteWithoutInterceptionButTrace },
+    { 0x02000000, SIZE_BYTE, TurboSCR1_Read0, IoMem_WriteWithoutInterceptionButTrace },
+    { 0x02000001, SIZE_BYTE, TurboSCR1_Read1, IoMem_WriteWithoutInterceptionButTrace },
+    { 0x02000002, SIZE_BYTE, TurboSCR1_Read2, IoMem_WriteWithoutInterceptionButTrace },
+    { 0x02000003, SIZE_BYTE, TurboSCR1_Read3, IoMem_WriteWithoutInterceptionButTrace },
     
     /* Brightness */
     { 0x02010000, SIZE_LONG, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
