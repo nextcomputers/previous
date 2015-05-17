@@ -1110,7 +1110,7 @@ const char* memory_init(int *nNewNEXTMemSize)
         map_banks(&ColorVideo_bank, NEXT_TURBOSCREEN>>16, NEXT_COLORSCREEN_SIZE >> 16);
         write_log("Mapping Video Memory at $%08x: %ikB\n", NEXT_TURBOSCREEN, NEXT_COLORSCREEN_SIZE/1024);
     } else if (ConfigureParams.System.bTurbo) {
-        map_banks(&ColorVideo_bank, NEXT_TURBOSCREEN>>16, NEXT_SCREEN_SIZE >> 16);
+        map_banks(&Video_bank, NEXT_TURBOSCREEN>>16, NEXT_SCREEN_SIZE >> 16);
         write_log("Mapping Video Memory at $%08x: %ikB\n", NEXT_TURBOSCREEN, NEXT_SCREEN_SIZE/1024);
     } else if (ConfigureParams.System.bColor) {
         map_banks(&ColorVideo_bank, NEXT_COLORSCREEN>>16, NEXT_COLORSCREEN_SIZE >> 16);
