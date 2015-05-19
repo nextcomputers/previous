@@ -17,6 +17,7 @@
 #include "sysReg.h"
 #include "dma.h"
 #include "rtcnvram.h"
+#include "audio.h"
 
 #define LOG_KMS_LEVEL LOG_WARN
 #define IO_SEG_MASK	0x1FFFF
@@ -220,16 +221,19 @@ void KMS_command(Uint8 command, Uint32 data) {
             if ((command&KMSCMD_SIO_MASK)==KMSCMD_SND_OUT) {
                 Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out command:");
 
-                if (command&SIO_ENABLE) {
-                    Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out enable.");
-                    dma_sndout_read_memory(); /* TODO: Add real periodic IO loop here */
-                } else {
-                    Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out disable.");
-                }
                 if (command&SIO_DBL_SMPL) {
                     Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out double sample.");
+                    Audio_SetOutputAudioFreq(22050);
                 } else {
                     Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out normal sample.");
+                    Audio_SetOutputAudioFreq(44100);
+                }
+                if (command&SIO_ENABLE) {
+                    Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out enable.");
+                    Audio_EnableAudio(true);
+                } else {
+                    Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out disable.");
+                    Audio_EnableAudio(false);
                 }
                 if (command&SIO_ZERO) {
                     Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out sample by zero filling.");

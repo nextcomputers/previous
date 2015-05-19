@@ -901,14 +901,25 @@ void dma_scc_read_memory(void) {
     
     dma_interrupt(CHANNEL_SCC);
 }
+#include "audio.h"
 
 void dma_sndout_read_memory(void) {
-    Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel Sound out: Read from memory at $%08x, %i bytes",
-               dma[CHANNEL_SOUNDOUT].next,dma[CHANNEL_SOUNDOUT].limit-dma[CHANNEL_SOUNDOUT].next);
-    while (dma[CHANNEL_SOUNDOUT].next<dma[CHANNEL_SOUNDOUT].limit) {
-        NEXTMemory_ReadByte(dma[CHANNEL_SOUNDOUT].next); /* for now just discard data */
-        dma[CHANNEL_SOUNDOUT].next++;
+    if (dma[CHANNEL_SOUNDOUT].csr&DMA_ENABLE) {
+        Log_Printf(LOG_WARN, "[DMA] Channel Sound Out: Read from memory at $%08x, %i bytes",
+                   dma[CHANNEL_SOUNDOUT].next,dma[CHANNEL_SOUNDOUT].limit-dma[CHANNEL_SOUNDOUT].next);
+        
+        TRY(prb) {
+            while (dma[CHANNEL_SOUNDOUT].next<dma[CHANNEL_SOUNDOUT].limit && snd_buffer.size<snd_buffer.limit) {
+                snd_buffer.data[snd_buffer.size]=NEXTMemory_ReadByte(dma[CHANNEL_SOUNDOUT].next);
+                snd_buffer.size++;
+                dma[CHANNEL_SOUNDOUT].next++;
+            }
+        } CATCH(prb) {
+            Log_Printf(LOG_WARN, "[DMA] Channel Sound Out: Bus error while writing to %08x",dma[CHANNEL_SOUNDOUT].next);
+            dma[CHANNEL_SOUNDOUT].csr &= ~DMA_ENABLE;
+            dma[CHANNEL_SOUNDOUT].csr |= (DMA_COMPLETE|DMA_BUSEXC);
+        } ENDTRY
+        
+        dma_interrupt(CHANNEL_SOUNDOUT);
     }
-    
-    dma_interrupt(CHANNEL_SOUNDOUT);
 }
