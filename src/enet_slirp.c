@@ -13,9 +13,9 @@
 
 #include <arpa/inet.h>
 
-struct queuepacket{
+struct queuepacket {
     int len;
-    unsigned char data[2000];
+    unsigned char data[4096];
 };
 
 /* slirp prototypes */
@@ -63,8 +63,8 @@ void slirp_output (const unsigned char *pkt, int pkt_len)
     SDL_LockMutex(slirp_mutex);
     p->len=pkt_len;
     memcpy(p->data,pkt,pkt_len);
-    SDL_UnlockMutex(slirp_mutex);
     QueueEnter(slirpq,p);
+    SDL_UnlockMutex(slirp_mutex);
     Log_Printf(LOG_WARN, "[SLIRP] Output packet with %i bytes to queue",pkt_len);
 }
 

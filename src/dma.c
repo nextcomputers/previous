@@ -19,6 +19,7 @@
 #include "configuration.h"
 #include "ethernet.h"
 #include "floppy.h"
+#include "snd.h"
 #include "mmu_common.h"
 
 
@@ -720,6 +721,29 @@ void dma_mo_read_memory(void) {
 }
 
 
+/* Channel Sound Out (FIXME: is this channel buffered?) */
+void dma_sndout_read_memory(void) {
+    if (dma[CHANNEL_SOUNDOUT].csr&DMA_ENABLE) {
+        Log_Printf(LOG_WARN, "[DMA] Channel Sound Out: Read from memory at $%08x, %i bytes",
+                   dma[CHANNEL_SOUNDOUT].next,dma[CHANNEL_SOUNDOUT].limit-dma[CHANNEL_SOUNDOUT].next);
+        
+        TRY(prb) {
+            while (dma[CHANNEL_SOUNDOUT].next<dma[CHANNEL_SOUNDOUT].limit && snd_buffer.size<snd_buffer.limit) {
+                snd_buffer.data[snd_buffer.size]=NEXTMemory_ReadByte(dma[CHANNEL_SOUNDOUT].next);
+                snd_buffer.size++;
+                dma[CHANNEL_SOUNDOUT].next++;
+            }
+        } CATCH(prb) {
+            Log_Printf(LOG_WARN, "[DMA] Channel Sound Out: Bus error reading from %08x",dma[CHANNEL_SOUNDOUT].next);
+            dma[CHANNEL_SOUNDOUT].csr &= ~DMA_ENABLE;
+            dma[CHANNEL_SOUNDOUT].csr |= (DMA_COMPLETE|DMA_BUSEXC);
+        } ENDTRY
+        
+        dma_interrupt(CHANNEL_SOUNDOUT);
+    }
+}
+
+
 /* Channel Ethernet (this channel does not use DMA buffering) */
 #define EN_EOP      0x80000000 /* end of packet */
 #define EN_BOP      0x40000000 /* beginning of packet */
@@ -889,7 +913,7 @@ void dma_video_interrupt(void) {
 }
 
 
-/* FIXME: This is just for passing power-on test. Add real SCC and Sound channels later. */
+/* FIXME: This is just for passing power-on test. Add real SCC channel later. */
 
 void dma_scc_read_memory(void) {
     Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCC: Read from memory at $%08x, %i bytes",
@@ -900,26 +924,4 @@ void dma_scc_read_memory(void) {
     }
     
     dma_interrupt(CHANNEL_SCC);
-}
-#include "audio.h"
-
-void dma_sndout_read_memory(void) {
-    if (dma[CHANNEL_SOUNDOUT].csr&DMA_ENABLE) {
-        Log_Printf(LOG_WARN, "[DMA] Channel Sound Out: Read from memory at $%08x, %i bytes",
-                   dma[CHANNEL_SOUNDOUT].next,dma[CHANNEL_SOUNDOUT].limit-dma[CHANNEL_SOUNDOUT].next);
-        
-        TRY(prb) {
-            while (dma[CHANNEL_SOUNDOUT].next<dma[CHANNEL_SOUNDOUT].limit && snd_buffer.size<snd_buffer.limit) {
-                snd_buffer.data[snd_buffer.size]=NEXTMemory_ReadByte(dma[CHANNEL_SOUNDOUT].next);
-                snd_buffer.size++;
-                dma[CHANNEL_SOUNDOUT].next++;
-            }
-        } CATCH(prb) {
-            Log_Printf(LOG_WARN, "[DMA] Channel Sound Out: Bus error while writing to %08x",dma[CHANNEL_SOUNDOUT].next);
-            dma[CHANNEL_SOUNDOUT].csr &= ~DMA_ENABLE;
-            dma[CHANNEL_SOUNDOUT].csr |= (DMA_COMPLETE|DMA_BUSEXC);
-        } ENDTRY
-        
-        dma_interrupt(CHANNEL_SOUNDOUT);
-    }
 }

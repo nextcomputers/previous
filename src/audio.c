@@ -4,6 +4,7 @@
 #include "sysdeps.h"
 #include "audio.h"
 #include "dma.h"
+#include "snd.h"
 
 #include <SDL.h>
 
@@ -43,32 +44,9 @@ static void Audio_CallBack(void *userdata, Uint8 *stream, int len)
      */
     
     pulse_swallowing_count = 0;	/* 0 = Unaltered emulation rate */
-    
-#define SND_SAMPLE_SIZE 4
-    
-    if (snd_buffer.size==0) {
-        snd_buffer.limit=len;
-        dma_sndout_read_memory();
-    }
-    printf("BUFFER SIZE 1 = %i\n",snd_buffer.size);
-    
-    if (snd_buffer.size>=len) {
-        for (i=0; i<len; i++) {
-            if (snd_buffer.size>=0) {
-                *stream++ = snd_buffer.data[snd_buffer.limit-snd_buffer.size];
-                snd_buffer.size--;
-            } else {
-                *stream++ = 0;
-            }
-        }
-        snd_buffer.size=0;
-    } else {
-        for (i=0; i<len; i++) {
-            *stream++ = 0;
-        }
-        snd_buffer.size=0;
-    }
-    printf("BUFFER SIZE 2 = %i\n",snd_buffer.size);
+
+    printf("AUDIO CALLBACK, size = %i\n",len);
+    snd_queue_poll(stream, len);
 
 #if 0
     if (ConfigureParams.Sound.bEnableSoundSync)
@@ -157,11 +135,11 @@ void Audio_Init(void)
     
 #if 1
     desiredAudioSpec.freq = 22050;//44100;
-    desiredAudioSpec.format = AUDIO_S16MSB;		/* 16-Bit signed */
+    desiredAudioSpec.format = AUDIO_S16MSB;	/* 16-Bit signed, big endian */
     desiredAudioSpec.channels = 2;			/* stereo */
     desiredAudioSpec.callback = Audio_CallBack;
     desiredAudioSpec.userdata = NULL;
-    desiredAudioSpec.samples = 1024;	/* buffer size in samples */
+    desiredAudioSpec.samples = 1024;	/* buffer size in samples (4096 byte) */
 #else
     /* Set up SDL audio: */
     desiredAudioSpec.freq = nAudioFrequency;
