@@ -18,6 +18,7 @@
 #include "dma.h"
 #include "rtcnvram.h"
 #include "audio.h"
+#include "snd.h"
 
 #define LOG_KMS_LEVEL LOG_WARN
 #define IO_SEG_MASK	0x1FFFF
@@ -223,17 +224,18 @@ void KMS_command(Uint8 command, Uint32 data) {
 
                 if (command&SIO_DBL_SMPL) {
                     Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out double sample.");
-                    Audio_SetOutputAudioFreq(22050);
+                    //Audio_SetOutputAudioFreq(22050);
                 } else {
                     Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out normal sample.");
-                    Audio_SetOutputAudioFreq(44100);
+                    //Audio_SetOutputAudioFreq(44100);
                 }
                 if (command&SIO_ENABLE) {
                     Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out enable.");
-                    Audio_EnableAudio(true);
+                    snd_start_output();
+                    
                 } else {
                     Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out disable.");
-                    Audio_EnableAudio(false);
+                    snd_stop_output();
                 }
                 if (command&SIO_ZERO) {
                     Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out sample by zero filling.");
