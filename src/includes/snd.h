@@ -1,4 +1,5 @@
 void SND_IO_Handler(void);
+void Sound_Reset(void);
 
 void snd_send_sound_out(void);
 void snd_queue_poll(Uint8 *buf, int len);

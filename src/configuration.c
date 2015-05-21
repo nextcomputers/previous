@@ -155,10 +155,6 @@ static const struct Config_Tag configs_Sound[] =
 {
     { "bEnableMicrophone", Bool_Tag, &ConfigureParams.Sound.bEnableMicrophone },
   	{ "bEnableSound", Bool_Tag, &ConfigureParams.Sound.bEnableSound },
-  	{ "nPlaybackFreq", Int_Tag, &ConfigureParams.Sound.nPlaybackFreq },
-  	{ "nSdlAudioBufferSize", Int_Tag, &ConfigureParams.Sound.SdlAudioBufferSize },
-    { "szYMCaptureFileName", String_Tag, ConfigureParams.Sound.szYMCaptureFileName },
-//    { "YmVolumeMixing", Int_Tag, &ConfigureParams.Sound.YmVolumeMixing },
 	{ NULL , Error_Tag, NULL }
 };
 
@@ -495,11 +491,6 @@ void Configuration_SetDefault(void)
 	/* Set defaults for Sound */
     ConfigureParams.Sound.bEnableMicrophone = true;
 	ConfigureParams.Sound.bEnableSound = true;
-	ConfigureParams.Sound.nPlaybackFreq = 44100;
-	sprintf(ConfigureParams.Sound.szYMCaptureFileName, "%s%chatari.wav",
-	        psWorkingDir, PATHSEP);
-	ConfigureParams.Sound.SdlAudioBufferSize = 0;
-//  ConfigureParams.Sound.YmVolumeMixing = YM_TABLE_MIXING;
 
 	/* Set defaults for Rom */
     sprintf(ConfigureParams.Rom.szRom030FileName, "%s%cRev_1.0_v41.BIN",
@@ -645,7 +636,6 @@ void Configuration_Apply(bool bReset)
     }
     
 	File_MakeAbsoluteName(ConfigureParams.Memory.szMemoryCaptureFileName);
-	File_MakeAbsoluteName(ConfigureParams.Sound.szYMCaptureFileName);
 	if (strlen(ConfigureParams.Keyboard.szMappingFileName) > 0)
 		File_MakeAbsoluteName(ConfigureParams.Keyboard.szMappingFileName);
     File_MakeAbsoluteName(ConfigureParams.Video.AviRecordFile);
@@ -935,6 +925,10 @@ void Configuration_MemorySnapShot_Capture(bool bSave)
     /* Ethernet options */
     MemorySnapShot_Store(&ConfigureParams.Ethernet.bEthernetConnected, sizeof(ConfigureParams.Ethernet.bEthernetConnected));
 
+    /* Sound options */
+    MemorySnapShot_Store(&ConfigureParams.Sound.bEnableSound, sizeof(ConfigureParams.Sound.bEnableSound));
+    MemorySnapShot_Store(&ConfigureParams.Sound.bEnableMicrophone, sizeof(ConfigureParams.Sound.bEnableMicrophone));
+    
     /* Monitor options */
 	MemorySnapShot_Store(&ConfigureParams.Screen.nMonitorType, sizeof(ConfigureParams.Screen.nMonitorType));
 	MemorySnapShot_Store(&ConfigureParams.Screen.bUseExtVdiResolutions, sizeof(ConfigureParams.Screen.bUseExtVdiResolutions));
