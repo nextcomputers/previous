@@ -120,6 +120,7 @@ void enet_slirp_queue_poll(void)
         Log_Printf(LOG_WARN, "[SLIRP] Getting packet from queue");
         enet_receive(qp->data,qp->len);
         SDL_UnlockMutex(slirp_mutex);
+        free(qp);
     }
 }
 

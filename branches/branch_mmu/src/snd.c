@@ -32,8 +32,8 @@ bool sound_inited;
 
 void sound_init(void) {
     snd_buffer.limit=4096;
-    if (!sound_inited) {
-        Log_Printf(LOG_WARN, "Starting SDL_AudioDevice");
+    if (!sound_inited && ConfigureParams.Sound.bEnableSound) {
+        Log_Printf(LOG_WARN, "[Audio] Initializing audio device.");
         Audio_Init();
         soundq = QueueCreate();
         sound_inited=true;
@@ -42,11 +42,16 @@ void sound_init(void) {
 
 void sound_uninit(void) {
     if(sound_inited) {
-        Log_Printf(LOG_WARN, "Stopping SDL_AudioDevice");
+        Log_Printf(LOG_WARN, "[Audio] Uninitializing audio device.");
         sound_inited=false;
         Audio_UnInit();
         QueueDestroy(soundq);
     }
+}
+
+void Sound_Reset(void) {
+    sound_uninit();
+    sound_init();
 }
 
 
@@ -54,13 +59,14 @@ void sound_uninit(void) {
 bool sound_output_active = false;
 
 void snd_start_output(void) {
-    if (!sound_inited) {
-        sound_init();//abort();
-    }
     if (!sound_output_active) {
-        Log_Printf(LOG_WARN, "[SDL Audio] Starting.");
+        Log_Printf(LOG_WARN, "[Audio] Starting.");
         /* Starting SDL Audio and sound output loop */
-        Audio_EnableAudio(true);
+        if (sound_inited) {
+            Audio_EnableAudio(true);
+        } else {
+            Log_Printf(LOG_WARN, "[Audio] Not starting. Audio device not initialized.");
+        }
         sound_output_active = true;
         CycInt_AddRelativeInterrupt(100, INT_CPU_CYCLE, INTERRUPT_SND_IO);
     }
@@ -79,7 +85,11 @@ int old_size;
 
 void SND_IO_Handler(void) {
     CycInt_AcknowledgeInterrupt();
-    if (QueuePeek(soundq)<4) {
+    if (!sound_inited) {
+        snd_buffer.limit = 4096;
+        dma_sndout_read_memory();
+        snd_buffer.size = 0;
+    } else if (QueuePeek(soundq)<4) {
         old_size = snd_buffer.size;
         dma_sndout_read_memory();
 
@@ -109,7 +119,6 @@ void snd_send_sound_out(void) {
         } else { /* Fill the rest with silence */
             p->data[i] = 0;
         }
-        
     }
     p->len=4096;
     QueueEnter(soundq,p);
@@ -119,18 +128,29 @@ void snd_send_sound_out(void) {
 
 
 /* This function is called from the audio system to poll data */
+bool audio_flushed=false;
+
 void snd_queue_poll(Uint8 *buf, int len) {
     if (QueuePeek(soundq)>0) {
         struct queuepacket *qp;
+        audio_flushed = false;
         qp=QueueDelete(soundq);
-        Log_Printf(LOG_WARN, "[SDL Audio] Reading 1024 samples from queue.");
+        Log_Printf(LOG_WARN, "[Audio] Reading 1024 samples from queue.");
         memcpy(buf,qp->data,len);
+        free(qp);
     } else if (!sound_output_active) {
         /* Last packet received, stop */
-        Log_Printf(LOG_WARN, "[SDL Audio] Done. Stopping.");
-        Audio_EnableAudio(false);
+        if (audio_flushed) {
+            Log_Printf(LOG_WARN, "[Audio] Done. Stopping.");
+            audio_flushed = false;
+            Audio_EnableAudio(false);
+        } else { /* Flush residual audio from device (required for SDL) */
+            Log_Printf(LOG_WARN, "[Audio] Done. Flushing.");
+            audio_flushed = true;
+            memset(buf, 0, len);
+        }
     } else {
-        Log_Printf(LOG_WARN, "[SDL Audio] Not ready. No data on queue.");
+        Log_Printf(LOG_WARN, "[Audio] Not ready. No data on queue.");
         memset(buf, 0, len);
     }
 }
