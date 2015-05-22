@@ -7,6 +7,7 @@
 #include "dma.h"
 #include "snd.h"
 
+#define LOG_SND_LEVEL   LOG_DEBUG
 
 /* queue prototypes */
 struct queuepacket{
@@ -24,28 +25,28 @@ extern  int QueueIsEmpty(queueADT queue);
 extern  int QueueIsFull(queueADT queue);
 extern  int QueuePeek(queueADT queue);
 
-queueADT	soundq;
+queueADT	sndout_q;
 
 
 /* Initialize the audio system */
-bool sound_inited;
+bool sndout_inited;
 
 void sound_init(void) {
     snd_buffer.limit=4096;
-    if (!sound_inited && ConfigureParams.Sound.bEnableSound) {
+    if (!sndout_inited && ConfigureParams.Sound.bEnableSound) {
         Log_Printf(LOG_WARN, "[Audio] Initializing audio device.");
-        Audio_Init();
-        soundq = QueueCreate();
-        sound_inited=true;
+        Audio_Output_Init();
+        sndout_q = QueueCreate();
+        sndout_inited=true;
     }
 }
 
 void sound_uninit(void) {
-    if(sound_inited) {
+    if(sndout_inited) {
         Log_Printf(LOG_WARN, "[Audio] Uninitializing audio device.");
-        sound_inited=false;
-        Audio_UnInit();
-        QueueDestroy(soundq);
+        sndout_inited=false;
+        Audio_Output_UnInit();
+        QueueDestroy(sndout_q);
     }
 }
 
@@ -59,14 +60,15 @@ void Sound_Reset(void) {
 bool sound_output_active = false;
 
 void snd_start_output(void) {
+    /* Starting SDL Audio and sound output loop */
+    if (sndout_inited) {
+        Audio_Output_Enable(true);
+    } else {
+        Log_Printf(LOG_SND_LEVEL, "[Audio] Not starting. Audio device not initialized.");
+    }
+    /* Starting sound output loop */
     if (!sound_output_active) {
-        Log_Printf(LOG_WARN, "[Audio] Starting.");
-        /* Starting SDL Audio and sound output loop */
-        if (sound_inited) {
-            Audio_EnableAudio(true);
-        } else {
-            Log_Printf(LOG_WARN, "[Audio] Not starting. Audio device not initialized.");
-        }
+        Log_Printf(LOG_SND_LEVEL, "[Audio] Starting.");
         sound_output_active = true;
         CycInt_AddRelativeInterrupt(100, INT_CPU_CYCLE, INTERRUPT_SND_IO);
     }
@@ -78,23 +80,28 @@ void snd_stop_output(void) {
     }
 }
 
+/* Change sound output frequency */
+void snd_change_output_freq(int frequency) {
+    Audio_Output_SetFreq(frequency);
+}
 
-/* Sound IO loop (reads from via DMA from memory to queue) */
+
+/* Sound IO loop (reads via DMA from memory to queue) */
 #define SND_DELAY   100000
 int old_size;
 
 void SND_IO_Handler(void) {
     CycInt_AcknowledgeInterrupt();
-    if (!sound_inited) {
+    if (!sndout_inited) {
         snd_buffer.limit = 4096;
         dma_sndout_read_memory();
         snd_buffer.size = 0;
-    } else if (QueuePeek(soundq)<4) {
+    } else if (QueuePeek(sndout_q)<4) {
         old_size = snd_buffer.size;
         dma_sndout_read_memory();
 
         if (snd_buffer.size==4096 || snd_buffer.size==old_size) {
-            Log_Printf(LOG_WARN, "[Sound] %i samples ready.",snd_buffer.size/4);
+            Log_Printf(LOG_SND_LEVEL, "[Sound] %i samples ready.",snd_buffer.size/4);
             snd_buffer.limit = snd_buffer.size;
             snd_send_sound_out();
             snd_buffer.limit = 4096;
@@ -107,11 +114,12 @@ void SND_IO_Handler(void) {
     CycInt_AddRelativeInterrupt(SND_DELAY, INT_CPU_CYCLE, INTERRUPT_SND_IO);
 }
 
+/* This function puts samples to a queue for the audio system */
 void snd_send_sound_out(void) {
     int i;
     struct queuepacket *p;
     p=(struct queuepacket *)malloc(sizeof(struct queuepacket));
-    Audio_Lock();
+    Audio_Output_Lock();
     for (i=0; i<4096; i++) {
         if (snd_buffer.size>0) {
             p->data[i] = snd_buffer.data[snd_buffer.limit-snd_buffer.size];
@@ -121,9 +129,9 @@ void snd_send_sound_out(void) {
         }
     }
     p->len=4096;
-    QueueEnter(soundq,p);
-    Audio_Unlock();
-    Log_Printf(LOG_WARN, "[Sound] Output 1024 samples to queue");
+    QueueEnter(sndout_q,p);
+    Audio_Output_Unlock();
+    Log_Printf(LOG_SND_LEVEL, "[Sound] Output 1024 samples to queue");
 }
 
 
@@ -131,21 +139,21 @@ void snd_send_sound_out(void) {
 bool audio_flushed=false;
 
 void snd_queue_poll(Uint8 *buf, int len) {
-    if (QueuePeek(soundq)>0) {
+    if (QueuePeek(sndout_q)>0) {
         struct queuepacket *qp;
         audio_flushed = false;
-        qp=QueueDelete(soundq);
-        Log_Printf(LOG_WARN, "[Audio] Reading 1024 samples from queue.");
+        qp=QueueDelete(sndout_q);
+        Log_Printf(LOG_SND_LEVEL, "[Audio] Reading 1024 samples from queue.");
         memcpy(buf,qp->data,len);
         free(qp);
     } else if (!sound_output_active) {
         /* Last packet received, stop */
         if (audio_flushed) {
-            Log_Printf(LOG_WARN, "[Audio] Done. Stopping.");
+            Log_Printf(LOG_SND_LEVEL, "[Audio] Done. Stopping.");
             audio_flushed = false;
-            Audio_EnableAudio(false);
+            Audio_Output_Enable(false);
         } else { /* Flush residual audio from device (required for SDL) */
-            Log_Printf(LOG_WARN, "[Audio] Done. Flushing.");
+            Log_Printf(LOG_SND_LEVEL, "[Audio] Done. Flushing.");
             audio_flushed = true;
             memset(buf, 0, len);
         }

@@ -5,6 +5,7 @@ void snd_send_sound_out(void);
 void snd_queue_poll(Uint8 *buf, int len);
 void snd_start_output(void);
 void snd_stop_output(void);
+void snd_change_output_freq(int frequency);
 
 
 struct {
@@ -12,3 +13,7 @@ struct {
     Uint32 size;
     Uint32 limit;
 } snd_buffer;
+
+/* Valid frequencies */
+#define SND_FREQ_DOUBLE 22050
+#define SND_FREQ_NORMAL 44100
