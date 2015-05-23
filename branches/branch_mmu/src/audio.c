@@ -14,7 +14,7 @@
 SDL_AudioDeviceID Audio_Input_Device;
 SDL_AudioDeviceID Audio_Output_Device;
 
-int nAudioFrequency = 22050;            /* Sound playback frequency */
+int nAudioFrequency = 44100;            /* Sound playback frequency */
 bool bSoundOutputWorking = false;       /* Is sound output OK */
 bool bSoundInputWorking = false;        /* Is sound input OK */
 volatile bool bPlayingBuffer = false;   /* Is playing buffer? */
@@ -60,7 +60,7 @@ void Audio_Output_Init(void)
     }
     
     /* Set up SDL audio: */
-    request.freq = nAudioFrequency;
+    request.freq = 44100;           /* 44,1 kHz */
     request.format = AUDIO_S16MSB;	/* 16-Bit signed, big endian */
     request.channels = 2;			/* stereo */
     request.callback = Audio_Output_CallBack;

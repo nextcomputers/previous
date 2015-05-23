@@ -8,6 +8,7 @@
 #include "snd.h"
 
 #define LOG_SND_LEVEL   LOG_DEBUG
+#define LOG_VOL_LEVEL   LOG_WARN
 
 /* queue prototypes */
 struct queuepacket{
@@ -57,10 +58,23 @@ void Sound_Reset(void) {
 
 
 /* Start and stop sound output */
+struct {
+    Uint8 mode;
+    Uint8 mute;
+    Uint8 lowpass;
+    Uint8 volume[2]; /* 0 = left, 1 = right */
+} sndout_state;
+
+/* Valid modes */
+#define SND_MODE_NORMAL 0x00
+#define SND_MODE_DBL_RP 0x10
+#define SND_MODE_DBL_ZF 0x30
+
 bool sound_output_active = false;
 
-void snd_start_output(void) {
-    /* Starting SDL Audio and sound output loop */
+void snd_start_output(Uint8 mode) {
+    sndout_state.mode = mode;
+    /* Starting SDL Audio */
     if (sndout_inited) {
         Audio_Output_Enable(true);
     } else {
@@ -80,11 +94,6 @@ void snd_stop_output(void) {
     }
 }
 
-/* Change sound output frequency */
-void snd_change_output_freq(int frequency) {
-    Audio_Output_SetFreq(frequency);
-}
-
 
 /* Sound IO loop (reads via DMA from memory to queue) */
 #define SND_DELAY   100000
@@ -92,7 +101,7 @@ int old_size;
 
 void SND_IO_Handler(void) {
     CycInt_AcknowledgeInterrupt();
-    if (!sndout_inited) {
+    if (!sndout_inited || sndout_state.mute) {
         snd_buffer.limit = 4096;
         dma_sndout_read_memory();
         snd_buffer.size = 0;
@@ -103,7 +112,12 @@ void SND_IO_Handler(void) {
         if (snd_buffer.size==4096 || snd_buffer.size==old_size) {
             Log_Printf(LOG_SND_LEVEL, "[Sound] %i samples ready.",snd_buffer.size/4);
             snd_buffer.limit = snd_buffer.size;
-            snd_send_sound_out();
+            switch (sndout_state.mode) {
+                case SND_MODE_NORMAL: snd_send_normal_samples(); break;
+                case SND_MODE_DBL_RP: snd_send_double_samples(true); break;
+                case SND_MODE_DBL_ZF: snd_send_double_samples(false); break;
+                default: break;
+            }
             snd_buffer.limit = 4096;
             snd_buffer.size = 0; /* Must be 0 */
         }
@@ -114,8 +128,8 @@ void SND_IO_Handler(void) {
     CycInt_AddRelativeInterrupt(SND_DELAY, INT_CPU_CYCLE, INTERRUPT_SND_IO);
 }
 
-/* This function puts samples to a queue for the audio system */
-void snd_send_sound_out(void) {
+/* These functions put samples to a queue for the audio system */
+void snd_send_normal_samples(void) {
     int i;
     struct queuepacket *p;
     p=(struct queuepacket *)malloc(sizeof(struct queuepacket));
@@ -132,6 +146,41 @@ void snd_send_sound_out(void) {
     QueueEnter(sndout_q,p);
     Audio_Output_Unlock();
     Log_Printf(LOG_SND_LEVEL, "[Sound] Output 1024 samples to queue");
+}
+
+void snd_send_double_samples(bool repeat) {
+    int i;
+    struct queuepacket *p1, *p2;
+    p1=(struct queuepacket *)malloc(sizeof(struct queuepacket));
+    p2=(struct queuepacket *)malloc(sizeof(struct queuepacket));
+    Audio_Output_Lock();
+    
+    for (i=0; i<4096; i++) {
+        if (snd_buffer.size>0) {
+            p1->data[i] = snd_buffer.data[snd_buffer.limit-snd_buffer.size];
+            p1->data[i+4] = repeat ? p1->data[i] : 0; /* repeat or zero-fill */
+            snd_buffer.size--;
+        } else { /* Fill the rest with silence */
+            p1->data[i] = p1->data[i+4] = 0;
+        }
+        if ((i&3)==3) i+=4;
+    }
+    p1->len=4096;
+    QueueEnter(sndout_q,p1);
+    for (i=0; i<4096; i++) {
+        if (snd_buffer.size>0) {
+            p2->data[i] = snd_buffer.data[snd_buffer.limit-snd_buffer.size];
+            p2->data[i+4] = repeat ? p2->data[i] : 0; /* repeat or zero-fill */
+            snd_buffer.size--;
+        } else { /* Fill the rest with silence */
+            p2->data[i] = p2->data[i+4] = 0;
+        }
+        if ((i&3)==3) i+=4;
+    }
+    p2->len=4096;
+    QueueEnter(sndout_q,p2);
+    Audio_Output_Unlock();
+    Log_Printf(LOG_SND_LEVEL, "[Sound] Output 2048 samples to queue");
 }
 
 
@@ -161,4 +210,78 @@ void snd_queue_poll(Uint8 *buf, int len) {
         Log_Printf(LOG_WARN, "[Audio] Not ready. No data on queue.");
         memset(buf, 0, len);
     }
+}
+
+
+/* Internal volume control register access (shifted in left to right)
+ *
+ * xxx ---- ----  unused bits
+ * --- xx-- ----  channel (0x80 = right, 0x40 = left)
+ * --- --xx xxxx  volume
+ */
+
+Uint8 tmp_vol;
+Uint8 chan_lr;
+int bit_num;
+
+void snd_access_volume_reg(Uint8 databit) {
+    Log_Printf(LOG_VOL_LEVEL, "[Sound] Interface shift bit %i (%i).",bit_num,databit?1:0);
+    
+    if (bit_num<3) {
+        /* nothing to do */
+    } else if (bit_num<5) {
+        chan_lr = (chan_lr<<1)|(databit?1:0);
+    } else if (bit_num<11) {
+        tmp_vol = (tmp_vol<<1)|(databit?1:0);
+    }
+    bit_num++;
+}
+
+void snd_volume_interface_reset(void) {
+    Log_Printf(LOG_VOL_LEVEL, "[Sound] Interface reset.");
+    
+    bit_num = 0;
+    chan_lr = 0;
+    tmp_vol = 0;
+}
+
+void snd_save_volume_reg(void) {
+    if (bit_num!=11) {
+        Log_Printf(LOG_VOL_LEVEL, "[Sound] Incomplete volume transfer (%i bits).",bit_num);
+        return;
+    }
+    if (chan_lr&1) {
+        Log_Printf(LOG_WARN, "[Sound] Setting volume of left channel to %i",tmp_vol);
+        sndout_state.volume[0] = tmp_vol;
+    }
+    if (chan_lr&2) {
+        Log_Printf(LOG_WARN, "[Sound] Setting volume of right channel to %i",tmp_vol);
+        sndout_state.volume[1] = tmp_vol;
+    }
+}
+
+/* This function fills the internal volume register */
+#define SND_SPEAKER_ENABLE  0x10
+#define SND_LOWPASS_ENABLE  0x08
+
+#define SND_INTFC_CLOCK     0x04
+#define SND_INTFC_DATA      0x02
+#define SND_INTFC_STROBE    0x01
+
+Uint8 old_data;
+
+void snd_gpo_access(Uint8 data) {
+    Log_Printf(LOG_VOL_LEVEL, "[Sound] GPO access: %02X",data);
+    
+    sndout_state.mute = data&SND_SPEAKER_ENABLE;
+    sndout_state.lowpass = data&SND_LOWPASS_ENABLE;
+    
+    if (data&SND_INTFC_STROBE) {
+        snd_save_volume_reg();
+    } else if ((data&SND_INTFC_CLOCK) && !(old_data&SND_INTFC_CLOCK)) {
+        snd_access_volume_reg(data&SND_INTFC_DATA);
+    } else if ((data&SND_INTFC_CLOCK) == (old_data&SND_INTFC_CLOCK)) {
+        snd_volume_interface_reset();
+    }
+    old_data = data;
 }

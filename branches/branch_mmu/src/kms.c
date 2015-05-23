@@ -211,6 +211,7 @@ void KMS_command(Uint8 command, Uint32 data) {
         case KMSCMD_CTRLOUT:
             Log_Printf(LOG_KMS_LEVEL, "[KMS] Access volume control logic");
             Log_Printf(LOG_KMS_LEVEL, "[KMS] Data = %08X",data);
+            snd_gpo_access(data>>24);
             break;
         case KMSCMD_VOLCTRL:
             Log_Printf(LOG_KMS_LEVEL, "[KMS] Access volume control (simple)");
@@ -230,12 +231,10 @@ void KMS_command(Uint8 command, Uint32 data) {
                         } else {
                             Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out double sample by repetition.");
                         }
-                        snd_change_output_freq(SND_FREQ_DOUBLE);
                     } else {
                         Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out normal sample.");
-                        snd_change_output_freq(SND_FREQ_NORMAL);
                     }
-                    snd_start_output();
+                    snd_start_output(command&(SIO_DBL_SMPL|SIO_ZERO));
                 } else {
                     Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out disable.");
                     snd_stop_output();
