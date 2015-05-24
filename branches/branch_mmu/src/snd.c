@@ -65,10 +65,19 @@ struct {
     Uint8 volume[2]; /* 0 = left, 1 = right */
 } sndout_state;
 
+/* Maximum volume (really is attenuation) */
+#define SND_MAX_VOL 43
+
 /* Valid modes */
 #define SND_MODE_NORMAL 0x00
 #define SND_MODE_DBL_RP 0x10
 #define SND_MODE_DBL_ZF 0x30
+
+/* Function prototypes */
+void snd_send_samples(void);
+void snd_send_normal_samples(void);
+void snd_send_double_samples(bool repeat);
+void snd_adjust_volume(void);
 
 bool sound_output_active = false;
 
@@ -112,12 +121,7 @@ void SND_IO_Handler(void) {
         if (snd_buffer.size==4096 || snd_buffer.size==old_size) {
             Log_Printf(LOG_SND_LEVEL, "[Sound] %i samples ready.",snd_buffer.size/4);
             snd_buffer.limit = snd_buffer.size;
-            switch (sndout_state.mode) {
-                case SND_MODE_NORMAL: snd_send_normal_samples(); break;
-                case SND_MODE_DBL_RP: snd_send_double_samples(true); break;
-                case SND_MODE_DBL_ZF: snd_send_double_samples(false); break;
-                default: break;
-            }
+            snd_send_samples();
             snd_buffer.limit = 4096;
             snd_buffer.size = 0; /* Must be 0 */
         }
@@ -129,6 +133,18 @@ void SND_IO_Handler(void) {
 }
 
 /* These functions put samples to a queue for the audio system */
+void snd_send_samples(void) {
+    if (sndout_state.volume[0]!=0 || sndout_state.volume[1]!=0) {
+        snd_adjust_volume();
+    }
+    switch (sndout_state.mode) {
+        case SND_MODE_NORMAL: snd_send_normal_samples(); break;
+        case SND_MODE_DBL_RP: snd_send_double_samples(true); break;
+        case SND_MODE_DBL_ZF: snd_send_double_samples(false); break;
+        default: break;
+    }
+}
+
 void snd_send_normal_samples(void) {
     int i;
     struct queuepacket *p;
@@ -213,6 +229,26 @@ void snd_queue_poll(Uint8 *buf, int len) {
 }
 
 
+/* This function adjusts sound output volume */
+void snd_adjust_volume(void) {
+    int i;
+    Sint16 ldata, rdata;
+    float ladjust = (sndout_state.volume[0]==0)?1:(1-log(sndout_state.volume[0])/log(SND_MAX_VOL));
+    float radjust = (sndout_state.volume[1]==0)?1:(1-log(sndout_state.volume[1])/log(SND_MAX_VOL));
+
+    for (i=0; i<4096; i+=4) {
+        ldata = (Sint16)((snd_buffer.data[i]<<8)|snd_buffer.data[i+1]);
+        rdata = (Sint16)((snd_buffer.data[i+2]<<8)|snd_buffer.data[i+3]);
+        ldata = ldata*ladjust;
+        rdata = rdata*radjust;
+        snd_buffer.data[i] = ldata>>8;
+        snd_buffer.data[i+1] = ldata;
+        snd_buffer.data[i+2] = rdata>>8;
+        snd_buffer.data[i+3] = rdata;
+    }
+}
+
+
 /* Internal volume control register access (shifted in left to right)
  *
  * xxx ---- ----  unused bits
@@ -247,8 +283,12 @@ void snd_volume_interface_reset(void) {
 
 void snd_save_volume_reg(void) {
     if (bit_num!=11) {
-        Log_Printf(LOG_VOL_LEVEL, "[Sound] Incomplete volume transfer (%i bits).",bit_num);
+        Log_Printf(LOG_WARN, "[Sound] Incomplete volume transfer (%i bits).",bit_num);
         return;
+    }
+    if (tmp_vol>SND_MAX_VOL) {
+        Log_Printf(LOG_WARN, "[Sound] Volume limit exceeded (%i).",tmp_vol);
+        tmp_vol=SND_MAX_VOL;
     }
     if (chan_lr&1) {
         Log_Printf(LOG_WARN, "[Sound] Setting volume of left channel to %i",tmp_vol);

@@ -1,8 +1,6 @@
 void SND_IO_Handler(void);
 void Sound_Reset(void);
 
-void snd_send_normal_samples(void);
-void snd_send_double_samples(bool repeat);
 void snd_queue_poll(Uint8 *buf, int len);
 void snd_start_output(Uint8 mode);
 void snd_stop_output(void);
