@@ -740,8 +740,6 @@ void nvram_init(void) {
     /* Build configuration bytes */
     Uint32 config = 0x94000000; /* reset = 9, allow eject = 1 */
     config |= 0x3D<<14; /* brightness */
-    config |= 0x00<<4;  /* volume left */
-    config |= 0x00<<20; /* volume right */
     
     rtc.ram[0] = config>>24;
     rtc.ram[1] = config>>16;

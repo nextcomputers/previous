@@ -29,7 +29,7 @@ volatile bool bRecordingBuffer = false; /* Is recording buffer? */
 static void Audio_Output_CallBack(void *userdata, Uint8 *stream, int len)
 {
     //printf("AUDIO CALLBACK, size = %i\n",len);
-    snd_queue_poll(stream, len);
+    sndout_queue_poll(stream, len);
 }
 
 static void Audio_Input_CallBack(void *userdata, Uint8 *stream, int len)
