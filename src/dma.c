@@ -724,7 +724,7 @@ void dma_mo_read_memory(void) {
 /* Channel Sound Out (FIXME: is this channel buffered?) */
 void dma_sndout_read_memory(void) {
     if (dma[CHANNEL_SOUNDOUT].csr&DMA_ENABLE) {
-        Log_Printf(LOG_WARN, "[DMA] Channel Sound Out: Read from memory at $%08x, %i bytes",
+        Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel Sound Out: Read from memory at $%08x, %i bytes",
                    dma[CHANNEL_SOUNDOUT].next,dma[CHANNEL_SOUNDOUT].limit-dma[CHANNEL_SOUNDOUT].next);
         
         if ((dma[CHANNEL_SOUNDOUT].limit%4) || (dma[CHANNEL_SOUNDOUT].next%4)) {
