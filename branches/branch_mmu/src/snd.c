@@ -6,28 +6,18 @@
 #include "audio.h"
 #include "dma.h"
 #include "snd.h"
+#include "queue.h"
 
 #define LOG_SND_LEVEL   LOG_DEBUG
-#define LOG_VOL_LEVEL   LOG_WARN
+#define LOG_VOL_LEVEL   LOG_DEBUG
 
-#define SND_BUFFER_LIMIT 4096 /* Note: this must match queue data size */
+/* Note: Buffer limit must not be greather than queue packet size and
+ * must match requested.samples * samplesize (4) from audio.c
+ */
+#define SND_BUFFER_LIMIT 4096
+
 
 /* queue prototypes */
-struct queuepacket{
-    int len;
-    unsigned char data[4096];
-};
-
-typedef struct queuepacket *queueElementT;
-typedef struct queueCDT *queueADT;
-extern  queueADT QueueCreate(void);
-extern  void QueueDestroy(queueADT queue);
-extern  void QueueEnter(queueADT queue, queueElementT element);
-extern  queueElementT QueueDelete(queueADT queue);
-extern  int QueueIsEmpty(queueADT queue);
-extern  int QueueIsFull(queueADT queue);
-extern  int QueuePeek(queueADT queue);
-
 queueADT	sndout_q;
 
 
