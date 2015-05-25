@@ -36,6 +36,7 @@ bool sndout_inited;
 
 void sound_init(void) {
     snd_buffer.limit=SND_BUFFER_LIMIT;
+    snd_buffer.size=0;
     if (!sndout_inited && ConfigureParams.Sound.bEnableSound) {
         Log_Printf(LOG_WARN, "[Audio] Initializing audio device.");
         Audio_Output_Init();
@@ -94,8 +95,11 @@ void snd_start_output(Uint8 mode) {
     }
     /* Starting sound output loop */
     if (!sound_output_active) {
-        Log_Printf(LOG_SND_LEVEL, "[Audio] Starting.");
+        Log_Printf(LOG_SND_LEVEL, "[Sound] Starting loop.");
         sound_output_active = true;
+        CycInt_AddRelativeInterrupt(100, INT_CPU_CYCLE, INTERRUPT_SND_IO);
+    } else { /* Even re-enable loop if we are already active. This lowers the delay. */
+        Log_Printf(LOG_WARN, "[Sound] Restarting loop.");
         CycInt_AddRelativeInterrupt(100, INT_CPU_CYCLE, INTERRUPT_SND_IO);
     }
 }
@@ -113,14 +117,16 @@ int old_size;
 
 void SND_IO_Handler(void) {
     CycInt_AcknowledgeInterrupt();
+    
+    old_size = snd_buffer.size;
+    dma_sndout_read_memory();
+    
     if (!sndout_inited || sndout_state.mute) {
         snd_buffer.limit = SND_BUFFER_LIMIT;
-        dma_sndout_read_memory();
         snd_buffer.size = 0;
+        if (!sound_output_active)
+            return;
     } else if (QueuePeek(sndout_q)<4) {
-        old_size = snd_buffer.size;
-        dma_sndout_read_memory();
-
         if (snd_buffer.size==SND_BUFFER_LIMIT || snd_buffer.size==old_size) {
             Log_Printf(LOG_SND_LEVEL, "[Sound] %i samples ready.",snd_buffer.size/4);
             snd_buffer.limit = snd_buffer.size;
