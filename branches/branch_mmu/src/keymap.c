@@ -27,7 +27,178 @@ void Keymap_Init(void) {
 
 }
 
+Uint8 translate_scancode(SDL_Scancode sdlscancode) {
+    Log_Printf(LOG_WARN, "[Keymap] Scancode: %i (%s)\n", sdlscancode, SDL_GetScancodeName(sdlscancode));
+
+    switch (sdlscancode) {
+        case SDL_SCANCODE_ESCAPE: return 0x49;
+        case SDL_SCANCODE_1: return 0x4a;
+        case SDL_SCANCODE_2: return 0x4b;
+        case SDL_SCANCODE_3: return 0x4c;
+        case SDL_SCANCODE_4: return 0x4d;
+        case SDL_SCANCODE_5: return 0x50;
+        case SDL_SCANCODE_6: return 0x4f;
+        case SDL_SCANCODE_7: return 0x4e;
+        case SDL_SCANCODE_8: return 0x1e;
+        case SDL_SCANCODE_9: return 0x1f;
+        case SDL_SCANCODE_0: return 0x20;
+        case SDL_SCANCODE_MINUS: return 0x1d;
+        case SDL_SCANCODE_EQUALS: return 0x1c;
+        case SDL_SCANCODE_BACKSPACE: return 0x1b;
+            
+        case SDL_SCANCODE_TAB: return 0x41;
+        case SDL_SCANCODE_Q: return 0x42;
+        case SDL_SCANCODE_W: return 0x43;
+        case SDL_SCANCODE_E: return 0x44;
+        case SDL_SCANCODE_R: return 0x45;
+        case SDL_SCANCODE_T: return 0x48;
+        case SDL_SCANCODE_Y: return 0x47;
+        case SDL_SCANCODE_U: return 0x46;
+        case SDL_SCANCODE_I: return 0x06;
+        case SDL_SCANCODE_O: return 0x07;
+        case SDL_SCANCODE_P: return 0x08;
+        case SDL_SCANCODE_LEFTBRACKET: return 0x05;
+        case SDL_SCANCODE_RIGHTBRACKET: return 0x04;
+            
+        case SDL_SCANCODE_A: return 0x39;
+        case SDL_SCANCODE_S: return 0x3a;
+        case SDL_SCANCODE_D: return 0x3b;
+        case SDL_SCANCODE_F: return 0x3c;
+        case SDL_SCANCODE_G: return 0x3d;
+        case SDL_SCANCODE_H: return 0x40;
+        case SDL_SCANCODE_J: return 0x3f;
+        case SDL_SCANCODE_K: return 0x3e;
+        case SDL_SCANCODE_L: return 0x2d;
+        case SDL_SCANCODE_SEMICOLON: return 0x2c;
+        case SDL_SCANCODE_APOSTROPHE: return 0x2b;
+        case SDL_SCANCODE_RETURN: return 0x2a;
+            
+        case SDL_SCANCODE_Z: return 0x31;
+        case SDL_SCANCODE_X: return 0x32;
+        case SDL_SCANCODE_C: return 0x33;
+        case SDL_SCANCODE_V: return 0x34;
+        case SDL_SCANCODE_B: return 0x35;
+        case SDL_SCANCODE_N: return 0x37;
+        case SDL_SCANCODE_M: return 0x36;
+        case SDL_SCANCODE_COMMA: return 0x2e;
+        case SDL_SCANCODE_PERIOD: return 0x2f;
+        case SDL_SCANCODE_SLASH: return 0x30;
+        case SDL_SCANCODE_SPACE: return 0x38;
+            
+        case SDL_SCANCODE_NUMLOCKCLEAR: return 0x26;
+        case SDL_SCANCODE_KP_EQUALS: return 0x27;
+        case SDL_SCANCODE_KP_DIVIDE: return 0x28;
+        case SDL_SCANCODE_KP_MULTIPLY: return 0x25;
+        case SDL_SCANCODE_KP_7: return 0x21;
+        case SDL_SCANCODE_KP_8: return 0x22;
+        case SDL_SCANCODE_KP_9: return 0x23;
+        case SDL_SCANCODE_KP_MINUS: return 0x24;
+        case SDL_SCANCODE_KP_4: return 0x12;
+        case SDL_SCANCODE_KP_5: return 0x18;
+        case SDL_SCANCODE_KP_6: return 0x13;
+        case SDL_SCANCODE_KP_PLUS: return 0x15;
+        case SDL_SCANCODE_KP_1: return 0x11;
+        case SDL_SCANCODE_KP_2: return 0x17;
+        case SDL_SCANCODE_KP_3: return 0x14;
+        case SDL_SCANCODE_KP_0: return 0x0b;
+        case SDL_SCANCODE_KP_PERIOD: return 0x0c;
+        case SDL_SCANCODE_KP_ENTER: return 0x0d;
+            
+        case SDL_SCANCODE_LEFT: return 0x09;
+        case SDL_SCANCODE_RIGHT: return 0x10;
+        case SDL_SCANCODE_UP: return 0x16;
+        case SDL_SCANCODE_DOWN: return 0x0f;
+            
+        /* Special keys */
+        case SDL_SCANCODE_F10:
+        case SDL_SCANCODE_DELETE: return 0x58;   /* Power */
+        case SDL_SCANCODE_F5:
+        case SDL_SCANCODE_END: return 0x02;      /* Sound down */
+        case SDL_SCANCODE_F6:
+        case SDL_SCANCODE_HOME: return 0x1a;     /* Sound up */
+        case SDL_SCANCODE_F1:
+        case SDL_SCANCODE_PAGEDOWN: return 0x01; /* Brightness down */
+        case SDL_SCANCODE_F2:
+        case SDL_SCANCODE_PAGEUP: return 0x19;   /* Brightness up */
+            
+        default: return 0x00;
+    }
+}
+
+Uint8 modifiers = 0;
+bool capslock = false;
+
+Uint8 modifier_scancode_down(SDL_Scancode sdlscancode) {
+    switch (sdlscancode) {
+        case SDL_SCANCODE_LCTRL:
+        case SDL_SCANCODE_RCTRL:
+            modifiers|=0x01;
+            break;
+        case SDL_SCANCODE_LSHIFT:
+            modifiers|=0x02;
+            break;
+        case SDL_SCANCODE_RSHIFT:
+            modifiers|=0x04;
+            break;
+        case SDL_SCANCODE_LGUI:
+            modifiers|=0x08;
+            break;
+        case SDL_SCANCODE_RGUI:
+            modifiers|=0x10;
+            break;
+        case SDL_SCANCODE_LALT:
+            modifiers|=0x20;
+            break;
+        case SDL_SCANCODE_RALT:
+            modifiers|=0x40;
+            break;
+        case SDL_SCANCODE_CAPSLOCK:
+            capslock=capslock?false:true;
+            break;
+        default:
+            break;
+    }
+    
+    return modifiers|(capslock?0x02:0x00);
+}
+
+Uint8 modifier_scancode_up(SDL_Scancode sdlscancode) {
+    
+    switch (sdlscancode) {
+        case SDL_SCANCODE_LCTRL:
+        case SDL_SCANCODE_RCTRL:
+            modifiers&=~0x01;
+            break;
+        case SDL_SCANCODE_LSHIFT:
+            modifiers&=~0x02;
+            break;
+        case SDL_SCANCODE_RSHIFT:
+            modifiers&=~0x04;
+            break;
+        case SDL_SCANCODE_LGUI:
+            modifiers&=~0x08;
+            break;
+        case SDL_SCANCODE_RGUI:
+            modifiers&=~0x10;
+            break;
+        case SDL_SCANCODE_LALT:
+            modifiers&=~0x20;
+            break;
+        case SDL_SCANCODE_RALT:
+            modifiers&=~0x40;
+            break;
+        case SDL_SCANCODE_CAPSLOCK:
+            //capslock=false;
+            break;
+        default:
+            break;
+    }
+    
+    return modifiers|(capslock?0x02:0x00);
+}
+
 Uint8 translate_key(SDL_Keycode sdlkey) {
+    Log_Printf(LOG_WARN, "[Keymap] Symkey: %s\n", SDL_GetKeyName(sdlkey));
     
     switch (sdlkey) {
         case SDLK_BACKSLASH: return 0x03;
@@ -156,9 +327,6 @@ Uint8 translate_modifiers(SDL_Keymod modifiers) {
     return mod;
 }
 #else
-Uint8 modifiers = 0;
-bool capslock = false;
-
 Uint8 modifier_keydown(SDL_Keycode sdl_modifier) {
     
     switch (sdl_modifier) {
@@ -236,22 +404,26 @@ Uint8 modifier_keyup(SDL_Keycode sdl_modifier) {
  */
 void Keymap_KeyDown(SDL_Keysym *sdlkey)
 {
-    Log_Printf(LOG_WARN, "Key pressed: %s\n", SDL_GetKeyName(sdlkey->sym));
-    
-    int symkey = sdlkey->sym;
-	int modkey = sdlkey->mod;
-    if (ShortCut_CheckKeys(modkey, symkey, 1)) {// Check if we pressed a shortcut
+    Uint8 modifiers, keycode;
+
+    if (ShortCut_CheckKeys(sdlkey->mod, sdlkey->sym, 1)) {// Check if we pressed a shortcut
         ShortCut_ActKey();
         return;
     }
-    Uint8 keycode = translate_key(symkey);
-#if NEW_MOD_HANDLING
-    Uint8 modifiers = translate_modifiers(modkey);
-#else
-    Uint8 modifiers = modifier_keydown(symkey);
-#endif
     
-    Log_Printf(LOG_WARN, "Keycode: $%02x, Modifiers: $%02x\n", keycode, modifiers);
+    if (ConfigureParams.Keyboard.nKeymapType==KEYMAP_SYMBOLIC) {
+        keycode = translate_key(sdlkey->sym);
+#if NEW_MOD_HANDLING
+        modifiers = translate_modifiers(sdlkey->mod);
+#else
+        modifiers = modifier_keydown(sdlkey->sym);
+#endif
+    } else {
+        keycode = translate_scancode(sdlkey->scancode);
+        modifiers = modifier_scancode_down(sdlkey->scancode);
+    }
+    
+    Log_Printf(LOG_WARN, "[Keymap] NeXT Keycode: $%02x, Modifiers: $%02x\n", keycode, modifiers);
     
     kms_keydown(modifiers, keycode);
 }
@@ -263,21 +435,24 @@ void Keymap_KeyDown(SDL_Keysym *sdlkey)
  */
 void Keymap_KeyUp(SDL_Keysym *sdlkey)
 {
-    Log_Printf(LOG_WARN, "Key released: %s\n", SDL_GetKeyName(sdlkey->sym));
-    
-    int symkey = sdlkey->sym;
-	int modkey = sdlkey->mod;
-    if (ShortCut_CheckKeys(modkey, symkey, 0))
+    Uint8 modifiers, keycode;
+
+    if (ShortCut_CheckKeys(sdlkey->mod, sdlkey->sym, 0))
 		return;
     
-    Uint8 keycode = translate_key(symkey);
+    if (ConfigureParams.Keyboard.nKeymapType==KEYMAP_SYMBOLIC) {
+        keycode = translate_key(sdlkey->sym);
 #if NEW_MOD_HANDLING
-    Uint8 modifiers = translate_modifiers(modkey);
+        modifiers = translate_modifiers(sdlkey->mod);
 #else
-    Uint8 modifiers = modifier_keyup(symkey);
+        modifiers = modifier_keyup(sdlkey->sym);
 #endif
+    } else {
+        keycode = translate_scancode(sdlkey->scancode);
+        modifiers = modifier_scancode_up(sdlkey->scancode);
+    }
     
-    Log_Printf(LOG_WARN, "Keycode: $%02x, Modkeys: $%02x\n", keycode, modifiers);
+    Log_Printf(LOG_WARN, "[Keymap] NeXT Keycode: $%02x, Modifiers: $%02x\n", keycode, modifiers);
     
     kms_keyup(modifiers, keycode);
 }
