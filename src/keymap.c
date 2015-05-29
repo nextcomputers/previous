@@ -23,12 +23,23 @@ const char Keymap_fileid[] = "Hatari keymap.c : " __DATE__ " " __TIME__;
 #include "SDL.h"
 
 
+#define  LOG_KEYMAP_LEVEL   LOG_WARN
+
+Uint8 modifiers = 0;
+bool capslock = false;
+
+
 void Keymap_Init(void) {
 
 }
 
-Uint8 translate_scancode(SDL_Scancode sdlscancode) {
-    Log_Printf(LOG_WARN, "[Keymap] Scancode: %i (%s)\n", sdlscancode, SDL_GetScancodeName(sdlscancode));
+
+/* This function translates the scancodes provided by SDL to 
+ * NeXT scancode values.
+ */
+
+Uint8 Keymap_GetKeyFromScancode(SDL_Scancode sdlscancode) {
+    Log_Printf(LOG_KEYMAP_LEVEL, "[Keymap] Scancode: %i (%s)\n", sdlscancode, SDL_GetScancodeName(sdlscancode));
 
     switch (sdlscancode) {
         case SDL_SCANCODE_ESCAPE: return 0x49;
@@ -125,10 +136,12 @@ Uint8 translate_scancode(SDL_Scancode sdlscancode) {
     }
 }
 
-Uint8 modifiers = 0;
-bool capslock = false;
 
-Uint8 modifier_scancode_down(SDL_Scancode sdlscancode) {
+/* These functions translate the scancodes provided by SDL to
+ * NeXT modifier bits.
+ */
+
+Uint8 Keymap_Keydown_GetModFromScancode(SDL_Scancode sdlscancode) {
     switch (sdlscancode) {
         case SDL_SCANCODE_LCTRL:
         case SDL_SCANCODE_RCTRL:
@@ -162,7 +175,7 @@ Uint8 modifier_scancode_down(SDL_Scancode sdlscancode) {
     return modifiers|(capslock?0x02:0x00);
 }
 
-Uint8 modifier_scancode_up(SDL_Scancode sdlscancode) {
+Uint8 Keymap_Keyup_GetModFromScancode(SDL_Scancode sdlscancode) {
     
     switch (sdlscancode) {
         case SDL_SCANCODE_LCTRL:
@@ -197,8 +210,13 @@ Uint8 modifier_scancode_up(SDL_Scancode sdlscancode) {
     return modifiers|(capslock?0x02:0x00);
 }
 
-Uint8 translate_key(SDL_Keycode sdlkey) {
-    Log_Printf(LOG_WARN, "[Keymap] Symkey: %s\n", SDL_GetKeyName(sdlkey));
+
+/* This function translates the key symbols provided by SDL to
+ * NeXT scancode values.
+ */
+
+Uint8 Keymap_GetKeyFromSymbol(SDL_Keycode sdlkey) {
+    Log_Printf(LOG_KEYMAP_LEVEL, "[Keymap] Symkey: %s\n", SDL_GetKeyName(sdlkey));
     
     switch (sdlkey) {
         case SDLK_BACKSLASH: return 0x03;
@@ -276,58 +294,29 @@ Uint8 translate_key(SDL_Keycode sdlkey) {
         case SDLK_5: return 0x50;
                         
             /* Special Keys */
-        case SDLK_F10: return 0x58;
+        case SDLK_F10:
+        case SDLK_DELETE: return 0x58;   /* Power */
+        case SDLK_F5:
+        case SDLK_END: return 0x02;      /* Sound down */
+        case SDLK_F6:
+        case SDLK_HOME: return 0x1a;     /* Sound up */
+        case SDLK_F1:
+        case SDLK_PAGEDOWN: return 0x01; /* Brightness down */
+        case SDLK_F2:
+        case SDLK_PAGEUP: return 0x19;   /* Brightness up */
             
-            
-            /* Special keys not yet emulated:
-             SOUND_UP_KEY           0x1A
-             SOUND_DOWN_KEY         0x02
-             BRIGHTNESS_UP_KEY      0x19
-             BRIGHTNESS_DOWN_KEY	0x01
-             POWER_KEY              0x58
-             */
             
         default: return 0x00;
             break;
     }
 }
 
-#define NEW_MOD_HANDLING   0
 
-#if NEW_MOD_HANDLING
-Uint8 translate_modifiers(SDL_Keymod modifiers) {
+/* These functions translate the key symbols provided by SDL to
+ * NeXT modifier bits.
+ */
 
-    Uint8 mod = 0x00;
-    
-    if (modifiers&(KMOD_LCTRL|KMOD_RCTRL)) {
-        mod |= 0x01;
-    }
-    if (modifiers&KMOD_LSHIFT) {
-        mod |= 0x02;
-    }
-    if (modifiers&KMOD_RSHIFT) {
-        mod |= 0x04;
-    }
-    if (modifiers&KMOD_LGUI) {
-        mod |= 0x08;
-    }
-    if (modifiers&KMOD_RGUI) {
-        mod |= 0x10;
-    }
-    if (modifiers&KMOD_LALT) {
-        mod |= 0x20;
-    }
-    if (modifiers&KMOD_RALT) {
-        mod |= 0x40;
-    }
-    if (modifiers&KMOD_CAPS) {
-        mod |= 0x02;
-    }
-
-    return mod;
-}
-#else
-Uint8 modifier_keydown(SDL_Keycode sdl_modifier) {
+Uint8 Keymap_Keydown_GetModFromSymbol(SDL_Keycode sdl_modifier) {
     
     switch (sdl_modifier) {
         case SDLK_LCTRL:
@@ -362,7 +351,7 @@ Uint8 modifier_keydown(SDL_Keycode sdl_modifier) {
     return modifiers|(capslock?0x02:0x00);
 }
 
-Uint8 modifier_keyup(SDL_Keycode sdl_modifier) {
+Uint8 Keymap_Keyup_GetModFromSymbol(SDL_Keycode sdl_modifier) {
     
     switch (sdl_modifier) {
         case SDLK_LCTRL:
@@ -396,7 +385,7 @@ Uint8 modifier_keyup(SDL_Keycode sdl_modifier) {
     
     return modifiers|(capslock?0x02:0x00);
 }
-#endif
+
 
 /*-----------------------------------------------------------------------*/
 /**
@@ -404,28 +393,24 @@ Uint8 modifier_keyup(SDL_Keycode sdl_modifier) {
  */
 void Keymap_KeyDown(SDL_Keysym *sdlkey)
 {
-    Uint8 modifiers, keycode;
+    Uint8 next_mod, next_key;
 
-    if (ShortCut_CheckKeys(sdlkey->mod, sdlkey->sym, 1)) {// Check if we pressed a shortcut
+    if (ShortCut_CheckKeys(sdlkey->mod, sdlkey->sym, 1)) { // Check if we pressed a shortcut
         ShortCut_ActKey();
         return;
     }
     
     if (ConfigureParams.Keyboard.nKeymapType==KEYMAP_SYMBOLIC) {
-        keycode = translate_key(sdlkey->sym);
-#if NEW_MOD_HANDLING
-        modifiers = translate_modifiers(sdlkey->mod);
-#else
-        modifiers = modifier_keydown(sdlkey->sym);
-#endif
+        next_key = Keymap_GetKeyFromSymbol(sdlkey->sym);
+        next_mod = Keymap_Keydown_GetModFromSymbol(sdlkey->sym);
     } else {
-        keycode = translate_scancode(sdlkey->scancode);
-        modifiers = modifier_scancode_down(sdlkey->scancode);
+        next_key = Keymap_GetKeyFromScancode(sdlkey->scancode);
+        next_mod = Keymap_Keydown_GetModFromScancode(sdlkey->scancode);
     }
     
-    Log_Printf(LOG_WARN, "[Keymap] NeXT Keycode: $%02x, Modifiers: $%02x\n", keycode, modifiers);
+    Log_Printf(LOG_KEYMAP_LEVEL, "[Keymap] NeXT Keycode: $%02x, Modifiers: $%02x\n", next_key, next_mod);
     
-    kms_keydown(modifiers, keycode);
+    kms_keydown(next_mod, next_key);
 }
 
 
@@ -435,26 +420,22 @@ void Keymap_KeyDown(SDL_Keysym *sdlkey)
  */
 void Keymap_KeyUp(SDL_Keysym *sdlkey)
 {
-    Uint8 modifiers, keycode;
+    Uint8 next_mod, next_key;
 
     if (ShortCut_CheckKeys(sdlkey->mod, sdlkey->sym, 0))
 		return;
     
     if (ConfigureParams.Keyboard.nKeymapType==KEYMAP_SYMBOLIC) {
-        keycode = translate_key(sdlkey->sym);
-#if NEW_MOD_HANDLING
-        modifiers = translate_modifiers(sdlkey->mod);
-#else
-        modifiers = modifier_keyup(sdlkey->sym);
-#endif
+        next_key = Keymap_GetKeyFromSymbol(sdlkey->sym);
+        next_mod = Keymap_Keyup_GetModFromSymbol(sdlkey->sym);
     } else {
-        keycode = translate_scancode(sdlkey->scancode);
-        modifiers = modifier_scancode_up(sdlkey->scancode);
+        next_key = Keymap_GetKeyFromScancode(sdlkey->scancode);
+        next_mod = Keymap_Keyup_GetModFromScancode(sdlkey->scancode);
     }
     
-    Log_Printf(LOG_WARN, "[Keymap] NeXT Keycode: $%02x, Modifiers: $%02x\n", keycode, modifiers);
+    Log_Printf(LOG_KEYMAP_LEVEL, "[Keymap] NeXT Keycode: $%02x, Modifiers: $%02x\n", next_key, next_mod);
     
-    kms_keyup(modifiers, keycode);
+    kms_keyup(next_mod, next_key);
 }
 
 /*-----------------------------------------------------------------------*/
