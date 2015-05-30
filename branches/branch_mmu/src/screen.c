@@ -189,7 +189,7 @@ static void Screen_SetResolution(void)
 		}
 		
 		/* Set new video mode */
-        //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
 
 		fprintf(stderr, "SDL screen request: %d x %d @ %d (%s)\n", Width, Height, BitCount, bInFullScreen?"fullscreen":"windowed");
 		sdlWindow = SDL_CreateWindow(PROG_NAME,

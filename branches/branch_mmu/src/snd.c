@@ -23,6 +23,7 @@ queueADT	sndout_q;
 
 /* Initialize the audio system */
 bool sndout_inited;
+bool sound_output_active = false;
 
 void sound_init(void) {
     snd_buffer.limit=SND_BUFFER_LIMIT;
@@ -47,6 +48,9 @@ void sound_uninit(void) {
 void Sound_Reset(void) {
     sound_uninit();
     sound_init();
+    if (sound_output_active && sndout_inited) {
+        Audio_Output_Enable(true);
+    }
 }
 
 
@@ -72,8 +76,6 @@ void snd_make_normal_samples(Uint8 *buf, int len);
 void snd_make_double_samples(Uint8 *buf, int len, bool repeat);
 void snd_adjust_volume_and_lowpass(Uint8 *buf, int len);
 void sndout_queue_put(Uint8 *buf, int len);
-
-bool sound_output_active = false;
 
 void snd_start_output(Uint8 mode) {
     sndout_state.mode = mode;
