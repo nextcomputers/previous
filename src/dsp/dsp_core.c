@@ -45,10 +45,10 @@ dsp_core_t dsp_core;
 static void dsp_core_dsp2host(void);
 static void dsp_core_host2dsp(void);
 
-static void (*dsp_host_interrupt)(void);   /* Function to trigger host interrupt */
+static void (*dsp_host_interrupt)(int set);   /* Function to trigger host interrupt */
 
 /* Init DSP emulation */
-void dsp_core_init(void (*host_interrupt)(void))
+void dsp_core_init(void (*host_interrupt)(int set))
 {
 	int i;
 
@@ -493,9 +493,11 @@ static void dsp_core_hostport_update_hreq(void)
 	hreq = (dsp_core.hostport[CPU_HOST_ICR] & dsp_core.hostport[CPU_HOST_ISR]) & 0x3;
 
 	/* Trigger host interrupt? */
-	if (hreq && (dsp_core.hostport[CPU_HOST_ISR] & (1<<CPU_HOST_ISR_HREQ)) == 0) {
-		dsp_host_interrupt();
-	}
+	if (hreq /*&& (dsp_core.hostport[CPU_HOST_ISR] & (1<<CPU_HOST_ISR_HREQ)) == 0*/) {
+		dsp_host_interrupt(1);
+    } else {
+        dsp_host_interrupt(0);
+    }
 
 	/* Set HREQ bit in hostport */
 	dsp_core.hostport[CPU_HOST_ISR] &= 0x7f;
@@ -616,6 +618,23 @@ void dsp_core_write_host(int addr, Uint8 value)
 					0xff-((1<<DSP_HOST_HSR_HF1)|(1<<DSP_HOST_HSR_HF0));
 			dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] |=
 					dsp_core.hostport[CPU_HOST_ICR] & ((1<<DSP_HOST_HSR_HF1)|(1<<DSP_HOST_HSR_HF0));
+            /* CHECK: Is the init routine correct? */
+            if (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_INIT)) {
+                if (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_RREQ)) {
+                    dsp_core.hostport[CPU_HOST_ISR] &= ~(1<<CPU_HOST_ISR_RXDF);
+                    dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] |= (1<<DSP_HOST_HSR_HTDE);
+                }
+                if (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_TREQ)) {
+                    dsp_core.hostport[CPU_HOST_ISR] |= (1<<CPU_HOST_ISR_TXDE);
+                    dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] &= ~(1<<DSP_HOST_HSR_HRDF);
+                }
+                dsp_core.hostport[CPU_HOST_ICR] &= ~(1<<CPU_HOST_ICR_INIT);
+            }
+            /* CHECK: This should stop bootstrap routine and start */
+            if (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_HF0)) {
+                LOG_TRACE(TRACE_DSP_STATE, "Dsp: wait bootstrap done\n");
+                dsp_core.running = 1;
+            }
 			dsp_core_hostport_update_hreq();
 			break;
 		case CPU_HOST_CVR:

@@ -71,11 +71,17 @@ bool bDspHostInterruptPending = false;
  * Trigger HREQ interrupt at the host CPU.
  */
 #if ENABLE_DSP_EMU
-static void DSP_TriggerHostInterrupt(void)
+static void DSP_TriggerHostInterrupt(int set)
 {
+    if (set) {
+        Log_Printf(LOG_WARN, "DSP INTERRUPT");
+        set_dsp_interrupt(SET_INT);
+    } else {
+        Log_Printf(LOG_WARN, "RELEASE DSP INTERRUPT");
+        set_dsp_interrupt(RELEASE_INT);
+    }
 	bDspHostInterruptPending = true;
 //	M68000_SetSpecial(SPCFLAG_DSP);
-    set_dsp_interrupt(SET_INT);
 }
 #endif
 
@@ -140,6 +146,19 @@ void DSP_Reset(void)
 	dsp_core_reset();
 	bDspHostInterruptPending = false;
 	save_cycles = 0;
+#endif
+}
+
+
+/**
+ * Stop the DSP emulation
+ */
+void DSP_Stop(void)
+{
+#if ENABLE_DSP_EMU
+    dsp_core_shutdown();
+    bDspHostInterruptPending = false;
+    save_cycles = 0;
 #endif
 }
 
