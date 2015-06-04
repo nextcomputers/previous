@@ -39,6 +39,7 @@ extern bool DSP_ProcessIRQ(void);
 extern void DSP_Init(void);
 extern void DSP_UnInit(void);
 extern void DSP_Reset(void);
+extern void DSP_Stop(void);
 extern void DSP_Run(int nHostCycles);
 
 /* Save Dsp state to snapshot */
