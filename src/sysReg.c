@@ -8,6 +8,7 @@
 #include "configuration.h"
 #include "sysdeps.h"
 #include "m68000.h"
+#include "dsp.h"
 #include "sysReg.h"
 #include "rtcnvram.h"
 #include "statusbar.h"
@@ -313,6 +314,27 @@ void SCR2_Write0(void)
 		else
 			set_interrupt(INT_SOFT2,RELEASE_INT);
 	}
+    
+    /* DSP bits */
+    if (scr2_0&SCR2_DSP_MODE_A) {
+        Log_Printf(LOG_WARN,"SCR2 DSP Mode A");
+    }
+    if (scr2_0&SCR2_DSP_MODE_B) {
+        Log_Printf(LOG_WARN,"SCR2 DSP Mode B");
+    }
+    if (!(scr2_0&SCR2_DSP_RESET) && (old_scr2_0&SCR2_DSP_RESET)) {
+        Log_Printf(LOG_WARN,"SCR2 DSP Stop");
+        DSP_Stop();
+    } else if ((scr2_0&SCR2_DSP_RESET) && !(old_scr2_0&SCR2_DSP_RESET)) {
+        Log_Printf(LOG_WARN,"SCR2 DSP Reset (mode %i)",~(scr2_0>>3)&3);
+        DSP_Reset();
+    }
+    if (scr2_0&SCR2_DSP_BLK_END) {
+        Log_Printf(LOG_WARN,"SCR2 DSP Block end");
+    }
+    if (scr2_0&SCR2_DSP_UNPKD) {
+        Log_Printf(LOG_WARN,"SCR2 DSP Unpacked");
+    }
 }
 
 void SCR2_Read0(void)
@@ -378,6 +400,13 @@ void SCR2_Write3(void)
                    IoAccessCurrentAddress,scr2_3&SCR2_LED,m68k_getpc());
         Statusbar_SetSystemLed(scr2_3&SCR2_LED);
     }
+    
+    if (scr2_3&SCR2_DSP_INT_EN) {
+        Log_Printf(LOG_WARN,"SCR2 DSP interrupt enable");
+    }
+    if (scr2_3&SCR2_DSP_MEM_EN) {
+        Log_Printf(LOG_WARN,"SCR2 DSP memory disable");
+    }
 }
 
 
@@ -397,6 +426,17 @@ void IntRegStatRead(void) {
 
 void IntRegStatWrite(void) {
     intStat = IoMem_ReadLong(IoAccessCurrentAddress & IO_SEG_MASK);
+}
+
+void set_dsp_interrupt(Uint8 state) {
+    Uint32 intr;
+    
+    if (scr2_3&SCR2_DSP_INT_EN) {
+        intr = INT_DSP_L4;
+    } else {
+        intr = INT_DSP_L3;
+    }
+    set_interrupt(intr, state);
 }
 
 void set_interrupt(Uint32 intr, Uint8 state) {
