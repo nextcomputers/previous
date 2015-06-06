@@ -189,6 +189,10 @@ struct dsp_core_s {
 
 	/* DSP executing instructions ? */
 	volatile int running;
+    
+    /* DSP DMA variables */
+    volatile int dma_mode;
+    volatile int dma_direction;
 	
 	/* DSP instruction Cycle counter */
 	Uint16	instr_cycle;
