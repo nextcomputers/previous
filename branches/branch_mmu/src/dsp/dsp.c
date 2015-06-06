@@ -103,7 +103,7 @@ void DSP_SetIRQB(void)
 {
 #if ENABLE_DSP_EMU
     if (dsp_intr_at_block_end) {
-        dsp_add_interrupt(DSP_INTER_HOST_COMMAND);
+        dsp_add_interrupt(DSP_INTER_HOST_IRQB);
     }
 #endif
 }

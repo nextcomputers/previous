@@ -144,10 +144,11 @@ extern "C" {
 #define DSP_INTER_HOST_COMMAND		0x5
 #define DSP_INTER_HOST_RCV_DATA		0x6
 #define DSP_INTER_HOST_TRX_DATA		0x7
-#define DSP_INTER_SSI_RCV_DATA_E	0x8
-#define DSP_INTER_SSI_RCV_DATA		0x9
-#define DSP_INTER_SSI_TRX_DATA_E	0xa
-#define DSP_INTER_SSI_TRX_DATA		0xb
+#define DSP_INTER_HOST_IRQB         0x8
+#define DSP_INTER_SSI_RCV_DATA_E	0x9
+#define DSP_INTER_SSI_RCV_DATA		0xa
+#define DSP_INTER_SSI_TRX_DATA_E	0xb
+#define DSP_INTER_SSI_TRX_DATA		0xc
 
 
 typedef struct dsp_core_ssi_s dsp_core_ssi_t;
@@ -240,8 +241,8 @@ struct dsp_core_s {
 	Uint16  interrupt_counter;		/* count number of pending interrupts */
 	Uint16  interrupt_IplToRaise;		/* save the IPL level to save in the SR register */
 	Uint16  interrupt_pipeline_count;	/* used to prefetch correctly the 2 inter instructions */
-	Sint16  interrupt_ipl[12];		/* store the current IPL for each interrupt */
-	Uint16  interrupt_isPending[12];	/* store if interrupt is pending for each interrupt */
+	Sint16  interrupt_ipl[13];		/* store the current IPL for each interrupt */
+	Uint16  interrupt_isPending[13];	/* store if interrupt is pending for each interrupt */
 };
 
 
