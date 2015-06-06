@@ -628,6 +628,17 @@ void dsp_core_write_host(int addr, Uint8 value)
                     dsp_core.hostport[CPU_HOST_ISR] |= (1<<CPU_HOST_ISR_TXDE);
                     dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] &= ~(1<<DSP_HOST_HSR_HRDF);
                 }
+                /* CHECK: Is DMA detection correct? */
+                dsp_core.dma_mode = (dsp_core.hostport[CPU_HOST_ICR] & ((1<<CPU_HOST_ICR_HM0)|(1<<CPU_HOST_ICR_HM1)))>>5;
+                if (dsp_core.dma_mode==0) {
+                    dsp_core.hostport[CPU_HOST_ISR] &= ~(1<<CPU_HOST_ISR_DMA);
+                    DSP_Stop_DMA();
+                } else {
+                    dsp_core.hostport[CPU_HOST_ISR] |= (1<<CPU_HOST_ISR_DMA);
+                    dsp_core.dma_direction = dsp_core.hostport[CPU_HOST_ICR] & ((1<<CPU_HOST_ICR_RREQ)|(1<<CPU_HOST_ICR_TREQ));
+                    DSP_Start_DMA();
+                }
+                
                 dsp_core.hostport[CPU_HOST_ICR] &= ~(1<<CPU_HOST_ICR_INIT);
             }
             /* CHECK: This should stop bootstrap routine and start */
