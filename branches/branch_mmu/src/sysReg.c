@@ -329,8 +329,9 @@ void SCR2_Write0(void)
         Log_Printf(LOG_WARN,"SCR2 DSP Reset (mode %i)",~(scr2_0>>3)&3);
         DSP_Reset();
     }
-    if (scr2_0&SCR2_DSP_BLK_END) {
-        Log_Printf(LOG_WARN,"SCR2 DSP Block end");
+    if ((old_scr2_0&SCR2_DSP_BLK_END) != (scr2_0&SCR2_DSP_BLK_END)) {
+        dsp_intr_at_block_end = scr2_0&SCR2_DSP_BLK_END;
+        Log_Printf(LOG_WARN,"SCR2 DSP Block end (%i)",dsp_intr_at_block_end>>5);
     }
     if (scr2_0&SCR2_DSP_UNPKD) {
         Log_Printf(LOG_WARN,"SCR2 DSP Unpacked");
@@ -401,8 +402,8 @@ void SCR2_Write3(void)
         Statusbar_SetSystemLed(scr2_3&SCR2_LED);
     }
     
-    if (scr2_3&SCR2_DSP_INT_EN) {
-        Log_Printf(LOG_WARN,"SCR2 DSP interrupt enable");
+    if ((old_scr2_3&SCR2_DSP_INT_EN) != (scr2_3&SCR2_DSP_INT_EN)) {
+        Log_Printf(LOG_WARN,"SCR2 DSP interrupt at level %i",(scr2_3&SCR2_DSP_INT_EN)?4:3);
     }
     if (scr2_3&SCR2_DSP_MEM_EN) {
         Log_Printf(LOG_WARN,"SCR2 DSP memory disable");
