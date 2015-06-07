@@ -164,7 +164,7 @@ void dsp_core_reset(void)
 	for (i=0;i<5;i++) {
 		dsp_core.interrupt_ipl[i] = 3;
 	}
-	for (i=5;i<13;i++) {
+	for (i=5;i<14;i++) {
 		dsp_core.interrupt_ipl[i] = -1;
 	}
 

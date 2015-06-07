@@ -70,6 +70,23 @@ bool bDspHostInterruptPending = false;
 int nDsp_DMA_Mode = 0;
 int nDsp_DMA_Direction = 0;
 
+
+/**
+ * Handle TXD interrupt at host CPU
+ */
+#if ENABLE_DSP_EMU
+static void DSP_HandleTXD(int set) {
+    if (set) {
+        Log_Printf(LOG_WARN, "DSP TXD INTERRUPT");
+        set_dsp_interrupt(SET_INT);
+    } else {
+        Log_Printf(LOG_WARN, "RELEASE DSP TXD INTERRUPT");
+        set_dsp_interrupt(RELEASE_INT);
+    }
+}
+#endif
+
+
 /**
  * Handle HREQ at the host CPU.
  */
@@ -97,13 +114,18 @@ static void DSP_HandleHREQ(int set)
 
 
 /**
+ * Host DSP DMA interface
+ */
+bool dsp_dma_running = false;
+
+/**
  * Set DSP IRQB at the end of a DMA block.
  */
 void DSP_SetIRQB(void)
 {
 #if ENABLE_DSP_EMU
     if (dsp_intr_at_block_end) {
-        dsp_add_interrupt(DSP_INTER_HOST_IRQB);
+        dsp_add_interrupt(DSP_INTER_IRQB);
     }
 #endif
 }
@@ -112,8 +134,6 @@ void DSP_SetIRQB(void)
 /**
  * Requesting DMA transfer at the host CPU.
  */
-bool dsp_dma_running = false;
-
 void DSP_IO_Handler(void) {
     CycInt_AcknowledgeInterrupt();
 #if ENABLE_DSP_EMU
