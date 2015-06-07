@@ -683,16 +683,17 @@ static const int registers_mask[64] = {
 	16, 16, 16, 16
 };
 
-static const dsp_interrupt_t dsp_interrupt[13] = {
+static const dsp_interrupt_t dsp_interrupt[14] = {
 	{DSP_INTER_RESET	,	0x00, 0, "Reset"},
 	{DSP_INTER_ILLEGAL	,	0x3e, 0, "Illegal"},
 	{DSP_INTER_STACK_ERROR	,	0x02, 0, "Stack Error"},
 	{DSP_INTER_TRACE	,	0x04, 0, "Trace"},
 	{DSP_INTER_SWI		,	0x06, 0, "Swi"},
-	{DSP_INTER_HOST_COMMAND	,	0xff, 1, "Host Command"},
+    {DSP_INTER_IRQA     ,   0x08, 1, "IRQA"},
+    {DSP_INTER_IRQB     ,   0x0a, 1, "IRQB"},
+	{DSP_INTER_HOST_COMMAND	,	0x24, 1, "Host Command"},
 	{DSP_INTER_HOST_RCV_DATA,	0x20, 1, "Host receive"},
 	{DSP_INTER_HOST_TRX_DATA,	0x22, 1, "Host transmit"},
-    {DSP_INTER_HOST_IRQB    ,   0x0a, 1, "IRQB"},
 	{DSP_INTER_SSI_RCV_DATA_E,	0x0e, 2, "SSI receive with exception"},
 	{DSP_INTER_SSI_RCV_DATA	,	0x0c, 2, "SSI receive"},
 	{DSP_INTER_SSI_TRX_DATA_E,	0x12, 2, "SSI transmit with exception"},
@@ -920,18 +921,26 @@ void dsp_add_interrupt(Uint16 inter)
 
 static void dsp_setInterruptIPL(Uint32 value)
 {
-	Uint32 ipl_ssi, ipl_hi, i;
+	Uint32 ipl_ssi, ipl_hi, ipl_irqa, ipl_irqb, i;
 
-	ipl_ssi = ((value >> 12) & 3) - 1;
+    ipl_irqa = (value & 3) - 1;
+    ipl_irqb = ((value >> 3) & 3) - 1;
 	ipl_hi  = ((value >> 10) & 3) - 1;
+    ipl_ssi = ((value >> 12) & 3) - 1;
+    
+    /* set IPL_IRQA */
+    dsp_core.interrupt_ipl[5] = ipl_irqa;
+    
+    /* set IPL_IRQB */
+    dsp_core.interrupt_ipl[6] = ipl_irqb;
 
 	/* set IPL_HI */
-	for (i=5; i<9; i++) {
+	for (i=7; i<10; i++) {
 		dsp_core.interrupt_ipl[i] = ipl_hi;
 	}
 
 	/* set IPL_SSI */
-	for (i=9; i<13; i++) {
+	for (i=10; i<14; i++) {
 		dsp_core.interrupt_ipl[i] = ipl_ssi;
 	}
 }
@@ -1025,7 +1034,7 @@ static void dsp_postexecute_interrupts(void)
 	ipl_to_raise = -1;
 
 	/* Arbitrate between all pending interrupts */
-	for (i=0; i<13; i++) {
+	for (i=0; i<14; i++) {
 		if (dsp_core.interrupt_isPending[i] == 1) {
 
 			/* level 3 interrupt ? */

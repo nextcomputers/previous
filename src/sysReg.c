@@ -331,7 +331,7 @@ void SCR2_Write0(void)
     }
     if ((old_scr2_0&SCR2_DSP_BLK_END) != (scr2_0&SCR2_DSP_BLK_END)) {
         dsp_intr_at_block_end = scr2_0&SCR2_DSP_BLK_END;
-        Log_Printf(LOG_WARN,"SCR2 DSP Block end (%i)",dsp_intr_at_block_end>>5);
+        Log_Printf(LOG_WARN,"SCR2 DSP Block end (%i)",dsp_intr_at_block_end>>6);
     }
     if (scr2_0&SCR2_DSP_UNPKD) {
         Log_Printf(LOG_WARN,"SCR2 DSP Unpacked");
