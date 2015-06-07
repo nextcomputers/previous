@@ -36,6 +36,7 @@ bool dma_enet_read_memory(void);
 
 void dma_dsp_write_memory(Uint8 val);
 Uint8 dma_dsp_read_memory(void);
+bool dma_dsp_ready(void);
 
 void dma_m2m_write_memory(void);
 

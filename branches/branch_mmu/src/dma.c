@@ -988,3 +988,13 @@ Uint8 dma_dsp_read_memory(void) {
     }
     return val;
 }
+
+bool dma_dsp_ready(void) {
+    if (!(dma[CHANNEL_DSP].csr&DMA_ENABLE) ||
+        !(dma[CHANNEL_DSP].next<dma[CHANNEL_DSP].limit)) {
+        Log_Printf(LOG_WARN, "[DMA] Channel DSP: Not ready!");
+        return false;
+    } else {
+        return true;
+    }
+}

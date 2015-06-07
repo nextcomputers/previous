@@ -1091,7 +1091,7 @@ static void dsp_postexecute_interrupts(void)
 	}
 
 	/* host command ? */
-	else if (dsp_core.interrupt_instr_fetch == 0xff) {
+	else if (dsp_core.interrupt_instr_fetch == 0x24) {
 		/* Clear HC and HCP interrupt */
 		dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] &= 0xff - (1<<DSP_HOST_HSR_HCP);
 		dsp_core.hostport[CPU_HOST_CVR] &= 0xff - (1<<CPU_HOST_CVR_HC);  

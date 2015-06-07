@@ -127,6 +127,8 @@ void dsp_core_init(void (*host_interrupt)(int set))
 void dsp_core_shutdown(void)
 {
 	dsp_core.running = 0;
+    dsp_core.dma_mode = 0;
+    dsp_core.dma_direction = 0;
 	LOG_TRACE(TRACE_DSP_STATE, "Dsp: core shutdown\n");
 }
 
