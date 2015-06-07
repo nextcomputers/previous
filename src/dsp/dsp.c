@@ -116,7 +116,7 @@ static void DSP_HandleHREQ(int set)
 /**
  * Host DSP DMA interface
  */
-bool dsp_dma_running = false;
+bool bDsp_DMA_Running = false;
 
 /**
  * Set DSP IRQB at the end of a DMA block.
@@ -137,44 +137,46 @@ void DSP_SetIRQB(void)
 void DSP_IO_Handler(void) {
     CycInt_AcknowledgeInterrupt();
 #if ENABLE_DSP_EMU
-    if (!dsp_dma_running) {
+    if (!bDsp_DMA_Running) {
         Log_Printf(LOG_WARN, "STOPPING DSP DMA LOOP");
         return;
     }
-
-    switch (nDsp_DMA_Mode) {
-        case 0: /* no DMA request */
-            break;
-        case 1: /* 24-bit mode */
-            if (nDsp_DMA_Direction==(1<<CPU_HOST_ICR_TREQ)) {
-                dsp_core_write_host(CPU_HOST_TRXH, dma_dsp_read_memory());
-                dsp_core_write_host(CPU_HOST_TRXM, dma_dsp_read_memory());
-                dsp_core_write_host(CPU_HOST_TRXL, dma_dsp_read_memory());
-            } else {
-                dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXH));
-                dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXM));
-                dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXL));
-            }
-            break;
-        case 2: /* 16-bit mode */
-            if (nDsp_DMA_Direction==(1<<CPU_HOST_ICR_TREQ)) {
-                dsp_core_write_host(CPU_HOST_TRXM, dma_dsp_read_memory());
-                dsp_core_write_host(CPU_HOST_TRXL, dma_dsp_read_memory());
-            } else {
-                dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXM));
-                dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXL));
-            }
-            break;
-        case 3: /* 8-bit mode */
-            if (nDsp_DMA_Direction==(1<<CPU_HOST_ICR_TREQ)) {
-                dsp_core_write_host(CPU_HOST_TRXL, dma_dsp_read_memory());
-            } else {
-                dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXL));
-            }
-            break;
-            
-        default:
-            break;
+    
+    if (dma_dsp_ready()) {
+        switch (nDsp_DMA_Mode) {
+            case 0: /* no DMA request */
+                break;
+            case 1: /* 24-bit mode */
+                if (nDsp_DMA_Direction==(1<<CPU_HOST_ICR_TREQ)) {
+                    dsp_core_write_host(CPU_HOST_TRXH, dma_dsp_read_memory());
+                    dsp_core_write_host(CPU_HOST_TRXM, dma_dsp_read_memory());
+                    dsp_core_write_host(CPU_HOST_TRXL, dma_dsp_read_memory());
+                } else {
+                    dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXH));
+                    dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXM));
+                    dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXL));
+                }
+                break;
+            case 2: /* 16-bit mode */
+                if (nDsp_DMA_Direction==(1<<CPU_HOST_ICR_TREQ)) {
+                    dsp_core_write_host(CPU_HOST_TRXM, dma_dsp_read_memory());
+                    dsp_core_write_host(CPU_HOST_TRXL, dma_dsp_read_memory());
+                } else {
+                    dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXM));
+                    dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXL));
+                }
+                break;
+            case 3: /* 8-bit mode */
+                if (nDsp_DMA_Direction==(1<<CPU_HOST_ICR_TREQ)) {
+                    dsp_core_write_host(CPU_HOST_TRXL, dma_dsp_read_memory());
+                } else {
+                    dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXL));
+                }
+                break;
+                
+            default:
+                break;
+        }
     }
 
     CycInt_AddRelativeInterrupt(10, INT_CPU_CYCLE, INTERRUPT_DSP_IO);
@@ -183,16 +185,16 @@ void DSP_IO_Handler(void) {
 
 #if ENABLE_DSP_EMU
 void DSP_Start_DMA(void) {
-    if (dsp_dma_running==false) {
+    if (bDsp_DMA_Running==false) {
         Log_Printf(LOG_WARN, "STARTING DSP DMA LOOP");
-        dsp_dma_running = true;
+        bDsp_DMA_Running = true;
         CycInt_AddRelativeInterrupt(10, INT_CPU_CYCLE, INTERRUPT_DSP_IO);
     }
 }
 
 void DSP_Stop_DMA(void) {
-    if (dsp_dma_running==true) {
-        dsp_dma_running=false;
+    if (bDsp_DMA_Running==true) {
+        bDsp_DMA_Running=false;
     }
 }
 #endif
@@ -254,9 +256,11 @@ void DSP_UnInit(void)
  */
 void DSP_Reset(void)
 {
+    LogTraceFlags = TRACE_DSP_ALL;
 #if ENABLE_DSP_EMU
 	dsp_core_reset();
 	bDspHostInterruptPending = false;
+    bDsp_DMA_Running = false;
 	save_cycles = 0;
 #endif
 }
