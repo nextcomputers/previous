@@ -28,7 +28,7 @@
 extern "C" {
 #endif
 
-#define DSP_RAMSIZE 32768
+#define DSP_RAMSIZE 8192
 
 /* Host port, CPU side */
 #define CPU_HOST_ICR	0x00
