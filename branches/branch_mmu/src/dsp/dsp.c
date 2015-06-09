@@ -75,7 +75,7 @@ int nDsp_DMA_Direction = 0;
  * Handle TXD interrupt at host CPU
  */
 #if ENABLE_DSP_EMU
-static void DSP_HandleTXD(int set) {
+void DSP_HandleTXD(int set) {
     if (set) {
         Log_Printf(LOG_WARN, "DSP TXD INTERRUPT");
         set_dsp_interrupt(SET_INT);

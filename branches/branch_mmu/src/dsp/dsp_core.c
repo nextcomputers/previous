@@ -208,6 +208,18 @@ void dsp_core_reset(void)
 /* Set PortC data register : send a frame order to the DMA in handshake mode */
 void dsp_core_setPortCDataRegister(Uint32 value)
 {
+	/* TXD interrupt */
+	if (dsp_core.periph[DSP_SPACE_X][DSP_PCC] & 0x02) {
+		if (dsp_core.periph[DSP_SPACE_X][DSP_PCDDR] & 0x02) {
+			if (value&0x02) {
+				DSP_HandleTXD(0);
+			} else {
+				DSP_HandleTXD(1);
+			}
+		}
+	}
+
+	
 	/* if DSP Record is in handshake mode with DMA Play */
 	if ((dsp_core.periph[DSP_SPACE_X][DSP_PCDDR] & 0x10) == 0x10) {
 		if ((value & 0x10) == 0x10) {
