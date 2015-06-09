@@ -70,6 +70,8 @@ extern void DSP_SsiTransmit_SC1(void);
 extern void DSP_SsiTransmit_SC2(Uint32 frame);
 extern void DSP_SsiTransmit_SCK(void);
 
+/* Dsp SCI functions */
+extern void DSP_HandleTXD(int set);
 
 /* Dsp Host interface commands */
 extern void DSP_HandleReadAccess(void);
