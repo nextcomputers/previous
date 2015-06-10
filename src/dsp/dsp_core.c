@@ -629,37 +629,39 @@ void dsp_core_write_host(int addr, Uint8 value)
 			dsp_core.hostport[CPU_HOST_ICR]=value & 0xfb;
 			/* Set HF1 and HF0 accordingly on the host side */
 			dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] &=
-					0xff-((1<<DSP_HOST_HSR_HF1)|(1<<DSP_HOST_HSR_HF0));
+			0xff-((1<<DSP_HOST_HSR_HF1)|(1<<DSP_HOST_HSR_HF0));
 			dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] |=
-					dsp_core.hostport[CPU_HOST_ICR] & ((1<<DSP_HOST_HSR_HF1)|(1<<DSP_HOST_HSR_HF0));
-            /* CHECK: Is the init routine correct? */
-            if (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_INIT)) {
-                if (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_RREQ)) {
-                    dsp_core.hostport[CPU_HOST_ISR] &= ~(1<<CPU_HOST_ISR_RXDF);
-                    dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] |= (1<<DSP_HOST_HSR_HTDE);
-                }
-                if (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_TREQ)) {
-                    dsp_core.hostport[CPU_HOST_ISR] |= (1<<CPU_HOST_ISR_TXDE);
-                    dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] &= ~(1<<DSP_HOST_HSR_HRDF);
-                }
-                /* CHECK: Is DMA detection correct? */
-                dsp_core.dma_mode = (dsp_core.hostport[CPU_HOST_ICR] & ((1<<CPU_HOST_ICR_HM0)|(1<<CPU_HOST_ICR_HM1)))>>5;
-                if (dsp_core.dma_mode==0) {
-                    dsp_core.hostport[CPU_HOST_ISR] &= ~(1<<CPU_HOST_ISR_DMA);
-                    DSP_Stop_DMA();
-                } else {
-                    dsp_core.hostport[CPU_HOST_ISR] |= (1<<CPU_HOST_ISR_DMA);
-                    dsp_core.dma_direction = dsp_core.hostport[CPU_HOST_ICR] & ((1<<CPU_HOST_ICR_RREQ)|(1<<CPU_HOST_ICR_TREQ));
-                    DSP_Start_DMA();
-                }
-                
-                dsp_core.hostport[CPU_HOST_ICR] &= ~(1<<CPU_HOST_ICR_INIT);
-            }
-            /* CHECK: This should stop bootstrap routine and start */
-            if (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_HF0)) {
-                LOG_TRACE(TRACE_DSP_STATE, "Dsp: wait bootstrap done\n");
-                dsp_core.running = 1;
-            }
+			dsp_core.hostport[CPU_HOST_ICR] & ((1<<DSP_HOST_HSR_HF1)|(1<<DSP_HOST_HSR_HF0));
+			/* CHECK: Is the init routine correct? */
+			if (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_INIT)) {
+				if (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_RREQ)) {
+					dsp_core.hostport[CPU_HOST_ISR] &= ~(1<<CPU_HOST_ISR_RXDF);
+					dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] |= (1<<DSP_HOST_HSR_HTDE);
+				}
+				if (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_TREQ)) {
+					dsp_core.hostport[CPU_HOST_ISR] |= (1<<CPU_HOST_ISR_TXDE);
+					dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] &= ~(1<<DSP_HOST_HSR_HRDF);
+				}
+				/* CHECK: Is DMA detection correct? */
+				dsp_core.dma_mode = (dsp_core.hostport[CPU_HOST_ICR] & ((1<<CPU_HOST_ICR_HM0)|(1<<CPU_HOST_ICR_HM1)))>>5;
+				if (dsp_core.dma_mode==0) {
+					LOG_TRACE(TRACE_DSP_STATE, "Dsp: init host interface in PIO mode\n");
+					dsp_core.hostport[CPU_HOST_ISR] &= ~(1<<CPU_HOST_ISR_DMA);
+					DSP_Stop_DMA();
+				} else {
+					LOG_TRACE(TRACE_DSP_STATE, "Dsp: init host interface in %i byte DMA mode\n",dsp_core.dma_mode);
+					dsp_core.hostport[CPU_HOST_ISR] |= (1<<CPU_HOST_ISR_DMA);
+					dsp_core.dma_direction = dsp_core.hostport[CPU_HOST_ICR] & ((1<<CPU_HOST_ICR_RREQ)|(1<<CPU_HOST_ICR_TREQ));
+					DSP_Start_DMA();
+				}
+				
+				dsp_core.hostport[CPU_HOST_ICR] &= ~(1<<CPU_HOST_ICR_INIT);
+			}
+			/* This stops the bootstrap loader and starts normal execution */
+			if (!dsp_core.running && (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_HF0))) {
+				LOG_TRACE(TRACE_DSP_STATE, "Dsp: stop waiting bootstrap\n");
+				dsp_core.running = 1;
+			}
 			dsp_core_hostport_update_hreq();
 			break;
 		case CPU_HOST_CVR:

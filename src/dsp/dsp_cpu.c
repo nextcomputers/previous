@@ -700,8 +700,8 @@ static const dsp_interrupt_t dsp_interrupt[14] = {
 	{DSP_INTER_STACK_ERROR	,	0x02, 0, "Stack Error"},
 	{DSP_INTER_TRACE	,	0x04, 0, "Trace"},
 	{DSP_INTER_SWI		,	0x06, 0, "Swi"},
-    {DSP_INTER_IRQA     ,   0x08, 1, "IRQA"},
-    {DSP_INTER_IRQB     ,   0x0a, 1, "IRQB"},
+	{DSP_INTER_IRQA     ,   0x08, 1, "IRQA"},
+	{DSP_INTER_IRQB     ,   0x0a, 1, "IRQB"},
 	{DSP_INTER_HOST_COMMAND	,	0x24, 1, "Host Command"},
 	{DSP_INTER_HOST_RCV_DATA,	0x20, 1, "Host receive"},
 	{DSP_INTER_HOST_TRX_DATA,	0x22, 1, "Host transmit"},
@@ -1362,6 +1362,19 @@ static void write_memory_x(Uint16 address, Uint32 value)
 				BITMASK(8)-((1<<CPU_HOST_ISR_HF3)|(1<<CPU_HOST_ISR_HF2));
 				dsp_core.hostport[CPU_HOST_ISR] |=
 				dsp_core.periph[DSP_SPACE_X][DSP_HOST_HCR] & ((1<<CPU_HOST_ISR_HF3)|(1<<CPU_HOST_ISR_HF2));
+				/* Handle masked interrupts */
+				if (dsp_core.periph[DSP_SPACE_X][DSP_HOST_HCR]&(1<<DSP_HOST_HCR_HRIE) &&
+					dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR]&(1<<DSP_HOST_HSR_HRDF)) {
+					dsp_add_interrupt(DSP_INTER_HOST_RCV_DATA);
+				}
+				if (dsp_core.periph[DSP_SPACE_X][DSP_HOST_HCR]&(1<<DSP_HOST_HCR_HTIE) &&
+					dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR]&(1<<DSP_HOST_HSR_HTDE)) {
+					dsp_add_interrupt(DSP_INTER_HOST_TRX_DATA);
+				}
+				if (dsp_core.periph[DSP_SPACE_X][DSP_HOST_HCR]&(1<<DSP_HOST_HCR_HCIE) &&
+					dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR]&(1<<DSP_HOST_HSR_HCP)) {
+					dsp_add_interrupt(DSP_INTER_HOST_COMMAND);
+				}
 				break;
 			case DSP_HOST_HSR:
 				/* Read only */

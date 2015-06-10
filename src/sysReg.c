@@ -329,12 +329,13 @@ void SCR2_Write0(void)
         Log_Printf(LOG_WARN,"SCR2 DSP Reset (mode %i)",~(scr2_0>>3)&3);
         DSP_Reset();
     }
+	dsp_intr_at_block_end = scr2_0&SCR2_DSP_BLK_END;
     if ((old_scr2_0&SCR2_DSP_BLK_END) != (scr2_0&SCR2_DSP_BLK_END)) {
-        dsp_intr_at_block_end = scr2_0&SCR2_DSP_BLK_END;
         Log_Printf(LOG_WARN,"SCR2 DSP Block end (%i)",dsp_intr_at_block_end>>6);
     }
-    if (scr2_0&SCR2_DSP_UNPKD) {
-        Log_Printf(LOG_WARN,"SCR2 DSP Unpacked");
+	dsp_dma_unpacked = scr2_0&SCR2_DSP_UNPKD;
+    if ((old_scr2_0&SCR2_DSP_UNPKD) != (scr2_0&SCR2_DSP_UNPKD)) {
+        Log_Printf(LOG_WARN,"SCR2 DSP Unpacked (%i)",dsp_dma_unpacked>>5);
     }
 }
 
