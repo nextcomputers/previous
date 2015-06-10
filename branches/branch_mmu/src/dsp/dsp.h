@@ -100,6 +100,7 @@ void DSP_IO_Handler(void);
 void DSP_Start_DMA(void);
 void DSP_Stop_DMA(void);
 Uint8 dsp_intr_at_block_end;
+Uint8 dsp_dma_unpacked;
 void DSP_SetIRQB(void);
 
 #endif /* DSP_H */
