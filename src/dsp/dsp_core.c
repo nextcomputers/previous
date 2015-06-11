@@ -660,6 +660,7 @@ void dsp_core_write_host(int addr, Uint8 value)
 			/* This stops the bootstrap loader and starts normal execution */
 			if (!dsp_core.running && (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_HF0))) {
 				LOG_TRACE(TRACE_DSP_STATE, "Dsp: stop waiting bootstrap\n");
+				dsp_core.registers[DSP_REG_R0] = dsp_core.bootstrap_pos;
 				dsp_core.running = 1;
 			}
 			dsp_core_hostport_update_hreq();
@@ -709,6 +710,7 @@ void dsp_core_write_host(int addr, Uint8 value)
 
 				if (++dsp_core.bootstrap_pos == 0x200) {
 					LOG_TRACE(TRACE_DSP_STATE, "Dsp: wait bootstrap done\n");
+					dsp_core.registers[DSP_REG_R0] = dsp_core.bootstrap_pos;
 					dsp_core.running = 1;
 				}
 			} else {
