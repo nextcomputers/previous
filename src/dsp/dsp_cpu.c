@@ -930,6 +930,16 @@ void dsp_add_interrupt(Uint16 inter)
 	}
 }
 
+void dsp_remove_interrupt(Uint16 inter)
+{
+	/* check if the interrupt is pending, and remove it */
+	if (dsp_core.interrupt_isPending[inter] != 0) {
+		LOG_TRACE(TRACE_DSP_INTERRUPT, "Dsp remove pending interrupt: %s\n", dsp_interrupt[inter].name);
+		dsp_core.interrupt_isPending[inter] = 0;
+		dsp_core.interrupt_counter--;
+	}
+}
+
 static void dsp_setInterruptIPL(Uint32 value)
 {
 	Uint32 ipl_ssi, ipl_hi, ipl_irqa, ipl_irqb, i;
@@ -1366,14 +1376,20 @@ static void write_memory_x(Uint16 address, Uint32 value)
 				if (dsp_core.periph[DSP_SPACE_X][DSP_HOST_HCR]&(1<<DSP_HOST_HCR_HRIE) &&
 					dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR]&(1<<DSP_HOST_HSR_HRDF)) {
 					dsp_add_interrupt(DSP_INTER_HOST_RCV_DATA);
+				} else {
+					dsp_remove_interrupt(DSP_INTER_HOST_RCV_DATA);
 				}
 				if (dsp_core.periph[DSP_SPACE_X][DSP_HOST_HCR]&(1<<DSP_HOST_HCR_HTIE) &&
 					dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR]&(1<<DSP_HOST_HSR_HTDE)) {
 					dsp_add_interrupt(DSP_INTER_HOST_TRX_DATA);
+				} else {
+					dsp_remove_interrupt(DSP_INTER_HOST_TRX_DATA);
 				}
 				if (dsp_core.periph[DSP_SPACE_X][DSP_HOST_HCR]&(1<<DSP_HOST_HCR_HCIE) &&
 					dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR]&(1<<DSP_HOST_HSR_HCP)) {
 					dsp_add_interrupt(DSP_INTER_HOST_COMMAND);
+				} else {
+					dsp_remove_interrupt(DSP_INTER_HOST_COMMAND);
 				}
 				break;
 			case DSP_HOST_HSR:

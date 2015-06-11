@@ -256,9 +256,10 @@ void DSP_UnInit(void)
  */
 void DSP_Reset(void)
 {
-    LogTraceFlags = TRACE_DSP_ALL;
+    //LogTraceFlags = TRACE_DSP_ALL;
 #if ENABLE_DSP_EMU
 	dsp_core_reset();
+	set_dsp_interrupt(RELEASE_INT);
 	bDspHostInterruptPending = false;
     bDsp_DMA_Running = false;
 	save_cycles = 0;
@@ -936,7 +937,7 @@ void DSP_HandleWriteAccess(void)
 
 
 /* Previous Register Access */
-#define LOG_DSP_REG_LEVEL   LOG_WARN
+#define LOG_DSP_REG_LEVEL   LOG_DEBUG
 
 #define IO_SEG_MASK	0x1FFFF
 

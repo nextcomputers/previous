@@ -405,6 +405,11 @@ void SCR2_Write3(void)
     
     if ((old_scr2_3&SCR2_DSP_INT_EN) != (scr2_3&SCR2_DSP_INT_EN)) {
         Log_Printf(LOG_WARN,"SCR2 DSP interrupt at level %i",(scr2_3&SCR2_DSP_INT_EN)?4:3);
+		if (intStat&(INT_DSP_L3|INT_DSP_L4)) {
+			Log_Printf(LOG_WARN,"SCR2 Switching DSP interrupt to level %i",(scr2_3&SCR2_DSP_INT_EN)?4:3);
+			set_interrupt(INT_DSP_L3|INT_DSP_L4, RELEASE_INT);
+			set_dsp_interrupt(SET_INT);
+		}
     }
     if (scr2_3&SCR2_DSP_MEM_EN) {
         Log_Printf(LOG_WARN,"SCR2 DSP memory disable");
