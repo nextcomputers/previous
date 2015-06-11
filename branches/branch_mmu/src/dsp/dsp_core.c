@@ -588,6 +588,7 @@ void dsp_core_hostport_dspread(void)
 {
 	/* Clear HRDF bit to say that DSP has read */
 	dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] &= 0xff-(1<<DSP_HOST_HSR_HRDF);
+	dsp_remove_interrupt(DSP_INTER_HOST_RCV_DATA);
 
 	LOG_TRACE(TRACE_DSP_HOST_INTERFACE, "Dsp: (Host->DSP): Dsp HRDF cleared\n");
 
@@ -599,6 +600,7 @@ void dsp_core_hostport_dspwrite(void)
 {
 	/* Clear HTDE bit to say that DSP has written */
 	dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] &= 0xff-(1<<DSP_HOST_HSR_HTDE);
+	dsp_remove_interrupt(DSP_INTER_HOST_TRX_DATA);
 
 	LOG_TRACE(TRACE_DSP_HOST_INTERFACE, "Dsp: (DSP->Host): Dsp HTDE cleared\n");
 
@@ -677,6 +679,7 @@ void dsp_core_write_host(int addr, Uint8 value)
 			}
 			else{
 				dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] &= 0xff - (1<<DSP_HOST_HSR_HCP);
+				dsp_remove_interrupt(DSP_INTER_HOST_COMMAND);
 			}
 
 			LOG_TRACE(TRACE_DSP_HOST_COMMAND, "Dsp: (Host->DSP): Host command = %06x\n", value & 0x9f);

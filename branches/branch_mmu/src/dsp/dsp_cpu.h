@@ -117,6 +117,7 @@ extern Uint16 dsp56k_execute_one_disasm_instruction(FILE *out, Uint16 pc);	/* Ex
 
 /* Interrupt relative functions */
 void dsp_add_interrupt(Uint16 inter);
+void dsp_remove_interrupt(Uint16 inter);
 
 #ifdef __cplusplus
 }
