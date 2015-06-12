@@ -94,6 +94,7 @@ void DSP_HandleTXD(int set) {
 static void DSP_HandleHREQ(int set)
 {
     if (dsp_core.dma_mode) {
+		set_dsp_interrupt(RELEASE_INT);
         if (set) {
             nDsp_DMA_Mode = dsp_core.dma_mode;
             nDsp_DMA_Direction = dsp_core.dma_direction;
@@ -101,6 +102,7 @@ static void DSP_HandleHREQ(int set)
             nDsp_DMA_Mode = 0;
         }
     } else {
+		dsp_core.dma_request = 0;
         if (set) {
             Log_Printf(LOG_WARN, "DSP INTERRUPT");
             set_dsp_interrupt(SET_INT);

@@ -129,6 +129,8 @@ void dsp_core_shutdown(void)
 	dsp_core.running = 0;
     dsp_core.dma_mode = 0;
     dsp_core.dma_direction = 0;
+	dsp_core.dma_request = 0;
+	dsp_core.dma_address_counter = 0;
 	LOG_TRACE(TRACE_DSP_STATE, "Dsp: core shutdown\n");
 }
 
@@ -634,29 +636,33 @@ void dsp_core_write_host(int addr, Uint8 value)
 			0xff-((1<<DSP_HOST_HSR_HF1)|(1<<DSP_HOST_HSR_HF0));
 			dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] |=
 			dsp_core.hostport[CPU_HOST_ICR] & ((1<<DSP_HOST_HSR_HF1)|(1<<DSP_HOST_HSR_HF0));
-			/* CHECK: Is the init routine correct? */
+			/* Set PIO or DMA mode */
+			dsp_core.dma_mode = (dsp_core.hostport[CPU_HOST_ICR] & ((1<<CPU_HOST_ICR_HM0)|(1<<CPU_HOST_ICR_HM1)))>>5;
+			if (dsp_core.dma_mode==0) {
+				LOG_TRACE(TRACE_DSP_STATE, "Dsp: host interface in PIO mode\n");
+				dsp_core.hostport[CPU_HOST_ISR] &= ~(1<<CPU_HOST_ISR_DMA);
+				DSP_Stop_DMA();
+			} else {
+				LOG_TRACE(TRACE_DSP_STATE, "Dsp: host interface in %i byte DMA mode\n",4-dsp_core.dma_mode);
+				dsp_core.hostport[CPU_HOST_ISR] |= (1<<CPU_HOST_ISR_DMA);
+				dsp_core.dma_direction = dsp_core.hostport[CPU_HOST_ICR] & ((1<<CPU_HOST_ICR_RREQ)|(1<<CPU_HOST_ICR_TREQ));
+				DSP_Start_DMA();
+			}
+			/* If requested, initialize host interface */
 			if (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_INIT)) {
 				if (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_RREQ)) {
 					dsp_core.hostport[CPU_HOST_ISR] &= ~(1<<CPU_HOST_ISR_RXDF);
 					dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] |= (1<<DSP_HOST_HSR_HTDE);
+					if (dsp_core.periph[DSP_SPACE_X][DSP_HOST_HCR] & (1<<DSP_HOST_HCR_HTIE)) {
+						dsp_add_interrupt(DSP_INTER_HOST_TRX_DATA);
+					}
 				}
 				if (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_TREQ)) {
 					dsp_core.hostport[CPU_HOST_ISR] |= (1<<CPU_HOST_ISR_TXDE);
 					dsp_core.periph[DSP_SPACE_X][DSP_HOST_HSR] &= ~(1<<DSP_HOST_HSR_HRDF);
+					dsp_remove_interrupt(DSP_INTER_HOST_RCV_DATA);
 				}
-				/* CHECK: Is DMA detection correct? */
-				dsp_core.dma_mode = (dsp_core.hostport[CPU_HOST_ICR] & ((1<<CPU_HOST_ICR_HM0)|(1<<CPU_HOST_ICR_HM1)))>>5;
-				if (dsp_core.dma_mode==0) {
-					LOG_TRACE(TRACE_DSP_STATE, "Dsp: init host interface in PIO mode\n");
-					dsp_core.hostport[CPU_HOST_ISR] &= ~(1<<CPU_HOST_ISR_DMA);
-					DSP_Stop_DMA();
-				} else {
-					LOG_TRACE(TRACE_DSP_STATE, "Dsp: init host interface in %i byte DMA mode\n",dsp_core.dma_mode);
-					dsp_core.hostport[CPU_HOST_ISR] |= (1<<CPU_HOST_ISR_DMA);
-					dsp_core.dma_direction = dsp_core.hostport[CPU_HOST_ICR] & ((1<<CPU_HOST_ICR_RREQ)|(1<<CPU_HOST_ICR_TREQ));
-					DSP_Start_DMA();
-				}
-				
+				dsp_core.dma_address_counter = 0;
 				dsp_core.hostport[CPU_HOST_ICR] &= ~(1<<CPU_HOST_ICR_INIT);
 			}
 			/* This stops the bootstrap loader and starts normal execution */
