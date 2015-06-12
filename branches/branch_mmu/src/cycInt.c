@@ -86,8 +86,7 @@ static void (* const pIntHandlerFunctions[MAX_INTERRUPTS])(void) =
     ECC_IO_Handler,
     ENET_IO_Handler,
     FLP_IO_Handler,
-    SND_IO_Handler,
-    DSP_IO_Handler
+    SND_IO_Handler
 };
 
 /* Event timer structure - keeps next timer to occur in structure so don't need

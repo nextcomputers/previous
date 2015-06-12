@@ -67,9 +67,6 @@ static bool bDspDebugging;
 bool bDspEnabled = false;
 bool bDspHostInterruptPending = false;
 
-int nDsp_DMA_Mode = 0;
-int nDsp_DMA_Direction = 0;
-
 
 /**
  * Handle TXD interrupt at host CPU
@@ -78,10 +75,10 @@ int nDsp_DMA_Direction = 0;
 void DSP_HandleTXD(int set) {
     if (set) {
         Log_Printf(LOG_WARN, "DSP TXD INTERRUPT");
-        set_dsp_interrupt(SET_INT);
+        //set_dsp_interrupt(SET_INT);
     } else {
         Log_Printf(LOG_WARN, "RELEASE DSP TXD INTERRUPT");
-        set_dsp_interrupt(RELEASE_INT);
+        //set_dsp_interrupt(RELEASE_INT);
     }
 }
 #endif
@@ -96,10 +93,9 @@ static void DSP_HandleHREQ(int set)
     if (dsp_core.dma_mode) {
 		set_dsp_interrupt(RELEASE_INT);
         if (set) {
-            nDsp_DMA_Mode = dsp_core.dma_mode;
-            nDsp_DMA_Direction = dsp_core.dma_direction;
+			dsp_core.dma_request = 1;
         } else {
-            nDsp_DMA_Mode = 0;
+			dsp_core.dma_request = 0;
         }
     } else {
 		dsp_core.dma_request = 0;
@@ -118,7 +114,6 @@ static void DSP_HandleHREQ(int set)
 /**
  * Host DSP DMA interface
  */
-bool bDsp_DMA_Running = false;
 
 /**
  * Set DSP IRQB at the end of a DMA block.
@@ -134,72 +129,41 @@ void DSP_SetIRQB(void)
 
 
 /**
- * Requesting DMA transfer at the host CPU.
+ * Handling DMA transfers.
  */
-void DSP_IO_Handler(void) {
-    CycInt_AcknowledgeInterrupt();
+void DSP_HandleDMA(void)
+{
 #if ENABLE_DSP_EMU
-    if (!bDsp_DMA_Running) {
-        Log_Printf(LOG_WARN, "STOPPING DSP DMA LOOP");
-        return;
-    }
-    
-    if (dma_dsp_ready()) {
-        switch (nDsp_DMA_Mode) {
-            case 0: /* no DMA request */
-                break;
-            case 1: /* 24-bit mode */
-                if (nDsp_DMA_Direction==(1<<CPU_HOST_ICR_TREQ)) {
-                    dsp_core_write_host(CPU_HOST_TRXH, dma_dsp_read_memory());
-                    dsp_core_write_host(CPU_HOST_TRXM, dma_dsp_read_memory());
-                    dsp_core_write_host(CPU_HOST_TRXL, dma_dsp_read_memory());
-                } else {
-                    dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXH));
-                    dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXM));
-                    dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXL));
-                }
-                break;
-            case 2: /* 16-bit mode */
-                if (nDsp_DMA_Direction==(1<<CPU_HOST_ICR_TREQ)) {
-                    dsp_core_write_host(CPU_HOST_TRXM, dma_dsp_read_memory());
-                    dsp_core_write_host(CPU_HOST_TRXL, dma_dsp_read_memory());
-                } else {
-                    dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXM));
-                    dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXL));
-                }
-                break;
-            case 3: /* 8-bit mode */
-                if (nDsp_DMA_Direction==(1<<CPU_HOST_ICR_TREQ)) {
-                    dsp_core_write_host(CPU_HOST_TRXL, dma_dsp_read_memory());
-                } else {
-                    dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXL));
-                }
-                break;
-                
-            default:
-                break;
-        }
-    }
-
-    CycInt_AddRelativeInterrupt(10, INT_CPU_CYCLE, INTERRUPT_DSP_IO);
+	if (dsp_core.dma_mode && dsp_core.dma_request && dma_dsp_ready()) {
+		/* Set the counter according to selected DMA mode */
+		if (dsp_core.dma_address_counter==0) {
+			dsp_core.dma_address_counter = 4-dsp_core.dma_mode;
+			/* Handle unpacked mode on Turbo systems */
+			if (dsp_dma_unpacked && ConfigureParams.System.bTurbo) {
+					dsp_core.dma_address_counter = 4;
+			}
+		}
+		dsp_core.dma_address_counter--;
+		
+		/* Read or write via DMA */
+		if (dsp_core.dma_direction==(1<<CPU_HOST_ICR_TREQ)) {
+			dsp_core_write_host(CPU_HOST_TRXL-dsp_core.dma_address_counter, dma_dsp_read_memory());
+		} else {
+			dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRXL-dsp_core.dma_address_counter));
+		}
+		
+		/* Handle unpacked mode on non-Turbo systems */
+		if (dsp_dma_unpacked && dsp_core.dma_address_counter==0 && !ConfigureParams.System.bTurbo) {
+			if (dsp_core.dma_direction==(1<<CPU_HOST_ICR_TREQ)) {
+				dsp_core_write_host(CPU_HOST_TRX0, dma_dsp_read_memory());
+			} else {
+				dma_dsp_write_memory(dsp_core_read_host(CPU_HOST_TRX0));
+			}
+			return;
+		}
+	}
 #endif
 }
-
-#if ENABLE_DSP_EMU
-void DSP_Start_DMA(void) {
-    if (bDsp_DMA_Running==false) {
-        Log_Printf(LOG_WARN, "STARTING DSP DMA LOOP");
-        bDsp_DMA_Running = true;
-        CycInt_AddRelativeInterrupt(10, INT_CPU_CYCLE, INTERRUPT_DSP_IO);
-    }
-}
-
-void DSP_Stop_DMA(void) {
-    if (bDsp_DMA_Running==true) {
-        bDsp_DMA_Running=false;
-    }
-}
-#endif
 
 
 /**
@@ -262,8 +226,6 @@ void DSP_Reset(void)
 #if ENABLE_DSP_EMU
 	dsp_core_reset();
 	set_dsp_interrupt(RELEASE_INT);
-	bDspHostInterruptPending = false;
-    bDsp_DMA_Running = false;
 	save_cycles = 0;
 #endif
 }
@@ -303,32 +265,23 @@ void DSP_MemorySnapShot_Capture(bool bSave)
 void DSP_Run(int nHostCycles)
 {
 #if ENABLE_DSP_EMU
-        save_cycles += nHostCycles * 2;
-
-        if (dsp_core.running == 0)
-                return;
-
-        if (save_cycles <= 0)
-                return;
-
-        if (unlikely(bDspDebugging)) {
-                while (save_cycles > 0)
-                {
-                        dsp56k_execute_instruction();
-                        save_cycles -= dsp_core.instr_cycle;
-//                        DebugDsp_Check();
-                }
-        } else {
-		//	fprintf(stderr, "--> %d\n", save_cycles);
-                while (save_cycles > 0)
-                {
-                        dsp56k_execute_instruction();
-                        save_cycles -= dsp_core.instr_cycle;
-                }
-        }
-
+	DSP_HandleDMA();
+	
+	save_cycles += nHostCycles * 2;
+	
+	if (dsp_core.running == 0)
+		return;
+	
+	if (save_cycles <= 0)
+		return;
+	
+	while (save_cycles > 0)
+	{
+		dsp56k_execute_instruction();
+		save_cycles -= dsp_core.instr_cycle;
+	}
 #endif
-} 
+}
 
 /**
  * Enable/disable DSP debugging mode
