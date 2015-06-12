@@ -641,12 +641,10 @@ void dsp_core_write_host(int addr, Uint8 value)
 			if (dsp_core.dma_mode==0) {
 				LOG_TRACE(TRACE_DSP_STATE, "Dsp: host interface in PIO mode\n");
 				dsp_core.hostport[CPU_HOST_ISR] &= ~(1<<CPU_HOST_ISR_DMA);
-				DSP_Stop_DMA();
 			} else {
 				LOG_TRACE(TRACE_DSP_STATE, "Dsp: host interface in %i byte DMA mode\n",4-dsp_core.dma_mode);
 				dsp_core.hostport[CPU_HOST_ISR] |= (1<<CPU_HOST_ISR_DMA);
 				dsp_core.dma_direction = dsp_core.hostport[CPU_HOST_ICR] & ((1<<CPU_HOST_ICR_RREQ)|(1<<CPU_HOST_ICR_TREQ));
-				DSP_Start_DMA();
 			}
 			/* If requested, initialize host interface */
 			if (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_INIT)) {
