@@ -62,7 +62,6 @@ const char CycInt_fileid[] = "Hatari cycInt.c : " __DATE__ " " __TIME__;
 #include "dma.h"
 #include "floppy.h"
 #include "snd.h"
-#include "dsp.h"
 
 
 void (*PendingInterruptFunction)(void);

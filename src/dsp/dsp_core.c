@@ -41,6 +41,9 @@ dsp_core_t dsp_core;
 #define M_PI	3.141592653589793238462643383279502
 #endif
 
+/*--- Memory size ---*/
+Uint32 DSP_RAMSIZE = DSP_RAMSIZE_24kB;
+
 /*--- Functions prototypes ---*/
 static void dsp_core_dsp2host(void);
 static void dsp_core_host2dsp(void);
@@ -123,14 +126,22 @@ void dsp_core_init(void (*host_interrupt)(int set))
 	}
 }
 
+/* Start DSP emulation */
+void dsp_core_start(Uint8 mode)
+{
+	dsp_core.registers[DSP_REG_OMR] = mode;
+	if (mode==2) {
+		dsp_core.pc = 0xe000;
+	} else {
+		dsp_core.pc = 0x0000;
+	}
+	LOG_TRACE(TRACE_DSP_STATE, "Dsp: core start in mode %i\n",mode);
+}
+
 /* Shutdown DSP emulation */
 void dsp_core_shutdown(void)
 {
 	dsp_core.running = 0;
-    dsp_core.dma_mode = 0;
-    dsp_core.dma_direction = 0;
-	dsp_core.dma_request = 0;
-	dsp_core.dma_address_counter = 0;
 	LOG_TRACE(TRACE_DSP_STATE, "Dsp: core shutdown\n");
 }
 
@@ -152,8 +163,6 @@ void dsp_core_reset(void)
 	dsp_core.bootstrap_pos = 0;
 	
 	/* Registers */
-	dsp_core.pc = 0x0000;
-	dsp_core.registers[DSP_REG_OMR]=0x02;
 	for (i=0;i<8;i++) {
 		dsp_core.registers[DSP_REG_M0+i]=0x00ffff;
 	}
@@ -180,7 +189,16 @@ void dsp_core_reset(void)
 	dsp_core.hostport[CPU_HOST_CVR] = 0x12;
 	dsp_core.hostport[CPU_HOST_ISR] = (1<<CPU_HOST_ISR_TRDY)|(1<<CPU_HOST_ISR_TXDE);
 	dsp_core.hostport[CPU_HOST_IVR] = 0x0f;
-	dsp_core.hostport[CPU_HOST_RX0] = 0x0;
+	dsp_core.hostport[CPU_HOST_TRX0] = 0x0;
+	
+	/* host port init, dma */
+	dsp_core.dma_mode = 0;
+	dsp_core.dma_direction = 0;
+	dsp_core.dma_address_counter = 0;
+	
+	/* host port init, hreq */
+	dsp_core.dma_request = 0;
+	dsp_host_interrupt(0);
 
 	/* SSI registers */
 	dsp_core.periph[DSP_SPACE_X][DSP_SSI_SR]=1<<DSP_SSI_SR_TDE;
@@ -667,6 +685,7 @@ void dsp_core_write_host(int addr, Uint8 value)
 			if (!dsp_core.running && (dsp_core.hostport[CPU_HOST_ICR] & (1<<CPU_HOST_ICR_HF0))) {
 				LOG_TRACE(TRACE_DSP_STATE, "Dsp: stop waiting bootstrap\n");
 				dsp_core.registers[DSP_REG_R0] = dsp_core.bootstrap_pos;
+				dsp_core.registers[DSP_REG_OMR] = 0x02;
 				dsp_core.running = 1;
 			}
 			dsp_core_hostport_update_hreq();
@@ -718,6 +737,7 @@ void dsp_core_write_host(int addr, Uint8 value)
 				if (++dsp_core.bootstrap_pos == 0x200) {
 					LOG_TRACE(TRACE_DSP_STATE, "Dsp: wait bootstrap done\n");
 					dsp_core.registers[DSP_REG_R0] = dsp_core.bootstrap_pos;
+					dsp_core.registers[DSP_REG_OMR] = 0x02;
 					dsp_core.running = 1;
 				}
 			} else {

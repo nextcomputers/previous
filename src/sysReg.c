@@ -323,11 +323,11 @@ void SCR2_Write0(void)
         Log_Printf(LOG_WARN,"SCR2 DSP Mode B");
     }
     if (!(scr2_0&SCR2_DSP_RESET) && (old_scr2_0&SCR2_DSP_RESET)) {
-        Log_Printf(LOG_WARN,"SCR2 DSP Stop");
-        DSP_Stop();
-    } else if ((scr2_0&SCR2_DSP_RESET) && !(old_scr2_0&SCR2_DSP_RESET)) {
-        Log_Printf(LOG_WARN,"SCR2 DSP Reset (mode %i)",~(scr2_0>>3)&3);
+        Log_Printf(LOG_WARN,"SCR2 DSP Reset");
         DSP_Reset();
+    } else if ((scr2_0&SCR2_DSP_RESET) && !(old_scr2_0&SCR2_DSP_RESET)) {
+        Log_Printf(LOG_WARN,"SCR2 DSP Start (mode %i)",(~(scr2_0>>3))&3);
+        DSP_Start((~(scr2_0>>3))&3);
     }
 	dsp_intr_at_block_end = scr2_0&SCR2_DSP_BLK_END;
     if ((old_scr2_0&SCR2_DSP_BLK_END) != (scr2_0&SCR2_DSP_BLK_END)) {
