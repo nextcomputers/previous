@@ -30,6 +30,7 @@
 #include "dsp.h"
 #include "configuration.h"
 #include "cycInt.h"
+#include "statusbar.h"
 #include "m68000.h"
 #include "sysReg.h"
 #include "dma.h"
@@ -236,6 +237,7 @@ void DSP_Reset(void)
 	} else {
 		bDspEmulated = false;
 	}
+	Statusbar_SetDspLed(false);
 #if ENABLE_DSP_EMU
 	dsp_core_reset();
 	save_cycles = 0;
@@ -279,8 +281,6 @@ void DSP_MemorySnapShot_Capture(bool bSave)
 void DSP_Run(int nHostCycles)
 {
 #if ENABLE_DSP_EMU
-	DSP_HandleDMA();
-	
 	if (dsp_core.running == 0)
 		return;
 	
@@ -294,6 +294,8 @@ void DSP_Run(int nHostCycles)
 		dsp56k_execute_instruction();
 		save_cycles -= dsp_core.instr_cycle;
 	}
+	
+	DSP_HandleDMA();
 #endif
 }
 
