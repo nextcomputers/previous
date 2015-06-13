@@ -46,6 +46,8 @@
 #define Dprintf(a)
 #endif
 
+#define LOG_DSP_LEVEL  LOG_WARN
+
 #define DSP_HW_OFFSET  0xFFA200
 
 
@@ -74,10 +76,10 @@ bool bDspHostInterruptPending = false;
 #if ENABLE_DSP_EMU
 void DSP_HandleTXD(int set) {
     if (set) {
-        Log_Printf(LOG_WARN, "DSP TXD INTERRUPT");
+		Log_Printf(LOG_WARN, "[DSP] Set TXD interrupt");
         //set_dsp_interrupt(SET_INT);
     } else {
-        Log_Printf(LOG_WARN, "RELEASE DSP TXD INTERRUPT");
+		Log_Printf(LOG_WARN, "[DSP] Release TXD interrupt");
         //set_dsp_interrupt(RELEASE_INT);
     }
 }
@@ -100,10 +102,10 @@ static void DSP_HandleHREQ(int set)
     } else {
 		dsp_core.dma_request = 0;
         if (set) {
-            Log_Printf(LOG_WARN, "DSP INTERRUPT");
+            Log_Printf(LOG_DSP_LEVEL, "[DSP] Set HREQ interrupt");
             set_dsp_interrupt(SET_INT);
         } else {
-            Log_Printf(LOG_WARN, "RELEASE DSP INTERRUPT");
+            Log_Printf(LOG_DSP_LEVEL, "[DSP] Release HREQ interrupt");
             set_dsp_interrupt(RELEASE_INT);
         }
     }
@@ -225,20 +227,18 @@ void DSP_Reset(void)
     //LogTraceFlags = TRACE_DSP_ALL;
 #if ENABLE_DSP_EMU
 	dsp_core_reset();
-	set_dsp_interrupt(RELEASE_INT);
 	save_cycles = 0;
 #endif
 }
 
 
 /**
- * Stop the DSP emulation
+ * Start the DSP emulation
  */
-void DSP_Stop(void)
+void DSP_Start(Uint8 mode)
 {
 #if ENABLE_DSP_EMU
-    dsp_core_shutdown();
-    bDspHostInterruptPending = false;
+    dsp_core_start(mode);
     save_cycles = 0;
 #endif
 }
@@ -267,11 +267,11 @@ void DSP_Run(int nHostCycles)
 #if ENABLE_DSP_EMU
 	DSP_HandleDMA();
 	
-	save_cycles += nHostCycles * 2;
-	
 	if (dsp_core.running == 0)
 		return;
 	
+	save_cycles += nHostCycles * 2;
+
 	if (save_cycles <= 0)
 		return;
 	
