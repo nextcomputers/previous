@@ -504,7 +504,7 @@ void IntRegMaskWrite(void) {
 Uint8 hardclock_csr=0;
 Uint8 hardclock1=0;
 Uint8 hardclock0=0;
-int pseudo_counter=0;
+int hardclock_delay=0;
 int latch_hardclock=0;
 
 void Hardclock_InterruptHandler ( void )
@@ -513,20 +513,17 @@ void Hardclock_InterruptHandler ( void )
 	if ((hardclock_csr&HARDCLOCK_ENABLE) && (latch_hardclock>0)) {
 		// Log_Printf(LOG_WARN,"[INT] throwing hardclock");
         set_interrupt(INT_TIMER,SET_INT);
-        CycInt_AddRelativeInterrupt(latch_hardclock, INT_CPU_CYCLE, INTERRUPT_HARDCLOCK);
-		pseudo_counter=latch_hardclock;
+        CycInt_AddRelativeInterrupt(hardclock_delay, INT_CPU_CYCLE, INTERRUPT_HARDCLOCK);
 	}
 }
 
 
 void HardclockRead0(void){
-	IoMem[IoAccessCurrentAddress & 0x1FFFF]=(pseudo_counter>>8);
-	//if (pseudo_counter>0) pseudo_counter--;
+	IoMem[IoAccessCurrentAddress & 0x1FFFF]=(latch_hardclock>>8);
 	Log_Printf(LOG_HARDCLOCK_LEVEL,"[hardclock] read at $%08x val=%02x PC=$%08x", IoAccessCurrentAddress,IoMem[IoAccessCurrentAddress & 0x1FFFF],m68k_getpc());
 }
 void HardclockRead1(void){
-	IoMem[IoAccessCurrentAddress & 0x1FFFF]=pseudo_counter&0xff;
-	//if (pseudo_counter>0) pseudo_counter--;
+	IoMem[IoAccessCurrentAddress & 0x1FFFF]=latch_hardclock&0xff;
 	Log_Printf(LOG_HARDCLOCK_LEVEL,"[hardclock] read at $%08x val=%02x PC=$%08x", IoAccessCurrentAddress,IoMem[IoAccessCurrentAddress & 0x1FFFF],m68k_getpc());
 }
 
@@ -545,11 +542,11 @@ void HardclockWriteCSR(void) {
 	if (hardclock_csr&HARDCLOCK_LATCH) {
         hardclock_csr&= ~HARDCLOCK_LATCH;
 		latch_hardclock=(hardclock0<<8)|hardclock1;
-		pseudo_counter=latch_hardclock;
+		hardclock_delay=latch_hardclock*11;
 	}
 	if ((hardclock_csr&HARDCLOCK_ENABLE) && (latch_hardclock>0)) {
         Log_Printf(LOG_HARDCLOCK_LEVEL,"[hardclock] enable periodic interrupt (%i microseconds).", latch_hardclock);
-        CycInt_AddRelativeInterrupt(latch_hardclock, INT_CPU_CYCLE, INTERRUPT_HARDCLOCK);
+        CycInt_AddRelativeInterrupt(hardclock_delay, INT_CPU_CYCLE, INTERRUPT_HARDCLOCK);
 	} else {
         Log_Printf(LOG_HARDCLOCK_LEVEL,"[hardclock] disable periodic interrupt.");
     }
