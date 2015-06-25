@@ -3589,13 +3589,13 @@ void cpureset (void)
 	}
 	pc = m68k_getpc ();
 	if (pc >= currprefs.chipmem_size) {
-		addrbank *b = &get_mem_bank (pc);
-		if (b->check (pc, 2 + 2)) {
+//		addrbank *b = &get_mem_bank (pc);
+//		if (b->check (pc, 2 + 2)) {
 			/* We have memory, hope for the best.. */
 //			customreset (0);
-			customreset ();
-			return;
-		}
+//			customreset ();
+//			return;
+//		}
 		write_log ("M68K RESET PC=%x, rebooting..\n", pc);
 //		customreset (0);
 		customreset ();
