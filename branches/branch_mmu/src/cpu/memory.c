@@ -22,6 +22,7 @@ const char Memory_fileid[] = "Previous memory.c : " __DATE__ " " __TIME__;
 #include "main.h"
 #include "ioMem.h"
 #include "bmap.h"
+#include "tmc.h"
 #include "reset.h"
 #include "nextMemory.h"
 #include "m68000.h"
@@ -402,13 +403,13 @@ static void mem_ram_bank1_lput(uaecptr addr, uae_u32 l)
 
 static void mem_ram_bank1_wput(uaecptr addr, uae_u32 w)
 {
-	addr &= NEXT_ram_bank0_mask;
+	addr &= NEXT_ram_bank1_mask;
 	do_put_mem_word(NEXTRam + addr, w);
 }
 
 static void mem_ram_bank1_bput(uaecptr addr, uae_u32 b)
 {
-	addr &= NEXT_ram_bank0_mask;
+	addr &= NEXT_ram_bank1_mask;
 	NEXTRam[addr] = b;
 }
 
@@ -981,6 +982,13 @@ static addrbank BMAP_bank =
 	mem_bmap_lget, mem_bmap_wget, ABFLAG_IO
 };
 
+static addrbank TMC_bank =
+{
+	tmc_lget, tmc_wget, tmc_bget,
+	tmc_lput, tmc_wput, tmc_bput,
+	tmc_lget, tmc_wget, ABFLAG_IO
+};
+
 
 
 static void init_mem_banks (void)
@@ -1116,7 +1124,7 @@ const char* memory_init(int *nNewNEXTMemSize)
 	}
 	
 	if (ConfigureParams.System.bTurbo) {
-		map_banks(&IO_bank, NEXT_IO_TMC_START >> 16, NEXT_IO_SIZE>>16);
+		map_banks(&TMC_bank, NEXT_IO_TMC_START >> 16, NEXT_IO_SIZE>>16);
 		write_log("Mapping TMC device space at $%08X\n", NEXT_IO_TMC_START);
 	}
 	
