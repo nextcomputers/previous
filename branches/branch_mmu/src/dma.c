@@ -1096,6 +1096,8 @@ void TDMA_CSR_Write(void) {
 /* Flush DMA buffer */
 /* FIXME: Implement function for all buffered channels */
 void tdma_flush_buffer(int channel) {
+	int i;
+	
 	if (!(dma[CHANNEL_SCSI].csr&DMA_ENABLE)) {
 		Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Not flushing buffer. DMA not enabled.");
 		return;
@@ -1109,10 +1111,14 @@ void tdma_flush_buffer(int channel) {
 		Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Flush buffer to memory at $%08x, %i bytes",
 				   dma[CHANNEL_SCSI].next,espdma_buf_size);
 		
-		while (dma[CHANNEL_SCSI].next<dma[CHANNEL_SCSI].limit && espdma_buf_size>0) {
-			NEXTMemory_WriteLong(dma[CHANNEL_SCSI].next, dma_getlong(espdma_buf, espdma_buf_limit-espdma_buf_size));
-			espdma_buf_size-=4;
-			dma[CHANNEL_SCSI].next+=4;
+		for (i = 0; i < DMA_BURST_SIZE; i+=4) {
+			if (dma[CHANNEL_SCSI].next<dma[CHANNEL_SCSI].limit) {
+				if (espdma_buf_size) {
+					NEXTMemory_WriteLong(dma[CHANNEL_SCSI].next, dma_getlong(espdma_buf, espdma_buf_limit-espdma_buf_size));
+					espdma_buf_size-=4;
+				}
+				dma[CHANNEL_SCSI].next+=4;
+			}
 		}
 	} CATCH(prb) {
 		Log_Printf(LOG_WARN, "[DMA] Channel SCSI: Bus error while flushing to %08x",dma[CHANNEL_SCSI].next);
