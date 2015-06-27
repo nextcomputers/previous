@@ -37,74 +37,55 @@ const char IoMemTabTurbo_fileid[] = "Previous ioMemTabTurbo.c : " __DATE__ " " _
 const INTERCEPT_ACCESS_FUNC IoMemTable_Turbo[] =
 {
 	/* DMA Controller (Motorola) (writes MUST be 32-bit) */
-	{ 0x02000010, SIZE_LONG, DMA_CSR_Read, DMA_CSR_Write },
-	{ 0x02000040, SIZE_LONG, DMA_CSR_Read, DMA_CSR_Write },
-	{ 0x02000080, SIZE_LONG, DMA_CSR_Read, DMA_CSR_Write },
-	{ 0x02000090, SIZE_LONG, DMA_CSR_Read, DMA_CSR_Write },
-	{ 0x020000d0, SIZE_LONG, DMA_CSR_Read, DMA_CSR_Write },
-	{ 0x02000110, SIZE_LONG, DMA_CSR_Read, DMA_CSR_Write },
-	{ 0x02000150, SIZE_LONG, DMA_CSR_Read, DMA_CSR_Write },
+	{ 0x02000010, SIZE_LONG, TDMA_CSR_Read, TDMA_CSR_Write },
+	{ 0x02000040, SIZE_LONG, TDMA_CSR_Read, TDMA_CSR_Write },
+	{ 0x02000080, SIZE_LONG, TDMA_CSR_Read, TDMA_CSR_Write },
+	{ 0x02000090, SIZE_LONG, TDMA_CSR_Read, TDMA_CSR_Write },
+	{ 0x020000d0, SIZE_LONG, TDMA_CSR_Read, TDMA_CSR_Write },
+	{ 0x02000110, SIZE_LONG, TDMA_CSR_Read, TDMA_CSR_Write },
+	{ 0x02000150, SIZE_LONG, TDMA_CSR_Read, TDMA_CSR_Write },
 	
 	/* Channel SCSI */
 	{ 0x02004010, SIZE_LONG, DMA_Next_Read, DMA_Next_Write },
 	{ 0x02004014, SIZE_LONG, DMA_Limit_Read, DMA_Limit_Write },
 	{ 0x02004018, SIZE_LONG, DMA_Start_Read, DMA_Start_Write },
 	{ 0x0200401c, SIZE_LONG, DMA_Stop_Read, DMA_Stop_Write },
-	{ 0x02004210, SIZE_LONG, DMA_Init_Read, DMA_Init_Write },
 	
 	/* Channel Sound out */
-	{ 0x02004030, SIZE_LONG, DMA_Saved_Next_Read, DMA_Saved_Next_Write },
-	{ 0x02004034, SIZE_LONG, DMA_Saved_Limit_Read, DMA_Saved_Limit_Write },
-	{ 0x02004038, SIZE_LONG, DMA_Saved_Start_Read, DMA_Saved_Start_Write },
-	{ 0x0200403c, SIZE_LONG, DMA_Saved_Stop_Read, DMA_Saved_Stop_Write },
 	{ 0x02004040, SIZE_LONG, DMA_Next_Read, DMA_Next_Write },
 	{ 0x02004044, SIZE_LONG, DMA_Limit_Read, DMA_Limit_Write },
 	{ 0x02004048, SIZE_LONG, DMA_Start_Read, DMA_Start_Write },
 	{ 0x0200404c, SIZE_LONG, DMA_Stop_Read, DMA_Stop_Write },
-	{ 0x02004240, SIZE_LONG, DMA_Init_Read, DMA_Init_Write },
 	
 	/* Channel Sound in */
 	{ 0x02004080, SIZE_LONG, DMA_Next_Read, DMA_Next_Write },
 	{ 0x02004084, SIZE_LONG, DMA_Limit_Read, DMA_Limit_Write },
 	{ 0x02004088, SIZE_LONG, DMA_Start_Read, DMA_Start_Write },
 	{ 0x0200408c, SIZE_LONG, DMA_Stop_Read, DMA_Stop_Write },
-	{ 0x02004280, SIZE_LONG, DMA_Init_Read, DMA_Init_Write },
 	
 	/* Channel Printer */
 	{ 0x02004090, SIZE_LONG, DMA_Next_Read, DMA_Next_Write },
 	{ 0x02004094, SIZE_LONG, DMA_Limit_Read, DMA_Limit_Write },
 	{ 0x02004098, SIZE_LONG, DMA_Start_Read, DMA_Start_Write },
 	{ 0x0200409c, SIZE_LONG, DMA_Stop_Read, DMA_Stop_Write },
-	{ 0x02004290, SIZE_LONG, DMA_Init_Read, DMA_Init_Write },
 	
 	/* Channel DSP */
 	{ 0x020040d0, SIZE_LONG, DMA_Next_Read, DMA_Next_Write },
 	{ 0x020040d4, SIZE_LONG, DMA_Limit_Read, DMA_Limit_Write },
 	{ 0x020040d8, SIZE_LONG, DMA_Start_Read, DMA_Start_Write },
 	{ 0x020040dc, SIZE_LONG, DMA_Stop_Read, DMA_Stop_Write },
-	{ 0x020042d0, SIZE_LONG, DMA_Init_Read, DMA_Init_Write },
 	
 	/* Channel Ethernet Transmit */
-	{ 0x02004100, SIZE_LONG, DMA_Saved_Next_Read, DMA_Saved_Next_Write },
-	{ 0x02004104, SIZE_LONG, DMA_Saved_Limit_Read, DMA_Saved_Limit_Write },
-	{ 0x02004108, SIZE_LONG, DMA_Saved_Start_Read, DMA_Saved_Start_Write },
-	{ 0x0200410c, SIZE_LONG, DMA_Saved_Stop_Read, DMA_Saved_Stop_Write },
 	{ 0x02004110, SIZE_LONG, DMA_Next_Read, DMA_Next_Write },
 	{ 0x02004114, SIZE_LONG, DMA_Limit_Read, DMA_Limit_Write },
 	{ 0x02004118, SIZE_LONG, DMA_Start_Read, DMA_Start_Write },
 	{ 0x0200411c, SIZE_LONG, DMA_Stop_Read, DMA_Stop_Write },
-	{ 0x02004310, SIZE_LONG, DMA_Init_Read, DMA_Init_Write },
 	
 	/* Channel Ethernet Receive */
-	{ 0x02004140, SIZE_LONG, DMA_Saved_Next_Read, DMA_Saved_Next_Write },
-	{ 0x02004144, SIZE_LONG, DMA_Saved_Limit_Read, DMA_Saved_Limit_Write },
-	{ 0x02004148, SIZE_LONG, DMA_Saved_Start_Read, DMA_Saved_Start_Write },
-	{ 0x0200414c, SIZE_LONG, DMA_Saved_Stop_Read, DMA_Saved_Stop_Write },
 	{ 0x02004150, SIZE_LONG, DMA_Next_Read, DMA_Next_Write },
 	{ 0x02004154, SIZE_LONG, DMA_Limit_Read, DMA_Limit_Write },
 	{ 0x02004158, SIZE_LONG, DMA_Start_Read, DMA_Start_Write },
 	{ 0x0200415c, SIZE_LONG, DMA_Stop_Read, DMA_Stop_Write },
-	{ 0x02004350, SIZE_LONG, DMA_Init_Read, DMA_Init_Write },
 	
 	/* Network Adapter (Fujitsu MB8795) */
 	{ 0x02006000, SIZE_BYTE, EN_TX_Status_Read, EN_TX_Status_Write },
