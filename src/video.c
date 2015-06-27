@@ -24,6 +24,7 @@ const char Video_fileid[] = "Hatari video.c : " __DATE__ " " __TIME__;
 #include "avi_record.h"
 #include "dma.h"
 #include "ramdac.h"
+#include "tmc.h"
 
 
 /*--------------------------------------------------------------*/
@@ -120,7 +121,9 @@ void Video_StartInterrupts ( int PendingCyclesOver )
  */
 void Video_InterruptHandler(void)
 {
-    if (ConfigureParams.System.bColor) {
+	if (ConfigureParams.System.bTurbo) {
+		tmc_video_interrupt();
+	} else if (ConfigureParams.System.bColor) {
         ramdac_video_interrupt();
     } else {
         dma_video_interrupt();

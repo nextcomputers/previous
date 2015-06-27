@@ -2,6 +2,7 @@
 #include "configuration.h"
 #include "m68000.h"
 #include "sysdeps.h"
+#include "sysReg.h"
 #include "tmc.h"
 
 
@@ -15,6 +16,9 @@
 
 struct {
 	Uint32 scr1;
+	Uint32 horizontal;
+	Uint32 vertical;
+	Uint8 video_intr;
 } tmc;
 
 /* Additional System Control Register for Turbo systems:
@@ -114,6 +118,90 @@ Uint8 tmc_scr1_read3(void) {
 }
 
 
+/* Video Interrupt Register */
+#define TMC_VI_INTERRUPT	0x01
+#define TMC_VI_INT_MASK		0x02
+
+void tmc_video_interrupt(void) {
+	if (tmc.video_intr&TMC_VI_INT_MASK) {
+		set_interrupt(INT_DISK, SET_INT);
+		tmc.video_intr |= TMC_VI_INTERRUPT;
+	}
+}
+
+Uint8 tmc_vir_read0(void) {
+	return tmc.video_intr;
+}
+
+void tmc_vir_write0(Uint8 val) {
+	tmc.video_intr = val;
+	if (tmc.video_intr&TMC_VI_INTERRUPT) {
+		tmc.video_intr &= ~TMC_VI_INTERRUPT;
+		set_interrupt(INT_DISK, RELEASE_INT);
+	}
+}
+
+/* Horizontal and Vertical Configruation Registers */
+Uint8 tmc_hcr_read0(void) {
+	return (tmc.horizontal>>24);
+}
+Uint8 tmc_hcr_read1(void) {
+	return (tmc.horizontal>>16);
+}
+Uint8 tmc_hcr_read2(void) {
+	return (tmc.horizontal>>8);
+}
+Uint8 tmc_hcr_read3(void) {
+	return tmc.horizontal;
+}
+
+void tmc_hcr_write0(Uint8 val) {
+	tmc.horizontal &= 0xFF000000;
+	tmc.horizontal |= val>>24;
+}
+void tmc_hcr_write1(Uint8 val) {
+	tmc.horizontal &= 0x00FF0000;
+	tmc.horizontal |= val>>16;
+}
+void tmc_hcr_write2(Uint8 val) {
+	tmc.horizontal &= 0x0000FF00;
+	tmc.horizontal |= val>>8;
+}
+void tmc_hcr_write3(Uint8 val) {
+	tmc.horizontal &= 0x000000FF;
+	tmc.horizontal |= val;
+}
+
+Uint8 tmc_vcr_read0(void) {
+	return (tmc.vertical>>24);
+}
+Uint8 tmc_vcr_read1(void) {
+	return (tmc.vertical>>16);
+}
+Uint8 tmc_vcr_read2(void) {
+	return (tmc.vertical>>8);
+}
+Uint8 tmc_vcr_read3(void) {
+	return tmc.vertical;
+}
+
+void tmc_vcr_write0(Uint8 val) {
+	tmc.vertical &= 0xFF000000;
+	tmc.vertical |= val>>24;
+}
+void tmc_vcr_write1(Uint8 val) {
+	tmc.vertical &= 0x00FF0000;
+	tmc.vertical |= val>>16;
+}
+void tmc_vcr_write2(Uint8 val) {
+	tmc.vertical &= 0x0000FF00;
+	tmc.vertical |= val>>8;
+}
+void tmc_vcr_write3(Uint8 val) {
+	tmc.vertical &= 0x000000FF;
+	tmc.vertical |= val;
+}
+
 
 /* Read register functions */
 static Uint8 (*tmc_read_reg[36])(void) = {
@@ -129,10 +217,10 @@ static Uint8 (*tmc_read_reg[36])(void) = {
 };
 
 static Uint8 (*tmc_read_vid_reg[16])(void) = {
+	tmc_vir_read0, tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read,
 	tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read,
-	tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read,
-	tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read,
-	tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read
+	tmc_hcr_read0, tmc_hcr_read1, tmc_hcr_read2, tmc_hcr_read3,
+	tmc_vcr_read0, tmc_vcr_read1, tmc_vcr_read2, tmc_vcr_read3
 };
 
 /* Write register functions */
@@ -149,10 +237,10 @@ static void (*tmc_write_reg[36])(Uint8) = {
 };
 
 static void (*tmc_write_vid_reg[16])(Uint8) = {
+	tmc_vir_write0, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
 	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
-	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
-	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
-	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write
+	tmc_hcr_write0, tmc_hcr_write1, tmc_hcr_write2, tmc_hcr_write3,
+	tmc_vcr_write0, tmc_vcr_write1, tmc_vcr_write2, tmc_vcr_write3
 };
 
 
