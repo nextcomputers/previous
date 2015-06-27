@@ -171,7 +171,13 @@ const INTERCEPT_ACCESS_FUNC IoMemTable_Turbo[] =
 	
 	/* Brightness */
 	{ 0x02010000, SIZE_LONG, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
-	
+
+	/* GPIO Register */
+	{ 0x02012000, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
+	{ 0x02012001, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
+	{ 0x02012002, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
+	{ 0x02012003, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
+
 	/* SCSI Controller (NCR53C90A) */
 	{ 0x02014000, SIZE_BYTE, ESP_TransCountL_Read, ESP_TransCountL_Write },
 	{ 0x02014001, SIZE_BYTE, ESP_TransCountH_Read, ESP_TransCountH_Write },
