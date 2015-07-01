@@ -57,6 +57,9 @@ const INTERCEPT_ACCESS_FUNC IoMemTable_Turbo[] =
 	{ 0x02004048, SIZE_LONG, DMA_Start_Read, DMA_Start_Write },
 	{ 0x0200404c, SIZE_LONG, DMA_Stop_Read, DMA_Stop_Write },
 	
+	/* Ethernet Saved Next */
+	{ 0x02004050, SIZE_LONG, TDMA_Saved_Next_Read, IoMem_WriteWithoutInterceptionButTrace },
+
 	/* Channel Sound in */
 	{ 0x02004080, SIZE_LONG, DMA_Next_Read, DMA_Next_Write },
 	{ 0x02004084, SIZE_LONG, DMA_Limit_Read, DMA_Limit_Write },

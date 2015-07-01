@@ -756,6 +756,8 @@ void dma_sndout_read_memory(void) {
 #define EN_BOP      0x40000000 /* beginning of packet */
 #define ENADDR(x)   ((x)&~(EN_EOP|EN_BOP))
 
+Uint32 saved_next_turbo = 0;
+
 void dma_enet_interrupt(int channel) {
     int interrupt = get_interrupt_type(channel);
     
@@ -763,6 +765,7 @@ void dma_enet_interrupt(int channel) {
     
     if (dma[channel].csr & DMA_SUPDATE) { /* if we are in chaining mode */
         /* Update pointers */
+		saved_next_turbo = dma[channel].next;
         dma[channel].next = dma[channel].start;
         dma[channel].limit = dma[channel].stop;
         /* Set bits in CSR */
@@ -1091,6 +1094,11 @@ void TDMA_CSR_Write(void) {
 	}
 	
 	set_interrupt(interrupt, RELEASE_INT);
+}
+
+void TDMA_Saved_Next_Read(void) { // 0x02004050
+	IoMem_WriteLong(IoAccessCurrentAddress & IO_SEG_MASK, saved_next_turbo);
+	Log_Printf(LOG_DMA_LEVEL,"TDMA SNext read at $%08x val=$%08x PC=$%08x\n", IoAccessCurrentAddress, saved_next_turbo, m68k_getpc());
 }
 
 /* Flush DMA buffer */

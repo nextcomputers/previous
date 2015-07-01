@@ -26,6 +26,7 @@ void DMA_Init_Write(void);
 /* Turbo DMA functions */
 void TDMA_CSR_Read(void);
 void TDMA_CSR_Write(void);
+void TDMA_Saved_Next_Read(void);
 void tdma_flush_buffer(int channel);
 
 /* Device functions */
