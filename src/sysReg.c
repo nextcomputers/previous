@@ -359,14 +359,11 @@ void IntRegStatWrite(void) {
 }
 
 void set_dsp_interrupt(Uint8 state) {
-    Uint32 intr;
-    
-    if (scr2_3&SCR2_DSP_INT_EN) {
-        intr = INT_DSP_L4;
+    if (scr2_3&SCR2_DSP_INT_EN || ConfigureParams.System.bTurbo) {
+		set_interrupt(INT_DSP_L4, state);
     } else {
-        intr = INT_DSP_L3;
+		set_interrupt(INT_DSP_L3, state);
     }
-    set_interrupt(intr, state);
 }
 
 void set_interrupt(Uint32 intr, Uint8 state) {
