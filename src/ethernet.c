@@ -485,11 +485,30 @@ void enet_io(void) {
 }
 
 /* AT&T ethernet controller for turbo systems */
+#define TXMODE_ENABLE	0x80
+#define RXMODE_ENABLE	0x80
+
+void EN_Control_Read(void) { // 0x02006006
+	IoMem[IoAccessCurrentAddress & IO_SEG_MASK] = enet.reset;
+	Log_Printf(LOG_EN_REG_LEVEL,"[newEN] Control read at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
+}
+
+void EN_Control_Write(void) {
+	enet.reset=(IoMem[IoAccessCurrentAddress & IO_SEG_MASK])&EN_RESET;
+	Log_Printf(LOG_EN_REG_LEVEL,"[newEN] Control write at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
+	enet_reset();
+}
+
 void new_enet_io(void) {
 	/* Receive packet */
 	switch (receiver_state) {
 		case RECV_STATE_WAITING:
 			if (enet_rx_buffer.size>0) {
+				if (!(enet.rx_mode&RXMODE_ENABLE)) {
+					Log_Printf(LOG_WARN, "[newEN] Receiver disabled. Discarding packet.");
+					enet_rx_buffer.size = 0;
+					break; /* Keep waiting until receiver is enabled */
+				}
 				Statusbar_BlinkLed(DEVICE_LED_ENET);
 				Log_Printf(LOG_EN_LEVEL, "[newEN] Receiving packet from %02X:%02X:%02X:%02X:%02X:%02X",
 						   enet_rx_buffer.data[6], enet_rx_buffer.data[7], enet_rx_buffer.data[8],
@@ -546,7 +565,7 @@ void new_enet_io(void) {
 	}
 	
 	/* Send packet */
-	if (enet.tx_mode&0x80) {
+	if (enet.tx_mode&TXMODE_ENABLE) {
 		old_size = enet_tx_buffer.size;
 		dma_enet_read_memory();
 		if (enet_tx_buffer.size!=old_size) {
@@ -597,9 +616,7 @@ void ENET_IO_Handler(void) {
 
 void enet_reset(void) {
     if (enet.reset&EN_RESET) {
-		if (!ConfigureParams.System.bTurbo) {
-			enet.tx_status=TXSTAT_READY;
-		}
+        enet.tx_status=ConfigureParams.System.bTurbo?0:TXSTAT_READY;
     } else if (enet_stopped==true) {
         Log_Printf(LOG_WARN, "Starting Ethernet Transmitter/Receiver");
         enet_stopped=false;

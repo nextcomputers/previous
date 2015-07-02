@@ -99,6 +99,13 @@ void tmc_unimpl_write(Uint8 val) {
 	Log_Printf(LOG_WARN, "[TMC] Unimplemented write!\n");
 }
 
+Uint8 tmc_void_read(void) {
+	return 0;
+}
+
+void tmc_void_write(Uint8 val) {
+}
+
 /* SCR1 */
 Uint8 tmc_scr1_read0(void) {
 	Log_Printf(LOG_WARN,"[TMC] SCR1 read at $0x2200000 PC=$%08x\n",m68k_getpc());
@@ -217,7 +224,7 @@ static Uint8 (*tmc_read_reg[36])(void) = {
 };
 
 static Uint8 (*tmc_read_vid_reg[16])(void) = {
-	tmc_vir_read0, tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read,
+	tmc_vir_read0, tmc_void_read, tmc_void_read, tmc_void_read,
 	tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read,
 	tmc_hcr_read0, tmc_hcr_read1, tmc_hcr_read2, tmc_hcr_read3,
 	tmc_vcr_read0, tmc_vcr_read1, tmc_vcr_read2, tmc_vcr_read3
@@ -237,7 +244,7 @@ static void (*tmc_write_reg[36])(Uint8) = {
 };
 
 static void (*tmc_write_vid_reg[16])(Uint8) = {
-	tmc_vir_write0, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
+	tmc_vir_write0, tmc_void_write, tmc_void_write, tmc_void_write,
 	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
 	tmc_hcr_write0, tmc_hcr_write1, tmc_hcr_write2, tmc_hcr_write3,
 	tmc_vcr_write0, tmc_vcr_write1, tmc_vcr_write2, tmc_vcr_write3
