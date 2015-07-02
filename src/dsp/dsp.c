@@ -105,10 +105,18 @@ static void DSP_HandleHREQ(int set)
 		dsp_core.dma_request = 0;
         if (set) {
             Log_Printf(LOG_DSP_LEVEL, "[DSP] Set HREQ interrupt");
-            set_dsp_interrupt(SET_INT);
+			if (ConfigureParams.System.bTurbo) {
+				set_interrupt(INT_DSP_L4, SET_INT);
+			} else {
+				set_dsp_interrupt(SET_INT);
+			}
         } else {
             Log_Printf(LOG_DSP_LEVEL, "[DSP] Release HREQ interrupt");
-            set_dsp_interrupt(RELEASE_INT);
+			if (ConfigureParams.System.bTurbo) {
+				set_interrupt(INT_DSP_L4, RELEASE_INT);
+			} else {
+				set_dsp_interrupt(RELEASE_INT);
+			}
         }
     }
 }
