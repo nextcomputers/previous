@@ -16,6 +16,7 @@
 
 struct {
 	Uint32 scr1;
+	Uint32 control;
 	Uint32 horizontal;
 	Uint32 vertical;
 	Uint8 video_intr;
@@ -124,6 +125,40 @@ Uint8 tmc_scr1_read3(void) {
 	return tmc.scr1;
 }
 
+/* TMC Control Register */
+
+Uint8 tmc_ctrl_read0(void) {
+	return (tmc.control>>24);
+}
+Uint8 tmc_ctrl_read1(void) {
+	return (tmc.control>>16);
+}
+Uint8 tmc_ctrl_read2(void) {
+	return (tmc.control>>8);
+}
+Uint8 tmc_ctrl_read3(void) {
+	return tmc.control;
+}
+
+void tmc_ctrl_write0(Uint8 val) {
+	tmc.control &= 0x00FFFFFF;
+	tmc.control |= (val&0xFF)<<24;
+}
+void tmc_ctrl_write1(Uint8 val) {
+	tmc.control &= 0xFF00FFFF;
+	tmc.control |= (val&0xFF)<<16;
+}
+void tmc_ctrl_write2(Uint8 val) {
+	val &= ~0x04; /* no parity memory */
+	
+	tmc.control &= 0xFFFF00FF;
+	tmc.control |= (val&0xFF)<<8;
+}
+void tmc_ctrl_write3(Uint8 val) {
+	tmc.control &= 0xFFFFFF00;
+	tmc.control |= val&0xFF;
+}
+
 
 /* Video Interrupt Register */
 #define TMC_VI_INTERRUPT	0x01
@@ -163,20 +198,20 @@ Uint8 tmc_hcr_read3(void) {
 }
 
 void tmc_hcr_write0(Uint8 val) {
-	tmc.horizontal &= 0xFF000000;
-	tmc.horizontal |= val>>24;
+	tmc.horizontal &= 0x00FFFFFF;
+	tmc.horizontal |= (val&0xFF)<<24;
 }
 void tmc_hcr_write1(Uint8 val) {
-	tmc.horizontal &= 0x00FF0000;
-	tmc.horizontal |= val>>16;
+	tmc.horizontal &= 0xFF00FFFF;
+	tmc.horizontal |= (val&0xFF)<<16;
 }
 void tmc_hcr_write2(Uint8 val) {
-	tmc.horizontal &= 0x0000FF00;
-	tmc.horizontal |= val>>8;
+	tmc.horizontal &= 0xFFFF00FF;
+	tmc.horizontal |= (val&0xFF)<<8;
 }
 void tmc_hcr_write3(Uint8 val) {
-	tmc.horizontal &= 0x000000FF;
-	tmc.horizontal |= val;
+	tmc.horizontal &= 0xFFFFFF00;
+	tmc.horizontal |= val&0xFF;
 }
 
 Uint8 tmc_vcr_read0(void) {
@@ -193,20 +228,20 @@ Uint8 tmc_vcr_read3(void) {
 }
 
 void tmc_vcr_write0(Uint8 val) {
-	tmc.vertical &= 0xFF000000;
-	tmc.vertical |= val>>24;
+	tmc.vertical &= 0x00FFFFFF;
+	tmc.vertical |= (val&0xFF)<<24;
 }
 void tmc_vcr_write1(Uint8 val) {
-	tmc.vertical &= 0x00FF0000;
-	tmc.vertical |= val>>16;
+	tmc.vertical &= 0xFF00FFFF;
+	tmc.vertical |= (val&0xFF)<<16;
 }
 void tmc_vcr_write2(Uint8 val) {
-	tmc.vertical &= 0x0000FF00;
-	tmc.vertical |= val>>8;
+	tmc.vertical &= 0xFFFF00FF;
+	tmc.vertical |= (val&0xFF)<<8;
 }
 void tmc_vcr_write3(Uint8 val) {
-	tmc.vertical &= 0x000000FF;
-	tmc.vertical |= val;
+	tmc.vertical &= 0xFFFFFF00;
+	tmc.vertical |= val&0xFF;
 }
 
 
@@ -216,7 +251,7 @@ static Uint8 (*tmc_read_reg[36])(void) = {
 	tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read,
 	tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read,
 	tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read,
-	tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read,
+	tmc_ctrl_read0, tmc_ctrl_read1, tmc_ctrl_read2, tmc_ctrl_read3,
 	tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read,
 	tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read,
 	tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read, tmc_unimpl_read,
@@ -232,11 +267,11 @@ static Uint8 (*tmc_read_vid_reg[16])(void) = {
 
 /* Write register functions */
 static void (*tmc_write_reg[36])(Uint8) = {
+	tmc_ill_write, tmc_ill_write, tmc_ill_write, tmc_ill_write,
 	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
 	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
 	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
-	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
-	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
+	tmc_ctrl_write0, tmc_ctrl_write1, tmc_ctrl_write2, tmc_ctrl_write3,
 	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
 	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
 	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
@@ -417,4 +452,10 @@ void tmc_bput(uaecptr addr, Uint32 b) {
 
 void TMC_Reset(void) {
 	TurboSCR1_Reset();
+	
+	tmc.control = 0x0D17038F;
+	
+	tmc.video_intr = 0x00;
+	tmc.horizontal = 0x31048118;
+	tmc.vertical = 0x10430340;
 }
