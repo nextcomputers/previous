@@ -164,6 +164,23 @@ void tmc_ctrl_write3(Uint8 val) {
 #define TMC_VI_INTERRUPT	0x01
 #define TMC_VI_INT_MASK		0x02
 
+/* Horizontal and Vertical Configruation Registers */
+#define HFPORCH  0x18
+#define HSYNC	 0x20
+#define HBPORCH  0x48
+#define HDISCNT	 0x118
+
+#define VFPORCH  0x08
+#define VSYNC	 0x08
+#define VBPORCH	 0x30
+#define VDISCNT	 0x340
+
+void tmc_video_reg_reset(void) {
+	tmc.video_intr = 0x00;
+	tmc.horizontal = (HFPORCH<<25)|(HSYNC<<19)|(HBPORCH<<12)|HDISCNT;
+	tmc.vertical = (VFPORCH<<25)|(VSYNC<<19)|(VBPORCH<<12)|VDISCNT;
+}
+
 void tmc_video_interrupt(void) {
 	if (tmc.video_intr&TMC_VI_INT_MASK) {
 		set_interrupt(INT_DISK, SET_INT);
@@ -183,7 +200,6 @@ void tmc_vir_write0(Uint8 val) {
 	}
 }
 
-/* Horizontal and Vertical Configruation Registers */
 Uint8 tmc_hcr_read0(void) {
 	return (tmc.horizontal>>24);
 }
@@ -281,8 +297,13 @@ static void (*tmc_write_reg[36])(Uint8) = {
 static void (*tmc_write_vid_reg[16])(Uint8) = {
 	tmc_vir_write0, tmc_void_write, tmc_void_write, tmc_void_write,
 	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
+#if 0
+	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
+	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write
+#else
 	tmc_hcr_write0, tmc_hcr_write1, tmc_hcr_write2, tmc_hcr_write3,
 	tmc_vcr_write0, tmc_vcr_write1, tmc_vcr_write2, tmc_vcr_write3
+#endif
 };
 
 
@@ -453,9 +474,6 @@ void tmc_bput(uaecptr addr, Uint32 b) {
 void TMC_Reset(void) {
 	TurboSCR1_Reset();
 	
+	tmc_video_reg_reset();
 	tmc.control = 0x0D17038F;
-	
-	tmc.video_intr = 0x00;
-	tmc.horizontal = 0x31048118;
-	tmc.vertical = 0x10430340;
 }

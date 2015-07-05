@@ -92,9 +92,14 @@ void SCR_Reset(void) {
     
     scr2_0=0x00;
     scr2_1=0x00;
-    scr2_2=0x00;
-    scr2_3=0x00;
-    
+	if (ConfigureParams.System.bTurbo) {
+		scr2_2=0x10;
+		scr2_3=0x80;
+	} else {
+		scr2_2=0x00;
+		scr2_3=0x00;
+	}
+	
     intStat=0x00000000;
     intMask=0x00000000;
 
