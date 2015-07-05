@@ -294,15 +294,19 @@ const INTERCEPT_ACCESS_FUNC IoMemTable_NEXT[] =
 	{ 0x02018001, SIZE_BYTE, SCC_Read, SCC_Write },
 	{ 0x02018002, SIZE_BYTE, SCC_Read, SCC_Write },
 	{ 0x02018003, SIZE_BYTE, SCC_Read, SCC_Write },
-	{ 0x02018004, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
+	/* Serial Interface Clock */
+	{ 0x02018004, SIZE_LONG, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
 	
 	/* RAMDAC (Brooktree Bt463) */
 	{ 0x02018100, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
 	{ 0x02018101, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
 	{ 0x02018102, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
 	{ 0x02018103, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
+	
+	/* Color Video Control */
 	{ 0x02018180, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, RAMDAC_CMD_Write },
 	{ 0x02018190, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
+	{ 0x02018198, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
 	
 	/* Event Counter */
 	{ 0x0201a000, SIZE_BYTE, System_Timer_Read, IoMem_WriteWithoutInterceptionButTrace },
