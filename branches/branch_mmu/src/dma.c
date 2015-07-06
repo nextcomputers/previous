@@ -1071,7 +1071,7 @@ void TDMA_CSR_Write(void) {
 		case 0:
 			Log_Printf(LOG_DMA_LEVEL,"DMA no command"); break;
 		default:
-			Log_Printf(LOG_DMA_LEVEL,"DMA: unknown command!"); break;
+			Log_Printf(LOG_WARN,"DMA: unknown command!"); break;
 	}
 	
 	/* Handle CSR bits */

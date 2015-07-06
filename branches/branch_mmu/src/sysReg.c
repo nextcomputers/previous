@@ -529,3 +529,28 @@ void System_Timer_Read(void) { // tuned for power-on test
 //  printf("DIFFERENCE = %i PC = %08X\n",eventcounter-lasteventc,m68k_getpc());
 }
 #endif
+
+
+/* Color Video Interrupt Register */
+
+#define VID_CMD_CLEAR_INT    0x01
+#define VID_CMD_ENABLE_INT   0x02
+#define VID_CMD_UNBLANK      0x04
+
+Uint8 col_vid_intr = 0;
+
+void ColorVideo_CMD_Write(void) {
+	col_vid_intr=IoMem[IoAccessCurrentAddress & 0x1FFFF];
+	Log_Printf(LOG_DEBUG,"[Color Video] Command write at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
+	
+	if (col_vid_intr&VID_CMD_CLEAR_INT) {
+		set_interrupt(INT_DISK, RELEASE_INT);
+	}
+}
+
+void color_video_interrupt(void) {
+	if (col_vid_intr&VID_CMD_ENABLE_INT) {
+		set_interrupt(INT_DISK, SET_INT);
+		col_vid_intr &= ~VID_CMD_ENABLE_INT;
+	}
+}

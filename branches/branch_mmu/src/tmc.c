@@ -5,6 +5,7 @@
 #include "sysReg.h"
 #include "tmc.h"
 
+#define LOG_TMC_LEVEL LOG_DEBUG
 
 /* NeXT TMC emulation */
 
@@ -297,13 +298,8 @@ static void (*tmc_write_reg[36])(Uint8) = {
 static void (*tmc_write_vid_reg[16])(Uint8) = {
 	tmc_vir_write0, tmc_void_write, tmc_void_write, tmc_void_write,
 	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
-#if 0
-	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write,
-	tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write, tmc_unimpl_write
-#else
 	tmc_hcr_write0, tmc_hcr_write1, tmc_hcr_write2, tmc_hcr_write3,
 	tmc_vcr_write0, tmc_vcr_write1, tmc_vcr_write2, tmc_vcr_write3
-#endif
 };
 
 
@@ -328,7 +324,7 @@ Uint32 tmc_lget(uaecptr addr) {
 		return 0;
 	}
 	
-	Log_Printf(LOG_WARN, "[TMC] lget from %08X",addr);
+	Log_Printf(LOG_TMC_LEVEL, "[TMC] lget from %08X",addr);
 	
 	addr &= TMC_REGS_MASK;
 
@@ -340,8 +336,8 @@ Uint32 tmc_lget(uaecptr addr) {
 	} else if (addr>=128 && addr<144) {
 		val = tmc_read_vid_reg[addr&0xF]()<<24;
 		val |= tmc_read_vid_reg[(addr+1)&0xF]()<<16;
-		val |= tmc_read_vid_reg[(addr+1)&0xF]()<<8;
-		val |= tmc_read_vid_reg[(addr+1)&0xF]();
+		val |= tmc_read_vid_reg[(addr+2)&0xF]()<<8;
+		val |= tmc_read_vid_reg[(addr+3)&0xF]();
 	}
 
 	return val;
@@ -360,7 +356,7 @@ Uint32 tmc_wget(uaecptr addr) {
 		return 0xFFFF;
 	}
 	
-	Log_Printf(LOG_WARN, "[TMC] wget from %08X",addr);
+	Log_Printf(LOG_TMC_LEVEL, "[TMC] wget from %08X",addr);
 
 	addr &= TMC_REGS_MASK;
 	
@@ -381,7 +377,7 @@ Uint32 tmc_bget(uaecptr addr) {
 		return 0xFF;
 	}
 	
-	Log_Printf(LOG_WARN, "[TMC] bget from %08X",addr);
+	Log_Printf(LOG_TMC_LEVEL, "[TMC] bget from %08X",addr);
 
 	addr &= TMC_REGS_MASK;
 
@@ -410,7 +406,7 @@ void tmc_lput(uaecptr addr, Uint32 l) {
 		return;
 	}
 	
-	Log_Printf(LOG_WARN, "[TMC] lput %08X to %08X",l,addr);
+	Log_Printf(LOG_TMC_LEVEL, "[TMC] lput %08X to %08X",l,addr);
 
 	addr &= TMC_REGS_MASK;
 	
@@ -438,7 +434,7 @@ void tmc_wput(uaecptr addr, Uint32 w) {
 		return;
 	}
 	
-	Log_Printf(LOG_WARN, "[TMC] wput %04X to %08X",w,addr);
+	Log_Printf(LOG_TMC_LEVEL, "[TMC] wput %04X to %08X",w,addr);
 
 	addr &= TMC_REGS_MASK;
 	
@@ -457,7 +453,7 @@ void tmc_bput(uaecptr addr, Uint32 b) {
 		return;
 	}
 	
-	Log_Printf(LOG_WARN, "[TMC] bput %02X to %08X",b,addr);
+	Log_Printf(LOG_TMC_LEVEL, "[TMC] bput %02X to %08X",b,addr);
 
 	addr &= TMC_REGS_MASK;
 	
