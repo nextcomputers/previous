@@ -303,8 +303,8 @@ const INTERCEPT_ACCESS_FUNC IoMemTable_NEXT[] =
 	{ 0x02018102, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
 	{ 0x02018103, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
 	
-	/* Color Video Control */
-	{ 0x02018180, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, RAMDAC_CMD_Write },
+	/* Color Video Control and Memory Timings */
+	{ 0x02018180, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, ColorVideo_CMD_Write },
 	{ 0x02018190, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
 	{ 0x02018198, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
 	

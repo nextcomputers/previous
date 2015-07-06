@@ -73,7 +73,7 @@ void IntRegStatWrite(void);
 void IntRegMaskRead(void);
 void IntRegMaskWrite(void);
 
-void Hardclock_InterruptHandler ( void );
+void Hardclock_InterruptHandler(void);
 void HardclockRead0(void);
 void HardclockRead1(void);
 
@@ -84,3 +84,6 @@ void HardclockWriteCSR(void);
 void HardclockReadCSR(void);
 
 void System_Timer_Read(void);
+
+void ColorVideo_CMD_Write(void);
+void color_video_interrupt(void);
