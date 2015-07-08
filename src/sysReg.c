@@ -143,7 +143,6 @@ void SCR_Reset(void) {
         case MEMORY_120NS: memory_speed = 0x00; break;
         case MEMORY_100NS: memory_speed = 0x50; break;
         case MEMORY_80NS: memory_speed = 0xA0; break;
-        case MEMORY_70NS: memory_speed = 0xA0; break;
         case MEMORY_60NS: memory_speed = 0xF0; break;
         default: Log_Printf(LOG_WARN, "SCR1 error: unknown memory speed\n"); break;
     }

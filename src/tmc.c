@@ -61,11 +61,10 @@ void TurboSCR1_Reset(void) {
 	}
 	
 	switch (ConfigureParams.Memory.nMemorySpeed) {
-		case MEMORY_120NS: memory_speed = 0xF0; break;
-		case MEMORY_100NS: memory_speed = 0xF0; break;
+		case MEMORY_120NS: memory_speed = 0x00; break;
+		case MEMORY_100NS: memory_speed = 0x50; break;
 		case MEMORY_80NS: memory_speed = 0xA0; break;
-		case MEMORY_70NS: memory_speed = 0x50; break;
-		case MEMORY_60NS: memory_speed = 0x00; break;
+		case MEMORY_60NS: memory_speed = 0xF0; break;
 		default: Log_Printf(LOG_WARN, "Turbo SCR1 error: unknown memory speed\n"); break;
 	}
 	tmc.scr1 = ((memory_speed&0xF0)|(cpu_speed&0x07));
