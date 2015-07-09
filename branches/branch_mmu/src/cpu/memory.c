@@ -139,10 +139,14 @@ uae_u32 NEXT_ram_bank3_mask;
 
 #define NEXT_BMAP_MAP_SIZE		0x00010000
 
-/* Cache tag memory for nitro systems */
+/* Cache memory for nitro systems */
 #define NEXT_CACHE_TAG_START	0x03E00000
 #define NEXT_CACHE_TAG_SIZE		0x00100000
 #define NEXT_CACHE_TAG_MASK		0x000FFFFF
+
+#define NEXT_CACHE_START		0x03F00000
+#define NEXT_CACHE_SIZE			0x00100000
+#define NEXT_CACHE_MASK			0x000FFFFF
 
 /* NeXTbus slot memory space */
 #define NEXTBUS_SLOT_START(x)	(0xF0000000|((x)<<24))
@@ -1118,22 +1122,28 @@ const char* memory_init(int *nNewNEXTMemSize)
 	
 	if (ConfigureParams.System.nMachineType != NEXT_CUBE030) {
 		map_banks(&IO_bank, NEXT_IO_BMAP_START >> 16, NEXT_IO_SIZE>>16);
-		map_banks(&BMAP_bank, NEXT_BMAP_START >> 16, NEXT_BMAP_MAP_SIZE>>16);
-		map_banks(&BMAP_bank, (0x80000000|NEXT_BMAP_START) >> 16, NEXT_BMAP_MAP_SIZE>>16);
-		write_log("Mapping BMAP device space at $%08X\n", NEXT_IO_BMAP_START);
+		if (!ConfigureParams.System.bTurbo) {
+			map_banks(&BMAP_bank, NEXT_BMAP_START >> 16, NEXT_BMAP_MAP_SIZE>>16);
+			map_banks(&BMAP_bank, (0x80000000|NEXT_BMAP_START) >> 16, NEXT_BMAP_MAP_SIZE>>16);
+			write_log("Mapping BMAP device space at $%08X\n", NEXT_IO_BMAP_START);
+		} else {
+			write_log("Mapping device space at $%08X\n", NEXT_IO_BMAP_START);
+		}
 	}
 	
 	if (ConfigureParams.System.bTurbo) {
 		map_banks(&TMC_bank, NEXT_IO_TMC_START >> 16, NEXT_IO_SIZE>>16);
 		write_log("Mapping TMC device space at $%08X\n", NEXT_IO_TMC_START);
 	}
-	
-	/* Map cache tag memory (dummy) */
-	if (ConfigureParams.System.bTurbo) {
+#if 0 /* TODO: This is for Nitro systems */
+	/* Map cache memory (dummy) */
+	if (ConfigureParams.System.bNitro) {
+		map_banks(&dummy_bank, NEXT_CACHE_START>>16, NEXT_CACHE_SIZE>>16);
+		write_log("Mapping cache memory at $%08x: %ikB\n", NEXT_CACHE_START, NEXT_CACHE_SIZE/1024);
 		map_banks(&dummy_bank, NEXT_CACHE_TAG_START>>16, NEXT_CACHE_TAG_SIZE>>16);
 		write_log("Mapping cache tag memory at $%08x: %ikB\n", NEXT_CACHE_TAG_START, NEXT_CACHE_TAG_SIZE/1024);
 	}
-	
+#endif
 	
 	ROMmemory=NEXTRom;
 	IOmemory=NEXTIo;

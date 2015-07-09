@@ -312,6 +312,8 @@ Uint32 tmc_lget(uaecptr addr) {
 	
 	if (addr==0x02210000) {
 		Log_Printf(LOG_WARN, "[TMC] Nitro register lget from $%08X",addr);
+		Log_Printf(LOG_WARN, "[TMC] No nitro --> bus error!");
+		M68000_BusError(addr, 1);
 		return 0;
 	}
 
@@ -397,6 +399,8 @@ void tmc_lput(uaecptr addr, Uint32 l) {
 	
 	if (addr==0x02210000) {
 		Log_Printf(LOG_WARN, "[TMC] Nitro register lput %08X at $%08X",l,addr);
+		Log_Printf(LOG_WARN, "[TMC] No nitro --> bus error!");
+		M68000_BusError(addr, 0);
 		return;
 	}
 	
