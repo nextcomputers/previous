@@ -899,6 +899,7 @@ Uint8 floppy_sra_read(void) {
     if (!flpdrv[flp.sel].protected) {
         val|=SRA_WP_N;
     }
+    val|=SRA_INT; /* CHECK: daydream requires this */
     return val;
 }
 
