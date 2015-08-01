@@ -1897,7 +1897,7 @@ uae_u32 REGPARAM2 op_illg (uae_u32 opcode)
 	static int warned;
 
 	if (warned < 20) {
-		write_log ("Illegal instruction: %04x at %08X -> %08X\n", opcode, pc, get_long (regs.vbr + 0x10));
+		write_log ("Illegal instruction: %04x at %08X\n", opcode, pc);
 		warned++;
 		//activate_debugger();
 	}
