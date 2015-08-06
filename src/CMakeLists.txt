@@ -1,5 +1,5 @@
 set(SOURCES
-	audio.c bmap.c cfgopts.c clocks_timings.c configuration.c options.c change.c
+	adb.c audio.c bmap.c cfgopts.c clocks_timings.c configuration.c options.c change.c
 	control.c cycInt.c cycles.c dialog.c dma.c esp.c enet_slirp.c ethernet.c
 	file.c floppy.c ioMem.c ioMemTabNEXT.c ioMemTabTurbo.c memorySnapShot.c 
 	keymap.c kms.c m68000.c main.c mo.c nbic.c nextMemory.c paths.c queue.c ramdac.c 
