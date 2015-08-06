@@ -272,13 +272,21 @@ Uint32 adb_lget(Uint32 addr) {
 }
 
 Uint16 adb_wget(Uint32 addr) {
+	Uint8 shift;
 	Log_Printf(LOG_WARN, "[ADB] wget at $%08X",addr);
-	return adb_read_register(addr&0xFFFFFFFC)>>(3-(addr&3))&0xFFFF;
+	
+	shift = (2-(addr&2))*8;
+	addr &= ~3;
+	return (adb_read_register(addr)>>shift)&0xFFFF;
 }
 
 Uint8 adb_bget(Uint32 addr) {
+	Uint8 shift;
 	Log_Printf(LOG_WARN, "[ADB] bget at $%08X",addr);
-	return adb_read_register(addr&0xFFFFFFFC)>>(3-(addr&3))&0xFF;
+	
+	shift = (3-(addr&3))*8;
+	addr &= ~3;
+	return (adb_read_register(addr)>>shift)&0xFF;
 }
 
 void adb_lput(Uint32 addr, Uint32 l) {
