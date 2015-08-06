@@ -268,7 +268,8 @@ void floppy_reset(bool hard) {
     flp.msr |= STAT_RQM;
     flp.msr &= ~STAT_DIO;
     flp_io_state=FLP_STATE_DONE;
-    
+    flp.sra|=SRA_INT; /* CHECK: daydream requires this */
+	
     if (hard) {
         flp.dor &= ~DOR_RESET_N;
         flp.srb &= ~(SRB_MOTEN_MASK|SRB_DRVSEL0_N);
@@ -899,7 +900,6 @@ Uint8 floppy_sra_read(void) {
     if (!flpdrv[flp.sel].protected) {
         val|=SRA_WP_N;
     }
-    val|=SRA_INT; /* CHECK: daydream requires this */
     return val;
 }
 
