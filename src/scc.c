@@ -311,3 +311,123 @@ void SCC_Reset(void) {
     channel[0].rreg[R_STATUS] = 0xFF;
     channel[1].rreg[R_STATUS] = 0xFF;
 }
+
+
+
+
+/* NEW SCC */
+
+#define LOG_SCC_REG_LEVEL	LOG_DEBUG
+
+Uint8 scc_control_read(Uint8 channel);
+void scc_control_write(Uint8 channel, Uint8 val);
+Uint8 scc_data_read(Uint8 channel);
+void scc_data_write(Uint8 channel, Uint8 val);
+
+/* Registers */
+
+void SCC_ControlB_Read(void) { // 0x02018000
+	IoMem[IoAccessCurrentAddress & IO_SEG_MASK] = scc_control_read(1);
+	Log_Printf(LOG_SCC_REG_LEVEL,"[SCC] Channel B control read at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
+}
+
+void SCC_ControlB_Write(void) {
+	scc_control_write(1, IoMem[IoAccessCurrentAddress & IO_SEG_MASK]);
+	Log_Printf(LOG_SCC_REG_LEVEL,"[SCC] Channel B control write at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
+}
+
+void SCC_ControlA_Read(void) { // 0x02018001
+	IoMem[IoAccessCurrentAddress & IO_SEG_MASK] = scc_control_read(0);
+	Log_Printf(LOG_SCC_REG_LEVEL,"[SCC] Channel A control read at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
+}
+
+void SCC_ControlA_Write(void) {
+	scc_control_write(0, IoMem[IoAccessCurrentAddress & IO_SEG_MASK]);
+	Log_Printf(LOG_SCC_REG_LEVEL,"[SCC] Channel A control write at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
+}
+
+void SCC_DataB_Read(void) { // 0x02018002
+	IoMem[IoAccessCurrentAddress & IO_SEG_MASK] = scc_data_read(1);
+	Log_Printf(LOG_SCC_REG_LEVEL,"[SCC] Channel B data read at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
+}
+
+void SCC_DataB_Write(void) {
+	scc_data_write(1, IoMem[IoAccessCurrentAddress & IO_SEG_MASK]);
+	Log_Printf(LOG_SCC_REG_LEVEL,"[SCC] Channel B data write at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
+}
+
+void SCC_DataA_Read(void) { // 0x02018003
+	IoMem[IoAccessCurrentAddress & IO_SEG_MASK] = scc_data_read(0);
+	Log_Printf(LOG_SCC_REG_LEVEL,"[SCC] Channel A data read at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
+}
+
+void SCC_DataA_Write(void) {
+	scc_data_write(0, IoMem[IoAccessCurrentAddress & IO_SEG_MASK]);
+	Log_Printf(LOG_SCC_REG_LEVEL,"[SCC] Channel A data write at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
+}
+
+
+/* SCC Registers */
+
+struct {
+	Uint8 rreg[16];
+	Uint8 wreg[16];
+} scc[2];
+
+bool scc_reg_access[2];
+Uint8 scc_reg_num[2];
+
+Uint8 scc_control_read(Uint8 ch) {
+	Uint8 val = 0;
+	
+	switch (scc_reg_num[ch]) {
+		case 0:
+			break;
+			
+		default:
+			break;
+	}
+
+	Log_Printf(LOG_SCC_LEVEL,"[SCC] Channel %c: Register %i read %02X\n",
+			   ch?'B':'A',scc_reg_num[ch],val);
+
+	scc_reg_access[ch] = false;
+
+	return val;
+}
+
+void scc_control_write(Uint8 ch, Uint8 val) {
+	if (scc_reg_access[ch]) {
+		
+		Log_Printf(LOG_SCC_LEVEL,"[SCC] Channel %c: Register %i write %02X\n",
+				   ch?'B':'A',scc_reg_num[ch],val);
+		
+		switch (scc_reg_num[ch]) {
+			case 0:
+				break;
+				
+			default:
+				break;
+		}
+		
+		scc_reg_access[ch] = false;
+	} else {
+		scc_reg_num[ch] = val;
+		scc_reg_access[ch] = true;
+	}
+}
+
+Uint8 scc_data_read(Uint8 ch) {
+	Uint8 val = 0;
+	
+	Log_Printf(LOG_SCC_LEVEL,"[SCC] Channel %c: Data read %02X\n",
+			   ch?'B':'A',val);
+
+	return val;
+}
+
+void scc_data_write(Uint8 ch, Uint8 val) {
+	
+	Log_Printf(LOG_SCC_LEVEL,"[SCC] Channel %c: Data write %02X\n",
+			   ch?'B':'A',val);
+}
