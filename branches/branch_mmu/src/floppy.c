@@ -958,7 +958,8 @@ void floppy_read_sector(void) {
     }
     
     if (flp_sector_counter==0) {
-        flp.st[0] = IC_NORMAL;
+        flp.st[0] = IC_ABNORMAL; /* Strange behavior of NeXT hardware */
+        flp.st[1] |= ST1_EN;
         send_rw_status(drive);
     }
 }
@@ -988,7 +989,8 @@ void floppy_write_sector(void) {
     }
     
     if (flp_sector_counter==0) {
-        flp.st[0] = IC_NORMAL;
+        flp.st[0] = IC_ABNORMAL; /* Strange behavior of NeXT hardware */
+        flp.st[1] |= ST1_EN;
         send_rw_status(drive);
     }
 }
