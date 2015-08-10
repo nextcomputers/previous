@@ -290,10 +290,10 @@ const INTERCEPT_ACCESS_FUNC IoMemTable_NEXT[] =
 	{ 0x02016004, SIZE_BYTE, HardclockReadCSR, HardclockWriteCSR },
 	
 	/* Serial Communication Controller (AMD Z8530H) */
-	{ 0x02018000, SIZE_BYTE, SCC_Read, SCC_Write },
-	{ 0x02018001, SIZE_BYTE, SCC_Read, SCC_Write },
-	{ 0x02018002, SIZE_BYTE, SCC_Read, SCC_Write },
-	{ 0x02018003, SIZE_BYTE, SCC_Read, SCC_Write },
+	{ 0x02018000, SIZE_BYTE, SCC_ControlB_Read, SCC_ControlB_Write },
+	{ 0x02018001, SIZE_BYTE, SCC_ControlA_Read, SCC_ControlA_Write },
+	{ 0x02018002, SIZE_BYTE, SCC_DataB_Read, SCC_DataB_Write },
+	{ 0x02018003, SIZE_BYTE, SCC_DataA_Read, SCC_DataA_Write },
 	/* Serial Interface Clock */
 	{ 0x02018004, SIZE_LONG, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
 	

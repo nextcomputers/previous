@@ -222,16 +222,6 @@
 
 
 /* Functions */
-void SCC_Read(void);
-void SCC_Write(void);
-
-void SCC_Reset(void);
-void SCC_Interrupt(void);
-void SCC_ResetChannel(int ch);
-void SCC_InitChannel(int ch);
-
-Uint8 scc_buf[1];
-
 void SCC_ControlA_Read(void);
 void SCC_ControlA_Write(void);
 void SCC_ControlB_Read(void);
@@ -240,3 +230,9 @@ void SCC_DataA_Read(void);
 void SCC_DataA_Write(void);
 void SCC_DataB_Read(void);
 void SCC_DataB_Write(void);
+
+void SCC_Reset(Uint8 mode);
+
+
+/* SCC DMA buffer */
+Uint8 scc_buf[1];
