@@ -90,6 +90,15 @@ const INTERCEPT_ACCESS_FUNC IoMemTable_Turbo[] =
 	{ 0x02004158, SIZE_LONG, DMA_Start_Read, DMA_Start_Write },
 	{ 0x0200415c, SIZE_LONG, DMA_Stop_Read, DMA_Stop_Write },
 	
+	/* DMA Init */
+	{ 0x02004210, SIZE_LONG, DMA_Init_Read, DMA_Init_Write },
+	{ 0x02004240, SIZE_LONG, DMA_Init_Read, DMA_Init_Write },
+	{ 0x02004280, SIZE_LONG, DMA_Init_Read, DMA_Init_Write },
+	{ 0x02004290, SIZE_LONG, DMA_Init_Read, DMA_Init_Write },
+	{ 0x020042d0, SIZE_LONG, DMA_Init_Read, DMA_Init_Write },
+	{ 0x02004310, SIZE_LONG, DMA_Init_Read, DMA_Init_Write },
+	{ 0x02004350, SIZE_LONG, DMA_Init_Read, DMA_Init_Write },
+	
 	/* Network Adapter (AT&T 7213) */
 	{ 0x02006000, SIZE_BYTE, EN_TX_Status_Read, EN_TX_Status_Write },
 	{ 0x02006001, SIZE_BYTE, EN_TX_Mask_Read, EN_TX_Mask_Write },
@@ -209,11 +218,12 @@ const INTERCEPT_ACCESS_FUNC IoMemTable_Turbo[] =
 	{ 0x02016004, SIZE_BYTE, HardclockReadCSR, HardclockWriteCSR },
 	
 	/* Serial Communication Controller (AMD Z8530H) */
-	{ 0x02018000, SIZE_BYTE, SCC_Read, SCC_Write },
-	{ 0x02018001, SIZE_BYTE, SCC_Read, SCC_Write },
-	{ 0x02018002, SIZE_BYTE, SCC_Read, SCC_Write },
-	{ 0x02018003, SIZE_BYTE, SCC_Read, SCC_Write },
-	{ 0x02018004, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
+	{ 0x02018000, SIZE_BYTE, SCC_ControlB_Read, SCC_ControlB_Write },
+	{ 0x02018001, SIZE_BYTE, SCC_ControlA_Read, SCC_ControlA_Write },
+	{ 0x02018002, SIZE_BYTE, SCC_DataB_Read, SCC_DataB_Write },
+	{ 0x02018003, SIZE_BYTE, SCC_DataA_Read, SCC_DataA_Write },
+	/* Serial Interface Clock */
+	{ 0x02018004, SIZE_LONG, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
 	
 	/* RAMDAC (Brooktree Bt463) */
 	{ 0x0201c000, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
