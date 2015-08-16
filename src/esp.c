@@ -486,7 +486,7 @@ void esp_start_command(Uint8 cmd) {
             abort();
             break;
         case CMD_SEL:
-            Log_Printf(LOG_WARN, "ESP Command: select without ATN sequence\n");
+            Log_Printf(LOG_ESPCMD_LEVEL, "ESP Command: select without ATN sequence\n");
             esp_select(false);
             break;
         case CMD_SELATN:
@@ -777,7 +777,7 @@ void esp_transfer_info(void) {
         esp_io_state=ESP_IO_STATE_TRANSFERING;
         CycInt_AddRelativeInterrupt(10000, INT_CPU_CYCLE, INTERRUPT_ESP_IO);
     } else {
-        Log_Printf(LOG_WARN, "[ESP] start PIO transfer");
+        Log_Printf(LOG_ESPCMD_LEVEL, "[ESP] start PIO transfer");
         switch (SCSIbus.phase) {
             case PHASE_DI:
                 esp_fifo_write(SCSIdisk_Send_Data());
