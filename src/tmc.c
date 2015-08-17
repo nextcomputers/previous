@@ -22,6 +22,7 @@ struct {
 	Uint32 horizontal;
 	Uint32 vertical;
 	Uint8 video_intr;
+	Uint32 nitro;
 } tmc;
 
 /* Additional System Control Register for Turbo systems:
@@ -313,9 +314,13 @@ Uint32 tmc_lget(uaecptr addr) {
 	
 	if (addr==0x02210000) {
 		Log_Printf(LOG_WARN, "[TMC] Nitro register lget from $%08X",addr);
-		Log_Printf(LOG_WARN, "[TMC] No nitro --> bus error!");
-		M68000_BusError(addr, 1);
-		return 0;
+		if (ConfigureParams.System.nCpuFreq==40) {
+			val = tmc.nitro;
+		} else {
+			Log_Printf(LOG_WARN, "[TMC] No nitro --> bus error!");
+			M68000_BusError(addr, 1);
+		}
+		return val;
 	}
 
 	if ((addr&0xFFFFF00)==TMC_ADB_ADDR_MASK) {
@@ -394,8 +399,12 @@ void tmc_lput(uaecptr addr, Uint32 l) {
 	
 	if (addr==0x02210000) {
 		Log_Printf(LOG_WARN, "[TMC] Nitro register lput %08X at $%08X",l,addr);
-		Log_Printf(LOG_WARN, "[TMC] No nitro --> bus error!");
-		M68000_BusError(addr, 0);
+		if (ConfigureParams.System.nCpuFreq==40) {
+			tmc.nitro = l&0x0000011F;
+		} else {
+			Log_Printf(LOG_WARN, "[TMC] No nitro --> bus error!");
+			M68000_BusError(addr, 0);
+		}
 		return;
 	}
 	
@@ -470,5 +479,6 @@ void TMC_Reset(void) {
 	
 	tmc_video_reg_reset();
 	tmc.control = 0x0D17038F;
+	tmc.nitro = 0x00000000;
 	ADB_Reset();
 }
