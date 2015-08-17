@@ -1162,6 +1162,13 @@ const char* memory_init(int *nNewNEXTMemSize)
 	if (ConfigureParams.System.bTurbo) {
 		map_banks(&TMC_bank, NEXT_IO_TMC_START >> 16, NEXT_IO_SIZE>>16);
 		write_log("Mapping TMC device space at $%08X\n", NEXT_IO_TMC_START);
+
+		if (ConfigureParams.System.nMachineType==NEXT_STATION && ConfigureParams.System.nCpuFreq==40) {
+			map_banks(&dummy_bank, NEXT_CACHE_START>>16, NEXT_CACHE_SIZE>>16);
+			write_log("Mapping cache memory at $%08x: %ikB\n", NEXT_CACHE_START, NEXT_CACHE_SIZE/1024);
+			map_banks(&dummy_bank, NEXT_CACHE_TAG_START>>16, NEXT_CACHE_TAG_SIZE>>16);
+			write_log("Mapping cache tag memory at $%08x: %ikB\n", NEXT_CACHE_TAG_START, NEXT_CACHE_TAG_SIZE/1024);
+		}
 	}
 #if 0
 	/* Map NBIC and board spaces via NeXTbus */
@@ -1182,15 +1189,6 @@ const char* memory_init(int *nNewNEXTMemSize)
 			map_banks(&NEXTBUS_slot_bank, NEXTBUS_SLOT_START(i)>>16, NEXTBUS_SLOT_SIZE>>16);
 		}
 		write_log("Mapping NeXTbus slot memory at $%08x\n", NEXTBUS_SLOT_START(i));
-	}
-#endif
-#if 0 /* TODO: This is for Nitro systems */
-	/* Map Nitro cache memory (dummy) */
-	if (ConfigureParams.System.bNitro) {
-		map_banks(&dummy_bank, NEXT_CACHE_START>>16, NEXT_CACHE_SIZE>>16);
-		write_log("Mapping cache memory at $%08x: %ikB\n", NEXT_CACHE_START, NEXT_CACHE_SIZE/1024);
-		map_banks(&dummy_bank, NEXT_CACHE_TAG_START>>16, NEXT_CACHE_TAG_SIZE>>16);
-		write_log("Mapping cache tag memory at $%08x: %ikB\n", NEXT_CACHE_TAG_START, NEXT_CACHE_TAG_SIZE/1024);
 	}
 #endif
 	
