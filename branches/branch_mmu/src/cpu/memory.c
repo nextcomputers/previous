@@ -1163,7 +1163,7 @@ const char* memory_init(int *nNewNEXTMemSize)
 		map_banks(&TMC_bank, NEXT_IO_TMC_START >> 16, NEXT_IO_SIZE>>16);
 		write_log("Mapping TMC device space at $%08X\n", NEXT_IO_TMC_START);
 
-		if (ConfigureParams.System.nMachineType==NEXT_STATION && ConfigureParams.System.nCpuFreq==40) {
+		if (ConfigureParams.System.nCpuFreq==40) {
 			map_banks(&dummy_bank, NEXT_CACHE_START>>16, NEXT_CACHE_SIZE>>16);
 			write_log("Mapping cache memory at $%08x: %ikB\n", NEXT_CACHE_START, NEXT_CACHE_SIZE/1024);
 			map_banks(&dummy_bank, NEXT_CACHE_TAG_START>>16, NEXT_CACHE_TAG_SIZE>>16);
