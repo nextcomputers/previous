@@ -18,3 +18,5 @@ Uint32 nbic_reg_bget(Uint32 addr);
 void nbic_reg_lput(Uint32 addr, Uint32 val);
 void nbic_reg_wput(Uint32 addr, Uint32 val);
 void nbic_reg_bput(Uint32 addr, Uint32 val);
+
+void nextbus_init(void);
