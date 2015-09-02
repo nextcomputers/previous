@@ -1189,6 +1189,8 @@ const char* memory_init(int *nNewNEXTMemSize)
 			map_banks(&NEXTBUS_slot_bank, NEXTBUS_SLOT_START(i)>>16, NEXTBUS_SLOT_SIZE>>16);
 		}
 		write_log("Mapping NeXTbus slot memory at $%08x\n", NEXTBUS_SLOT_START(i));
+        
+        nextbus_init();
 	}
 #endif
 	

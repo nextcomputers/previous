@@ -1,8 +1,11 @@
 #include "main.h"
 #include "configuration.h"
 #include "m68000.h"
+#include "dimension.h"
 #include "sysdeps.h"
 #include "nbic.h"
+
+#define LOG_NEXTBUS_LEVEL   LOG_WARN
 
 
 /* NeXTbus and NeXTbus Interface Chip emulation */
@@ -451,7 +454,7 @@ static nextbus_access_funcs nextbus_slot[16] = {
 Uint32 nextbus_slot_lget(Uint32 addr) {
 	int slot;
 	slot = (addr & 0x0F000000)>>24;
-	Log_Printf(LOG_WARN, "[NextBus] Slot %i: lget at %08X",slot,addr);
+	Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Slot %i: lget at %08X",slot,addr);
 	
 	return nextbus_slot[slot].lget(addr);
 }
@@ -459,7 +462,7 @@ Uint32 nextbus_slot_lget(Uint32 addr) {
 Uint32 nextbus_slot_wget(Uint32 addr) {
 	int slot;
 	slot = (addr & 0x0F000000)>>24;
-	Log_Printf(LOG_WARN, "[NextBus] Slot %i: wget at %08X",slot,addr);
+	Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Slot %i: wget at %08X",slot,addr);
 	
 	return nextbus_slot[slot].wget(addr);
 }
@@ -467,7 +470,7 @@ Uint32 nextbus_slot_wget(Uint32 addr) {
 Uint32 nextbus_slot_bget(Uint32 addr) {
 	int slot;
 	slot = (addr & 0x0F000000)>>24;
-	Log_Printf(LOG_WARN, "[NextBus] Slot %i: bget at %08X",slot,addr);
+	Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Slot %i: bget at %08X",slot,addr);
 	
 	return nextbus_slot[slot].bget(addr);
 }
@@ -475,7 +478,7 @@ Uint32 nextbus_slot_bget(Uint32 addr) {
 void nextbus_slot_lput(Uint32 addr, Uint32 val) {
 	int slot;
 	slot = (addr & 0x0F000000)>>24;
-	Log_Printf(LOG_WARN, "[NextBus] Slot %i: lput at %08X, val %08X",slot,addr,val);
+	Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Slot %i: lput at %08X, val %08X",slot,addr,val);
 	
 	nextbus_slot[slot].lput(addr, val);
 }
@@ -483,7 +486,7 @@ void nextbus_slot_lput(Uint32 addr, Uint32 val) {
 void nextbus_slot_wput(Uint32 addr, Uint32 val) {
 	int slot;
 	slot = (addr & 0x0F000000)>>24;
-	Log_Printf(LOG_WARN, "[NextBus] Slot %i: wput at %08X, val %04X",slot,addr,val);
+	Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Slot %i: wput at %08X, val %04X",slot,addr,val);
 	
 	nextbus_slot[slot].wput(addr, val);
 }
@@ -491,7 +494,7 @@ void nextbus_slot_wput(Uint32 addr, Uint32 val) {
 void nextbus_slot_bput(Uint32 addr, Uint32 val) {
 	int slot;
 	slot = (addr & 0x0F000000)>>24;
-	Log_Printf(LOG_WARN, "[NextBus] Slot %i: bput at %08X, val %02X",slot,addr,val);
+	Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Slot %i: bput at %08X, val %02X",slot,addr,val);
 	
 	nextbus_slot[slot].bput(addr, val);
 }
@@ -500,7 +503,7 @@ void nextbus_slot_bput(Uint32 addr, Uint32 val) {
 Uint32 nextbus_board_lget(Uint32 addr) {
 	int slot;
 	slot = (addr & 0xF0000000)>>28;
-	Log_Printf(LOG_WARN, "[NextBus] Board %i: lget at %08X",slot,addr);
+	Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Board %i: lget at %08X",slot,addr);
 	
 	return nextbus_board[slot].lget(addr);
 }
@@ -508,7 +511,7 @@ Uint32 nextbus_board_lget(Uint32 addr) {
 Uint32 nextbus_board_wget(Uint32 addr) {
 	int slot;
 	slot = (addr & 0xF0000000)>>28;
-	Log_Printf(LOG_WARN, "[NextBus] Board %i: wget at %08X",slot,addr);
+	Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Board %i: wget at %08X",slot,addr);
 	
 	return nextbus_board[slot].wget(addr);
 }
@@ -516,7 +519,7 @@ Uint32 nextbus_board_wget(Uint32 addr) {
 Uint32 nextbus_board_bget(Uint32 addr) {
 	int slot;
 	slot = (addr & 0xF0000000)>>28;
-	Log_Printf(LOG_WARN, "[NextBus] Board %i: bget at %08X",slot,addr);
+	Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Board %i: bget at %08X",slot,addr);
 	
 	return nextbus_board[slot].bget(addr);
 }
@@ -524,7 +527,7 @@ Uint32 nextbus_board_bget(Uint32 addr) {
 void nextbus_board_lput(Uint32 addr, Uint32 val) {
 	int slot;
 	slot = (addr & 0xF0000000)>>28;
-	Log_Printf(LOG_WARN, "[NextBus] Board %i: lput at %08X, val %08X",slot,addr,val);
+	Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Board %i: lput at %08X, val %08X",slot,addr,val);
 
 	nextbus_board[slot].lput(addr, val);
 }
@@ -532,7 +535,7 @@ void nextbus_board_lput(Uint32 addr, Uint32 val) {
 void nextbus_board_wput(Uint32 addr, Uint32 val) {
 	int slot;
 	slot = (addr & 0xF0000000)>>28;
-	Log_Printf(LOG_WARN, "[NextBus] Board %i: wput at %08X, val %04X",slot,addr,val);
+	Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Board %i: wput at %08X, val %04X",slot,addr,val);
 	
 	nextbus_board[slot].wput(addr, val);
 }
@@ -540,7 +543,29 @@ void nextbus_board_wput(Uint32 addr, Uint32 val) {
 void nextbus_board_bput(Uint32 addr, Uint32 val) {
 	int slot;
 	slot = (addr & 0xF0000000)>>28;
-	Log_Printf(LOG_WARN, "[NextBus] Board %i: bput at %08X, val %02X",slot,addr,val);
+	Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Board %i: bput at %08X, val %02X",slot,addr,val);
 	
 	nextbus_board[slot].bput(addr, val);
+}
+
+/* Init function for NextBus */
+void nextbus_init(void) {
+#if ENABLE_DIMENSION
+    Log_Printf(LOG_WARN, "[NextBus] NeXTdimension board at slot %i",2);
+
+    nextbus_board[2].lget = nd_board_lget;
+    nextbus_board[2].wget = nd_board_wget;
+    nextbus_board[2].bget = nd_board_bget;
+    nextbus_board[2].lput = nd_board_lput;
+    nextbus_board[2].wput = nd_board_wput;
+    nextbus_board[2].bput = nd_board_bput;
+    nextbus_slot[2].lget = nd_slot_lget;
+    nextbus_slot[2].wget = nd_slot_wget;
+    nextbus_slot[2].bget = nd_slot_bget;
+    nextbus_slot[2].lput = nd_slot_lput;
+    nextbus_slot[2].wput = nd_slot_wput;
+    nextbus_slot[2].bput = nd_slot_bput;
+    
+    dimension_reset();
+#endif
 }
