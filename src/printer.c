@@ -388,7 +388,11 @@ Uint8 lp_printer_status(Uint8 num) {
     lp_serial_phase = 8;
     nlp.stat |= LP_GPI_BUSY;
     
-    return (lp_serial_status[num]|1)<<1; /* FIXME: why shifted? */
+    if (num<16) {
+        return (lp_serial_status[num]|1)<<1; /* FIXME: why shifted? */
+    } else {
+        return 0x02; /* CHECK: meaning? */
+    }
 }
 
 Uint8 lp_printer_command(Uint8 cmd) {
@@ -414,37 +418,36 @@ Uint8 lp_printer_command(Uint8 cmd) {
         /* Commands with no status */
         case CMD_EXT_CLK:
             Log_Printf(LOG_LP_LEVEL, "[LP] External clock");
-            break;
+            return lp_printer_status(16);
         case CMD_PRINTER_CLK:
             Log_Printf(LOG_LP_LEVEL, "[LP] Printer clock");
-            break;
+            return lp_printer_status(16);
         case CMD_PAUSE:
             Log_Printf(LOG_LP_LEVEL, "[LP] Pause");
-            break;
+            return lp_printer_status(16);
         case CMD_UNPAUSE:
             Log_Printf(LOG_LP_LEVEL, "[LP] Unpause");
-            break;
+            return lp_printer_status(16);
         case CMD_DRUM_ON:
             Log_Printf(LOG_LP_LEVEL, "[LP] Drum on");
-            break;
+            return lp_printer_status(16);
         case CMD_DRUM_OFF:
             Log_Printf(LOG_LP_LEVEL, "[LP] Drum off");
-            break;
+            return lp_printer_status(16);
         case CMD_CASSFEED:
             Log_Printf(LOG_LP_LEVEL, "[LP] Cassette feed");
-            break;
+            return lp_printer_status(16);
         case CMD_HANDFEED:
             Log_Printf(LOG_LP_LEVEL, "[LP] Hand feed");
-            break;
+            return lp_printer_status(16);
         case CMD_RETRANSCANC:
             Log_Printf(LOG_LP_LEVEL, "[LP] Cancel retransmission");
-            break;
+            return lp_printer_status(16);
 
         default:
             Log_Printf(LOG_LP_LEVEL, "[LP] Unknown command!");
-            break;
+            return lp_printer_status(16);
     }
-    return 0;
 }
 
 void lp_gpo_access(Uint8 data) {
@@ -464,7 +467,8 @@ void lp_gpo_access(Uint8 data) {
     }
     if (data&LP_GPO_BUSY) {
         if ((data&LP_GPO_CLOCK) && !(lp_old_data&LP_GPO_CLOCK)) {
-            lp_cmd = (lp_cmd<<1)|(data&LP_GPO_CMD_BIT)?1:0;
+            lp_cmd <<= 1;
+            lp_cmd |= (data&LP_GPO_CMD_BIT)?1:0;
         }
     } else if (nlp.stat&LP_GPI_BUSY) {
         if (!(data&LP_GPO_CLOCK) && (lp_old_data&LP_GPO_CLOCK)) {
@@ -473,7 +477,6 @@ void lp_gpo_access(Uint8 data) {
                 nlp.stat &= ~LP_GPI_BUSY;
                 Log_Printf(LOG_LP_LEVEL, "[LP] Printer status: %02X",lp_stat);
             }
-            printf("PHASE: %i, bit: %i\n",lp_serial_phase,(lp_stat&(1<<lp_serial_phase))?1:0);
             nlp.stat &= ~LP_GPI_STAT_BIT;
             nlp.stat |= (lp_stat&(1<<lp_serial_phase))?LP_GPI_STAT_BIT:0;
             
