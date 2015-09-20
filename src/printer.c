@@ -37,6 +37,7 @@ struct {
     Uint8 cmd;
 } nlp;
 
+void lp_power_on(void);
 Uint32 lp_data_read(void);
 void lp_boot_message(void);
 void lp_interface_command(Uint8 cmd, Uint32 data);
@@ -127,6 +128,7 @@ void LP_CSR1_Write(void) {
     if ((val&LP_ON) != (nlp.csr.printer&LP_ON)) {
         if (val&LP_ON) {
             Statusbar_AddMessage("Switching Laser Printer ON.", 0);
+            lp_power_on();
         } else {
             Statusbar_AddMessage("Switching Laser Printer OFF.", 0);
         }
@@ -228,7 +230,6 @@ void lp_gpo(Uint8 cmd) {
     }
     if (cmd&LP_GPO_PWR_RDY) {
         Log_Printf(LOG_LP_LEVEL,"[LP] Printer controller power ready");
-        nlp.stat |= LP_GPI_PWR_RDY;
     }
     if (cmd&LP_GPO_CLOCK) {
         Log_Printf(LOG_LP_LEVEL,"[LP] Printer serial data clock");
@@ -304,6 +305,10 @@ void lp_interface_command(Uint8 cmd, Uint32 data) {
             }
             break;
     }
+}
+
+void lp_power_on(void) {
+    nlp.stat |= (LP_GPI_PWR_RDY|LP_GPI_RDY);
 }
 
 /* COPY. NeXT 1987 */
@@ -387,6 +392,7 @@ Uint8 lp_printer_status(Uint8 num) {
     
     lp_serial_phase = 8;
     nlp.stat |= LP_GPI_BUSY;
+    nlp.csr.cmd = LP_RES_GPI;
     
     if (num<16) {
         return (lp_serial_status[num]|1)<<1; /* FIXME: why shifted? */
@@ -480,7 +486,7 @@ void lp_gpo_access(Uint8 data) {
             nlp.stat &= ~LP_GPI_STAT_BIT;
             nlp.stat |= (lp_stat&(1<<lp_serial_phase))?LP_GPI_STAT_BIT:0;
             
-            nlp.csr.cmd = LP_RES_GPI;
+            nlp.csr.cmd = LP_RES_GPI; /* FIXME: find a better place */
             nlp.csr.printer |= (LP_INT|LP_DATA_OVR); /* CHECK: true? */
         }
     }
