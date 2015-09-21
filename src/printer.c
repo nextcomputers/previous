@@ -13,11 +13,12 @@
 #include "configuration.h"
 #include "printer.h"
 #include "sysReg.h"
+#include "dma.h"
 #include "statusbar.h"
 
 #define IO_SEG_MASK 0x1FFFF
 
-#define LOG_LP_REG_LEVEL    LOG_WARN
+#define LOG_LP_REG_LEVEL    LOG_DEBUG
 #define LOG_LP_LEVEL        LOG_WARN
 
 
@@ -42,6 +43,8 @@ Uint32 lp_data_read(void);
 void lp_boot_message(void);
 void lp_interface_command(Uint8 cmd, Uint32 data);
 void lp_gpo_access(Uint8 data);
+
+bool lp_data_transfer = false;
 
 /* Laser Printer control and status register (0x0200F000)
  *
@@ -288,8 +291,10 @@ void lp_interface_command(Uint8 cmd, Uint32 data) {
 
                 if (cmd&LP_CMD_DATA_EN) {
                     Log_Printf(LOG_LP_LEVEL,"[LP] Enable printer data transfer");
+                    lp_data_transfer = true;
                 } else {
                     Log_Printf(LOG_LP_LEVEL,"[LP] Disable printer data transfer");
+                    lp_data_transfer = false;
                 }
                 if (cmd&LP_CMD_300DPI) {
                     Log_Printf(LOG_LP_LEVEL,"[LP] 300 DPI mode");
@@ -493,4 +498,26 @@ void lp_gpo_access(Uint8 data) {
     }
     
     lp_old_data = data;
+}
+
+/* Printer DMA and printing function */
+void Printer_IO_Handler(void) {
+    int i;
+    
+    if (lp_data_transfer) {
+        lp_buffer.limit = 4096;
+        lp_buffer.size = 0;
+        dma_printer_read_memory();
+        
+        if (lp_buffer.size==0) {
+            Log_Printf(LOG_LP_LEVEL,"[LP] Printing done.");
+            nlp.csr.dma |= LP_DMA_OUT_UNDR;
+            set_interrupt(INT_PRINTER, SET_INT);
+            return;
+        }
+        for (i = 0; i < lp_buffer.size; i++) {
+            printf("%02X",lp_buffer.data[i]);
+        }
+        printf("\n");
+    }
 }
