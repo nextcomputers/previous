@@ -206,7 +206,7 @@ void LP_Data_Write(void) {
 /* Data for commands */
 #define LP_GPI_PWR_RDY  0x10
 #define LP_GPI_RDY      0x08
-#define LP_GPI_VSYNC    0x04
+#define LP_GPI_VSREQ    0x04
 #define LP_GPI_BUSY     0x02
 #define LP_GPI_STAT_BIT 0x01
 
@@ -227,6 +227,7 @@ void lp_gpo(Uint8 cmd) {
     }
     if (cmd&LP_GPO_ENABLE) {
         Log_Printf(LOG_LP_LEVEL,"[LP] Printer enable");
+        nlp.stat |= LP_GPI_VSREQ;
     }
     if (cmd&LP_GPO_PWR_RDY) {
         Log_Printf(LOG_LP_LEVEL,"[LP] Printer controller power ready");
