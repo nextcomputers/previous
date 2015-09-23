@@ -100,7 +100,7 @@ bool lp_data_transfer = false;
 
 void LP_CSR0_Read(void) { // 0x0200F000
     IoMem[IoAccessCurrentAddress & IO_SEG_MASK] = nlp.csr.dma;
-    Log_Printf(LOG_DEBUG,"[LP] CSR0 read at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
+    Log_Printf(LOG_LP_REG_LEVEL,"[LP] CSR0 read at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
 }
 
 void LP_CSR0_Write(void) {
@@ -292,6 +292,7 @@ void lp_interface_command(Uint8 cmd, Uint32 data) {
                 if (cmd&LP_CMD_DATA_EN) {
                     Log_Printf(LOG_LP_LEVEL,"[LP] Enable printer data transfer");
                     lp_data_transfer = true;
+                    CycInt_AddRelativeInterrupt(1000, INT_CPU_CYCLE, INTERRUPT_LP_IO);
                 } else {
                     Log_Printf(LOG_LP_LEVEL,"[LP] Disable printer data transfer");
                     lp_data_transfer = false;
@@ -504,6 +505,8 @@ void lp_gpo_access(Uint8 data) {
 void Printer_IO_Handler(void) {
     int i;
     
+    CycInt_AcknowledgeInterrupt();
+    
     if (lp_data_transfer) {
         lp_buffer.limit = 4096;
         lp_buffer.size = 0;
@@ -519,5 +522,7 @@ void Printer_IO_Handler(void) {
             printf("%02X",lp_buffer.data[i]);
         }
         printf("\n");
+        
+        CycInt_AddRelativeInterrupt(200000, INT_CPU_CYCLE, INTERRUPT_LP_IO);
     }
 }
