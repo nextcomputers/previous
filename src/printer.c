@@ -57,11 +57,10 @@ bool lp_data_transfer = false;
  * ---- ---x ---- ---- ---- ---- ---- ----  increment buffer read pointer (r/w)
  *
  * ---- ---- x--- ---- ---- ---- ---- ----  printer on/off (r/w)
- * ---- ---- -x-- ---- ---- ---- ---- ----  output double bit enable (r/w)
- * ---- ---- --x- ---- ---- ---- ---- ----  input double bit enable (r/w)
- * ---- ---- ---x ---- ---- ---- ---- ----  printer interrupt (r)
- * ---- ---- ---- x--- ---- ---- ---- ----  printer data available (r)
- * ---- ---- ---- -x-- ---- ---- ---- ----  printer data overrun (r/w)
+ * ---- ---- -x-- ---- ---- ---- ---- ----  behave like monitor interface (r/w)
+ * ---- ---- ---- x--- ---- ---- ---- ----  printer interrupt (r)
+ * ---- ---- ---- -x-- ---- ---- ---- ----  printer data available (r)
+ * ---- ---- ---- --x- ---- ---- ---- ----  printer data overrun (r/w)
  *
  * ---- ---- ---- ---- x--- ---- ---- ----  dma out transmit pending (r)
  * ---- ---- ---- ---- -x-- ---- ---- ----  dma out transmit in progress (r)
@@ -72,7 +71,7 @@ bool lp_data_transfer = false;
  *
  * ---- ---- ---- ---- ---- ---- xxxx xxxx  command to append on printer data (r/w)
  *
- * ---x ---- ---- --xx ---- xx-- ---- ----  zero bits
+ * ---x ---- --xx ---x ---- xx-- ---- ----  zero bits
  */
 
 #define LP_DMA_OUT_EN   0x80
@@ -84,11 +83,10 @@ bool lp_data_transfer = false;
 #define LP_DMA_INCR     0x01
 
 #define LP_ON           0x80
-#define LP_DBL_OUT      0x40
-#define LP_DBL_IN       0x20
-#define LP_INT          0x10
-#define LP_DATA         0x08
-#define LP_DATA_OVR     0x04
+#define LP_NDI          0x40
+#define LP_INT          0x08
+#define LP_DATA         0x04
+#define LP_DATA_OVR     0x02
 
 #define LP_TX_DMA_PEND  0x80
 #define LP_TX_DMA       0x40
@@ -254,7 +252,7 @@ void lp_interface_status(void) {
 
     nlp.csr.cmd = LP_RES_GPI;
     
-    nlp.csr.printer |= (LP_INT|LP_DATA_OVR);
+    nlp.csr.printer |= (LP_INT|LP_DATA);
     set_interrupt(INT_PRINTER, SET_INT);
 }
 
@@ -327,7 +325,7 @@ void lp_boot_message(void) {
     
     nlp.csr.cmd = LP_RES_COPY;
     
-    nlp.csr.printer |= LP_DATA_OVR;
+    nlp.csr.printer |= LP_DATA;
 }
 
 Uint32 lp_data_read(void) {
@@ -341,7 +339,7 @@ Uint32 lp_data_read(void) {
     }
     
     if (lp_copyright_sequence==0) {
-        nlp.csr.printer &= ~(LP_INT|LP_DATA_OVR);
+        nlp.csr.printer &= ~(LP_INT|LP_DATA);
         set_interrupt(INT_PRINTER, RELEASE_INT);
     }
 
@@ -392,20 +390,37 @@ Uint32 lp_data_read(void) {
 
 #define STAT15_NOTONER  0x04
 
-Uint8 lp_serial_status[16];
+Uint8 lp_serial_status[16] = {
+    0,0,0,0,
+    0,STAT5_A4,0,0,
+    0,0,0,0,
+    0,0,0,0
+};
+
 Uint8 lp_serial_phase = 0;
 
 Uint8 lp_printer_status(Uint8 num) {
+    int i;
+    Uint8 val;
     
     lp_serial_phase = 8;
     nlp.stat |= LP_GPI_BUSY;
     nlp.csr.cmd = LP_RES_GPI;
     
     if (num<16) {
-        return (lp_serial_status[num]|1)<<1; /* FIXME: why shifted? */
+        val = lp_serial_status[num];
     } else {
-        return 0x02; /* CHECK: meaning? */
+        val = 0x00;
     }
+    
+    /* odd parity */
+    val |= 1;
+    for (i = 1; i < 8; i++) {
+        if (val & (1 << i)) {
+            val ^= 1;
+        }
+    }
+    return val;
 }
 
 Uint8 lp_printer_command(Uint8 cmd) {
@@ -484,7 +499,7 @@ void lp_gpo_access(Uint8 data) {
             lp_cmd |= (data&LP_GPO_CMD_BIT)?1:0;
         }
     } else if (nlp.stat&LP_GPI_BUSY) {
-        if (!(data&LP_GPO_CLOCK) && (lp_old_data&LP_GPO_CLOCK)) {
+        if ((data&LP_GPO_CLOCK) && !(lp_old_data&LP_GPO_CLOCK)) {
             lp_serial_phase--;
             if (lp_serial_phase==0) {
                 nlp.stat &= ~LP_GPI_BUSY;
@@ -493,8 +508,7 @@ void lp_gpo_access(Uint8 data) {
             nlp.stat &= ~LP_GPI_STAT_BIT;
             nlp.stat |= (lp_stat&(1<<lp_serial_phase))?LP_GPI_STAT_BIT:0;
             
-            nlp.csr.cmd = LP_RES_GPI; /* FIXME: find a better place */
-            nlp.csr.printer |= (LP_INT|LP_DATA_OVR); /* CHECK: true? */
+            nlp.csr.printer |= (LP_INT|LP_DATA); /* CHECK: true? */
         }
     }
     
