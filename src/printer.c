@@ -15,6 +15,12 @@
 #include "sysReg.h"
 #include "dma.h"
 #include "statusbar.h"
+#include "file.h"
+
+#include "png.h"
+
+#define USE_PNG_PRINTING 1
+
 
 #define IO_SEG_MASK 0x1FFFF
 
@@ -35,7 +41,7 @@ struct {
     /* Internal */
     Uint8 stat;
     Uint8 statmask;
-    Uint8 cmd;
+    Uint32 margins;
 } nlp;
 
 void lp_power_on(void);
@@ -43,6 +49,10 @@ Uint32 lp_data_read(void);
 void lp_boot_message(void);
 void lp_interface_command(Uint8 cmd, Uint32 data);
 void lp_gpo_access(Uint8 data);
+
+void lp_png_setup(Uint32 data);
+void lp_png_print(void);
+void lp_png_finish(void);
 
 bool lp_data_transfer = false;
 
@@ -278,6 +288,7 @@ void lp_interface_command(Uint8 cmd, Uint32 data) {
             break;
         case LP_CMD_MARGINS:
             Log_Printf(LOG_LP_LEVEL,"[LP] Interface command: Margins (%08X)",data);
+            nlp.margins = data;
             break;
         case LP_CMD_COPY:
             Log_Printf(LOG_LP_LEVEL,"[LP] Interface command: Copyright (%08X)",data);
@@ -289,10 +300,16 @@ void lp_interface_command(Uint8 cmd, Uint32 data) {
 
                 if (cmd&LP_CMD_DATA_EN) {
                     Log_Printf(LOG_LP_LEVEL,"[LP] Enable printer data transfer");
+                    /* Setup printing buffer */
+                    lp_png_setup(nlp.margins);
                     lp_data_transfer = true;
                     CycInt_AddRelativeInterrupt(1000, INT_CPU_CYCLE, INTERRUPT_LP_IO);
                 } else {
                     Log_Printf(LOG_LP_LEVEL,"[LP] Disable printer data transfer");
+                    if (lp_data_transfer) {
+                        /* Save buffered printing data to image file */
+                        lp_png_finish();
+                    }
                     lp_data_transfer = false;
                 }
                 if (cmd&LP_CMD_300DPI) {
@@ -532,6 +549,9 @@ void Printer_IO_Handler(void) {
             set_interrupt(INT_PRINTER, SET_INT);
             return;
         }
+        /* Save data to printing buffer */
+        lp_png_print();
+        
         for (i = 0; i < lp_buffer.size; i++) {
             printf("%02X",lp_buffer.data[i]);
         }
@@ -539,4 +559,86 @@ void Printer_IO_Handler(void) {
         
         CycInt_AddRelativeInterrupt(200000, INT_CPU_CYCLE, INTERRUPT_LP_IO);
     }
+}
+
+
+/* PNG printing functions */
+#if USE_PNG_PRINTING
+const int MAX_PAGE_LEN = 400 * 14; // 14 inches is the length of US legal paper, longest paper that fits into the NeXT printer cartridge
+png_structp png_ptr          = NULL;
+png_infop   png_info_ptr     = NULL;
+png_byte**  png_row_pointers = NULL;
+int         png_width;
+int         png_height;
+int         png_count;
+int         png_page_count   = 0;
+char        png_path[PATH_MAX+1];
+#endif
+
+void lp_png_setup(Uint32 data) {
+#if USE_PNG_PRINTING
+    int i;
+    png_width = ((data >> 16) & 0x7F) * 32;
+    
+    if (png_ptr) {
+        for (i = 0; i < MAX_PAGE_LEN; i++) {
+            png_free(png_ptr, png_row_pointers[i]);
+        }
+        png_free(png_ptr, png_row_pointers);
+        png_destroy_write_struct(&png_ptr, &png_info_ptr);
+    }
+    
+    png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (png_ptr == NULL) {
+        return;
+    }
+    png_info_ptr = png_create_info_struct(png_ptr);
+    if (png_info_ptr == NULL) {
+        png_destroy_write_struct(&png_ptr, &png_info_ptr);
+        png_ptr = NULL;
+        return;
+    }
+    
+    png_row_pointers = png_malloc(png_ptr, MAX_PAGE_LEN * sizeof (png_byte *));
+    for (i = 0; i < MAX_PAGE_LEN; i++) {
+        png_row_pointers[i] = png_malloc(png_ptr, sizeof (uint8_t) * (png_width / 8));
+    }
+    png_count  = 0;
+    png_height = 0;
+#endif
+}
+
+void lp_png_print(void) {
+#if USE_PNG_PRINTING
+    int i;
+    
+    for (i = 0; i < lp_buffer.size; i++) {
+        png_row_pointers[png_count/png_width][(png_count%png_width)/8] = ~lp_buffer.data[i];
+        png_count += 8;
+    }
+#endif
+}
+
+void lp_png_finish(void) {
+#if USE_PNG_PRINTING
+    png_set_IHDR(png_ptr,
+                 png_info_ptr,
+                 png_width,
+                 png_count / png_width,
+                 1,
+                 PNG_COLOR_TYPE_GRAY,
+                 PNG_INTERLACE_NONE,
+                 PNG_COMPRESSION_TYPE_DEFAULT,
+                 PNG_FILTER_TYPE_DEFAULT);
+    
+    sprintf(png_path, "%05d_next_printer.png", png_page_count);
+    FILE* png_fp = File_Open(png_path, "wb");
+    
+    png_init_io(png_ptr, png_fp);
+    png_set_rows(png_ptr, png_info_ptr, png_row_pointers);
+    png_write_png(png_ptr, png_info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
+    
+    File_Close(png_fp);
+    png_page_count++;
+#endif
 }
