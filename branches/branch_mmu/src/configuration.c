@@ -288,8 +288,8 @@ static const struct Config_Tag configs_Rs232[] =
 /* Used to load/save printer options */
 static const struct Config_Tag configs_Printer[] =
 {
-	{ "bEnablePrinting", Bool_Tag, &ConfigureParams.Printer.bEnablePrinting },
-	{ "bPrintToFile", Bool_Tag, &ConfigureParams.Printer.bPrintToFile },
+	{ "bPrinterConnected", Bool_Tag, &ConfigureParams.Printer.bPrinterConnected },
+	{ "nPaperSize", Bool_Tag, &ConfigureParams.Printer.nPaperSize },
 	{ "szPrintToFileName", String_Tag, ConfigureParams.Printer.szPrintToFileName },
 	{ NULL , Error_Tag, NULL }
 };
@@ -457,9 +457,9 @@ void Configuration_SetDefault(void)
 	        psHomeDir, PATHSEP);
 
 	/* Set defaults for Printer */
-	ConfigureParams.Printer.bEnablePrinting = false;
-	ConfigureParams.Printer.bPrintToFile = true;
-	sprintf(ConfigureParams.Printer.szPrintToFileName, "%s%chatari.prn",
+	ConfigureParams.Printer.bPrinterConnected = false;
+	ConfigureParams.Printer.nPaperSize = PAPER_A4;
+	sprintf(ConfigureParams.Printer.szPrintToFileName, "%s%cnext_printer.png",
 	        psHomeDir, PATHSEP);
 
 	/* Set defaults for RS232 */
