@@ -289,7 +289,7 @@ static const struct Config_Tag configs_Rs232[] =
 static const struct Config_Tag configs_Printer[] =
 {
 	{ "bPrinterConnected", Bool_Tag, &ConfigureParams.Printer.bPrinterConnected },
-	{ "nPaperSize", Bool_Tag, &ConfigureParams.Printer.nPaperSize },
+	{ "nPaperSize", Int_Tag, &ConfigureParams.Printer.nPaperSize },
 	{ "szPrintToFileName", String_Tag, ConfigureParams.Printer.szPrintToFileName },
 	{ NULL , Error_Tag, NULL }
 };
