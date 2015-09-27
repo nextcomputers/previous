@@ -273,6 +273,11 @@ void lp_interface_command(Uint8 cmd, Uint32 data) {
             break;
         case LP_CMD_DATA_OUT:
             Log_Printf(LOG_LP_LEVEL,"[LP] Interface command: Data out (%08X)",data);
+            lp_buffer.data[lp_buffer.size] = (data>>24)&0xFF;
+            lp_buffer.data[lp_buffer.size+1] = (data>>16)&0xFF;
+            lp_buffer.data[lp_buffer.size+2] = (data>>8)&0xFF;
+            lp_buffer.data[lp_buffer.size+3] = data&0xFF;
+            lp_buffer.size +=4;
             break;
         case LP_CMD_GPO:
             Log_Printf(LOG_LP_LEVEL,"[LP] Interface command: General purpose out (%02X)",(~data)>>24);
@@ -303,6 +308,10 @@ void lp_interface_command(Uint8 cmd, Uint32 data) {
                     /* Setup printing buffer */
                     lp_png_setup(nlp.margins);
                     lp_data_transfer = true;
+                    if (lp_buffer.size) {
+                        lp_png_print();
+                        lp_buffer.size = 0;
+                    }
                     CycInt_AddRelativeInterrupt(1000, INT_CPU_CYCLE, INTERRUPT_LP_IO);
                 } else {
                     Log_Printf(LOG_LP_LEVEL,"[LP] Disable printer data transfer");
@@ -540,7 +549,6 @@ void Printer_IO_Handler(void) {
     
     if (lp_data_transfer) {
         lp_buffer.limit = 4096;
-        lp_buffer.size = 0;
         dma_printer_read_memory();
         
         if (lp_buffer.size==0) {
@@ -556,6 +564,8 @@ void Printer_IO_Handler(void) {
             printf("%02X",lp_buffer.data[i]);
         }
         printf("\n");
+        
+        lp_buffer.size = 0;
         
         CycInt_AddRelativeInterrupt(200000, INT_CPU_CYCLE, INTERRUPT_LP_IO);
     }

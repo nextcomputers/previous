@@ -174,8 +174,8 @@ and initiate a clean shut down by pressing F10 (emulates the power button).
 
 Many thanks go to the members of the NeXT International Forums for their
 help. Special thanks go to Gavin Thomas Nicol, Piotr Twarecki, Toni Wilen,
-Michael Bosshard, Thomas Huth, Olivier Galibert, Jason Stevens, Vaughan Kaufman 
-and Peter Leonard!
+Michael Bosshard, Thomas Huth, Olivier Galibert, Simon Schubiger,
+Jason Stevens, Vaughan Kaufman and Peter Leonard!
 This emulator would not exist without their help.
 
 
