@@ -572,6 +572,41 @@ void Printer_IO_Handler(void) {
 }
 
 
+/* Helper function for building path and filename of output file */
+char *lp_get_filename(void) {
+    static char *lp_outfile = NULL;
+    static char lp_filename[32];
+    static char lp_extension[16];
+    static int lp_pagecount = 0;
+    int lp_duplicate_count = 0;
+    
+    if (File_DirExists(ConfigureParams.Printer.szPrintToFileName)) {
+        sprintf(lp_filename, "%05d_next_printer", lp_pagecount);
+        
+        do {
+            if (lp_duplicate_count) {
+                sprintf(lp_extension, "%i.png",lp_duplicate_count);
+            } else {
+                sprintf(lp_extension, ".png");
+            }
+            lp_outfile = File_MakePath(ConfigureParams.Printer.szPrintToFileName,
+                                       lp_filename, lp_extension);
+
+            lp_duplicate_count++;
+        } while (File_Exists(lp_outfile) && lp_duplicate_count<1000);
+    }
+    
+    if (lp_outfile==NULL) {
+        lp_outfile = "\0";
+    }
+    
+    lp_pagecount++;
+    lp_pagecount %= 100000;
+    
+    return lp_outfile;
+}
+
+
 /* PNG printing functions */
 #if USE_PNG_PRINTING
 const int MAX_PAGE_LEN = 400 * 14; // 14 inches is the length of US legal paper, longest paper that fits into the NeXT printer cartridge
@@ -582,7 +617,7 @@ int         png_width;
 int         png_height;
 int         png_count;
 int         png_page_count   = 0;
-char        png_path[PATH_MAX+1];
+char*       png_path;
 #endif
 
 void lp_png_setup(Uint32 data) {
@@ -641,12 +676,17 @@ void lp_png_finish(void) {
                  PNG_COMPRESSION_TYPE_DEFAULT,
                  PNG_FILTER_TYPE_DEFAULT);
     
-    sprintf(png_path, "%05d_next_printer.png", png_page_count);
+    png_path = lp_get_filename();
+    
     FILE* png_fp = File_Open(png_path, "wb");
     
-    png_init_io(png_ptr, png_fp);
-    png_set_rows(png_ptr, png_info_ptr, png_row_pointers);
-    png_write_png(png_ptr, png_info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
+    if (png_fp) {
+        png_init_io(png_ptr, png_fp);
+        png_set_rows(png_ptr, png_info_ptr, png_row_pointers);
+        png_write_png(png_ptr, png_info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
+    } else {
+        Statusbar_AddMessage("Laser Printer Error: Could not create output file!", 10000);
+    }
     
     File_Close(png_fp);
     png_page_count++;
