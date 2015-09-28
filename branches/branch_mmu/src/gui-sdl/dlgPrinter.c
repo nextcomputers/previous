@@ -94,7 +94,6 @@ void DlgPrinter_Main(void)
             break;
     }
     
-    File_MakeValidPathName(ConfigureParams.Printer.szPrintToFileName);
     File_ShrinkName(dlgprint_dirname, ConfigureParams.Printer.szPrintToFileName,
                     printerdlg[DLGPRINT_DIRECTORY].w);
     

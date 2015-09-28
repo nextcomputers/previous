@@ -898,6 +898,7 @@ bool SDLGui_DirectorySelect(char *dlgname, char *confname, int maxlen)
         
         if (File_DirExists(selname))
         {
+            strncpy(confname, selname, FILENAME_MAX);
             File_ShrinkName(dlgname, selname, maxlen);
         }
         else
