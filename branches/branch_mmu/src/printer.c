@@ -25,7 +25,7 @@
 #define IO_SEG_MASK 0x1FFFF
 
 #define LOG_LP_REG_LEVEL    LOG_DEBUG
-#define LOG_LP_LEVEL        LOG_WARN
+#define LOG_LP_LEVEL        LOG_DEBUG
 
 
 struct {
@@ -45,6 +45,7 @@ struct {
 } nlp;
 
 void lp_power_on(void);
+void lp_power_off(void);
 Uint32 lp_data_read(void);
 void lp_boot_message(void);
 void lp_interface_command(Uint8 cmd, Uint32 data);
@@ -136,15 +137,20 @@ void LP_CSR1_Write(void) {
     Uint8 val = IoMem[IoAccessCurrentAddress & IO_SEG_MASK];
     Log_Printf(LOG_LP_REG_LEVEL,"[LP] CSR1 write at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
     
-    if ((val&LP_ON) != (nlp.csr.printer&LP_ON)) {
+    if (((val&LP_ON) != (nlp.csr.printer&LP_ON)) && ConfigureParams.Printer.bPrinterConnected) {
         if (val&LP_ON) {
             Statusbar_AddMessage("Switching Laser Printer ON.", 0);
             lp_power_on();
         } else {
             Statusbar_AddMessage("Switching Laser Printer OFF.", 0);
+            lp_power_off();
         }
     }
     nlp.csr.printer = val;
+    
+    if (val&LP_DATA_OVR) {
+        nlp.csr.printer &= ~(LP_DATA_OVR|LP_DATA);
+    }
 }
 
 void LP_CSR2_Read(void) { // 0x0200F002
@@ -159,7 +165,9 @@ void LP_CSR2_Write(void) {
     if ((val&LP_TX_EN) != (nlp.csr.interface&LP_TX_EN)) {
         if (val&LP_TX_EN) {
             Log_Printf(LOG_LP_LEVEL,"[LP] Enable serial interface.");
-            lp_boot_message();
+            if (ConfigureParams.Printer.bPrinterConnected) {
+                lp_boot_message();
+            }
         } else {
             Log_Printf(LOG_LP_LEVEL,"[LP] Disable serial interface.");
         }
@@ -187,7 +195,9 @@ void LP_Data_Write(void) {
     nlp.data = IoMem_ReadLong(IoAccessCurrentAddress&IO_SEG_MASK);
     Log_Printf(LOG_LP_REG_LEVEL,"[LP] Data write at $%08x val=$%08x PC=$%08x\n", IoAccessCurrentAddress, nlp.data, m68k_getpc());
 
-    lp_interface_command(nlp.csr.cmd, nlp.data);
+    if (ConfigureParams.Printer.bPrinterConnected) {
+        lp_interface_command(nlp.csr.cmd, nlp.data);
+    }
 }
 
 
@@ -312,6 +322,7 @@ void lp_interface_command(Uint8 cmd, Uint32 data) {
                         lp_png_print();
                         lp_buffer.size = 0;
                     }
+                    Statusbar_AddMessage("Laser Printer Printing Page.", 0);
                     CycInt_AddRelativeInterrupt(1000, INT_CPU_CYCLE, INTERRUPT_LP_IO);
                 } else {
                     Log_Printf(LOG_LP_LEVEL,"[LP] Disable printer data transfer");
@@ -332,14 +343,20 @@ void lp_interface_command(Uint8 cmd, Uint32 data) {
                     Log_Printf(LOG_LP_LEVEL,"[LP] Early requests for data transfer");
                 }
             } else {
-                Log_Printf(LOG_LP_LEVEL,"[LP] Interface command: Unknown command!");
+                Log_Printf(LOG_WARN,"[LP] Interface command: Unknown command!");
             }
             break;
     }
 }
 
 void lp_power_on(void) {
-    nlp.stat |= (LP_GPI_PWR_RDY|LP_GPI_RDY);
+    if (ConfigureParams.Printer.bPrinterConnected) {
+        nlp.stat |= (LP_GPI_PWR_RDY|LP_GPI_RDY);
+    }
+}
+
+void lp_power_off(void) {
+    nlp.stat = 0x00;
 }
 
 /* COPY. NeXT 1987 */
@@ -347,11 +364,13 @@ Uint32 lp_copyright_message[4] = { 0x00434f50, 0x522e204e, 0x65585420, 0x3139383
 int lp_copyright_sequence = 0;
 
 void lp_boot_message(void) {
-    lp_copyright_sequence = 4;
-    
-    nlp.csr.cmd = LP_RES_COPY;
-    
-    nlp.csr.printer |= LP_DATA;
+    if (ConfigureParams.Printer.bPrinterConnected) {
+        lp_copyright_sequence = 4;
+        
+        nlp.csr.cmd = LP_RES_COPY;
+        
+        nlp.csr.printer |= LP_DATA;
+    }
 }
 
 Uint32 lp_data_read(void) {
@@ -433,7 +452,15 @@ Uint8 lp_printer_status(Uint8 num) {
     nlp.stat |= LP_GPI_BUSY;
     nlp.csr.cmd = LP_RES_GPI;
     
-    if (num<16) {
+    if (num==5) {
+        switch (ConfigureParams.Printer.nPaperSize) {
+            case PAPER_A4: val = STAT5_A4; break;
+            case PAPER_LETTER: val = STAT5_LETTER; break;
+            case PAPER_B5: val = STAT5_B5; break;
+            case PAPER_LEGAL: val = STAT5_LEGAL; break;
+            default: val = PAPER_A4; break;
+        }
+    } else if (num<16) {
         val = lp_serial_status[num];
     } else {
         val = 0x00;
@@ -499,7 +526,7 @@ Uint8 lp_printer_command(Uint8 cmd) {
             return lp_printer_status(16);
 
         default:
-            Log_Printf(LOG_LP_LEVEL, "[LP] Unknown command!");
+            Log_Printf(LOG_WARN, "[LP] Unknown command!");
             return lp_printer_status(16);
     }
 }
@@ -543,8 +570,6 @@ void lp_gpo_access(Uint8 data) {
 
 /* Printer DMA and printing function */
 void Printer_IO_Handler(void) {
-    int i;
-    
     CycInt_AcknowledgeInterrupt();
     
     if (lp_data_transfer) {
@@ -560,15 +585,22 @@ void Printer_IO_Handler(void) {
         /* Save data to printing buffer */
         lp_png_print();
         
-        for (i = 0; i < lp_buffer.size; i++) {
-            printf("%02X",lp_buffer.data[i]);
-        }
-        printf("\n");
-        
         lp_buffer.size = 0;
         
         CycInt_AddRelativeInterrupt(200000, INT_CPU_CYCLE, INTERRUPT_LP_IO);
     }
+}
+
+/* Printer reset function */
+void Printer_Reset(void) {
+    nlp.csr.dma = 0;
+    nlp.csr.printer = 0;
+    nlp.csr.interface = 0;
+    nlp.csr.cmd = 0;
+    nlp.data = 0;
+    nlp.stat = 0;
+    
+    set_interrupt(INT_PRINTER, RELEASE_INT);
 }
 
 

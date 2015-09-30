@@ -15,4 +15,5 @@ struct {
     Uint32 limit;
 } lp_buffer;
 
+void Printer_Reset(void);
 void Printer_IO_Handler(void);

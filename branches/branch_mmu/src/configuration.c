@@ -459,7 +459,7 @@ void Configuration_SetDefault(void)
 	/* Set defaults for Printer */
 	ConfigureParams.Printer.bPrinterConnected = false;
 	ConfigureParams.Printer.nPaperSize = PAPER_A4;
-	sprintf(ConfigureParams.Printer.szPrintToFileName, "%s%cnext_printer.png",
+	sprintf(ConfigureParams.Printer.szPrintToFileName, "%s%c",
 	        psHomeDir, PATHSEP);
 
 	/* Set defaults for RS232 */
