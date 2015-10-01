@@ -150,6 +150,8 @@ void LP_CSR1_Write(void) {
     
     if (val&LP_DATA_OVR) {
         nlp.csr.printer &= ~(LP_DATA_OVR|LP_DATA);
+        nlp.csr.printer &= ~LP_INT;
+        set_interrupt(INT_PRINTER, RELEASE_INT);
     }
 }
 
@@ -350,9 +352,7 @@ void lp_interface_command(Uint8 cmd, Uint32 data) {
 }
 
 void lp_power_on(void) {
-    if (ConfigureParams.Printer.bPrinterConnected) {
-        nlp.stat |= (LP_GPI_PWR_RDY|LP_GPI_RDY);
-    }
+    nlp.stat |= (LP_GPI_PWR_RDY|LP_GPI_RDY);
 }
 
 void lp_power_off(void) {
@@ -364,13 +364,11 @@ Uint32 lp_copyright_message[4] = { 0x00434f50, 0x522e204e, 0x65585420, 0x3139383
 int lp_copyright_sequence = 0;
 
 void lp_boot_message(void) {
-    if (ConfigureParams.Printer.bPrinterConnected) {
-        lp_copyright_sequence = 4;
-        
-        nlp.csr.cmd = LP_RES_COPY;
-        
-        nlp.csr.printer |= LP_DATA;
-    }
+    lp_copyright_sequence = 4;
+    
+    nlp.csr.cmd = LP_RES_COPY;
+    
+    nlp.csr.printer |= LP_DATA;
 }
 
 Uint32 lp_data_read(void) {
