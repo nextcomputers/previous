@@ -73,6 +73,7 @@ typedef enum
 typedef struct
 {
   bool bDisableKeyRepeat;
+  bool bSwapCmdAlt;
   KEYMAPTYPE nKeymapType;
   char szMappingFileName[FILENAME_MAX];
 } CNF_KEYBOARD;

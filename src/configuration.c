@@ -85,6 +85,7 @@ static const struct Config_Tag configs_Screen[] =
 static const struct Config_Tag configs_Keyboard[] =
 {
 	{ "bDisableKeyRepeat", Bool_Tag, &ConfigureParams.Keyboard.bDisableKeyRepeat },
+    { "bSwapCmdAlt", Bool_Tag, &ConfigureParams.Keyboard.bSwapCmdAlt },
 	{ "nKeymapType", Int_Tag, &ConfigureParams.Keyboard.nKeymapType },
 	{ "szMappingFileName", String_Tag, ConfigureParams.Keyboard.szMappingFileName },
 	{ NULL , Error_Tag, NULL }
@@ -412,6 +413,7 @@ void Configuration_SetDefault(void)
     
 	/* Set defaults for Keyboard */
 	ConfigureParams.Keyboard.bDisableKeyRepeat = false;
+    ConfigureParams.Keyboard.bSwapCmdAlt = false;
 	ConfigureParams.Keyboard.nKeymapType = KEYMAP_SCANCODE;
 	strcpy(ConfigureParams.Keyboard.szMappingFileName, "");
 
