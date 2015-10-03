@@ -46,10 +46,14 @@ struct {
 
 void lp_power_on(void);
 void lp_power_off(void);
+void lp_set_interrupt(void);
+void lp_release_interrupt(void);
 Uint32 lp_data_read(void);
 void lp_boot_message(void);
 void lp_interface_command(Uint8 cmd, Uint32 data);
+void lp_interface_status(Uint8 stat, bool set);
 void lp_gpo_access(Uint8 data);
+void lp_printer_reset(void);
 
 void lp_png_setup(Uint32 data);
 void lp_png_print(void);
@@ -118,13 +122,11 @@ void LP_CSR0_Write(void) {
     
     if (val&LP_DMA_OUT_UNDR) {
         nlp.csr.dma &= ~(LP_DMA_OUT_UNDR|LP_DMA_OUT_REQ);
-        nlp.csr.printer &= ~LP_INT;
-        set_interrupt(INT_PRINTER, RELEASE_INT);
+        lp_release_interrupt();
     }
     if (val&LP_DMA_IN_OVR) {
         nlp.csr.dma &= ~(LP_DMA_IN_OVR|LP_DMA_IN_REQ);
-        nlp.csr.printer &= ~LP_INT;
-        set_interrupt(INT_PRINTER, RELEASE_INT);
+        lp_release_interrupt();
     }
 }
 
@@ -150,8 +152,7 @@ void LP_CSR1_Write(void) {
     
     if (val&LP_DATA_OVR) {
         nlp.csr.printer &= ~(LP_DATA_OVR|LP_DATA);
-        nlp.csr.printer &= ~LP_INT;
-        set_interrupt(INT_PRINTER, RELEASE_INT);
+        lp_release_interrupt();
     }
 }
 
@@ -203,6 +204,21 @@ void LP_Data_Write(void) {
 }
 
 
+/* Printer interrupt functions */
+void lp_set_interrupt(void) {
+    nlp.csr.printer |= LP_INT;
+    set_interrupt(INT_PRINTER, SET_INT);
+}
+
+void lp_release_interrupt(void) {
+    if ((nlp.csr.printer&(LP_DATA|LP_DATA_OVR)) || (nlp.csr.dma&(LP_DMA_OUT_UNDR|LP_DMA_IN_OVR))) {
+        return;
+    }
+    nlp.csr.printer &= ~LP_INT;
+    set_interrupt(INT_PRINTER, RELEASE_INT);
+}
+
+
 /* Commands from CPU to Printer */
 #define LP_CMD_RESET    0xff
 #define LP_CMD_DATA_OUT 0xc7
@@ -210,7 +226,6 @@ void LP_Data_Write(void) {
 #define LP_CMD_GPI_MASK 0xc5
 #define LP_CMD_GPI_REQ  0x04
 #define LP_CMD_MARGINS  0xc2
-#define LP_CMD_COPY     0xe7
 
 #define LP_CMD_MASK     0xc7
 #define LP_CMD_NODATA   0x07
@@ -247,10 +262,11 @@ void lp_gpo(Uint8 cmd) {
     }
     if (cmd&LP_GPO_VSYNC) {
         Log_Printf(LOG_LP_LEVEL,"[LP] Printer VSYNC enable");
+        lp_interface_status(LP_GPI_VSREQ, false);
     }
     if (cmd&LP_GPO_ENABLE) {
         Log_Printf(LOG_LP_LEVEL,"[LP] Printer enable");
-        nlp.stat |= LP_GPI_VSREQ;
+        lp_interface_status(LP_GPI_VSREQ, true);
     }
     if (cmd&LP_GPO_PWR_RDY) {
         Log_Printf(LOG_LP_LEVEL,"[LP] Printer controller power ready");
@@ -267,21 +283,46 @@ void lp_gpo(Uint8 cmd) {
     lp_gpo_access(cmd);
 }
 
-void lp_interface_status(void) {
-    Log_Printf(LOG_LP_LEVEL,"[LP] Interface status: %02X (mask: %02X)",nlp.stat,nlp.statmask);
-
-    nlp.data = ((~(nlp.stat/*&nlp.statmask*/))&0xFF)<<24;
-
+void lp_gpi(void) {
+    nlp.data = (~nlp.stat)<<24;
+    
     nlp.csr.cmd = LP_RES_GPI;
     
-    nlp.csr.printer |= (LP_INT|LP_DATA);
-    set_interrupt(INT_PRINTER, SET_INT);
+    if (nlp.csr.printer&LP_DATA) {
+        nlp.csr.printer |= LP_DATA_OVR;
+    } else {
+        nlp.csr.printer |= LP_DATA;
+    }
+    
+    lp_set_interrupt();
+}
+
+void lp_interface_status(Uint8 changed_bits, bool set) {
+    bool lp_gpi_message = false;
+    
+    Log_Printf(LOG_LP_LEVEL,"[LP] Interface status: %02X (mask: %02X)",nlp.stat,nlp.statmask);
+
+    if ((changed_bits&nlp.statmask) != (nlp.stat&changed_bits&nlp.statmask)) {
+        lp_gpi_message = true;
+    }
+    
+    if (set) {
+        nlp.stat |= changed_bits;
+    } else {
+        nlp.stat &= ~changed_bits;
+    }
+    
+    if (lp_gpi_message) {
+        lp_gpi();
+    }
 }
 
 void lp_interface_command(Uint8 cmd, Uint32 data) {
     switch (cmd) {
         case LP_CMD_RESET:
             Log_Printf(LOG_LP_LEVEL,"[LP] Interface command: Reset (%08X)",data);
+            lp_printer_reset();
+            lp_boot_message();
             break;
         case LP_CMD_DATA_OUT:
             Log_Printf(LOG_LP_LEVEL,"[LP] Interface command: Data out (%08X)",data);
@@ -301,14 +342,11 @@ void lp_interface_command(Uint8 cmd, Uint32 data) {
             break;
         case LP_CMD_GPI_REQ:
             Log_Printf(LOG_LP_LEVEL,"[LP] Interface command: General purpose input request");
-            lp_interface_status();
+            lp_gpi();
             break;
         case LP_CMD_MARGINS:
             Log_Printf(LOG_LP_LEVEL,"[LP] Interface command: Margins (%08X)",data);
             nlp.margins = data;
-            break;
-        case LP_CMD_COPY:
-            Log_Printf(LOG_LP_LEVEL,"[LP] Interface command: Copyright (%08X)",data);
             break;
             
         default: /* Commands with no data */
@@ -352,7 +390,7 @@ void lp_interface_command(Uint8 cmd, Uint32 data) {
 }
 
 void lp_power_on(void) {
-    nlp.stat |= (LP_GPI_PWR_RDY|LP_GPI_RDY);
+    lp_interface_status(LP_GPI_PWR_RDY|LP_GPI_RDY,true);
 }
 
 void lp_power_off(void) {
@@ -369,6 +407,7 @@ void lp_boot_message(void) {
     nlp.csr.cmd = LP_RES_COPY;
     
     nlp.csr.printer |= LP_DATA;
+    lp_set_interrupt();
 }
 
 Uint32 lp_data_read(void) {
@@ -382,8 +421,8 @@ Uint32 lp_data_read(void) {
     }
     
     if (lp_copyright_sequence==0) {
-        nlp.csr.printer &= ~(LP_INT|LP_DATA);
-        set_interrupt(INT_PRINTER, RELEASE_INT);
+        nlp.csr.printer &= ~LP_DATA;
+        lp_release_interrupt();
     }
 
     return val;
@@ -447,8 +486,7 @@ Uint8 lp_printer_status(Uint8 num) {
     Uint8 val;
     
     lp_serial_phase = 8;
-    nlp.stat |= LP_GPI_BUSY;
-    nlp.csr.cmd = LP_RES_GPI;
+    lp_interface_status(LP_GPI_BUSY, true);
     
     if (num==5) {
         switch (ConfigureParams.Printer.nPaperSize) {
@@ -472,6 +510,14 @@ Uint8 lp_printer_status(Uint8 num) {
         }
     }
     return val;
+}
+
+void lp_printer_reset(void) {
+    int i;
+    for (i = 0; i < 16; i++) {
+        lp_serial_status[i] = 0;
+    }
+    lp_serial_phase = 0;
 }
 
 Uint8 lp_printer_command(Uint8 cmd) {
@@ -553,13 +599,10 @@ void lp_gpo_access(Uint8 data) {
         if ((data&LP_GPO_CLOCK) && !(lp_old_data&LP_GPO_CLOCK)) {
             lp_serial_phase--;
             if (lp_serial_phase==0) {
-                nlp.stat &= ~LP_GPI_BUSY;
+                lp_interface_status(LP_GPI_BUSY, false);
                 Log_Printf(LOG_LP_LEVEL, "[LP] Printer status: %02X",lp_stat);
             }
-            nlp.stat &= ~LP_GPI_STAT_BIT;
-            nlp.stat |= (lp_stat&(1<<lp_serial_phase))?LP_GPI_STAT_BIT:0;
-            
-            nlp.csr.printer |= (LP_INT|LP_DATA); /* CHECK: true? */
+            lp_interface_status(LP_GPI_STAT_BIT,(lp_stat&(1<<lp_serial_phase))?true:false);
         }
     }
     
@@ -577,7 +620,7 @@ void Printer_IO_Handler(void) {
         if (lp_buffer.size==0) {
             Log_Printf(LOG_LP_LEVEL,"[LP] Printing done.");
             nlp.csr.dma |= LP_DMA_OUT_UNDR;
-            set_interrupt(INT_PRINTER, SET_INT);
+            lp_set_interrupt();
             return;
         }
         /* Save data to printing buffer */
@@ -597,6 +640,8 @@ void Printer_Reset(void) {
     nlp.csr.cmd = 0;
     nlp.data = 0;
     nlp.stat = 0;
+    
+    lp_data_transfer = false;
     
     set_interrupt(INT_PRINTER, RELEASE_INT);
 }
