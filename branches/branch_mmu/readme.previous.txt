@@ -1,6 +1,6 @@
 
 
-                                 Previous 1.2
+                                 Previous 1.3
 
 
                     http://previous.alternative-system.com/
@@ -113,7 +113,7 @@ MO drive	good (single drive)
 Floppy drive	good
 Ethernet	good
 Serial		dummy
-Printer		missing
+Printer		good
 Sound		partial (no microphone)
 Keyboard	good
 Mouse		good
@@ -156,6 +156,10 @@ input devices.
   > Improves mouse movement handling.
   > Adds dummy Nitro emulation.
   > Improves dummy SCC emulation.
+
+  Previous v1.3:
+  > Adds Laser Printer emulation.
+  > Introduces option for swapping cmd and alt key.
 
 
  7) Running Previous
