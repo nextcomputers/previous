@@ -1133,19 +1133,6 @@ static void dsp_postexecute_interrupts(void)
 
 	/* Set the interrupt vector */
 	dsp_core.interrupt_instr_fetch = interrupt * 2;
-
-#if 0 /* FIXME: adapt this to new interrupt routine */
-	
-	/* SSI receive data with exception ? */
-	if (dsp_core.interrupt_instr_fetch == 0xe) {
-		dsp_core.periph[DSP_SPACE_X][DSP_SSI_SR] &= 0xff-(1<<DSP_SSI_SR_ROE);
-	}
-	
-	/* SSI transmit data with exception ? */
-	else if (dsp_core.interrupt_instr_fetch == 0x12) {
-		dsp_core.periph[DSP_SPACE_X][DSP_SSI_SR] &= 0xff-(1<<DSP_SSI_SR_TUE);
-	}
-#endif
 }
 
 /**********************************
@@ -1405,9 +1392,16 @@ static void write_memory_x(Uint16 address, Uint32 value)
 				/* Read only */
 				break;
 			case DSP_SSI_CRA:
+				dsp_core.periph[DSP_SPACE_X][address-0xffc0] = value;
+				dsp_core_ssi_configure(address-0xffc0, value);
+				break;
 			case DSP_SSI_CRB:
 				dsp_core.periph[DSP_SPACE_X][address-0xffc0] = value;
 				dsp_core_ssi_configure(address-0xffc0, value);
+				dsp_set_interrupt_mask(DSP_INTER_SSI_RCV_DATA_E, dsp_core.periph[DSP_SPACE_X][DSP_SSI_CRB]&(1<<DSP_SSI_CRB_RIE));
+				dsp_set_interrupt_mask(DSP_INTER_SSI_RCV_DATA, dsp_core.periph[DSP_SPACE_X][DSP_SSI_CRB]&(1<<DSP_SSI_CRB_RIE));
+				dsp_set_interrupt_mask(DSP_INTER_SSI_TRX_DATA_E, dsp_core.periph[DSP_SPACE_X][DSP_SSI_CRB]&(1<<DSP_SSI_CRB_TIE));
+				dsp_set_interrupt_mask(DSP_INTER_SSI_TRX_DATA, dsp_core.periph[DSP_SPACE_X][DSP_SSI_CRB]&(1<<DSP_SSI_CRB_TIE));
 				break;
 			case DSP_SSI_TSR:
 				dsp_core_ssi_writeTSR();
@@ -1422,6 +1416,14 @@ static void write_memory_x(Uint16 address, Uint32 value)
 			case DSP_PCD:
 				dsp_core.periph[DSP_SPACE_X][DSP_PCD] = value;
 				dsp_core_setPortCDataRegister(value);
+				break;
+			case DSP_PBC:
+				dsp_core.periph[DSP_SPACE_X][DSP_PBC] = value;
+				dsp_set_interrupt_mask(DSP_INTER_SCI_RCV_DATA_E, dsp_core.periph[DSP_SPACE_X][DSP_PBC]&(1<<11));
+				dsp_set_interrupt_mask(DSP_INTER_SCI_RCV_DATA, dsp_core.periph[DSP_SPACE_X][DSP_PBC]&(1<<11));
+				dsp_set_interrupt_mask(DSP_INTER_SCI_TRX_DATA, dsp_core.periph[DSP_SPACE_X][DSP_PBC]&(1<<12));
+				dsp_set_interrupt_mask(DSP_INTER_SCI_IDLE_LINE, dsp_core.periph[DSP_SPACE_X][DSP_PBC]&(1<<10));
+				dsp_set_interrupt_mask(DSP_INTER_SCI_TIMER, dsp_core.periph[DSP_SPACE_X][DSP_PBC]&(1<<13));
 				break;
 			default:
 				dsp_core.periph[DSP_SPACE_X][address-0xffc0] = value;
