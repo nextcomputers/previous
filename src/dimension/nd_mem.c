@@ -5,6 +5,7 @@
 #include "dimension.h"
 #include "nd_mem.h"
 #include "nd_devs.h"
+#include "nd_rom.h"
 
 #if ENABLE_DIMENSION
 
@@ -39,6 +40,11 @@ Uint8 ND_rom[128*1024];
 #define ND_RAMDAC_START	0xFF200000
 #define ND_RAMDAC_SIZE  0x00001000
 #define ND_RAMDAC_MASK  0x00000FFF
+
+/* NeXTdimension EEPROM access */
+#define ND_EEPROM2_STRT 0xFFF00000
+#define ND_EEPROM2_SIZE 0x00080000
+#define ND_EEPROM2_MASK 0x0007FFFC
 
 
 /* Memory banks */
@@ -128,7 +134,7 @@ static void nd_vram_bput(uaecptr addr, uae_u32 b)
     ND_vram[addr] = b;
 }
 
-/* NeXTdimenstion ROM */
+/* NeXTdimension ROM */
 static uae_u32 nd_rom_lget(uaecptr addr)
 {
 	addr &= ND_EEPROM_MASK;
@@ -144,7 +150,7 @@ static uae_u32 nd_rom_wget(uaecptr addr)
 static uae_u32 nd_rom_bget(uaecptr addr)
 {
 	addr &= ND_EEPROM_MASK;
-	return ND_rom[addr];
+    return ND_rom[addr];
 }
 
 static void nd_rom_lput(uaecptr addr, uae_u32 l)
@@ -162,7 +168,24 @@ static void nd_rom_wput(uaecptr addr, uae_u32 w)
 static void nd_rom_bput(uaecptr addr, uae_u32 b)
 {
 	addr &= ND_EEPROM_MASK;
-	ND_rom[addr] = b;
+    ND_rom[addr] = b;
+}
+
+/* NeXTdimension ROM access */
+static uae_u32 nd_rom_access_bget(uaecptr addr)
+{
+    addr &= ND_EEPROM2_MASK;
+    addr |= (addr>>17)&3;
+    addr &= ~(3<<17);
+    return nd_rom_read(addr);
+}
+
+static void nd_rom_access_bput(uaecptr addr, uae_u32 b)
+{
+    addr &= ND_EEPROM2_MASK;
+    addr |= (addr>>17)&3;
+    addr &= ~(3<<17);
+    nd_rom_write(addr, b);
 }
 
 /* NeXTdimension RAMDAC */
@@ -216,6 +239,13 @@ static nd_addrbank nd_rom_bank =
 	nd_rom_lget, nd_rom_wget
 };
 
+static nd_addrbank nd_rom_access_bank =
+{
+    NULL, NULL, nd_rom_access_bget,
+    NULL, NULL, nd_rom_access_bput,
+    NULL, NULL
+};
+
 static nd_addrbank nd_io_bank =
 {
 	nd_io_lget, nd_io_wget, nd_io_bget,
@@ -243,13 +273,14 @@ void nd_memory_init(void) {
 	
 	write_log("Mapping NeXTdimension ROM at $%08x: %ikB\n", ND_EEPROM_START, ND_EEPROM_SIZE/1024);
 	nd_map_banks(&nd_rom_bank, ND_EEPROM_START>>16, ND_EEPROM_SIZE>>16);
+    nd_map_banks(&nd_rom_access_bank, ND_EEPROM2_STRT>>16, ND_EEPROM2_SIZE>>16);
 	
 	write_log("Mapping NeXTdimension IO memory at $%08x\n", ND_IO_START);
 	nd_map_banks(&nd_io_bank, ND_IO_START>>16, 1);
     
     write_log("Mapping NeXTdimension RAMDAC registers at $%08x\n", ND_RAMDAC_START);
     nd_map_banks(&nd_ramdac_bank, ND_RAMDAC_START>>16, 1);
-	
+    
 	/* While we have no real ROM */
 	ND_rom[0x1FFE0] = 0xA5; /* ROM signature */
 	ND_rom[0x1FFD8] = 0x04; /* Byte lane ID */
