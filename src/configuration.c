@@ -310,7 +310,7 @@ static const struct Config_Tag configs_System[] =
     { "nMachineType", Int_Tag, &ConfigureParams.System.nMachineType },
     { "bColor", Bool_Tag, &ConfigureParams.System.bColor },
     { "bTurbo", Bool_Tag, &ConfigureParams.System.bTurbo },
-    { "bADB", Bool_Tag, &ConfigureParams.System.bADB },
+    { "bNBIC", Bool_Tag, &ConfigureParams.System.bNBIC },
     { "nSCSI", Bool_Tag, &ConfigureParams.System.nSCSI },
     { "nRTC", Bool_Tag, &ConfigureParams.System.nRTC },
     
@@ -508,7 +508,7 @@ void Configuration_SetDefault(void)
     ConfigureParams.System.nMachineType = NEXT_CUBE030;
     ConfigureParams.System.bColor = false;
     ConfigureParams.System.bTurbo = false;
-    ConfigureParams.System.bADB = false;
+    ConfigureParams.System.bNBIC = true;
     ConfigureParams.System.nSCSI = NCR53C90;
     ConfigureParams.System.nRTC = MC68HC68T1;
     
@@ -671,7 +671,7 @@ void Configuration_SetSystemDefaults(void) {
             ConfigureParams.System.bDSPMemoryExpansion = false;
             ConfigureParams.System.nSCSI = NCR53C90;
             ConfigureParams.System.nRTC = MC68HC68T1;
-            ConfigureParams.System.bADB = false;
+            ConfigureParams.System.bNBIC = true;
             break;
             
         case NEXT_CUBE040:
@@ -688,7 +688,7 @@ void Configuration_SetSystemDefaults(void) {
             ConfigureParams.System.nDSPType = DSP_TYPE_EMU;
             ConfigureParams.System.bDSPMemoryExpansion = true;
             ConfigureParams.System.nSCSI = NCR53C90A;
-            ConfigureParams.System.bADB = false;
+            ConfigureParams.System.bNBIC = true;
             break;
             
         case NEXT_STATION:
@@ -707,7 +707,7 @@ void Configuration_SetSystemDefaults(void) {
             ConfigureParams.System.nDSPType = DSP_TYPE_EMU;
             ConfigureParams.System.bDSPMemoryExpansion = true;
             ConfigureParams.System.nSCSI = NCR53C90A;
-            ConfigureParams.System.bADB = false;
+            ConfigureParams.System.bNBIC = false;
             break;
         default:
             break;
@@ -954,7 +954,7 @@ void Configuration_MemorySnapShot_Capture(bool bSave)
     MemorySnapShot_Store(&ConfigureParams.System.nMachineType, sizeof(ConfigureParams.System.nMachineType));
     MemorySnapShot_Store(&ConfigureParams.System.bColor, sizeof(ConfigureParams.System.bColor));
     MemorySnapShot_Store(&ConfigureParams.System.bTurbo, sizeof(ConfigureParams.System.bTurbo));
-    MemorySnapShot_Store(&ConfigureParams.System.bADB, sizeof(ConfigureParams.System.bADB));
+    MemorySnapShot_Store(&ConfigureParams.System.bNBIC, sizeof(ConfigureParams.System.bNBIC));
     MemorySnapShot_Store(&ConfigureParams.System.nSCSI, sizeof(ConfigureParams.System.nSCSI));
     MemorySnapShot_Store(&ConfigureParams.System.nRTC, sizeof(ConfigureParams.System.nRTC));
     

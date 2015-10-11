@@ -331,7 +331,7 @@ typedef struct
 {
   bool bColor;
   bool bTurbo;
-  bool bADB;
+  bool bNBIC;
   SCSICHIP nSCSI;
   RTCCHIP nRTC;
   int nCpuLevel;
