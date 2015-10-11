@@ -109,9 +109,9 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
         return true;
     }
     
-    /* Did we change ADB emulation? */
-    if (current->System.bADB != changed->System.bADB) {
-        printf("adb reset\n");
+    /* Did we change NBIC emulation? */
+    if (current->System.bNBIC != changed->System.bNBIC) {
+        printf("nbic reset\n");
         return true;
     }
     
