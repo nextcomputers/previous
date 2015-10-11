@@ -712,6 +712,23 @@ void Configuration_SetSystemDefaults(void) {
         default:
             break;
     }
+    
+    if (ConfigureParams.System.bTurbo) {
+        ConfigureParams.Memory.nMemoryBankSize[0] = 32;
+        ConfigureParams.Memory.nMemoryBankSize[1] = 32;
+        ConfigureParams.Memory.nMemoryBankSize[2] = 32;
+        ConfigureParams.Memory.nMemoryBankSize[3] = 32;
+    } else if (ConfigureParams.System.bColor) {
+        ConfigureParams.Memory.nMemoryBankSize[0] = 8;
+        ConfigureParams.Memory.nMemoryBankSize[1] = 8;
+        ConfigureParams.Memory.nMemoryBankSize[2] = 8;
+        ConfigureParams.Memory.nMemoryBankSize[3] = 8;
+    } else {
+        ConfigureParams.Memory.nMemoryBankSize[0] = 16;
+        ConfigureParams.Memory.nMemoryBankSize[1] = 16;
+        ConfigureParams.Memory.nMemoryBankSize[2] = 16;
+        ConfigureParams.Memory.nMemoryBankSize[3] = 16;
+    }
 }
 
 

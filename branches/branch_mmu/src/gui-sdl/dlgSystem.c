@@ -24,8 +24,6 @@ const char DlgSystem_fileid[] = "Previous dlgSystem.c : " __DATE__ " " __TIME__;
 #define DLGSYS_CUSTOMIZE  10
 #define DLGSYS_RESET      11
 
-#define DLGSYS_MEMORY     30
-
 #define DLGSYS_EXIT       32
 
 /* Variable strings */
@@ -37,6 +35,7 @@ char dsp_memory[16] = "24 kB";
 char main_memory[16] = "8 MB";
 char scsi_controller[16] = "NCR53C90";
 char rtc_chip[16] = "MC68HC68T1";
+char nbic_present[16] = "none";
 
 /* Additional functions */
 void print_system_overview(void);
@@ -78,9 +77,8 @@ static SGOBJ systemdlg[] =
     { SGTEXT, 0, 0, 44,12, 13,1, scsi_controller },
     { SGTEXT, 0, 0, 30,13, 13,1, "RTC chip:" },
     { SGTEXT, 0, 0, 44,13, 13,1, rtc_chip },
-    
-    { SGBOX, 0, 0, 29,15, 27,5, NULL },
-    { SGBUTTON, 0, 0, 32,16, 21,1, "Memory size" },
+    { SGTEXT, 0, 0, 30,14, 13,1, "NBIC:" },
+    { SGTEXT, 0, 0, 44,14, 13,1, nbic_present },
 
     { SGTEXT, 0, 0, 4,21, 13,1, "Changing machine type resets all advanced options." },
     
@@ -151,6 +149,12 @@ void print_system_overview(void) {
         case MCCS1850:
             sprintf(rtc_chip, "MCCS1850"); break;
         default: break;
+    }
+    
+    if (ConfigureParams.System.bNBIC) {
+        sprintf(nbic_present, "present");
+    } else {
+        sprintf(nbic_present, "none");
     }
     
     update_system_selection();
@@ -305,10 +309,6 @@ void Dialog_SystemDlg(void)
                 
             case DLGSYS_RESET:
                 get_default_values();
-                break;
-                
-            case DLGSYS_MEMORY:
-                Dialog_MemDlg();
                 break;
 
             default:
