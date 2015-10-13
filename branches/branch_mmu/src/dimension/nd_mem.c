@@ -274,13 +274,14 @@ void nd_memory_init(void) {
 	write_log("Mapping NeXTdimension ROM at $%08x: %ikB\n", ND_EEPROM_START, ND_EEPROM_SIZE/1024);
 	nd_map_banks(&nd_rom_bank, ND_EEPROM_START>>16, ND_EEPROM_SIZE>>16);
     nd_map_banks(&nd_rom_access_bank, ND_EEPROM2_STRT>>16, ND_EEPROM2_SIZE>>16);
+    nd_rom_load();
 	
 	write_log("Mapping NeXTdimension IO memory at $%08x\n", ND_IO_START);
 	nd_map_banks(&nd_io_bank, ND_IO_START>>16, 1);
     
     write_log("Mapping NeXTdimension RAMDAC registers at $%08x\n", ND_RAMDAC_START);
     nd_map_banks(&nd_ramdac_bank, ND_RAMDAC_START>>16, 1);
-    
+#if 0
 	/* While we have no real ROM */
 	ND_rom[0x1FFE0] = 0xA5; /* ROM signature */
 	ND_rom[0x1FFD8] = 0x04; /* Byte lane ID */
@@ -289,6 +290,7 @@ void nd_memory_init(void) {
 	ND_rom[0x1FFC0] = 0xFF;
 	ND_rom[0x1FFC8] = 0xFF;
 	ND_rom[0x1FFD0] = 0x00;
+#endif
 }
 
 #endif

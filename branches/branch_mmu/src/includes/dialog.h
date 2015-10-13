@@ -33,6 +33,7 @@ extern void Dialog_WindowDlg(void);
 extern void Dialog_SoundDlg(void);
 extern void Dialog_SystemDlg(void);
 extern void Dialog_AdvancedDlg(void);
+extern void Dialog_DimensionDlg(void);
 extern void DlgRom_Main(void);
 extern void DlgBoot_Main(void);
 extern void DlgMissing_Rom(void);
