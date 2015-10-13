@@ -2,6 +2,7 @@
 #include "configuration.h"
 #include "m68000.h"
 #include "sysdeps.h"
+#include "file.h"
 #include "dimension.h"
 #include "nd_mem.h"
 #include "nd_rom.h"
@@ -72,6 +73,30 @@ void nd_rom_write(Uint32 addr, Uint8 val) {
             nd_rom_command = val;
             break;
     }
+}
+
+
+/* Load NeXTdimension ROM from file */
+void nd_rom_load(void) {
+    FILE* romfile;
+    
+    if (!File_Exists(ConfigureParams.Dimension.szRomFileName)) {
+        Log_Printf(LOG_WARN, "[ND] Error: ROM file does not exist or is not readable");
+        return;
+    }
+    
+    romfile = File_Open(ConfigureParams.Dimension.szRomFileName, "rb");
+    
+    if (romfile==NULL) {
+        Log_Printf(LOG_WARN, "[ND] Error: Cannot open ROM file");
+        return;
+    }
+    
+    fread(ND_rom,1,(128*1024),romfile);
+    
+    Log_Printf(LOG_WARN, "Read NeXTdimension ROM from %s",ConfigureParams.Dimension.szRomFileName);
+    
+    File_Close(romfile);
 }
 
 #endif

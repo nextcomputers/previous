@@ -330,7 +330,19 @@ static const struct Config_Tag configs_System[] =
     { "bCompatibleFPU", Bool_Tag, &ConfigureParams.System.bCompatibleFPU },
     { "bMMU", Bool_Tag, &ConfigureParams.System.bMMU },
     { NULL , Error_Tag, NULL }
-    };
+};
+
+/* Used to load/save nextdimension options */
+static const struct Config_Tag configs_Dimension[] =
+{
+    { "bEnabled", Bool_Tag, &ConfigureParams.Dimension.bEnabled },
+    { "nMemoryBankSize0", Int_Tag, &ConfigureParams.Dimension.nMemoryBankSize[0] },
+    { "nMemoryBankSize1", Int_Tag, &ConfigureParams.Dimension.nMemoryBankSize[1] },
+    { "nMemoryBankSize2", Int_Tag, &ConfigureParams.Dimension.nMemoryBankSize[2] },
+    { "nMemoryBankSize3", Int_Tag, &ConfigureParams.Dimension.nMemoryBankSize[3] },
+    { "szRomFileName", String_Tag, ConfigureParams.Dimension.szRomFileName },
+    { NULL , Error_Tag, NULL }
+};
 
 /* Used to load/save video options */
 static const struct Config_Tag configs_Video[] =
@@ -527,6 +539,15 @@ void Configuration_SetDefault(void)
     ConfigureParams.System.n_FPUType = FPU_68882;
     ConfigureParams.System.bCompatibleFPU = true;
     ConfigureParams.System.bMMU = true;
+    
+    /* Set defaults for Dimension */
+    ConfigureParams.Dimension.bEnabled = false;
+    ConfigureParams.Dimension.nMemoryBankSize[0] = 16;
+    ConfigureParams.Dimension.nMemoryBankSize[1] = 16;
+    ConfigureParams.Dimension.nMemoryBankSize[2] = 16;
+    ConfigureParams.Dimension.nMemoryBankSize[3] = 16;
+    sprintf(ConfigureParams.Dimension.szRomFileName, "%s%cdimension_eeprom.bin",
+            Paths_GetWorkingDir(), PATHSEP);
 
     /* Set defaults for Video */
 #if HAVE_LIBPNG
@@ -578,10 +599,6 @@ void Configuration_Apply(bool bReset)
 	{
 		/* Set resolution change */
 	}
-//	if (ConfigureParams.Screen.nFrameSkips < AUTO_FRAMESKIP_LIMIT)
-//	{
-//        nFrameSkips = ConfigureParams.Screen.nFrameSkips;
-//	}
 
     /* Init clocks for this machine */
     ClocksTimings_InitMachine ( ConfigureParams.System.nMachineType );
@@ -592,30 +609,8 @@ void Configuration_Apply(bool bReset)
     Configuration_CheckFloatMinMax(&ConfigureParams.Mouse.fExpSpeedNormal,MOUSE_EXP_MIN,MOUSE_EXP_MAX);
     Configuration_CheckFloatMinMax(&ConfigureParams.Mouse.fExpSpeedLocked,MOUSE_EXP_MIN,MOUSE_EXP_MAX);
     
-	/* Sound settings */
-	/* SDL sound buffer in ms */
-//	SdlAudioBufferSize = ConfigureParams.Sound.SdlAudioBufferSize;
-//	if ( SdlAudioBufferSize == 0 )			/* use default setting for SDL */
-//		;
-//	else if ( SdlAudioBufferSize < 10 )		/* min of 10 ms */
-//		SdlAudioBufferSize = 10;
-//	else if ( SdlAudioBufferSize > 100 )		/* max of 100 ms */
-//		SdlAudioBufferSize = 100;
-
-	/* Set playback frequency */
-//	Audio_SetOutputAudioFreq(ConfigureParams.Sound.nPlaybackFreq);
-
-	/* YM Mixing */
-//    if ( ( ConfigureParams.Sound.YmVolumeMixing != YM_LINEAR_MIXING )
-//            && ( ConfigureParams.Sound.YmVolumeMixing != YM_TABLE_MIXING ) )
-//        ConfigureParams.Sound.YmVolumeMixing = YM_TABLE_MIXING;
-
-//    YmVolumeMixing = ConfigureParams.Sound.YmVolumeMixing;
-//    Sound_SetYmVolumeMixing();
-    
     /* Check/constrain CPU settings and change corresponding
-    * UAE cpu_level & cpu_compatible variables
-    */
+     * UAE cpu_level & cpu_compatible variables */
     M68000_CheckCpuSettings();
     
     /* Check memory size for each bank and change to supported values */
@@ -625,7 +620,9 @@ void Configuration_Apply(bool bReset)
     File_MakeAbsoluteName(ConfigureParams.Rom.szRom030FileName);
     File_MakeAbsoluteName(ConfigureParams.Rom.szRom040FileName);
     File_MakeAbsoluteName(ConfigureParams.Rom.szRomTurboFileName);
-    
+    File_MakeAbsoluteName(ConfigureParams.Dimension.szRomFileName);
+    File_MakeAbsoluteName(ConfigureParams.Printer.szPrintToFileName);
+
     int i;
     for (i = 0; i < ESP_MAX_DEVS; i++) {
         File_MakeAbsoluteName(ConfigureParams.SCSI.target[i].szImageName);
@@ -651,7 +648,6 @@ void Configuration_Apply(bool bReset)
 	File_MakeAbsoluteSpecialName(ConfigureParams.RS232.szOutFileName);
 	File_MakeAbsoluteSpecialName(ConfigureParams.Midi.sMidiInFileName);
 	File_MakeAbsoluteSpecialName(ConfigureParams.Midi.sMidiOutFileName);
-	File_MakeAbsoluteSpecialName(ConfigureParams.Printer.szPrintToFileName);
 }
 
 
@@ -796,6 +792,28 @@ int Configuration_CheckMemory(int *banksize) {
     return (banksize[0]+banksize[1]+banksize[2]+banksize[3]);
 }
 
+int Configuration_CheckDimensionMemory(int *banksize) {
+    int i;
+    
+#if RESTRICTIVE_MEMCHECK
+    /* To boot we need at least 4 MB in bank0 */
+    if (banksize[0]<4) {
+        banksize[0]=4;
+    }
+#endif
+    for (i=0; i<4; i++) {
+        if (banksize[i]<=0)
+            banksize[i]=0;
+        else if (banksize[i]<=4)
+            banksize[i]=4;
+        else if (banksize[i]<=16)
+            banksize[i]=16;
+        else
+            banksize[i]=16;
+    }
+    return (banksize[0]+banksize[1]+banksize[2]+banksize[3]);
+}
+
 
 /*-----------------------------------------------------------------------*/
 /**
@@ -851,6 +869,7 @@ void Configuration_Load(const char *psFileName)
 	Configuration_LoadSection(psFileName, configs_Printer, "[Printer]");
 	Configuration_LoadSection(psFileName, configs_Midi, "[Midi]");
 	Configuration_LoadSection(psFileName, configs_System, "[System]");
+    Configuration_LoadSection(psFileName, configs_Dimension, "[Dimension]");
     Configuration_LoadSection(psFileName, configs_Video, "[Video]");
 }
 
@@ -902,6 +921,7 @@ void Configuration_Save(void)
 	Configuration_SaveSection(sConfigFileName, configs_Printer, "[Printer]");
 	Configuration_SaveSection(sConfigFileName, configs_Midi, "[Midi]");
 	Configuration_SaveSection(sConfigFileName, configs_System, "[System]");
+    Configuration_SaveSection(sConfigFileName, configs_Dimension, "[Dimension]");
     Configuration_SaveSection(sConfigFileName, configs_Video, "[Video]");
 }
 
@@ -986,6 +1006,11 @@ void Configuration_MemorySnapShot_Capture(bool bSave)
     MemorySnapShot_Store(&ConfigureParams.System.n_FPUType, sizeof(ConfigureParams.System.n_FPUType));
     MemorySnapShot_Store(&ConfigureParams.System.bCompatibleFPU, sizeof(ConfigureParams.System.bCompatibleFPU));
     MemorySnapShot_Store(&ConfigureParams.System.bMMU, sizeof(ConfigureParams.System.bMMU));
+    
+    /* Dimension options */
+    MemorySnapShot_Store(&ConfigureParams.Dimension.bEnabled, sizeof(ConfigureParams.Dimension.bEnabled));
+    MemorySnapShot_Store(ConfigureParams.Dimension.nMemoryBankSize, sizeof(ConfigureParams.Dimension.nMemoryBankSize));
+    MemorySnapShot_Store(ConfigureParams.Dimension.szRomFileName, sizeof(ConfigureParams.Dimension.szRomFileName));
 
 	if (!bSave)
 		Configuration_Apply(true);
