@@ -138,18 +138,21 @@ static void nd_vram_bput(uaecptr addr, uae_u32 b)
 static uae_u32 nd_rom_lget(uaecptr addr)
 {
 	addr &= ND_EEPROM_MASK;
-	return do_get_mem_long(ND_rom + addr);
+    addr ^= 3; /* FIXME: really? */
+	return (ND_rom[addr] << 24);
 }
 
 static uae_u32 nd_rom_wget(uaecptr addr)
 {
 	addr &= ND_EEPROM_MASK;
-	return do_get_mem_word(ND_rom + addr);
+    addr ^= 3; /* FIXME: really? */
+	return (ND_rom[addr] << 8);
 }
 
 static uae_u32 nd_rom_bget(uaecptr addr)
 {
 	addr &= ND_EEPROM_MASK;
+    addr ^= 3; /* FIXME: really? */
     return ND_rom[addr];
 }
 
