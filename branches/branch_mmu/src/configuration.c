@@ -542,10 +542,10 @@ void Configuration_SetDefault(void)
     
     /* Set defaults for Dimension */
     ConfigureParams.Dimension.bEnabled = false;
-    ConfigureParams.Dimension.nMemoryBankSize[0] = 16;
-    ConfigureParams.Dimension.nMemoryBankSize[1] = 16;
-    ConfigureParams.Dimension.nMemoryBankSize[2] = 16;
-    ConfigureParams.Dimension.nMemoryBankSize[3] = 16;
+    ConfigureParams.Dimension.nMemoryBankSize[0] = 4;
+    ConfigureParams.Dimension.nMemoryBankSize[1] = 4;
+    ConfigureParams.Dimension.nMemoryBankSize[2] = 4;
+    ConfigureParams.Dimension.nMemoryBankSize[3] = 4;
     sprintf(ConfigureParams.Dimension.szRomFileName, "%s%cdimension_eeprom.bin",
             Paths_GetWorkingDir(), PATHSEP);
 

@@ -30,6 +30,12 @@ Uint8 ND_ram[64*1024*1024];
 Uint8 ND_vram[4*1024*1024];
 Uint8 ND_rom[128*1024];
 
+Uint8 ND_dmem[512];
+
+/* NeXTdimension dither memory */
+#define ND_DMEM_START   0xFF000000
+#define ND_DMEM_SIZE    0x00000200
+#define ND_DMEM_MASK    0x000001FF
 
 /* NeXTdimension board devices */
 #define ND_IO_START		0xFF800000
@@ -191,6 +197,43 @@ static void nd_rom_access_bput(uaecptr addr, uae_u32 b)
     nd_rom_write(addr, b);
 }
 
+/* NeXTdimension dither memory */
+static uae_u32 nd_dmem_lget(uaecptr addr)
+{
+    addr &= ND_DMEM_SIZE;
+    return do_get_mem_long(ND_dmem + addr);
+}
+
+static uae_u32 nd_dmem_wget(uaecptr addr)
+{
+    addr &= ND_DMEM_MASK;
+    return do_get_mem_word(ND_dmem + addr);
+}
+
+static uae_u32 nd_dmem_bget(uaecptr addr)
+{
+    addr &= ND_DMEM_MASK;
+    return ND_dmem[addr];
+}
+
+static void nd_dmem_lput(uaecptr addr, uae_u32 l)
+{
+    addr &= ND_DMEM_MASK;
+    do_put_mem_long(ND_dmem + addr, l);
+}
+
+static void nd_dmem_wput(uaecptr addr, uae_u32 w)
+{
+    addr &= ND_DMEM_MASK;
+    do_put_mem_word(ND_dmem + addr, w);
+}
+
+static void nd_dmem_bput(uaecptr addr, uae_u32 b)
+{
+    addr &= ND_DMEM_MASK;
+    ND_dmem[addr] = b;
+}
+
 /* NeXTdimension RAMDAC */
 static uae_u32 nd_ramdac_lget(uaecptr addr)
 {
@@ -249,6 +292,13 @@ static nd_addrbank nd_rom_access_bank =
     NULL, NULL
 };
 
+static nd_addrbank nd_dmem_bank =
+{
+    nd_dmem_lget, nd_dmem_wget, nd_dmem_bget,
+    nd_dmem_lput, nd_dmem_wput, nd_dmem_bput,
+    nd_dmem_lget, nd_dmem_wget
+};
+
 static nd_addrbank nd_io_bank =
 {
 	nd_io_lget, nd_io_wget, nd_io_bget,
@@ -279,6 +329,9 @@ void nd_memory_init(void) {
     nd_map_banks(&nd_rom_access_bank, ND_EEPROM2_STRT>>16, ND_EEPROM2_SIZE>>16);
     nd_rom_load();
 	
+    write_log("Mapping NeXTdimension dither memory at $%08x: %ibyte\n", ND_DMEM_START, ND_DMEM_SIZE);
+    nd_map_banks(&nd_dmem_bank, ND_DMEM_START>>16, 1);
+
 	write_log("Mapping NeXTdimension IO memory at $%08x\n", ND_IO_START);
 	nd_map_banks(&nd_io_bank, ND_IO_START>>16, 1);
     

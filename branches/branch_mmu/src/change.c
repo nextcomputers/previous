@@ -190,6 +190,18 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
         return true;
     }
     
+    /* Did we change NeXTdimension? */
+    if (current->Dimension.bEnabled != changed->Dimension.bEnabled ||
+        strcmp(current->Dimension.szRomFileName, changed->Dimension.szRomFileName)) {
+        printf("dimension reset\n");
+    }
+    for (i = 0; i < 4; i++) {
+        if (current->Dimension.nMemoryBankSize[i] != changed->Dimension.nMemoryBankSize[i]) {
+            printf("dimension memory size reset\n");
+            return true;
+        }
+    }
+    
     /* Else no reset is required */
     printf("No Reset needed!\n");
     return false;
