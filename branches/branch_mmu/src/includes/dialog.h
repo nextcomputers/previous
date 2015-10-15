@@ -36,7 +36,7 @@ extern void Dialog_AdvancedDlg(void);
 extern void Dialog_DimensionDlg(void);
 extern void DlgRom_Main(void);
 extern void DlgBoot_Main(void);
-extern void DlgMissing_Rom(void);
+extern void DlgMissing_Rom(char type[], char *imgname, char *defname, bool *enabled);
 extern void DlgMissing_Disk(char type[], int num, char *name, bool *ins, bool *wp);
 /* and dialog.c */
 extern bool Dialog_DoProperty(void);
