@@ -180,6 +180,8 @@ static void ShortCut_Dimension(void)
     {
         Main_SetTitle(NULL);
     }
+    
+    Screen_SetFullUpdate();
 #endif
 }
 
