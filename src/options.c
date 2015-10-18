@@ -865,7 +865,7 @@ bool Opt_ParseParameters(int argc, const char * const argv[])
 		
 			/* common display options */
 		case OPT_MONO:
-			ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_MONO;
+//			ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_MONO;
 			bLoadAutoSave = false;
 			break;
 
@@ -873,19 +873,19 @@ bool Opt_ParseParameters(int argc, const char * const argv[])
 			i += 1;
 			if (strcasecmp(argv[i], "mono") == 0)
 			{
-				ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_MONO;
+//				ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_MONO;
 			}
 			else if (strcasecmp(argv[i], "rgb") == 0)
 			{
-				ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_RGB;
+//				ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_RGB;
 			}
 			else if (strcasecmp(argv[i], "vga") == 0)
 			{
-				ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_VGA;
+//				ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_VGA;
 			}
 			else if (strcasecmp(argv[i], "tv") == 0)
 			{
-				ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_TV;
+//				ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_TV;
 			}
 			else
 			{

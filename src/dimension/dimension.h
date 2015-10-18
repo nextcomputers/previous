@@ -17,7 +17,6 @@ void nd_board_bput(Uint32 addr, Uint8 b);
 
 extern Uint8 ND_rom[128*1024];
 extern Uint8 ND_vram[4*1024*1024];
-extern bool enable_dimension_screen;
 
 void dimension_reset(void);
 

@@ -219,6 +219,7 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
 	bool bReInitEnetEmu = false;
     bool bReInitSoundEmu = false;
 	bool bReInitIoMem = false;
+    bool bReInitScreen = false;
 	bool bScreenModeChange = false;
 	int i;
 
@@ -252,6 +253,12 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
         (current->Sound.bEnableSound != changed->Sound.bEnableSound ||
          current->Sound.bEnableMicrophone != changed->Sound.bEnableMicrophone)) {
         bReInitSoundEmu = true;
+    }
+    
+    /* Do we need to change Screen configuration? */
+    if (!NeedReset &&
+        current->Screen.nMonitorType != changed->Screen.nMonitorType) {
+        bReInitScreen = true;
     }
 
 	/* Copy details to configuration,
@@ -296,6 +303,12 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
     if (bReInitSoundEmu) {
         Dprintf("- Sound<\n");
         Sound_Reset();
+    }
+    
+    /* Re-init Screen */
+    if (bReInitScreen) {
+        Dprintf("- Screen<\n");
+        Screen_SetFullUpdate();
     }
 
 	/* Force things associated with screen change */

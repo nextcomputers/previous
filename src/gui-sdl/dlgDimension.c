@@ -116,6 +116,25 @@ void Dialog_DimensionDlg(void)
         dimensiondlg[DLGND_ENABLE].state &= ~SG_SELECTED;
     }
     
+    dimensiondlg[DLGND_COLOR].state &= ~SG_SELECTED;
+    dimensiondlg[DLGND_MONOCHROME].state &= ~SG_SELECTED;
+    dimensiondlg[DLGND_BOTH].state &= ~SG_SELECTED;
+    
+    switch (ConfigureParams.Screen.nMonitorType) {
+        case MONITOR_TYPE_DUAL:
+            dimensiondlg[DLGND_BOTH].state |= SG_SELECTED;
+            break;
+        case MONITOR_TYPE_CPU:
+            dimensiondlg[DLGND_MONOCHROME].state |= SG_SELECTED;
+            break;
+        case MONITOR_TYPE_DIMENSION:
+            dimensiondlg[DLGND_COLOR].state |= SG_SELECTED;
+            break;
+            
+        default:
+            break;
+    }
+    
     File_ShrinkName(dlgname_ndrom, ConfigureParams.Dimension.szRomFileName,
                         dimensiondlg[DLGND_NAME].w);
     dimensiondlg[DLGND_NAME].txt = dlgname_ndrom;
@@ -154,6 +173,14 @@ void Dialog_DimensionDlg(void)
     ConfigureParams.Dimension.bEnabled = (dimensiondlg[DLGND_ENABLE].state&SG_SELECTED)?true:false;
     if (ConfigureParams.Dimension.bEnabled) {
         ConfigureParams.System.bNBIC = true;
+    }
+    
+    if (dimensiondlg[DLGND_COLOR].state&SG_SELECTED) {
+        ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_DIMENSION;
+    } else if (dimensiondlg[DLGND_BOTH].state&SG_SELECTED) {
+        ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_DUAL;
+    } else {
+        ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_CPU;
     }
 }
 

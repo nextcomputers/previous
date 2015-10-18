@@ -494,7 +494,7 @@ void Configuration_SetDefault(void)
 	ConfigureParams.Screen.nSpec512Threshold = 16;
 	ConfigureParams.Screen.nForceBpp = 0;
 	ConfigureParams.Screen.bAspectCorrect = true;
-	ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_RGB;
+	ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_CPU;
 	ConfigureParams.Screen.bUseExtVdiResolutions = false;
 	ConfigureParams.Screen.bShowStatusbar = true;
 	ConfigureParams.Screen.bShowDriveLed = true;
