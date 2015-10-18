@@ -170,17 +170,14 @@ static void ShortCut_Pause(void)
 static void ShortCut_Dimension(void)
 {
 #if ENABLE_DIMENSION
-    enable_dimension_screen = !enable_dimension_screen;        /* Toggle flag */
-    
-    if (enable_dimension_screen)
-    {
+    if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
+        ConfigureParams.Screen.nMonitorType=MONITOR_TYPE_CPU;
+        Main_SetTitle(NULL);
+    } else {
+        ConfigureParams.Screen.nMonitorType=MONITOR_TYPE_DIMENSION;
         Main_SetTitle("NeXTdimension - Press ctrl-alt-n to return.");
     }
-    else
-    {
-        Main_SetTitle(NULL);
-    }
-    
+
     Screen_SetFullUpdate();
 #endif
 }

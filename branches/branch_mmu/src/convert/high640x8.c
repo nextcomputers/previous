@@ -135,7 +135,7 @@ static void ConvertHighRes_640x8Bit(void)
 
 #if ENABLE_DIMENSION
     /* dimension */
-    if (enable_dimension_screen) {
+    if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
         for (y = 0; y < 832; y++)
         {
             adr=y*288*16;

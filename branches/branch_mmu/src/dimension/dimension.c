@@ -20,8 +20,6 @@
 
 #define ND_NBIC_SPACE   0xFFFFFFE8
 
-/* NeXTdimension screen */
-bool enable_dimension_screen = false;
 
 /* NeXTdimension slot memory access */
 Uint32 nd_slot_lget(Uint32 addr) {

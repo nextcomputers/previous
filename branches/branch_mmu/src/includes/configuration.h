@@ -237,10 +237,9 @@ typedef struct {
 
 typedef enum
 {
-  MONITOR_TYPE_MONO,
-  MONITOR_TYPE_RGB,
-  MONITOR_TYPE_VGA,
-  MONITOR_TYPE_TV
+  MONITOR_TYPE_DUAL,
+  MONITOR_TYPE_CPU,
+  MONITOR_TYPE_DIMENSION,
 } MONITORTYPE;
 
 /* Screen configuration */
