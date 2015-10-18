@@ -112,6 +112,12 @@ static inline void putpixel(SDL_Surface * surface, Uint16 x, Uint16 y, Uint32 co
 
 static char buffer[832*1152*4];
 
+static void InvalidateScreenBuffer(void) {
+    int i;
+    for (i = 0; i < (832*1152*4); i++)
+        buffer[i]++;
+}
+
 static void ConvertHighRes_640x8Bit(void)
 {
 	int y, x;

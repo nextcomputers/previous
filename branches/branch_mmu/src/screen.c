@@ -332,6 +332,8 @@ void Screen_SetFullUpdate(void)
 	/* Update frame buffers */
 	for (i = 0; i < NUM_FRAMEBUFFERS; i++)
 		FrameBuffers[i].bFullUpdate = true;
+    
+    InvalidateScreenBuffer();
 }
 
 
