@@ -114,8 +114,16 @@ static char buffer[832*1152*4];
 
 static void InvalidateScreenBuffer(void) {
     int i;
-    for (i = 0; i < (832*1152*4); i++)
-        buffer[i]++;
+#if ENABLE_DIMENSION
+    if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
+        for (i = 0; i < (832*1152*4); i++)
+            buffer[i] = ND_vram[i]+1;
+        return;
+    }
+#endif
+    for (i = 0; i < (832*1152/4); i++) {
+        buffer[i] = NEXTVideo[i]+1;
+    }
 }
 
 static void ConvertHighRes_640x8Bit(void)
