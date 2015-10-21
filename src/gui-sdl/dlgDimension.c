@@ -33,6 +33,8 @@ void print_nd_overview(void);
 void update_monitor_selection(void);
 void get_nd_default_values(void);
 
+#define ENABLE_DUAL_SCREEN  0
+
 
 static SGOBJ dimensiondlg[] =
 {
@@ -46,8 +48,13 @@ static SGOBJ dimensiondlg[] =
     
     { SGTEXT, 0, 0, 3,9, 7,1, "System display" },
     { SGRADIOBUT, 0, 0, 4,11, 7,1, "Color" },
+#if ENABLE_DUAL_SCREEN
     { SGRADIOBUT, 0, 0, 12,11, 6,1, "Mono" },
     { SGRADIOBUT, 0, 0, 19,11, 6,1, "Both" },
+#else
+    { SGRADIOBUT, 0, 0, 12,11, 12,1, "Monochrome" },
+    { SGTEXT, 0, 0, 19,11, 6,1, "" },
+#endif
 
     { SGTEXT, 0, 0, 30,4, 13,1, "System overview:" },
     { SGTEXT, 0, 0, 30,6, 13,1, "CPU type:" },
@@ -121,9 +128,11 @@ void Dialog_DimensionDlg(void)
     dimensiondlg[DLGND_BOTH].state &= ~SG_SELECTED;
     
     switch (ConfigureParams.Screen.nMonitorType) {
+#if ENABLE_DUAL_SCREEN
         case MONITOR_TYPE_DUAL:
             dimensiondlg[DLGND_BOTH].state |= SG_SELECTED;
             break;
+#endif
         case MONITOR_TYPE_CPU:
             dimensiondlg[DLGND_MONOCHROME].state |= SG_SELECTED;
             break;
@@ -177,8 +186,10 @@ void Dialog_DimensionDlg(void)
     
     if (dimensiondlg[DLGND_COLOR].state&SG_SELECTED) {
         ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_DIMENSION;
+#if ENABLE_DUAL_SCREEN
     } else if (dimensiondlg[DLGND_BOTH].state&SG_SELECTED) {
         ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_DUAL;
+#endif
     } else {
         ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_CPU;
     }

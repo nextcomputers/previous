@@ -26,6 +26,14 @@
 #define ND_EEPROM_SIZE	0x00020000
 #define ND_EEPROM_MASK	0x0001FFFF
 
+/* RAM banks */
+#define ND_RAM_BANKSIZE 0x01000000
+#define ND_RAM_BANKMASK 0x03000000
+uae_u32 ND_RAM_bankmask0;
+uae_u32 ND_RAM_bankmask1;
+uae_u32 ND_RAM_bankmask2;
+uae_u32 ND_RAM_bankmask3;
+
 Uint8 ND_ram[64*1024*1024];
 Uint8 ND_vram[4*1024*1024];
 Uint8 ND_rom[128*1024];
@@ -67,40 +75,181 @@ void nd_map_banks (nd_addrbank *bank, int start, int size)
 }
 
 /* NeXTdimension RAM */
-static uae_u32 nd_ram_lget(uaecptr addr)
+static uae_u32 nd_ram_bank0_lget(uaecptr addr)
 {
-	addr &= ND_RAM_MASK;
+	addr &= ND_RAM_bankmask0;
 	return do_get_mem_long(ND_ram + addr);
 }
 
-static uae_u32 nd_ram_wget(uaecptr addr)
+static uae_u32 nd_ram_bank0_wget(uaecptr addr)
 {
-	addr &= ND_RAM_MASK;
+	addr &= ND_RAM_bankmask0;
 	return do_get_mem_word(ND_ram + addr);
 }
 
-static uae_u32 nd_ram_bget(uaecptr addr)
+static uae_u32 nd_ram_bank0_bget(uaecptr addr)
 {
-	addr &= ND_RAM_MASK;
+	addr &= ND_RAM_bankmask0;
 	return ND_ram[addr];
 }
 
-static void nd_ram_lput(uaecptr addr, uae_u32 l)
+static void nd_ram_bank0_lput(uaecptr addr, uae_u32 l)
 {
-	addr &= ND_RAM_MASK;
+	addr &= ND_RAM_bankmask0;
 	do_put_mem_long(ND_ram + addr, l);
 }
 
-static void nd_ram_wput(uaecptr addr, uae_u32 w)
+static void nd_ram_bank0_wput(uaecptr addr, uae_u32 w)
 {
-	addr &= ND_RAM_MASK;
+	addr &= ND_RAM_bankmask0;
 	do_put_mem_word(ND_ram + addr, w);
 }
 
-static void nd_ram_bput(uaecptr addr, uae_u32 b)
+static void nd_ram_bank0_bput(uaecptr addr, uae_u32 b)
 {
-	addr &= ND_RAM_MASK;
+	addr &= ND_RAM_bankmask0;
 	ND_ram[addr] = b;
+}
+
+static uae_u32 nd_ram_bank1_lget(uaecptr addr)
+{
+    addr &= ND_RAM_bankmask1;
+    return do_get_mem_long(ND_ram + addr);
+}
+
+static uae_u32 nd_ram_bank1_wget(uaecptr addr)
+{
+    addr &= ND_RAM_bankmask1;
+    return do_get_mem_word(ND_ram + addr);
+}
+
+static uae_u32 nd_ram_bank1_bget(uaecptr addr)
+{
+    addr &= ND_RAM_bankmask1;
+    return ND_ram[addr];
+}
+
+static void nd_ram_bank1_lput(uaecptr addr, uae_u32 l)
+{
+    addr &= ND_RAM_bankmask1;
+    do_put_mem_long(ND_ram + addr, l);
+}
+
+static void nd_ram_bank1_wput(uaecptr addr, uae_u32 w)
+{
+    addr &= ND_RAM_bankmask1;
+    do_put_mem_word(ND_ram + addr, w);
+}
+
+static void nd_ram_bank1_bput(uaecptr addr, uae_u32 b)
+{
+    addr &= ND_RAM_bankmask1;
+    ND_ram[addr] = b;
+}
+
+static uae_u32 nd_ram_bank2_lget(uaecptr addr)
+{
+    addr &= ND_RAM_bankmask2;
+    return do_get_mem_long(ND_ram + addr);
+}
+
+static uae_u32 nd_ram_bank2_wget(uaecptr addr)
+{
+    addr &= ND_RAM_bankmask2;
+    return do_get_mem_word(ND_ram + addr);
+}
+
+static uae_u32 nd_ram_bank2_bget(uaecptr addr)
+{
+    addr &= ND_RAM_bankmask2;
+    return ND_ram[addr];
+}
+
+static void nd_ram_bank2_lput(uaecptr addr, uae_u32 l)
+{
+    addr &= ND_RAM_bankmask2;
+    do_put_mem_long(ND_ram + addr, l);
+}
+
+static void nd_ram_bank2_wput(uaecptr addr, uae_u32 w)
+{
+    addr &= ND_RAM_bankmask2;
+    do_put_mem_word(ND_ram + addr, w);
+}
+
+static void nd_ram_bank2_bput(uaecptr addr, uae_u32 b)
+{
+    addr &= ND_RAM_bankmask2;
+    ND_ram[addr] = b;
+}
+
+static uae_u32 nd_ram_bank3_lget(uaecptr addr)
+{
+    addr &= ND_RAM_bankmask3;
+    return do_get_mem_long(ND_ram + addr);
+}
+
+static uae_u32 nd_ram_bank3_wget(uaecptr addr)
+{
+    addr &= ND_RAM_bankmask3;
+    return do_get_mem_word(ND_ram + addr);
+}
+
+static uae_u32 nd_ram_bank3_bget(uaecptr addr)
+{
+    addr &= ND_RAM_bankmask3;
+    return ND_ram[addr];
+}
+
+static void nd_ram_bank3_lput(uaecptr addr, uae_u32 l)
+{
+    addr &= ND_RAM_bankmask3;
+    do_put_mem_long(ND_ram + addr, l);
+}
+
+static void nd_ram_bank3_wput(uaecptr addr, uae_u32 w)
+{
+    addr &= ND_RAM_bankmask3;
+    do_put_mem_word(ND_ram + addr, w);
+}
+
+static void nd_ram_bank3_bput(uaecptr addr, uae_u32 b)
+{
+    addr &= ND_RAM_bankmask3;
+    ND_ram[addr] = b;
+}
+
+static uae_u32 nd_ram_empty_lget(uaecptr addr)
+{
+    write_log("NeXTdimension empty memory bank lget at %08X\n",addr);
+    return 0;
+}
+
+static uae_u32 nd_ram_empty_wget(uaecptr addr)
+{
+    write_log("NeXTdimension empty memory bank wget at %08X\n",addr);
+    return 0;
+}
+
+static uae_u32 nd_ram_empty_bget(uaecptr addr)
+{
+    write_log("NeXTdimension empty memory bank bget at %08X\n",addr);
+    return 0;
+}
+
+static void nd_ram_empty_lput(uaecptr addr, uae_u32 l)
+{
+    write_log("NeXTdimension empty memory bank lput at %08X\n",addr);
+}
+
+static void nd_ram_empty_wput(uaecptr addr, uae_u32 w)
+{
+    write_log("NeXTdimension empty memory bank wput at %08X\n",addr);
+}
+
+static void nd_ram_empty_bput(uaecptr addr, uae_u32 b)
+{
+    write_log("NeXTdimension empty memory bank bput at %08X\n",addr);
 }
 
 /* NeXTdimension VRAM */
@@ -264,11 +413,39 @@ static void nd_ramdac_bput(uaecptr addr, uae_u32 b)
 
 
 
-static nd_addrbank nd_ram_bank =
+static nd_addrbank nd_ram_bank0 =
 {
-	nd_ram_lget, nd_ram_wget, nd_ram_bget,
-	nd_ram_lput, nd_ram_wput, nd_ram_bput,
-	nd_ram_lget, nd_ram_wget
+	nd_ram_bank0_lget, nd_ram_bank0_wget, nd_ram_bank0_bget,
+	nd_ram_bank0_lput, nd_ram_bank0_wput, nd_ram_bank0_bput,
+	nd_ram_bank0_lget, nd_ram_bank0_wget
+};
+
+static nd_addrbank nd_ram_bank1 =
+{
+    nd_ram_bank1_lget, nd_ram_bank1_wget, nd_ram_bank1_bget,
+    nd_ram_bank1_lput, nd_ram_bank1_wput, nd_ram_bank1_bput,
+    nd_ram_bank1_lget, nd_ram_bank1_wget
+};
+
+static nd_addrbank nd_ram_bank2 =
+{
+    nd_ram_bank2_lget, nd_ram_bank2_wget, nd_ram_bank2_bget,
+    nd_ram_bank2_lput, nd_ram_bank2_wput, nd_ram_bank2_bput,
+    nd_ram_bank2_lget, nd_ram_bank2_wget
+};
+
+static nd_addrbank nd_ram_bank3 =
+{
+    nd_ram_bank3_lget, nd_ram_bank3_wget, nd_ram_bank3_bget,
+    nd_ram_bank3_lput, nd_ram_bank3_wput, nd_ram_bank3_bput,
+    nd_ram_bank3_lget, nd_ram_bank3_wget
+};
+
+static nd_addrbank nd_ram_empty =
+{
+    nd_ram_empty_lget, nd_ram_empty_wget, nd_ram_empty_bget,
+    nd_ram_empty_lput, nd_ram_empty_wput, nd_ram_empty_bput,
+    nd_ram_empty_lget, nd_ram_empty_wget
 };
 
 static nd_addrbank nd_vram_bank =
@@ -316,12 +493,52 @@ static nd_addrbank nd_ramdac_bank =
 
 void nd_memory_init(void) {
 	
-	write_log("Mapping NeXTdimension Memory:\n");
+	write_log("NeXTdimension Memory init: Memory size: %iMB\n",
+              Configuration_CheckDimensionMemory(ConfigureParams.Dimension.nMemoryBankSize));
 
-	write_log("Mapping NeXTdimension Main Memory at $%08x: %iMB\n", ND_RAM_START, ND_RAM_SIZE/(1024*1024));
-	nd_map_banks(&nd_ram_bank, ND_RAM_START>>16, ND_RAM_SIZE>>16);
+    /* Map main memory */
+    if (ConfigureParams.Dimension.nMemoryBankSize[0]) {
+        ND_RAM_bankmask0 = ND_RAM_BANKMASK|((ConfigureParams.Dimension.nMemoryBankSize[0]<<20)-1);
+        nd_map_banks(&nd_ram_bank0, (ND_RAM_START+(0*ND_RAM_BANKSIZE))>>16, ND_RAM_BANKSIZE >> 16);
+        write_log("Mapping NeXTdimension main memory bank0 at $%08x: %iMB\n",
+                  (ND_RAM_START+(0*ND_RAM_BANKSIZE)), ConfigureParams.Dimension.nMemoryBankSize[0]);
+    } else {
+        ND_RAM_bankmask0 = 0;
+        nd_map_banks(&nd_ram_empty, (ND_RAM_START+(0*ND_RAM_BANKSIZE))>>16, ND_RAM_BANKSIZE >> 16);
+        write_log("Mapping NeXTdimension main memory bank0 at $%08x: empty\n", (ND_RAM_START+(0*ND_RAM_BANKSIZE)));
+    }
+    if (ConfigureParams.Dimension.nMemoryBankSize[1]) {
+        ND_RAM_bankmask1 = ND_RAM_BANKMASK|((ConfigureParams.Dimension.nMemoryBankSize[1]<<20)-1);
+        nd_map_banks(&nd_ram_bank1, (ND_RAM_START+(1*ND_RAM_BANKSIZE))>>16, ND_RAM_BANKSIZE >> 16);
+        write_log("Mapping NeXTdimension main memory bank1 at $%08x: %iMB\n",
+                  (ND_RAM_START+(1*ND_RAM_BANKSIZE)), ConfigureParams.Dimension.nMemoryBankSize[1]);
+    } else {
+        ND_RAM_bankmask1 = 0;
+        nd_map_banks(&nd_ram_empty, (ND_RAM_START+(1*ND_RAM_BANKSIZE))>>16, ND_RAM_BANKSIZE >> 16);
+        write_log("Mapping NeXTdimension main memory bank1 at $%08x: empty\n", (ND_RAM_START+(1*ND_RAM_BANKSIZE)));
+    }
+    if (ConfigureParams.Dimension.nMemoryBankSize[2]) {
+        ND_RAM_bankmask2 = ND_RAM_BANKMASK|((ConfigureParams.Dimension.nMemoryBankSize[2]<<20)-1);
+        nd_map_banks(&nd_ram_bank2, (ND_RAM_START+(2*ND_RAM_BANKSIZE))>>16, ND_RAM_BANKSIZE >> 16);
+        write_log("Mapping NeXTdimension main memory bank2 at $%08x: %iMB\n",
+                  (ND_RAM_START+(2*ND_RAM_BANKSIZE)), ConfigureParams.Dimension.nMemoryBankSize[2]);
+    } else {
+        ND_RAM_bankmask2 = 0;
+        nd_map_banks(&nd_ram_empty, (ND_RAM_START+(2*ND_RAM_BANKSIZE))>>16, ND_RAM_BANKSIZE >> 16);
+        write_log("Mapping NeXTdimension main memory bank2 at $%08x: empty\n", (ND_RAM_START+(2*ND_RAM_BANKSIZE)));
+    }
+    if (ConfigureParams.Dimension.nMemoryBankSize[3]) {
+        ND_RAM_bankmask3 = ND_RAM_BANKMASK|((ConfigureParams.Dimension.nMemoryBankSize[3]<<20)-1);
+        nd_map_banks(&nd_ram_bank3, (ND_RAM_START+(3*ND_RAM_BANKSIZE))>>16, ND_RAM_BANKSIZE >> 16);
+        write_log("Mapping NeXTdimension main memory bank3 at $%08x: %iMB\n",
+                  (ND_RAM_START+(3*ND_RAM_BANKSIZE)), ConfigureParams.Dimension.nMemoryBankSize[3]);
+    } else {
+        ND_RAM_bankmask3 = 0;
+        nd_map_banks(&nd_ram_empty, (ND_RAM_START+(3*ND_RAM_BANKSIZE))>>16, ND_RAM_BANKSIZE >> 16);
+        write_log("Mapping NeXTdimension main memory bank3 at $%08x: empty\n", (ND_RAM_START+(3*ND_RAM_BANKSIZE)));
+    }
     
-    write_log("Mapping NeXTdimension Video Memory at $%08x: %iMB\n", ND_VRAM_START, ND_VRAM_SIZE/(1024*1024));
+    write_log("Mapping NeXTdimension video memory at $%08x: %iMB\n", ND_VRAM_START, ND_VRAM_SIZE/(1024*1024));
     nd_map_banks(&nd_vram_bank, ND_VRAM_START>>16, ND_VRAM_SIZE>>16);
 	
 	write_log("Mapping NeXTdimension ROM at $%08x: %ikB\n", ND_EEPROM_START, ND_EEPROM_SIZE/1024);
