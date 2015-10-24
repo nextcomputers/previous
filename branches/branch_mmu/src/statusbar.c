@@ -40,7 +40,7 @@ const char Statusbar_fileid[] = "Hatari statusbar.c : " __DATE__ " " __TIME__;
 #include "statusbar.h"
 #include "screen.h"
 #include "video.h"
-#include "avi_record.h"
+#include "dimension.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -395,7 +395,23 @@ static char *Statusbar_AddString(char *buffer, const char *more)
 void Statusbar_UpdateInfo(void)
 {
 	char *end = DefaultMessage.msg;
-
+	char memsize[8];
+	
+#if ENABLE_DIMENSION
+	/* Message for NeXTdimension */
+	if (ConfigureParams.Dimension.bEnabled &&
+		ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
+		end = Statusbar_AddString(end, "33MHz/i860XR/");
+		sprintf(memsize, "%iMB/",Configuration_CheckDimensionMemory(ConfigureParams.Dimension.nMemoryBankSize));
+		end = Statusbar_AddString(end, memsize);
+		end = Statusbar_AddString(end, "NeXTdimension");
+		*end = '\0';
+		assert(end - DefaultMessage.msg < MAX_MESSAGE_LEN);
+		DefaultMessage.shown = false;
+		return;
+	}
+#endif
+	
 	/* CPU MHz */
 	if (ConfigureParams.System.nCpuFreq > 9) {
 		*end++ = '0' + ConfigureParams.System.nCpuFreq / 10;
@@ -422,7 +438,6 @@ void Statusbar_UpdateInfo(void)
 	}
 
 	/* amount of memory */
-    char memsize[8];
     sprintf(memsize, "%iMB/", Configuration_CheckMemory(ConfigureParams.Memory.nMemoryBankSize));
     end = Statusbar_AddString(end, memsize);
 
