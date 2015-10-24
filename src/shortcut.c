@@ -25,7 +25,7 @@ const char ShortCut_fileid[] = "Hatari shortcut.c : " __DATE__ " " __TIME__;
 #include "sdlgui.h"
 #include "video.h"
 #include "snd.h"
-#include "avi_record.h"
+#include "statusbar.h"
 #include "clocks_timings.h"
 
 static SHORTCUTKEYIDX ShortCutKey = SHORTCUT_NONE;  /* current shortcut key */
@@ -172,12 +172,11 @@ static void ShortCut_Dimension(void)
 #if ENABLE_DIMENSION
     if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
         ConfigureParams.Screen.nMonitorType=MONITOR_TYPE_CPU;
-        Main_SetTitle(NULL);
     } else {
         ConfigureParams.Screen.nMonitorType=MONITOR_TYPE_DIMENSION;
-        Main_SetTitle("NeXTdimension - Press ctrl-alt-n to return.");
     }
 
+	Statusbar_UpdateInfo();
     Screen_SetFullUpdate();
 #endif
 }
