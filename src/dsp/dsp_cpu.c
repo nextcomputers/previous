@@ -1727,44 +1727,44 @@ static void dsp_update_rn_bitreverse(Uint32 numreg)
 
 static void dsp_update_rn_modulo(Uint32 numreg, Sint16 modifier)
 {
-	Uint16 bufsize, modulo, lobound, hibound, bufmask;
-	Sint16 r_reg, orig_modifier=modifier;
+	Uint16 bufsize, bufmask, modulo, abs_modifier;
+	Uint32 r_reg, lobound, hibound;
 
+	r_reg = dsp_core.registers[DSP_REG_R0+numreg]|0x10000;
 	modulo = dsp_core.registers[DSP_REG_M0+numreg]+1;
+	
 	bufsize = 1;
-	bufmask = BITMASK(16);
 	while (bufsize < modulo) {
 		bufsize <<= 1;
-		bufmask <<= 1;
+	}
+	bufmask = bufsize - 1;
+	
+	lobound = r_reg - (r_reg&bufmask);
+	hibound = lobound + modulo - 1;
+	
+	if (modifier<0) {
+		abs_modifier = -modifier;
+	} else {
+		abs_modifier = modifier;
 	}
 	
-	lobound = dsp_core.registers[DSP_REG_R0+numreg] & bufmask;
-	hibound = lobound + modulo - 1;
-
-	r_reg = (Sint16) dsp_core.registers[DSP_REG_R0+numreg];
-
-	if (orig_modifier>modulo) {
-		while (modifier>bufsize) {
-			r_reg += bufsize;
-			modifier -= bufsize;
+	if (abs_modifier>modulo) {
+		if (abs_modifier&bufmask) {
+			fprintf(stderr,"Dsp: Modulo addressing result unpredictable\n");
+		} else {
+			r_reg += modifier;
 		}
-		while (modifier<-bufsize) {
-			r_reg -= bufsize;
-			modifier += bufsize;
-		}
-	}
-
-	r_reg += modifier;
-
-	if (orig_modifier!=modulo) {
+	} else {
+		r_reg += modifier;
+		
 		if (r_reg>hibound) {
 			r_reg -= modulo;
 		} else if (r_reg<lobound) {
 			r_reg += modulo;
-		}	
+		}
 	}
 
-	dsp_core.registers[DSP_REG_R0+numreg] = ((Uint32) r_reg) & BITMASK(16);
+	dsp_core.registers[DSP_REG_R0+numreg] = r_reg & BITMASK(16);
 }
 
 static int dsp_calc_ea(Uint32 ea_mode, Uint32 *dst_addr)
