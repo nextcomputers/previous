@@ -2585,7 +2585,7 @@ static void m68k_run_mmu040 (void)
 			count_instr (opcode);
 			cpu_cycles = (*cpufunctbl[opcode])(opcode);
 
-			DSP_Run(cpu_cycles * 4 / CYCLE_UNIT);
+			DSP_Run(cpu_cycles * 2 / CYCLE_UNIT);
 
 			M68000_AddCycles(cpu_cycles * 2 / CYCLE_UNIT);
 
