@@ -92,9 +92,9 @@ void nd_rom_load(void) {
         return;
     }
     
-    fread(ND_rom,1,(128*1024),romfile);
+    fread(ND_rom,1, 128 * 1024 ,romfile);
     
-    Log_Printf(LOG_WARN, "Read NeXTdimension ROM from %s",ConfigureParams.Dimension.szRomFileName);
+    Log_Printf(LOG_WARN, "[ND] Read ROM from %s",ConfigureParams.Dimension.szRomFileName);
     
     File_Close(romfile);
 }

@@ -552,20 +552,20 @@ void nextbus_board_bput(Uint32 addr, Uint32 val) {
 void nextbus_init(void) {
 #if ENABLE_DIMENSION
     if (ConfigureParams.Dimension.bEnabled) {
-        Log_Printf(LOG_WARN, "[NextBus] NeXTdimension board at slot %i",2);
+        Log_Printf(LOG_WARN, "[NextBus/ND] board at slot %i",ND_SLOT);
         
-        nextbus_board[2].lget = nd_board_lget;
-        nextbus_board[2].wget = nd_board_wget;
-        nextbus_board[2].bget = nd_board_bget;
-        nextbus_board[2].lput = nd_board_lput;
-        nextbus_board[2].wput = nd_board_wput;
-        nextbus_board[2].bput = nd_board_bput;
-        nextbus_slot[2].lget = nd_slot_lget;
-        nextbus_slot[2].wget = nd_slot_wget;
-        nextbus_slot[2].bget = nd_slot_bget;
-        nextbus_slot[2].lput = nd_slot_lput;
-        nextbus_slot[2].wput = nd_slot_wput;
-        nextbus_slot[2].bput = nd_slot_bput;
+        nextbus_board[ND_SLOT].lget = nd_board_lget;
+        nextbus_board[ND_SLOT].wget = nd_board_wget;
+        nextbus_board[ND_SLOT].bget = nd_board_bget;
+        nextbus_board[ND_SLOT].lput = nd_board_lput;
+        nextbus_board[ND_SLOT].wput = nd_board_wput;
+        nextbus_board[ND_SLOT].bput = nd_board_bput;
+        nextbus_slot[ND_SLOT].lget = nd_slot_lget;
+        nextbus_slot[ND_SLOT].wget = nd_slot_wget;
+        nextbus_slot[ND_SLOT].bget = nd_slot_bget;
+        nextbus_slot[ND_SLOT].lput = nd_slot_lput;
+        nextbus_slot[ND_SLOT].wput = nd_slot_wput;
+        nextbus_slot[ND_SLOT].bput = nd_slot_bput;
         
         dimension_reset();
     }
