@@ -26,6 +26,7 @@
 #include "main.h"
 #include "m68000.h"
 #include "dsp.h"
+#include "dimension.h"
 #include "reset.h"
 #include "cycInt.h"
 #include "mfp.h"
@@ -2497,6 +2498,9 @@ insretry:
 			mmu030_opcode = -1;
             
 			DSP_Run(cpu_cycles * 2 / CYCLE_UNIT);
+#if ENABLE_DIMENSION
+            i860_Run(cpu_cycles * 2 / CYCLE_UNIT);
+#endif
 
 			M68000_AddCycles(cpu_cycles * 2 / CYCLE_UNIT);
 
@@ -2586,6 +2590,9 @@ static void m68k_run_mmu040 (void)
 			cpu_cycles = (*cpufunctbl[opcode])(opcode);
 
 			DSP_Run(cpu_cycles * 2 / CYCLE_UNIT);
+#if ENABLE_DIMENSION
+            i860_Run(cpu_cycles * 2 / CYCLE_UNIT);
+#endif
 
 			M68000_AddCycles(cpu_cycles * 2 / CYCLE_UNIT);
 

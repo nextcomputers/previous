@@ -21,8 +21,6 @@
 #define ND_NBIC_SPACE   0xFFFFFFE8
 
 
-
-
 /* NeXTdimension slot memory access */
 Uint32 nd_slot_lget(Uint32 addr) {
     
@@ -90,43 +88,57 @@ void nd_slot_bput(Uint32 addr, Uint8 b) {
     }
 }
 
+// TODO: (SC) hack to avoid access faults - should not happen anymore when i860 works properly
+#define ND_BOARD_ADDR_CHECK(addr,ret) if(addr < 0xF8000000) {Log_Printf(LOG_ERROR, "[ND] Illegal access at %08X", addr); return ret;}
+
 /* NeXTdimension board memory access */
-Uint32 nd_board_lget(Uint32 addr) {
+inline Uint32 nd_board_lget(Uint32 addr) {
     addr |= ND_BOARD_BITS;
+    ND_BOARD_ADDR_CHECK(addr,0);
     return nd_longget(addr);
 }
 
-Uint16 nd_board_wget(Uint32 addr) {
+inline Uint16 nd_board_wget(Uint32 addr) {
     addr |= ND_BOARD_BITS;
+    ND_BOARD_ADDR_CHECK(addr,0);
     return nd_wordget(addr);
 }
 
-Uint8 nd_board_bget(Uint32 addr) {
+inline Uint8 nd_board_bget(Uint32 addr) {
     addr |= ND_BOARD_BITS;
+    ND_BOARD_ADDR_CHECK(addr,0);
     return nd_byteget(addr);
 }
 
-void nd_board_lput(Uint32 addr, Uint32 l) {
+inline void nd_board_lput(Uint32 addr, Uint32 l) {
     addr |= ND_BOARD_BITS;
+    ND_BOARD_ADDR_CHECK(addr,);
     nd_longput(addr, l);
 }
 
-void nd_board_wput(Uint32 addr, Uint16 w) {
+inline void nd_board_wput(Uint32 addr, Uint16 w) {
     addr |= ND_BOARD_BITS;
+    ND_BOARD_ADDR_CHECK(addr,);
     nd_wordput(addr, w);
 }
 
-void nd_board_bput(Uint32 addr, Uint8 b) {
+inline void nd_board_bput(Uint32 addr, Uint8 b) {
     addr |= ND_BOARD_BITS;
+    ND_BOARD_ADDR_CHECK(addr,);
     nd_byteput(addr, b);
 }
 
+inline bool i860_trace(Uint32 addr) {
+    return /* ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION &&*/ (addr < 0x2FFFFFFF);
+}
 
 /* Reset function */
 
 void dimension_reset(void) {
     nd_nbic_init();
+    nd_devs_init();
     nd_memory_init();
+    nd_i860_init();
 }
 
 #endif
