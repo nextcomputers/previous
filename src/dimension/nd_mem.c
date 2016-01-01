@@ -28,6 +28,7 @@
 
 /* RAM banks */
 #define ND_RAM_BANKSIZE 0x01000000
+#define ND_RAM_BANKMASK 0x03000000
 uae_u32 ND_RAM_bankmask0;
 uae_u32 ND_RAM_bankmask1;
 uae_u32 ND_RAM_bankmask2;
@@ -43,7 +44,6 @@ Uint8 ND_dmem[512];
 #define ND_DMEM_START   0xFF000000
 #define ND_DMEM_SIZE    0x00000200
 #define ND_DMEM_MASK    0x000001FF
-#define ND_DP_MASK      0x000003FF
 
 /* NeXTdimension board devices */
 #define ND_IO_START		0xFF800000
@@ -461,7 +461,7 @@ void nd_memory_init(void) {
 
     /* Map main memory */
     if (ConfigureParams.Dimension.nMemoryBankSize[0]) {
-        ND_RAM_bankmask0 = ((ConfigureParams.Dimension.nMemoryBankSize[0]<<20)-1);
+        ND_RAM_bankmask0 = ND_RAM_BANKMASK|((ConfigureParams.Dimension.nMemoryBankSize[0]<<20)-1);
         nd_map_banks(&nd_ram_bank0, (ND_RAM_START+(0*ND_RAM_BANKSIZE))>>16, ND_RAM_BANKSIZE >> 16);
         write_log("[ND] Mapping main memory bank0 at $%08x: %iMB\n",
                   (ND_RAM_START+(0*ND_RAM_BANKSIZE)), ConfigureParams.Dimension.nMemoryBankSize[0]);
@@ -471,7 +471,7 @@ void nd_memory_init(void) {
         write_log("[ND] Mapping main memory bank0 at $%08x: empty\n", (ND_RAM_START+(0*ND_RAM_BANKSIZE)));
     }
     if (ConfigureParams.Dimension.nMemoryBankSize[1]) {
-        ND_RAM_bankmask1 = ((ConfigureParams.Dimension.nMemoryBankSize[1]<<20)-1);
+        ND_RAM_bankmask1 = ND_RAM_BANKMASK|((ConfigureParams.Dimension.nMemoryBankSize[1]<<20)-1);
         nd_map_banks(&nd_ram_bank1, (ND_RAM_START+(1*ND_RAM_BANKSIZE))>>16, ND_RAM_BANKSIZE >> 16);
         write_log("[ND] Mapping main memory bank1 at $%08x: %iMB\n",
                   (ND_RAM_START+(1*ND_RAM_BANKSIZE)), ConfigureParams.Dimension.nMemoryBankSize[1]);
@@ -481,7 +481,7 @@ void nd_memory_init(void) {
         write_log("[ND] Mapping main memory bank1 at $%08x: empty\n", (ND_RAM_START+(1*ND_RAM_BANKSIZE)));
     }
     if (ConfigureParams.Dimension.nMemoryBankSize[2]) {
-        ND_RAM_bankmask2 = ((ConfigureParams.Dimension.nMemoryBankSize[2]<<20)-1);
+        ND_RAM_bankmask2 = ND_RAM_BANKMASK|((ConfigureParams.Dimension.nMemoryBankSize[2]<<20)-1);
         nd_map_banks(&nd_ram_bank2, (ND_RAM_START+(2*ND_RAM_BANKSIZE))>>16, ND_RAM_BANKSIZE >> 16);
         write_log("[ND] Mapping main memory bank2 at $%08x: %iMB\n",
                   (ND_RAM_START+(2*ND_RAM_BANKSIZE)), ConfigureParams.Dimension.nMemoryBankSize[2]);
@@ -491,7 +491,7 @@ void nd_memory_init(void) {
         write_log("[ND] Mapping main memory bank2 at $%08x: empty\n", (ND_RAM_START+(2*ND_RAM_BANKSIZE)));
     }
     if (ConfigureParams.Dimension.nMemoryBankSize[3]) {
-        ND_RAM_bankmask3 = ((ConfigureParams.Dimension.nMemoryBankSize[3]<<20)-1);
+        ND_RAM_bankmask3 = ND_RAM_BANKMASK|((ConfigureParams.Dimension.nMemoryBankSize[3]<<20)-1);
         nd_map_banks(&nd_ram_bank3, (ND_RAM_START+(3*ND_RAM_BANKSIZE))>>16, ND_RAM_BANKSIZE >> 16);
         write_log("[ND] Mapping main memory bank3 at $%08x: %iMB\n",
                   (ND_RAM_START+(3*ND_RAM_BANKSIZE)), ConfigureParams.Dimension.nMemoryBankSize[3]);
