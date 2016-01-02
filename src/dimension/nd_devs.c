@@ -231,20 +231,70 @@ uae_u32 nd_mc_read_register(uaecptr addr) {
 	return 0;
 }
 
-const char* MC_WR_FORMAT = "[ND] Memory controller %s write %08X at %08X";
+const char* ND_CSR0_BITS[] = {
+    "i860PIN_RESET",   "i860PIN_CS8",     "i860_IMASK",  "i860_INT",
+    "BE_IMASK",        "BE_INT",          "VBL_IMASK",   "VBL_INT",
+    "VBLANK",          "VIOVBL_IMASK",    "VIOVBL_INT",  "VIOBLANK",
+    "i860_CACHE_EN",   "00002000",        "00004000",    "00008000",
+    "00010000",        "00020000",        "00040000",    "00080000",
+    "00100000",        "00200000",        "00400000",    "00800000",
+    "01000000",        "02000000",        "04000000",    "08000000",
+    "10000000",        "20000000",        "40000000",    "80000000",
+};
+
+const char* ND_CSR1_BITS[] = {
+    "CPU_INT",         "00000002",        "00000004",    "00000008",
+    "00000010",        "00000020",        "00000040",    "00000080",
+    "00000100",        "00000200",        "00000400",    "00000800",
+    "00001000",        "00002000",        "00004000",    "00008000",
+    "00010000",        "00020000",        "00040000",    "00080000",
+    "00100000",        "00200000",        "00400000",    "00800000",
+    "01000000",        "02000000",        "04000000",    "08000000",
+    "10000000",        "20000000",        "40000000",    "80000000",
+};
+
+const char* ND_CSR2_BITS[] = {
+    "GLOBAL_ACCESS",   "00000002",        "00000004",    "00000008",
+    "00000010",        "00000020",        "00000040",    "00000080",
+    "00000100",        "00000200",        "00000400",    "00000800",
+    "00001000",        "00002000",        "00004000",    "00008000",
+    "00010000",        "00020000",        "00040000",    "00080000",
+    "00100000",        "00200000",        "00400000",    "00800000",
+    "01000000",        "02000000",        "04000000",    "08000000",
+    "10000000",        "20000000",        "40000000",    "80000000",
+};
+
+const char* decodeBits(const char** strs, uae_u32 val) {
+    static char buffer[512];
+    char* result = buffer;
+    *result = 0;
+    for(int i = 0; i < 32; i++) {
+        if(val & (1 << i)) {
+            const char* str = strs[i];
+            while(*str) *result++ = *str++;
+            *result++ = '|';
+        }
+    }
+    if(result != buffer)
+        *--result = 0;
+    return buffer;
+}
+
+const char* MC_WR_FORMAT   = "[ND] Memory controller %s write %08X at %08X";
+const char* MC_WR_FORMAT_S = "[ND] Memory controller %s write (%s) at %08X";
 
 void nd_mc_write_register(uaecptr addr, uae_u32 val) {
     switch (addr&0x3FFF) {
         case 0x0000:
-            Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT,"csr0", val,addr);
+            Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT_S,"csr0", decodeBits(ND_CSR0_BITS, val), addr);
             nd_mc.csr0 = val;
             break;
         case 0x0010:
-            Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT,"csr1", val,addr);
+            Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT_S,"csr1", decodeBits(ND_CSR1_BITS, val),addr);
             nd_mc.csr1 = val;
             break;
         case 0x0020:
-            Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT,"csr2", val,addr);
+            Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT_S,"csr2", decodeBits(ND_CSR2_BITS, val),addr);
             nd_mc.csr2 = val;
             break;
         case 0x0030:
@@ -465,8 +515,7 @@ inline void nd_ramdac_bput(uaecptr addr, uae_u32 b) {
 }
 
 void nd_dp_iicmsg() {
-    printf("[ND] data path IIC msg addr:%02X msg[%d]=%02X\n", nd_dp.iic_addr, nd_dp.iic_msgsz-1, nd_dp.iic_msg[nd_dp.iic_msgsz-1]);
-    fflush(0);
+    Log_Printf(LOG_WARN, "[ND] data path IIC msg addr:%02X msg[%d]=%02X", nd_dp.iic_addr, nd_dp.iic_msgsz-1, nd_dp.iic_msg[nd_dp.iic_msgsz-1]);
 }
 
 /* NeXTdimension data path */
@@ -490,6 +539,8 @@ inline uae_u32 nd_dp_lget(uaecptr addr) {
             return nd_dp.iic_stat_addr;
         case 0x364:
             return 0;
+        default:
+            Log_Printf(LOG_WARN, "[ND] data path UNKNOWN read at %08X",addr);
     }
     return 0;
 }
@@ -525,6 +576,8 @@ inline void nd_dp_lput(uaecptr addr, uae_u32 v) {
             nd_dp.iic_busy       = 10;
             nd_dp_iicmsg();
             break;
+        default:
+            Log_Printf(LOG_WARN, "[ND] data path UNKNOWN write at %08X %08X",addr,v);
     }
 }
 
