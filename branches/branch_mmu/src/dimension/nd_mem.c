@@ -325,56 +325,49 @@ static void nd_rom_access_bput(uaecptr addr, uae_u32 b)
 
 /* NeXTdimension dither memory & datapath */
 
-static bool isDP(uaecptr addr) {
-    return addr >= 0x340 && addr < 0x368;
-}
-
 static uae_u32 nd_dmem_lget(uaecptr addr)
 {
     addr &= ND_DP_MASK;
-    if(isDP(addr)) return nd_dp_lget(addr);
-    addr &= ND_DMEM_MASK;
-    return do_get_mem_long(ND_dmem + addr);
+    return addr < ND_DMEM_SIZE ? do_get_mem_long(ND_dmem + addr) : nd_dp_lget(addr);
 }
 
 static uae_u32 nd_dmem_wget(uaecptr addr)
 {
     addr &= ND_DP_MASK;
-    if(isDP(addr)) return nd_dp_lget(addr);
-    addr &= ND_DMEM_MASK;
-    return do_get_mem_word(ND_dmem + addr);
+    return addr < ND_DMEM_SIZE ? do_get_mem_word(ND_dmem + addr) : nd_dp_lget(addr);
 }
 
 static uae_u32 nd_dmem_bget(uaecptr addr)
 {
     addr &= ND_DP_MASK;
-    if(isDP(addr)) return nd_dp_lget(addr);
-    addr &= ND_DMEM_MASK;
-    return ND_dmem[addr];
+    return addr < ND_DMEM_SIZE ? do_get_mem_byte(ND_dmem + addr) : nd_dp_lget(addr);
 }
 
 static void nd_dmem_lput(uaecptr addr, uae_u32 l)
 {
     addr &= ND_DP_MASK;
-    if(isDP(addr)) {nd_dp_lput(addr, l); return;}
-    addr &= ND_DMEM_MASK;
-    do_put_mem_long(ND_dmem + addr, l);
+    if(addr < ND_DMEM_SIZE)
+        do_put_mem_long(ND_dmem + addr, l);
+    else
+        nd_dp_lput(addr, l);
 }
 
 static void nd_dmem_wput(uaecptr addr, uae_u32 w)
 {
     addr &= ND_DP_MASK;
-    if(isDP(addr)) {nd_dp_lput(addr, w); return;}
-    addr &= ND_DMEM_MASK;
-    do_put_mem_word(ND_dmem + addr, w);
+    if(addr < ND_DMEM_SIZE)
+        do_put_mem_word(ND_dmem + addr, w);
+    else
+        nd_dp_lput(addr, w);
 }
 
 static void nd_dmem_bput(uaecptr addr, uae_u32 b)
 {
     addr &= ND_DP_MASK;
-    if(isDP(addr)) {nd_dp_lput(addr, b); return;}
-    addr &= ND_DMEM_MASK;
-    ND_dmem[addr] = b;
+    if(addr < ND_DMEM_SIZE)
+        do_put_mem_byte(addr, b);
+    else
+        nd_dp_lput(addr, b);
 }
 
 static nd_addrbank nd_ram_bank0 =

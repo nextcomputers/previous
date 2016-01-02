@@ -11,6 +11,8 @@
     you list me in the credits.
     Visit http://mamedev.org for licensing and usage restrictions.
 
+    Changes for previous/NeXTdimension by Simon Schubiger (SC)
+ 
 ***************************************************************************/
 
 /*
@@ -27,7 +29,6 @@
  * - No emulation of data and instruction caches (unnecessary for MAME version).
  * - No emulation of DIM mode or CS8 mode (unnecessary for MAME version).
  * - No BL/IL/locked sequences (unnecessary for MAME).
- * - Emulate only the i860's LSB-first mode (BE = 0).
  * Generic notes:
  * - There is some amount of code duplication (e.g., see the
  *   various insn_* routines for the branches and FP routines) that
@@ -36,6 +37,8 @@
  *   floating point.  Should probably be made machine independent by
  *   using an IEEE FP emulation library.  On the other hand, most machines
  *   today also use IEEE FP.
+ * - (SC) Added support for i860's MSB/LSB-first mode (BE = 1/0).
+ * - (SC) We assume that the host CPU is little endian
  *
  */
 #include <math.h>
@@ -65,80 +68,26 @@ extern "C" void Log_Printf(int nType, const char *psFormat, ...);
 
 float i860_cpu_device::get_fregval_s (int fr)
 {
-	float f;
-	UINT32 x;
-	UINT8 *tp;
 	fr = 31 - fr;
-	tp = (UINT8 *)(&m_frg[fr * 4]);
-	x = ((UINT32)tp[0] << 24) | ((UINT32)tp[1] << 16) |
-		((UINT32)tp[2] << 8) | ((UINT32)tp[3]);
-	f = *(float *)(&x);
-	return f;
+	return *(float *)(&m_frg[fr * 4]);
 }
 
 double i860_cpu_device::get_fregval_d (int fr)
 {
-	double d;
-	UINT64 x;
-	UINT8 *tp;
 	fr = 31 - (fr + 1);
-	tp = (UINT8 *)(&m_frg[fr * 4]);
-	x = ((UINT64)tp[0] << 56) | ((UINT64)tp[1] << 48) |
-		((UINT64)tp[2] << 40) | ((UINT64)tp[3] << 32) |
-		((UINT64)tp[4] << 24) | ((UINT64)tp[5] << 16) |
-		((UINT64)tp[6] << 8) | ((UINT64)tp[7]);
-	d = *(double *)(&x);
-	return d;
+    return *(double *)(&m_frg[fr * 4]);
 }
 
 void i860_cpu_device::set_fregval_s (int fr, float s)
 {
-	UINT8 *f = (UINT8 *)&s;
-	UINT8 *tp;
-	int newfr = 31 - fr;
-	float jj = s;
-	tp = (UINT8 *)(&m_frg[newfr * 4]);
-
-	f = (UINT8 *)(&jj);
-	if (fr == 0 || fr == 1)
-	{
-		tp[0] = 0; tp[1] = 0; tp[2] = 0; tp[3] = 0;
-	}
-	else
-	{
-        if(GET_EPSR_BE()) {
-            tp[0] = f[0]; tp[1] = f[1]; tp[2] = f[2]; tp[3] = f[3];
-        } else {
-            tp[0] = f[3]; tp[1] = f[2]; tp[2] = f[1]; tp[3] = f[0];
-        }
-	}
+    fr = 31 - fr;
+    *(float *)(&m_frg[fr * 4]) = s;
 }
 
 void i860_cpu_device::set_fregval_d (int fr, double d)
 {
-	UINT8 *f = (UINT8 *)&d;
-	UINT8 *tp;
-	int newfr = 31 - (fr + 1);
-	double jj = d;
-	tp = (UINT8 *)(&m_frg[newfr * 4]);
-
-	f = (UINT8 *)(&jj);
-
-	if (fr == 0)
-	{
-		tp[0] = 0; tp[1] = 0; tp[2] = 0; tp[3] = 0;
-		tp[4] = 0; tp[5] = 0; tp[6] = 0; tp[7] = 0;
-	}
-	else
-	{
-        if(GET_EPSR_BE()) {
-            tp[0] = f[0]; tp[1] = f[1]; tp[2] = f[2]; tp[3] = f[3];
-            tp[4] = f[4]; tp[5] = f[5]; tp[6] = f[6]; tp[7] = f[7];
-        } else {
-            tp[0] = f[7]; tp[1] = f[6]; tp[2] = f[5]; tp[3] = f[4];
-            tp[4] = f[3]; tp[5] = f[2]; tp[6] = f[1]; tp[7] = f[0];
-        }
-	}
+    fr = 31 - (fr + 1);
+    *(double *)(&m_frg[fr * 4]) = d;
 }
 
 int i860_cpu_device::has_delay_slot(UINT32 insn)
@@ -214,7 +163,7 @@ UINT32 i860_cpu_device::ifetch (UINT32 pc)
 	else
 		phys_pc = pc;
 
-    w1 = phys_pc < 0x2FFFFFFF ? nd_board_lget(phys_pc) : rd32le(phys_pc); // TODO: (SC) hack to force BE fetches in DRAM.
+    w1 = phys_pc < 0x30000000 ? nd_board_lget(phys_pc) : rd32le(phys_pc); // TODO: (SC) hack to force BE fetches in DRAM.
     
 	return w1;
 }
@@ -502,15 +451,12 @@ void i860_cpu_device::fp_readmem_emu (UINT32 addr, int size, UINT8 *dest)
 	}
 
     if(GET_EPSR_BE()) {
-        for (int i = 0; i < size; i++)
-            dest[i] = rd8(addr+i);
-    } else {
         if (size == 4) {
             dest[0] = rd8(addr+3);
             dest[1] = rd8(addr+2);
             dest[2] = rd8(addr+1);
             dest[3] = rd8(addr+0);
-        } else if (size == 8) { 
+        } else if (size == 8) {
             dest[0] = rd8(addr+7);
             dest[1] = rd8(addr+6);
             dest[2] = rd8(addr+5);
@@ -523,6 +469,9 @@ void i860_cpu_device::fp_readmem_emu (UINT32 addr, int size, UINT8 *dest)
             for (int i = 0; i < 16; i++)
                 dest[i] = rd8(addr+15-i);
         }
+    } else {
+        for (int i = 0; i < size; i++)
+            dest[i] = rd8(addr+i);
     }
 }
 
@@ -566,32 +515,6 @@ void i860_cpu_device::fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT3
 	}
 
     if(GET_EPSR_BE()) {
-        if (size == 8) {
-            /* Special: watch for wmask != 0xff, which means we're doing pst.d.  */
-            if (wmask == 0xff) {
-                wr8(addr+0, data[0]);
-                wr8(addr+1, data[1]);
-                wr8(addr+2, data[2]);
-                wr8(addr+3, data[3]);
-                wr8(addr+4, data[4]);
-                wr8(addr+5, data[5]);
-                wr8(addr+6, data[6]);
-                wr8(addr+7, data[7]);
-            } else {
-                if (wmask & 0x80) wr8(addr+0, data[0]);
-                if (wmask & 0x40) wr8(addr+1, data[1]);
-                if (wmask & 0x20) wr8(addr+2, data[2]);
-                if (wmask & 0x10) wr8(addr+3, data[3]);
-                if (wmask & 0x08) wr8(addr+4, data[4]);
-                if (wmask & 0x04) wr8(addr+5, data[5]);
-                if (wmask & 0x02) wr8(addr+6, data[6]);
-                if (wmask & 0x01) wr8(addr+7, data[7]);
-            }
-        } else {
-            for (int i = 0; i < size; i++)
-                wr8(addr+i, data[i]);
-        }
-    } else {
         if (size == 4) {
             wr8(addr+3, data[0]);
             wr8(addr+2, data[1]);
@@ -621,6 +544,32 @@ void i860_cpu_device::fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT3
         } else if (size == 16) {
             for (int i = 0; i < 16; i++)
                 wr8(addr+15-i, data[i]);
+        }
+    } else {
+        if (size == 8) {
+            /* Special: watch for wmask != 0xff, which means we're doing pst.d.  */
+            if (wmask == 0xff) {
+                wr8(addr+0, data[0]);
+                wr8(addr+1, data[1]);
+                wr8(addr+2, data[2]);
+                wr8(addr+3, data[3]);
+                wr8(addr+4, data[4]);
+                wr8(addr+5, data[5]);
+                wr8(addr+6, data[6]);
+                wr8(addr+7, data[7]);
+            } else {
+                if (wmask & 0x80) wr8(addr+0, data[0]);
+                if (wmask & 0x40) wr8(addr+1, data[1]);
+                if (wmask & 0x20) wr8(addr+2, data[2]);
+                if (wmask & 0x10) wr8(addr+3, data[3]);
+                if (wmask & 0x08) wr8(addr+4, data[4]);
+                if (wmask & 0x04) wr8(addr+5, data[5]);
+                if (wmask & 0x02) wr8(addr+6, data[6]);
+                if (wmask & 0x01) wr8(addr+7, data[7]);
+            }
+        } else {
+            for (int i = 0; i < size; i++)
+                wr8(addr+i, data[i]);
         }
     }
 }
@@ -801,6 +750,11 @@ void i860_cpu_device::insn_st_ctrl (UINT32 insn)
 	}
 #endif
 
+    /* Look for CS8 bit turned off).  */
+    if (csrc2 == CR_DIRBASE && (get_iregval (isrc1) & 0x80) == 0) {
+        Log_Printf(LOG_WARN, "[i860:%08X] Leaving CS8 mode\n", m_pc);
+    }
+    
 	/* Look for ITI bit turned on (but it never actually is written --
 	   it always appears to be 0).  */
 	if (csrc2 == CR_DIRBASE && (get_iregval (isrc1) & 0x20))
@@ -1150,11 +1104,11 @@ void i860_cpu_device::insn_fldy (UINT32 insn)
 		{
 			UINT8 *t = (UINT8 *)&(m_L[0].val.d);
             if(GET_EPSR_BE()) {
-                t[0] = bebuf[0]; t[1] = bebuf[1]; t[2] = bebuf[2]; t[3] = bebuf[3];
-                t[4] = bebuf[4]; t[5] = bebuf[5]; t[6] = bebuf[6]; t[7] = bebuf[7];
-            } else {
                 t[7] = bebuf[0]; t[6] = bebuf[1]; t[5] = bebuf[2]; t[4] = bebuf[3];
                 t[3] = bebuf[4]; t[2] = bebuf[5]; t[1] = bebuf[6]; t[0] = bebuf[7];
+            } else {
+                t[0] = bebuf[0]; t[1] = bebuf[1]; t[2] = bebuf[2]; t[3] = bebuf[3];
+                t[4] = bebuf[4]; t[5] = bebuf[5]; t[6] = bebuf[6]; t[7] = bebuf[7];
             }
 			m_L[0].stat.lrp = 1;
 		}
@@ -1162,9 +1116,9 @@ void i860_cpu_device::insn_fldy (UINT32 insn)
 		{
 			UINT8 *t = (UINT8 *)&(m_L[0].val.s);
             if(GET_EPSR_BE()) {
-                t[0] = bebuf[0]; t[1] = bebuf[1]; t[2] = bebuf[2]; t[3] = bebuf[3];
-            } else {
                 t[3] = bebuf[0]; t[2] = bebuf[1]; t[1] = bebuf[2]; t[0] = bebuf[3];
+            } else {
+                t[0] = bebuf[0]; t[1] = bebuf[1]; t[2] = bebuf[2]; t[3] = bebuf[3];
             }
 			m_L[0].stat.lrp = 0;
 		}
