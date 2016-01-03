@@ -15,39 +15,38 @@ const char DlgMain_fileid[] = "Hatari dlgMain.c : " __DATE__ " " __TIME__;
 #include "screen.h"
 #include "dimension.h"
 
-#define MAINDLG_ABOUT     2
-#define MAINDLG_SYSTEM    3
-#define MAINDLG_ROM       4
-#define MAINDLG_ENET      5
-#define MAINDLG_BOOT      6
-#define MAINDLG_SCSI      7
-#define MAINDLG_MO        8
-#define MAINDLG_FLOPPY    9
-#define MAINDLG_KEYBD     10
-#define MAINDLG_MOUSE     11
-#define MAINDLG_SOUND     12
-#define MAINDLG_PRINTER   13
-#define MAINDLG_LOADCFG   14
-#define MAINDLG_SAVECFG   15
-#define MAINDLG_RESET     16
-#define MAINDLG_SHOW      17
-#define MAINDLG_OK        18
-#define MAINDLG_QUIT      19
-#define MAINDLG_CANCEL    20
-#define MAINDLG_DIMENSION 21
 
-#if ENABLE_DIMENSION
-#define BUTTON_OFF 2
-#else
-#define BUTTON_OFF 0
-#endif
+#define MAINDLG_ABOUT    2
+#define MAINDLG_SYSTEM   3
+#define MAINDLG_ROM      4
+#define MAINDLG_ENET     5
+#define MAINDLG_BOOT     6
+#define MAINDLG_SCSI     7
+#define MAINDLG_MO       8
+#define MAINDLG_FLOPPY   9
+#define MAINDLG_KEYBD    10
+#define MAINDLG_MOUSE    11
+#define MAINDLG_SOUND    12
+#define MAINDLG_PRINTER  13
+#define MAINDLG_LOADCFG  14
+#define MAINDLG_SAVECFG  15
+#define MAINDLG_RESET    16
+#define MAINDLG_SHOW     17
+#define MAINDLG_OK       18
+#define MAINDLG_QUIT     19
+#define MAINDLG_CANCEL   20
+
 
 /* The main dialog: */
 static SGOBJ maindlg[] =
 {
-	{ SGBOX, 0, 0, 0,0, 50,19+BUTTON_OFF, NULL },
+	{ SGBOX, 0, 0, 0,0, 50,19, NULL },
 	{ SGTEXT, 0, 0, 15,1, 20,1, "Previous - Main menu" },
+#if ENABLE_DIMENSION
+	{ SGBUTTON, 0, 0, 2,4, 13,1, "Graphics" },
+#else
 	{ SGBUTTON, 0, 0, 2,4, 13,1, "About" },
+#endif
 	{ SGBUTTON, 0, 0, 2,6, 13,1, "System" },
 	{ SGBUTTON, 0, 0, 2,8, 13,1, "ROM" },
 	{ SGBUTTON, 0, 0, 2,10, 13,1, "Ethernet" },
@@ -59,16 +58,13 @@ static SGOBJ maindlg[] =
 	{ SGBUTTON, 0, 0, 35,6, 13,1, "Mouse" },
 	{ SGBUTTON, 0, 0, 35,8, 13,1, "Sound" },
 	{ SGBUTTON, 0, 0, 35,10, 13,1, "Printer" },
-	{ SGBUTTON, 0, 0, 7,13+BUTTON_OFF, 16,1, "Load config." },
-	{ SGBUTTON, 0, 0, 27,13+BUTTON_OFF, 16,1, "Save config." },
-	{ SGCHECKBOX, 0, 0, 3,15+BUTTON_OFF, 15,1, "Reset machine" },
-    { SGCHECKBOX, 0, 0, 3,17+BUTTON_OFF, 15,1, "Show at startup" },
-	{ SGBUTTON, SG_DEFAULT, 0, 22,15+BUTTON_OFF, 8,3, "OK" },
-	{ SGBUTTON, 0, 0, 36,15+BUTTON_OFF, 10,1, "Quit" },
-	{ SGBUTTON, SG_CANCEL, 0, 36,17+BUTTON_OFF, 10,1, "Cancel" },
-#if ENABLE_DIMENSION
-    { SGBUTTON, 0, 0, 2,12, 13,1, "Dimension" },
-#endif
+	{ SGBUTTON, 0, 0, 7,13, 16,1, "Load config." },
+	{ SGBUTTON, 0, 0, 27,13, 16,1, "Save config." },
+	{ SGCHECKBOX, 0, 0, 3,15, 15,1, "Reset machine" },
+    { SGCHECKBOX, 0, 0, 3,17, 15,1, "Show at startup" },
+	{ SGBUTTON, SG_DEFAULT, 0, 21,15, 8,3, "OK" },
+	{ SGBUTTON, 0, 0, 36,15, 10,1, "Quit" },
+	{ SGBUTTON, SG_CANCEL, 0, 36,17, 10,1, "Cancel" },
 	{ -1, 0, 0, 0,0, 0,0, NULL }
 };
 
@@ -108,7 +104,11 @@ int Dialog_MainDlg(bool *bReset, bool *bLoadedSnapshot)
 		switch (retbut)
 		{
 		 case MAINDLG_ABOUT:
+#if ENABLE_DIMENSION
+			Dialog_DimensionDlg();
+#else
 			Dialog_AboutDlg();
+#endif
 			break;
 		 case MAINDLG_ENET:
 			DlgEthernet_Main();
@@ -119,9 +119,6 @@ int Dialog_MainDlg(bool *bReset, bool *bLoadedSnapshot)
 		 case MAINDLG_ROM:
 			DlgRom_Main();
 			break;
-        case MAINDLG_DIMENSION:
-            Dialog_DimensionDlg();
-            break;
 		 case MAINDLG_MO:
             DlgOptical_Main();
 			break;
