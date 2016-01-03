@@ -4,6 +4,7 @@
 #include "sysdeps.h"
 #include "dimension.h"
 #include "nd_devs.h"
+#include "nd_nbic.h"
 
 #if ENABLE_DIMENSION
 
@@ -291,18 +292,12 @@ void nd_mc_write_register(uaecptr addr, uae_u32 val) {
             break;
         case 0x0010:
             Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT_S,"csr1", decodeBits(ND_CSR1_BITS, val),addr);
+            uae_u32 change = nd_mc.csr1 ^ val;
             nd_mc.csr1 = val;
-            
-            /*
-            Log_Printf(ND_LOG_IO_WR, "[ND] RAM:\n");
-            char tmp[256];
-            Uint32 pc = 0xF8000000;
-            for(int i = 0; i < 32; i++) {
-                pc = i860_Disasm(tmp, pc);
-                Log_Printf(ND_LOG_IO_WR, "%s", tmp);
-            }
-            */
-             
+            if((change & CSR1_CPU_INT) && (nd_mc.csr1 & CSR1_CPU_INT))
+                nd_nbic_interrupt(true);
+            else
+                nd_nbic_interrupt(false);
             break;
         case 0x0020:
             Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT_S,"csr2", decodeBits(ND_CSR2_BITS, val),addr);

@@ -26,6 +26,8 @@ extern "C" void nd_i860_init() {
 }
 
 extern "C" void i860_Run(int nHostCycles) {
+    if(nd_i860.m_halt) return;
+    
     if(nd_process_interrupts(nHostCycles))
         nd_i860.i860_gen_interrupt();
     else

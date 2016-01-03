@@ -26,7 +26,10 @@
 #define TRACE_UNDEFINED_I860 0
 #define TRACE_UNALIGNED_MEM  0
 #define TRACE_EXT_INT        0
-        
+
+const int LOG_WARN = 3;
+extern "C" void Log_Printf(int nType, const char *psFormat, ...);
+
 typedef uint64_t UINT64;
 typedef int64_t INT64;
 
@@ -273,6 +276,14 @@ public:
 
 	/* Hard or soft reset.  */
 	void reset_i860();
+
+    /* Halt i860 */
+    bool m_halt;
+
+    void halt_i860() {
+        Log_Printf(LOG_WARN, "[i860] **** HALTED ****");
+        m_halt = true;
+    }
     
     // device_disasm_interface overrides
     virtual UINT32 disasm_min_opcode_bytes() const { return 4; }
@@ -412,61 +423,108 @@ private:
 	int m_single_stepping;
 
     /* memory access */
-    
+
+    void rddata(UINT32 addr, int size, UINT8* data) {
+        switch(size) {
+            case 4:
+                ((UINT32*)data)[0] = rd32(addr);
+                break;
+            case 8:
+                ((UINT32*)data)[0] = rd32(addr+0);
+                ((UINT32*)data)[1] = rd32(addr+4);
+                break;
+            case 16:
+                ((UINT32*)data)[0] = rd32(addr+0);
+                ((UINT32*)data)[1] = rd32(addr+4);
+                ((UINT32*)data)[2] = rd32(addr+8);
+                ((UINT32*)data)[3] = rd32(addr+12);
+                break;
+        }
+    }
+
+    void wrdata(UINT32 addr, int size, UINT8* data) {
+        switch(size) {
+            case 4:
+                wr32(addr, ((UINT32*)data)[0]);
+                break;
+            case 8:
+                wr32(addr+0, ((UINT32*)data)[0]);
+                wr32(addr+4, ((UINT32*)data)[1]);
+                break;
+            case 16:
+                wr32(addr+0, ((UINT32*)data)[0]);
+                wr32(addr+4, ((UINT32*)data)[1]);
+                wr32(addr+8, ((UINT32*)data)[2]);
+                wr32(addr+12,((UINT32*)data)[3]);
+                break;
+        }
+    }
+
+    inline UINT32 rd32instr(UINT32 addr) {
+        addr ^= 4;
+        return nd_board_lget(addr);
+    }
+
+    inline UINT32 rd32pte(UINT32 addr) {
+        addr ^= 4;
+        return nd_board_lget(addr);
+    }
+
+    inline void wr32pte(UINT32 addr, UINT32 val) {
+        addr ^= 4;
+        nd_board_lput(addr, val);
+    }
+
     inline UINT8 rd8(UINT32 addr) {
         return nd_board_bget(addr);
     }
     
-    inline UINT16 rd16le(UINT32 addr) {
-        UINT16 result = nd_board_bget(addr+1); result <<= 8;
-        result       |= nd_board_bget(addr+0);
-        return result;
-    }
-    
-    inline UINT32 rd32le(UINT32 addr) {
-        UINT32 result = nd_board_bget(addr+3); result <<= 8;
-        result       |= nd_board_bget(addr+2); result <<= 8;
-        result       |= nd_board_bget(addr+1); result <<= 8;
-        result       |= nd_board_bget(addr+0);
-        return result;
-    }
-    
     inline UINT16 rd16(UINT32 addr) {
-        return GET_EPSR_BE() ? nd_board_wget(addr) : rd16le(addr);
+        if(GET_EPSR_BE())
+            return nd_board_wget(addr);
+        else {
+            UINT16 result = nd_board_bget(addr+1); result <<= 8;
+            result       |= nd_board_bget(addr+0);
+            return result;
+        }
     }
     
     inline UINT32 rd32(UINT32 addr) {
-        return GET_EPSR_BE() ? nd_board_lget(addr) : rd32le(addr);
+        if(GET_EPSR_BE())
+            return nd_board_lget(addr);
+        else {
+            UINT32 result = nd_board_bget(addr+3); result <<= 8;
+            result       |= nd_board_bget(addr+2); result <<= 8;
+            result       |= nd_board_bget(addr+1); result <<= 8;
+            result       |= nd_board_bget(addr+0);
+            return result;
+        }
     }
 
     inline void wr8(UINT32 addr, UINT8 val) {
         nd_board_bput(addr, val);
     }
-    
-    inline void wr16le(UINT32 addr, UINT16 val) {
-        nd_board_wput(addr+1, val >> 8);
-        nd_board_bput(addr+0, val);
-    }
-    
-    inline void wr32le(UINT32 addr, UINT32 val) {
-        nd_board_bput(addr+3, val >> 24);
-        nd_board_bput(addr+2, val >> 16);
-        nd_board_bput(addr+1, val >> 8);
-        nd_board_bput(addr+0, val);
-    }
-    
+        
     inline void wr16(UINT32 addr, UINT16 val) {
         if(GET_EPSR_BE())
             nd_board_wput(addr, val);
-        else
-            wr16le(addr, val);
+        else {
+            nd_board_wput(addr+1, val >> 8);
+            nd_board_bput(addr+0, val);
+            
+        }
     }
     
     inline void wr32(UINT32 addr, UINT32 val) {
         if(GET_EPSR_BE())
             nd_board_lput(addr, val);
-        else
-            wr32le(addr, val);
+        else {
+            nd_board_bput(addr+3, val >> 24);
+            nd_board_bput(addr+2, val >> 16);
+            nd_board_bput(addr+1, val >> 8);
+            nd_board_bput(addr+0, val);
+            
+        }
     }
 
     /*
