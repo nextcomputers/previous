@@ -273,6 +273,11 @@ public:
 
 	/* Hard or soft reset.  */
 	void reset_i860();
+    
+    // device_disasm_interface overrides
+    virtual UINT32 disasm_min_opcode_bytes() const { return 4; }
+    virtual UINT32 disasm_max_opcode_bytes() const { return 4; }
+    virtual offs_t disasm(char *buffer, offs_t pc);
 protected:
 	// device-level overrides
 	virtual void device_start();
@@ -294,12 +299,6 @@ protected:
     }
     
     void state_delta(char* buffer, const UINT32* oldstate, const UINT32* newstate);
-
-	// device_disasm_interface overrides
-	virtual UINT32 disasm_min_opcode_bytes() const { return 4; }
-	virtual UINT32 disasm_max_opcode_bytes() const { return 4; }
-	virtual offs_t disasm(char *buffer, offs_t pc);
-
 private:
     i860_reg m_regs[STATE_SZ];
     
