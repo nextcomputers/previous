@@ -650,9 +650,15 @@ static void i860_dasm_tab_replacer(char* buf, int tab_size)
 int i860_disassembler(UINT32 pc, UINT32 insn, char* buffer)
 {
 	int unrecognized_op = 1;
+    
+    
 	int upper_6bits = (insn >> 26) & 0x3f;
 	char flags = decode_tbl[upper_6bits].flags;
-	if (flags & DEC_DECODED)
+    if(insn == 0xA0000000) {
+        strcpy(buffer, "nop");
+        unrecognized_op = 0;
+    }
+	else if (flags & DEC_DECODED)
 	{
 		const char *s = decode_tbl[upper_6bits].mnemonic;
 		decode_tbl[upper_6bits].insn_dis (buffer, (char *)s, pc, insn);

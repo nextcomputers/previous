@@ -33,6 +33,10 @@ extern "C" void i860_Run(int nHostCycles) {
     nd_i860.run_cycle();
 }
 
+extern "C" offs_t i860_Disasm(char* buffer, offs_t pc) {
+    return nd_i860.disasm(buffer, pc);
+}
+
 i860_cpu_device::i860_cpu_device() {
 }
 

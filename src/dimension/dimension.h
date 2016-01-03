@@ -33,6 +33,7 @@ extern Uint8 ND_vram[4*1024*1024];
 void dimension_reset(void);
 void nd_i860_init();
 void i860_Run(int nHostCycles);
+Uint32 i860_Disasm(char* buffer, Uint32 pc);
 
 #define ND_LOG_IO_RD LOG_NONE
 #define ND_LOG_IO_WR LOG_WARN
