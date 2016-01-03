@@ -292,12 +292,12 @@ void nd_mc_write_register(uaecptr addr, uae_u32 val) {
             break;
         case 0x0010:
             Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT_S,"csr1", decodeBits(ND_CSR1_BITS, val),addr);
-            uae_u32 change = nd_mc.csr1 ^ val;
             nd_mc.csr1 = val;
-            if((change & CSR1_CPU_INT) && (nd_mc.csr1 & CSR1_CPU_INT))
-                nd_nbic_interrupt(true);
-            else
-                nd_nbic_interrupt(false);
+			if (nd_mc.csr1&CSR1_CPU_INT) {
+				nd_nbic_set_intstatus(true);
+			} else {
+                nd_nbic_set_intstatus(false);
+			}
             break;
         case 0x0020:
             Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT_S,"csr2", decodeBits(ND_CSR2_BITS, val),addr);
