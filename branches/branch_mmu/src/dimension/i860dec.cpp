@@ -44,9 +44,6 @@
 #include <math.h>
 #include <assert.h>
 
-const int LOG_WARN = 3;
-extern "C" void Log_Printf(int nType, const char *psFormat, ...);
-
 /*  TODO: THESE WILL BE REPLACED BY MAME FUNCTIONS
 #define BYTE_REV32(t)   \
   do { \
@@ -163,8 +160,15 @@ UINT32 i860_cpu_device::ifetch (UINT32 pc)
 	else
 		phys_pc = pc;
 
-    w1 = phys_pc < 0x30000000 ? nd_board_lget(phys_pc) : rd32le(phys_pc); // TODO: (SC) hack to force BE fetches in DRAM.
-    
+	if (GET_DIRBASE_CS8() || phys_pc >= 0xFFFE0000) {
+        w1  = rd8(phys_pc)<<24;
+        w1 |= rd8(phys_pc+1)<<16;
+        w1 |= rd8(phys_pc+2)<<8;
+        w1 |= rd8(phys_pc+3);
+	} else {
+        w1 = rd32instr(phys_pc);
+    }
+	
 	return w1;
 }
 
@@ -199,7 +203,7 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 
 	/* Get page directory entry at DTB:DIR:00.  */
 	pg_dir_entry_a = dtb | (vdir << 2);
-	pg_dir_entry = rd32le(pg_dir_entry_a);
+	pg_dir_entry = rd32pte(pg_dir_entry_a);
 
 	/* Check for non-present PDE.  */
 	if (!(pg_dir_entry & 1))
@@ -244,7 +248,7 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 	/* Get page table entry at PFA1:PAGE:00.  */
 	pfa1 = pg_dir_entry & 0xfffff000;
 	pg_tbl_entry_a = pfa1 | (vpage << 2);
-	pg_tbl_entry = rd32le(pg_tbl_entry_a);
+	pg_tbl_entry = rd32pte(pg_tbl_entry_a);
 
 	/* Check for non-present PTE.  */
 	if (!(pg_tbl_entry & 1))
@@ -287,8 +291,8 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 	/* Update A bit and check D bit.  */
 	ttpde = pg_dir_entry | 0x20;
 	ttpte = pg_tbl_entry | 0x20;
-	wr32le(pg_dir_entry_a, ttpde);
-	wr32le(pg_tbl_entry_a, ttpte);
+	wr32pte(pg_dir_entry_a, ttpde);
+	wr32pte(pg_tbl_entry_a, ttpte);
 
 	if (is_write && is_dataref && (pg_tbl_entry & 0x40) == 0)
 	{
@@ -450,29 +454,7 @@ void i860_cpu_device::fp_readmem_emu (UINT32 addr, int size, UINT8 *dest)
 		return;
 	}
 
-    if(GET_EPSR_BE()) {
-        if (size == 4) {
-            dest[0] = rd8(addr+3);
-            dest[1] = rd8(addr+2);
-            dest[2] = rd8(addr+1);
-            dest[3] = rd8(addr+0);
-        } else if (size == 8) {
-            dest[0] = rd8(addr+7);
-            dest[1] = rd8(addr+6);
-            dest[2] = rd8(addr+5);
-            dest[3] = rd8(addr+4);
-            dest[4] = rd8(addr+3);
-            dest[5] = rd8(addr+2);
-            dest[6] = rd8(addr+1);
-            dest[7] = rd8(addr+0);
-        } else if (size == 16) {
-            for (int i = 0; i < 16; i++)
-                dest[i] = rd8(addr+15-i);
-        }
-    } else {
-        for (int i = 0; i < size; i++)
-            dest[i] = rd8(addr+i);
-    }
+    rddata(addr, size, dest);
 }
 
 
@@ -514,63 +496,28 @@ void i860_cpu_device::fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT3
 		return;
 	}
 
-    if(GET_EPSR_BE()) {
-        if (size == 4) {
-            wr8(addr+3, data[0]);
-            wr8(addr+2, data[1]);
-            wr8(addr+1, data[2]);
-            wr8(addr+0, data[3]);
-        } else if (size == 8) {
-            /* Special: watch for wmask != 0xff, which means we're doing pst.d.  */
-            if (wmask == 0xff) {
-                wr8(addr+7, data[0]);
-                wr8(addr+6, data[1]);
-                wr8(addr+5, data[2]);
-                wr8(addr+4, data[3]);
-                wr8(addr+3, data[4]);
-                wr8(addr+2, data[5]);
-                wr8(addr+1, data[6]);
-                wr8(addr+0, data[7]);
-            } else {
-                if (wmask & 0x80) wr8(addr+7, data[0]);
-                if (wmask & 0x40) wr8(addr+6, data[1]);
-                if (wmask & 0x20) wr8(addr+5, data[2]);
-                if (wmask & 0x10) wr8(addr+4, data[3]);
-                if (wmask & 0x08) wr8(addr+3, data[4]);
-                if (wmask & 0x04) wr8(addr+2, data[5]);
-                if (wmask & 0x02) wr8(addr+1, data[6]);
-                if (wmask & 0x01) wr8(addr+0, data[7]);
-            }
-        } else if (size == 16) {
-            for (int i = 0; i < 16; i++)
-                wr8(addr+15-i, data[i]);
+    if(size == 8 && wmask != 0xff) {
+        if(GET_EPSR_BE()) {
+            if (wmask & 0x80) wr8(addr+7, data[0]);
+            if (wmask & 0x40) wr8(addr+6, data[1]);
+            if (wmask & 0x20) wr8(addr+5, data[2]);
+            if (wmask & 0x10) wr8(addr+4, data[3]);
+            if (wmask & 0x08) wr8(addr+3, data[4]);
+            if (wmask & 0x04) wr8(addr+2, data[5]);
+            if (wmask & 0x02) wr8(addr+1, data[6]);
+            if (wmask & 0x01) wr8(addr+0, data[7]);
+        } else {
+            if (wmask & 0x80) wr8(addr+0, data[0]);
+            if (wmask & 0x40) wr8(addr+1, data[1]);
+            if (wmask & 0x20) wr8(addr+2, data[2]);
+            if (wmask & 0x10) wr8(addr+3, data[3]);
+            if (wmask & 0x08) wr8(addr+4, data[4]);
+            if (wmask & 0x04) wr8(addr+5, data[5]);
+            if (wmask & 0x02) wr8(addr+6, data[6]);
+            if (wmask & 0x01) wr8(addr+7, data[7]);
         }
     } else {
-        if (size == 8) {
-            /* Special: watch for wmask != 0xff, which means we're doing pst.d.  */
-            if (wmask == 0xff) {
-                wr8(addr+0, data[0]);
-                wr8(addr+1, data[1]);
-                wr8(addr+2, data[2]);
-                wr8(addr+3, data[3]);
-                wr8(addr+4, data[4]);
-                wr8(addr+5, data[5]);
-                wr8(addr+6, data[6]);
-                wr8(addr+7, data[7]);
-            } else {
-                if (wmask & 0x80) wr8(addr+0, data[0]);
-                if (wmask & 0x40) wr8(addr+1, data[1]);
-                if (wmask & 0x20) wr8(addr+2, data[2]);
-                if (wmask & 0x10) wr8(addr+3, data[3]);
-                if (wmask & 0x08) wr8(addr+4, data[4]);
-                if (wmask & 0x04) wr8(addr+5, data[5]);
-                if (wmask & 0x02) wr8(addr+6, data[6]);
-                if (wmask & 0x01) wr8(addr+7, data[7]);
-            }
-        } else {
-            for (int i = 0; i < size; i++)
-                wr8(addr+i, data[i]);
-        }
+        wrdata(addr, size, data);
     }
 }
 
@@ -698,6 +645,7 @@ inline INT32 sign_ext (UINT32 x, int n)
 void i860_cpu_device::unrecog_opcode (UINT32 pc, UINT32 insn)
 {
 	Log_Printf(LOG_WARN, "[i860:%08X] %08X   (unrecognized opcode)\n", pc, insn);
+    halt_i860();
 }
 
 
@@ -4149,6 +4097,8 @@ void i860_cpu_device::decode_exec (UINT32 insn, UINT32 non_shadow)
 /* Set-up all the default power-on/reset values.  */
 void i860_cpu_device::reset_i860 ()
 {
+    m_halt = false;
+
 	int i;
 	/* On power-up/reset, i860 has values:
 	     PC = 0xffffff00.

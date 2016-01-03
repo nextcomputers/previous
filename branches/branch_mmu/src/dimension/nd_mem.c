@@ -65,7 +65,6 @@ Uint8 ND_dmem[512];
 #define ND_EEPROM2_SIZE 0x00080000
 #define ND_EEPROM2_MASK 0x0007FFFC
 
-
 /* Memory banks */
 
 nd_addrbank *nd_mem_banks[65536];
@@ -295,15 +294,25 @@ static void nd_vram_bput(uaecptr addr, uae_u32 b)
 }
 
 /* NeXTdimension ROM */
-
-static uae_u32 nd_rom_bget(uaecptr addr) {
+static uae_u32 nd_rom_lget(uaecptr addr)
+{
 	addr &= ND_EEPROM_MASK;
-    return ND_rom[addr];
+	addr ^= 3; /* FIXME: really? */
+	return (ND_rom[addr] << 24);
 }
 
-static void nd_rom_bput(uaecptr addr, uae_u32 b) {
+static uae_u32 nd_rom_wget(uaecptr addr)
+{
 	addr &= ND_EEPROM_MASK;
-    ND_rom[addr] = b;
+	addr ^= 3; /* FIXME: really? */
+	return (ND_rom[addr] << 8);
+}
+
+static uae_u32 nd_rom_bget(uaecptr addr)
+{
+	addr &= ND_EEPROM_MASK;
+	addr ^= 3; /* FIXME: really? */
+	return ND_rom[addr];
 }
 
 /* NeXTdimension ROM access */
@@ -365,7 +374,7 @@ static void nd_dmem_bput(uaecptr addr, uae_u32 b)
 {
     addr &= ND_DP_MASK;
     if(addr < ND_DMEM_SIZE)
-        do_put_mem_byte(addr, b);
+        do_put_mem_byte(ND_dmem + addr, b);
     else
         nd_dp_lput(addr, b);
 }
@@ -414,9 +423,9 @@ static nd_addrbank nd_vram_bank =
 
 static nd_addrbank nd_rom_bank =
 {
-	nd_rom_bget, nd_rom_bget, nd_rom_bget,
-	nd_rom_bput, nd_rom_bput, nd_rom_bput,
-	nd_rom_bget, nd_rom_bget
+	nd_rom_lget, nd_rom_wget, nd_rom_bget,
+	NULL, NULL, NULL,
+	nd_rom_lget, nd_rom_wget
 };
 
 static nd_addrbank nd_rom_access_bank =

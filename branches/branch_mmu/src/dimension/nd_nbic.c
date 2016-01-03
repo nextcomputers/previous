@@ -3,12 +3,14 @@
 #include "m68000.h"
 #include "dimension.h"
 #include "sysdeps.h"
+#include "sysReg.h"
 #include "nd_nbic.h"
 
 #if ENABLE_DIMENSION
 
 /* NeXTdimention NBIC */
 #define ND_NBIC_ID		0xC0000001
+#define ND_NBIC_INTR    0x80
 
 struct {
     Uint32 control;
@@ -207,6 +209,20 @@ void nd_nbic_wput(Uint32 addr, Uint16 w) {
 
 void nd_nbic_bput(Uint32 addr, Uint8 b) {
     nd_nbic_write[addr&0x1F](addr,b);
+}
+
+/* Interrupt function */
+
+void nd_nbic_interrupt(bool state) {
+    if(state)
+        nd_nbic.intstatus |= ND_NBIC_INTR;
+    else
+        nd_nbic.intstatus &= ND_NBIC_INTR;
+    if(state && (nd_nbic.intmask & ND_NBIC_INTR)) {
+        set_interrupt(INT_REMOTE, 1);
+    } else {
+        set_interrupt(INT_REMOTE, 0);
+    }
 }
 
 
