@@ -109,6 +109,7 @@ Uint8 nd_nbic_intmask_read(Uint32 addr) {
 void nd_nbic_intmask_write(Uint32 addr, Uint8 val) {
     Log_Printf(LOG_WARN, "[ND] NBIC Interrupt mask write %02X at %08X",val,addr);
     nd_nbic.intmask = val;
+	nd_nbic_interrupt();
 }
 
 Uint8 nd_nbic_zero_read(Uint32 addr) {
@@ -211,18 +212,22 @@ void nd_nbic_bput(Uint32 addr, Uint8 b) {
     nd_nbic_write[addr&0x1F](addr,b);
 }
 
-/* Interrupt function */
+/* Interrupt functions */
+void nd_nbic_interrupt(void) {
+	if (nd_nbic.intmask&nd_nbic.intstatus&ND_NBIC_INTR) {
+		set_interrupt(INT_REMOTE, SET_INT);
+	} else {
+		set_interrupt(INT_REMOTE, RELEASE_INT);
+	}
+}
 
-void nd_nbic_interrupt(bool state) {
-    if(state)
+void nd_nbic_set_intstatus(bool set) {
+	if (set) {
         nd_nbic.intstatus |= ND_NBIC_INTR;
-    else
-        nd_nbic.intstatus &= ND_NBIC_INTR;
-    if(state && (nd_nbic.intmask & ND_NBIC_INTR)) {
-        set_interrupt(INT_REMOTE, 1);
-    } else {
-        set_interrupt(INT_REMOTE, 0);
-    }
+	} else {
+        nd_nbic.intstatus &= ~ND_NBIC_INTR;
+	}
+	nd_nbic_interrupt();
 }
 
 
