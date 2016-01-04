@@ -26,12 +26,15 @@ extern "C" void nd_i860_init() {
 }
 
 extern "C" void i860_Run(int nHostCycles) {
-    if(nd_i860.m_halt) return;
+    if(nd_i860.m_noints) return;
     
     if(nd_process_interrupts(nHostCycles))
         nd_i860.i860_gen_interrupt();
     else
         nd_i860.i860_clr_interrupt();
+    
+    if(nd_i860.m_halt) return;
+    
     nd_i860.run_cycle();
 }
 
@@ -205,12 +208,9 @@ void i860_cpu_device::state_delta(char* buffer, const UINT32* oldstate, const UI
             if(i == I860_PSR) {
                 buffer += strlen(buffer);
             sprintf (buffer, "(CC = %d, LCC = %d, SC = %d, IM = %d, U = %d ",
-                     GET_PSR_CC (), GET_PSR_LCC (), GET_PSR_SC (), GET_PSR_IM (),
-                     GET_PSR_U ());
+                     GET_PSR_CC (), GET_PSR_LCC (), GET_PSR_SC (), GET_PSR_IM (), GET_PSR_U ());
             sprintf (buffer, "IT/FT/IAT/DAT/IN = %d/%d/%d/%d/%d) ",
-                     GET_PSR_IT (), GET_PSR_FT (), GET_PSR_IAT (),
-                     GET_PSR_DAT (), GET_PSR_IN ());
-                
+                     GET_PSR_IT (), GET_PSR_FT (), GET_PSR_IAT (), GET_PSR_DAT (), GET_PSR_IN ());
             } else if(i == I860_EPSR) {
                 buffer += strlen(buffer);
                 sprintf (buffer, "(INT = %d, OF = %d, BE = %d) ", GET_EPSR_INT (), GET_EPSR_OF (), GET_EPSR_BE ());

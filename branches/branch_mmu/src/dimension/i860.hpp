@@ -19,12 +19,14 @@
 #define __I860_H__
 
 #include <stdint.h>
+#include <unistd.h>
+#include <ctype.h>
 
 #define TRACE_I860           0
 #define TRACE_RDWR_MEM       0
 #define TRACE_PAGE_FAULT     1
-#define TRACE_UNDEFINED_I860 0
-#define TRACE_UNALIGNED_MEM  0
+#define TRACE_UNDEFINED_I860 1
+#define TRACE_UNALIGNED_MEM  1
 #define TRACE_EXT_INT        0
 
 const int LOG_WARN = 3;
@@ -213,6 +215,16 @@ enum {
 #define GET_FSR_SE()  ((m_cregs[CR_FSR] >> 8) & 1)
 #define SET_FSR_SE(val)  (m_cregs[CR_FSR] = (m_cregs[CR_FSR] & ~(1 << 8)) | (((val) & 1) << 8))
 
+#define BYTE_REV32(t)   \
+{ \
+(t) = ((UINT32)(t) >> 16) | ((UINT32)(t) << 16); \
+(t) = (((UINT32)(t) >> 8) & 0x00ff00ff) | (((UINT32)(t) << 8) & 0xff00ff00); \
+}
+#define BYTE_REV16(t)   \
+{ \
+(t) = (((UINT16)(t) >> 8) & 0x00ff) | (((UINT16)(t) << 8) & 0xff00); \
+}
+
 /* Control register numbers.  */
 enum {
     CR_FIR     = 0,
@@ -279,10 +291,12 @@ public:
 
     /* Halt i860 */
     bool m_halt;
-
+    bool m_noints;
+    
     void halt_i860() {
         Log_Printf(LOG_WARN, "[i860] **** HALTED ****");
-        m_halt = true;
+        m_halt   = true;
+        m_noints = true;
     }
     
     // device_disasm_interface overrides
@@ -427,7 +441,7 @@ private:
     void rddata(UINT32 addr, int size, UINT8* data) {
         switch(size) {
             case 4:
-                ((UINT32*)data)[0] = rd32(addr);
+                *((UINT32*)data) = rd32(addr);
                 break;
             case 8:
                 ((UINT32*)data)[0] = rd32(addr+0);
@@ -445,17 +459,17 @@ private:
     void wrdata(UINT32 addr, int size, UINT8* data) {
         switch(size) {
             case 4:
-                wr32(addr, ((UINT32*)data)[0]);
+                wr32(addr, *((UINT32*)data));
                 break;
             case 8:
                 wr32(addr+0, ((UINT32*)data)[0]);
                 wr32(addr+4, ((UINT32*)data)[1]);
                 break;
             case 16:
-                wr32(addr+0, ((UINT32*)data)[0]);
-                wr32(addr+4, ((UINT32*)data)[1]);
-                wr32(addr+8, ((UINT32*)data)[2]);
-                wr32(addr+12,((UINT32*)data)[3]);
+                wr32(addr+0,  ((UINT32*)data)[0]);
+                wr32(addr+4,  ((UINT32*)data)[1]);
+                wr32(addr+8,  ((UINT32*)data)[2]);
+                wr32(addr+12, ((UINT32*)data)[3]);
                 break;
         }
     }
@@ -479,52 +493,34 @@ private:
         return nd_board_bget(addr);
     }
     
-    inline UINT16 rd16(UINT32 addr) {
-        if(GET_EPSR_BE())
-            return nd_board_wget(addr);
-        else {
-            UINT16 result = nd_board_bget(addr+1); result <<= 8;
-            result       |= nd_board_bget(addr+0);
-            return result;
-        }
-    }
-    
-    inline UINT32 rd32(UINT32 addr) {
-        if(GET_EPSR_BE())
-            return nd_board_lget(addr);
-        else {
-            UINT32 result = nd_board_bget(addr+3); result <<= 8;
-            result       |= nd_board_bget(addr+2); result <<= 8;
-            result       |= nd_board_bget(addr+1); result <<= 8;
-            result       |= nd_board_bget(addr+0);
-            return result;
-        }
-    }
-
     inline void wr8(UINT32 addr, UINT8 val) {
         nd_board_bput(addr, val);
     }
-        
-    inline void wr16(UINT32 addr, UINT16 val) {
-        if(GET_EPSR_BE())
-            nd_board_wput(addr, val);
-        else {
-            nd_board_wput(addr+1, val >> 8);
-            nd_board_bput(addr+0, val);
-            
-        }
+    
+    inline UINT16 rd16(UINT32 addr) {
+        UINT16 result = nd_board_wget(addr);
+        if(!GET_EPSR_BE())
+            BYTE_REV16(result);
+        return result;
     }
     
+    inline void wr16(UINT32 addr, UINT16 val) {
+        if(!GET_EPSR_BE())
+            BYTE_REV16(val);
+        nd_board_wput(addr, val);
+    }
+    
+    inline UINT32 rd32(UINT32 addr) {
+        UINT32 result = nd_board_lget(addr);
+        if(!GET_EPSR_BE())
+            BYTE_REV32(result);
+        return result;
+    }
+
     inline void wr32(UINT32 addr, UINT32 val) {
-        if(GET_EPSR_BE())
-            nd_board_lput(addr, val);
-        else {
-            nd_board_bput(addr+3, val >> 24);
-            nd_board_bput(addr+2, val >> 16);
-            nd_board_bput(addr+1, val >> 8);
-            nd_board_bput(addr+0, val);
-            
-        }
+        if(!GET_EPSR_BE())
+            BYTE_REV32(val);
+        nd_board_lput(addr, val);
     }
 
     /*
@@ -611,6 +607,7 @@ private:
 	void decode_exec (UINT32 insn, UINT32 non_shadow);
 	void disasm (UINT32 addr, int len);
 	void dbg_db (UINT32 addr, int len);
+    void debugger();
 	float get_fregval_s (int fr);
 	double get_fregval_d (int fr);
 	void set_fregval_s (int fr, float s);
