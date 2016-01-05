@@ -238,6 +238,11 @@ void ShortCut_ActKey(void)
 		ShortCut_Debug();              /* Invoke the Debug UI */
 		break;
 #endif
+#if ENABLE_DIMENSION
+	 case SHORTCUT_DEBUG:
+		nd_start_debugger();              /* Invoke the Debug UI */
+		break;
+#endif
 	 case SHORTCUT_PAUSE:
 		ShortCut_Pause();              /* Invoke Pause */
 		break;
