@@ -5,8 +5,7 @@
 #include "sysdeps.h"
 #include "nbic.h"
 
-#define LOG_NEXTBUS_LEVEL   LOG_WARN
-
+#define LOG_NEXTBUS_LEVEL   LOG_NONE
 
 /* NeXTbus and NeXTbus Interface Chip emulation */
 

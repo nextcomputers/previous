@@ -14,7 +14,6 @@ Uint8 nd_slot_bget(Uint32 addr);
 void nd_slot_lput(Uint32 addr, Uint32 l);
 void nd_slot_wput(Uint32 addr, Uint16 w);
 void nd_slot_bput(Uint32 addr, Uint8 b);
-bool i860_trace(Uint32 addr);
 
 Uint32 nd_board_lget(Uint32 addr);
 Uint16 nd_board_wget(Uint32 addr);
@@ -22,6 +21,7 @@ Uint8 nd_board_bget(Uint32 addr);
 void nd_board_lput(Uint32 addr, Uint32 l);
 void nd_board_wput(Uint32 addr, Uint16 w);
 void nd_board_bput(Uint32 addr, Uint8 b);
+Uint8 nd_board_cs8get(Uint32 addr);
 
 Uint64 swap64(Uint64 val);
 Uint32 swap32(Uint32 val);
@@ -34,6 +34,7 @@ void dimension_reset(void);
 void nd_i860_init();
 void i860_Run(int nHostCycles);
 Uint32 i860_Disasm(char* buffer, Uint32 pc);
+bool i860_dbg_break(Uint32 addr);
 
 #define ND_LOG_IO_RD LOG_NONE
 #define ND_LOG_IO_WR LOG_WARN
