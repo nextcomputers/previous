@@ -11,10 +11,13 @@
     you list me in the credits.
     Visit http://mamedev.org for licensing and usage restrictions.
 
+    Changes for previous/NeXTdimension by Simon Schubiger (SC)
+
 ***************************************************************************/
 
 #include "i860.hpp"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static i860_cpu_device nd_i860;
@@ -26,16 +29,12 @@ extern "C" void nd_i860_init() {
 }
 
 extern "C" void i860_Run(int nHostCycles) {
-    if(nd_i860.m_noints) return;
-    
-    if(nd_process_interrupts(nHostCycles))
-        nd_i860.i860_gen_interrupt();
-    else
-        nd_i860.i860_clr_interrupt();
+    if(i860_dbg_break(nd_i860.m_pc))
+       nd_i860.debugger("BREAK at pc=%08X", nd_i860.m_pc);
     
     if(nd_i860.m_halt) return;
     
-    nd_i860.run_cycle();
+    nd_i860.run_cycle(nHostCycles);
 }
 
 extern "C" offs_t i860_Disasm(char* buffer, offs_t pc) {
@@ -45,13 +44,18 @@ extern "C" offs_t i860_Disasm(char* buffer, offs_t pc) {
 i860_cpu_device::i860_cpu_device() {
 }
 
-void i860_cpu_device::run_cycle() {
+void i860_cpu_device::run_cycle(int nHostCycles) {
     UINT32 savepc = m_pc;
     m_pc_updated = 0;
     m_pending_trap = 0;
     
     savepc = m_pc;
-    //debugger_instruction_hook(this, m_pc);
+    
+    if(nd_process_interrupts(nHostCycles))
+        i860_gen_interrupt();
+    else
+        i860_clr_interrupt();
+
     decode_exec (ifetch (m_pc), 1);
     
     m_exiting_ifetch = 0;
@@ -93,8 +97,8 @@ void i860_cpu_device::run_cycle() {
         m_pc += 4;
     }
     
-    /*if (m_single_stepping)
-     debugger (cpustate); */
+    if(m_single_stepping)
+        debugger("SINGLESTEP");
 }
 
 void i860_cpu_device::init() {
@@ -108,13 +112,78 @@ void i860_cpu_device::device_start()
 	i860_set_pin(DEC_PIN_BUS_HOLD, 0);
 	i860_set_pin(DEC_PIN_RESET, 0);
 	m_single_stepping = 0;
+    m_lastcmd         = 0;
+    
+    // some sanity checks for endianess
+    int    err    = 0;
+    {
+        UINT32 uint32 = 0x01234567;
+        UINT8* uint8p = (UINT8*)&uint32;
+        if(uint8p[3] != 0x01) err = 1;
+        if(uint8p[2] != 0x23) err = 2;
+        if(uint8p[1] != 0x45) err = 3;
+        if(uint8p[0] != 0x67) err = 4;
+        
+        for(int i = 0; i < 32; i++) {
+            uint8p[3] = i;
+            set_fregval_s(i, *((float*)uint8p));
+        }
+        if(get_fregval_s(0) != 0)   err = 198;
+        if(get_fregval_s(1) != 0)   err = 199;
+        for(int i = 2; i < 32; i++) {
+            uint8p[3] = i;
+            if(get_fregval_s(i) != *((float*)uint8p))
+               err = 100+i;
+        }
+        for(int i = 2; i < 32; i++) {
+            if(m_frg[i*4+3] != i)    err = 200+i;
+            if(m_frg[i*4+2] != 0x23) err = 200+i;
+            if(m_frg[i*4+1] != 0x45) err = 200+i;
+            if(m_frg[i*4+0] != 0x67) err = 200+i;
+        }
+    }
+    
+    {
+        UINT64 uint64 = 0x0123456789ABCDEF;
+        UINT8* uint8p = (UINT8*)&uint64;
+        if(uint8p[7] != 0x01) err = 10001;
+        if(uint8p[6] != 0x23) err = 10002;
+        if(uint8p[5] != 0x45) err = 10003;
+        if(uint8p[4] != 0x67) err = 10004;
+        if(uint8p[3] != 0x89) err = 10005;
+        if(uint8p[2] != 0xAB) err = 10006;
+        if(uint8p[1] != 0xCD) err = 10007;
+        if(uint8p[0] != 0xEF) err = 10008;
+        
+        for(int i = 0; i < 16; i++) {
+            uint8p[7] = i;
+            set_fregval_d(i*2, *((double*)uint8p));
+        }
+        if(get_fregval_d(0) != 0)
+            err = 10199;
+        for(int i = 1; i < 16; i++) {
+            uint8p[7] = i;
+            if(get_fregval_d(i*2) != *((double*)uint8p))
+                err = 10100+i;
+        }
+        for(int i = 1; i < 16; i++) {
+            if(m_frg[i*8+7] != i)    err = 10200+i;
+            if(m_frg[i*8+6] != 0x23) err = 10200+i;
+            if(m_frg[i*8+5] != 0x45) err = 10200+i;
+            if(m_frg[i*8+4] != 0x67) err = 10200+i;
+            if(m_frg[i*8+3] != 0x89) err = 10200+i;
+            if(m_frg[i*8+2] != 0xAB) err = 10200+i;
+            if(m_frg[i*8+1] != 0xCD) err = 10200+i;
+            if(m_frg[i*8+0] != 0xEF) err = 10200+i;
+        }
 
-    /*
-	save_item(NAME(m_iregs));
-	save_item(NAME(m_cregs));
-	save_item(NAME(m_frg));
-	save_item(NAME(m_pc));
-*/
+    }
+    
+    if(err) {
+        fprintf(stderr, "NeXTdimension i860 emulator is only supported for little-endian hosts. Error %d\n", err);
+        fflush(stderr);
+        exit(err);
+    }
     
 	state( I860_PC,      "PC",      &m_pc).formatstr("%08X");
 	state( I860_FIR,     "FIR",     &m_cregs[CR_FIR]).formatstr("%08X");
@@ -156,40 +225,38 @@ void i860_cpu_device::device_start()
 	state( I860_R30,     "R30",     &m_iregs[30]).formatstr("%08X");
 	state( I860_R31,     "R31",     &m_iregs[31]).formatstr("%08X");
 
-	state( I860_F0,  "F0",  &m_freg[0]).formatstr("%08X");
-	state( I860_F1,  "F1",  &m_freg[1]).formatstr("%08X");
-	state( I860_F2,  "F2",  &m_freg[2]).formatstr("%08X");
-	state( I860_F3,  "F3",  &m_freg[3]).formatstr("%08X");
-	state( I860_F4,  "F4",  &m_freg[4]).formatstr("%08X");
-	state( I860_F5,  "F5",  &m_freg[5]).formatstr("%08X");
-	state( I860_F6,  "F6",  &m_freg[6]).formatstr("%08X");
-	state( I860_F7,  "F7",  &m_freg[7]).formatstr("%08X");
-	state( I860_F8,  "F8",  &m_freg[8]).formatstr("%08X");
-	state( I860_F9,  "F9",  &m_freg[9]).formatstr("%08X");
-	state( I860_F10, "F10", &m_freg[10]).formatstr("%08X");
-	state( I860_F11, "F11", &m_freg[11]).formatstr("%08X");
-	state( I860_F12, "F12", &m_freg[12]).formatstr("%08X");
-	state( I860_F13, "F13", &m_freg[13]).formatstr("%08X");
-	state( I860_F14, "F14", &m_freg[14]).formatstr("%08X");
-	state( I860_F15, "F15", &m_freg[15]).formatstr("%08X");
-	state( I860_F16, "F16", &m_freg[16]).formatstr("%08X");
-	state( I860_F17, "F17", &m_freg[17]).formatstr("%08X");
-	state( I860_F18, "F18", &m_freg[18]).formatstr("%08X");
-	state( I860_F19, "F19", &m_freg[19]).formatstr("%08X");
-	state( I860_F20, "F20", &m_freg[20]).formatstr("%08X");
-	state( I860_F21, "F21", &m_freg[21]).formatstr("%08X");
-	state( I860_F22, "F22", &m_freg[22]).formatstr("%08X");
-	state( I860_F23, "F23", &m_freg[23]).formatstr("%08X");
-	state( I860_F24, "F24", &m_freg[24]).formatstr("%08X");
-	state( I860_F25, "F25", &m_freg[25]).formatstr("%08X");
-	state( I860_F26, "F26", &m_freg[26]).formatstr("%08X");
-	state( I860_F27, "F27", &m_freg[27]).formatstr("%08X");
-	state( I860_F28, "F28", &m_freg[28]).formatstr("%08X");
-	state( I860_F29, "F29", &m_freg[29]).formatstr("%08X");
-	state( I860_F30, "F30", &m_freg[30]).formatstr("%08X");
-	state( I860_F31, "F31", &m_freg[31]).formatstr("%08X");
-    
-	m_icountptr = &m_icount;
+	state( I860_F0,  "F0",  (UINT32*)&m_frg[0]).formatstr("%f");
+	state( I860_F1,  "F1",  (UINT32*)&m_frg[4]).formatstr("%f");
+	state( I860_F2,  "F2",  (UINT32*)&m_frg[8]).formatstr("%f");
+	state( I860_F3,  "F3",  (UINT32*)&m_frg[12]).formatstr("%f");
+	state( I860_F4,  "F4",  (UINT32*)&m_frg[16]).formatstr("%f");
+	state( I860_F5,  "F5",  (UINT32*)&m_frg[20]).formatstr("%f");
+	state( I860_F6,  "F6",  (UINT32*)&m_frg[24]).formatstr("%f");
+	state( I860_F7,  "F7",  (UINT32*)&m_frg[28]).formatstr("%f");
+	state( I860_F8,  "F8",  (UINT32*)&m_frg[32]).formatstr("%f");
+	state( I860_F9,  "F9",  (UINT32*)&m_frg[26]).formatstr("%f");
+	state( I860_F10, "F10", (UINT32*)&m_frg[40]).formatstr("%f");
+	state( I860_F11, "F11", (UINT32*)&m_frg[44]).formatstr("%f");
+	state( I860_F12, "F12", (UINT32*)&m_frg[48]).formatstr("%f");
+	state( I860_F13, "F13", (UINT32*)&m_frg[52]).formatstr("%f");
+	state( I860_F14, "F14", (UINT32*)&m_frg[56]).formatstr("%f");
+	state( I860_F15, "F15", (UINT32*)&m_frg[60]).formatstr("%f");
+	state( I860_F16, "F16", (UINT32*)&m_frg[64]).formatstr("%f");
+	state( I860_F17, "F17", (UINT32*)&m_frg[68]).formatstr("%f");
+	state( I860_F18, "F18", (UINT32*)&m_frg[72]).formatstr("%f");
+	state( I860_F19, "F19", (UINT32*)&m_frg[76]).formatstr("%f");
+	state( I860_F20, "F20", (UINT32*)&m_frg[80]).formatstr("%f");
+	state( I860_F21, "F21", (UINT32*)&m_frg[84]).formatstr("%f");
+	state( I860_F22, "F22", (UINT32*)&m_frg[88]).formatstr("%f");
+	state( I860_F23, "F23", (UINT32*)&m_frg[92]).formatstr("%f");
+	state( I860_F24, "F24", (UINT32*)&m_frg[96]).formatstr("%f");
+	state( I860_F25, "F25", (UINT32*)&m_frg[100]).formatstr("%f");
+	state( I860_F26, "F26", (UINT32*)&m_frg[104]).formatstr("%f");
+	state( I860_F27, "F27", (UINT32*)&m_frg[108]).formatstr("%f");
+	state( I860_F28, "F28", (UINT32*)&m_frg[112]).formatstr("%f");
+	state( I860_F29, "F29", (UINT32*)&m_frg[116]).formatstr("%f");
+	state( I860_F30, "F30", (UINT32*)&m_frg[120]).formatstr("%f");
+	state( I860_F31, "F31", (UINT32*)&m_frg[124]).formatstr("%f");
 }
 
 void i860_cpu_device::device_reset() {
@@ -197,7 +264,7 @@ void i860_cpu_device::device_reset() {
 }
 
 offs_t i860_cpu_device::disasm(char* buffer, offs_t pc) {
-    return pc + i860_disassembler(pc, ifetch(pc), buffer);
+    return pc + i860_disassembler(pc, ifetch_notrap(pc), buffer);
 }
 
 void i860_cpu_device::state_delta(char* buffer, const UINT32* oldstate, const UINT32* newstate) {

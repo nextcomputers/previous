@@ -11,6 +11,8 @@
     you list me in the credits.
     Visit http://mamedev.org for licensing and usage restrictions.
 
+    Changes for previous/NeXTdimension by Simon Schubiger (SC)
+
 ***************************************************************************/
 
 #pragma once
@@ -19,6 +21,8 @@
 #define __I860_H__
 
 #include <stdint.h>
+#include <stdio.h>
+#include <stdarg.h>
 #include <unistd.h>
 #include <ctype.h>
 
@@ -47,6 +51,7 @@ typedef int8_t  INT8;
 typedef int64_t offs_t;
 
 extern "C" {
+    UINT8  nd_board_cs8get(UINT32 addr);
     UINT8  nd_board_bget(UINT32 addr);
     void   nd_board_bput(UINT32 addr, UINT8 val);
     UINT16 nd_board_wget(UINT32 addr);
@@ -54,7 +59,7 @@ extern "C" {
     UINT32 nd_board_lget(UINT32 addr);
     void   nd_board_lput(UINT32 addr, UINT32 val);
     int    nd_process_interrupts(int nHostCycles);
-    bool   i860_trace(UINT32 addr);
+    bool   i860_dbg_break(UINT32 addr);
 }
 
 /***************************************************************************
@@ -272,7 +277,7 @@ public:
 	i860_cpu_device();
 
     void init();
-    void run_cycle();
+    void run_cycle(int nHostCycles);
     
 	/* This is the external interface for asserting an external interrupt
 	   to the i860.  */
@@ -291,18 +296,26 @@ public:
 
     /* Halt i860 */
     bool m_halt;
-    bool m_noints;
     
-    void halt_i860() {
-        Log_Printf(LOG_WARN, "[i860] **** HALTED ****");
-        m_halt   = true;
-        m_noints = true;
+    void halt_i860(bool state) {
+        if(state)
+            Log_Printf(LOG_WARN, "[i860] **** HALTED ****");
+        else
+            Log_Printf(LOG_WARN, "[i860] **** RESTARTED ****");
+        m_halt = state;
     }
+    
+    /* Program counter (1 x 32-bits).  Reset starts at pc=0xffffff00.  */
+    UINT32 m_pc;
     
     // device_disasm_interface overrides
     virtual UINT32 disasm_min_opcode_bytes() const { return 4; }
     virtual UINT32 disasm_max_opcode_bytes() const { return 4; }
     virtual offs_t disasm(char *buffer, offs_t pc);
+    
+    // debugger
+    void debugger(const char* format, ...);
+    void debugger();
 protected:
 	// device-level overrides
 	virtual void device_start();
@@ -325,6 +338,7 @@ protected:
     
     void state_delta(char* buffer, const UINT32* oldstate, const UINT32* newstate);
 private:
+    char m_lastcmd; // last debugger command
     i860_reg m_regs[STATE_SZ];
     
 	/* Integer registers (32 x 32-bits).  */
@@ -337,9 +351,6 @@ private:
 
 	/* Control registers (6 x 32-bits).  */
 	UINT32 m_cregs[6];
-
-	/* Program counter (1 x 32-bits).  Reset starts at pc=0xffffff00.  */
-	UINT32 m_pc;
 
 	/* Special registers (4 x 64-bits).  */
 	union
@@ -438,100 +449,95 @@ private:
 
     /* memory access */
 
-    void rddata(UINT32 addr, int size, UINT8* data) {
+    inline void rddata(UINT32 addr, int size, UINT8* data) {
         switch(size) {
             case 4:
                 *((UINT32*)data) = rd32(addr);
                 break;
             case 8:
-                ((UINT32*)data)[0] = rd32(addr+0);
-                ((UINT32*)data)[1] = rd32(addr+4);
+                ((UINT32*)data)[0] = rd32(addr+4);
+                ((UINT32*)data)[1] = rd32(addr+0);
                 break;
             case 16:
-                ((UINT32*)data)[0] = rd32(addr+0);
-                ((UINT32*)data)[1] = rd32(addr+4);
-                ((UINT32*)data)[2] = rd32(addr+8);
-                ((UINT32*)data)[3] = rd32(addr+12);
+                ((UINT32*)data)[0] = rd32(addr+4);
+                ((UINT32*)data)[1] = rd32(addr+0);
+                ((UINT32*)data)[2] = rd32(addr+12);
+                ((UINT32*)data)[3] = rd32(addr+8);
                 break;
         }
     }
 
-    void wrdata(UINT32 addr, int size, UINT8* data) {
+    inline void wrdata(UINT32 addr, int size, UINT8* data) {
         switch(size) {
             case 4:
                 wr32(addr, *((UINT32*)data));
                 break;
             case 8:
-                wr32(addr+0, ((UINT32*)data)[0]);
-                wr32(addr+4, ((UINT32*)data)[1]);
+                wr32(addr+4, ((UINT32*)data)[0]);
+                wr32(addr+0, ((UINT32*)data)[1]);
                 break;
             case 16:
-                wr32(addr+0,  ((UINT32*)data)[0]);
-                wr32(addr+4,  ((UINT32*)data)[1]);
-                wr32(addr+8,  ((UINT32*)data)[2]);
-                wr32(addr+12, ((UINT32*)data)[3]);
+                wr32(addr+4,  ((UINT32*)data)[0]);
+                wr32(addr+0,  ((UINT32*)data)[1]);
+                wr32(addr+12, ((UINT32*)data)[2]);
+                wr32(addr+8,  ((UINT32*)data)[3]);
                 break;
         }
     }
 
-    inline UINT32 rd32instr(UINT32 addr) {
-        addr ^= 4;
-        return nd_board_lget(addr);
-    }
-
-    inline UINT32 rd32pte(UINT32 addr) {
-        addr ^= 4;
-        return nd_board_lget(addr);
-    }
-
-    inline void wr32pte(UINT32 addr, UINT32 val) {
-        addr ^= 4;
-        nd_board_lput(addr, val);
-    }
-
-    inline UINT8 rd8(UINT32 addr) {
-        return nd_board_bget(addr);
+    inline UINT32 rd32i(UINT32 addr) {
+        return nd_board_lget(addr^4);
     }
     
-    inline void wr8(UINT32 addr, UINT8 val) {
-        nd_board_bput(addr, val);
+    inline void wr32i(UINT32 addr, UINT32 val) {
+        nd_board_lput(addr^4, val);
+    }
+    
+    inline UINT8 rdcs8(UINT32 addr) {
+        return nd_board_cs8get(addr);
+    }
+    
+    inline UINT8 rd8(UINT32 addr) {
+        if (GET_EPSR_BE())
+            return nd_board_bget(addr);
+        else
+            return nd_board_bget(addr^7);
     }
     
     inline UINT16 rd16(UINT32 addr) {
-        UINT16 result = nd_board_wget(addr);
-        if(!GET_EPSR_BE())
-            BYTE_REV16(result);
-        return result;
-    }
-    
-    inline void wr16(UINT32 addr, UINT16 val) {
-        if(!GET_EPSR_BE())
-            BYTE_REV16(val);
-        nd_board_wput(addr, val);
+        if (GET_EPSR_BE())
+            return nd_board_wget(addr);
+        else
+            return nd_board_wget(addr^6);
     }
     
     inline UINT32 rd32(UINT32 addr) {
-        UINT32 result = nd_board_lget(addr);
-        if(!GET_EPSR_BE())
-            BYTE_REV32(result);
-        return result;
+        if(GET_EPSR_BE())
+            return nd_board_lget(addr);
+        else
+            return nd_board_lget(addr^4);
     }
-
+    
+    inline void wr8(UINT32 addr, UINT8 val) {
+        if (GET_EPSR_BE())
+            nd_board_bput(addr, val);
+        else
+            nd_board_bput(addr^7, val);
+    }
+    
+    inline void wr16(UINT32 addr, UINT16 val) {
+        if (GET_EPSR_BE())
+            nd_board_wput(addr, val);
+        else
+            nd_board_wput(addr^6, val);
+    }
+    
     inline void wr32(UINT32 addr, UINT32 val) {
-        if(!GET_EPSR_BE())
-            BYTE_REV32(val);
-        nd_board_lput(addr, val);
+        if (GET_EPSR_BE())
+            nd_board_lput(addr, val);
+        else
+            nd_board_lput(addr^4, val);
     }
-
-    /*
-	 * MAME-specific stuff.
-	 */
-	UINT32 m_ppc;
-	int m_icount;
-    int* m_icountptr;
-	// For debugger
-	UINT32 m_freg[32];
-
 	void writememi_emu (UINT32 addr, int size, UINT32 data);
 	void fp_readmem_emu (UINT32 addr, int size, UINT8 *dest);
 	void fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT32 wmask);
@@ -605,15 +611,15 @@ private:
 	void insn_faddp (UINT32 insn);
 	void insn_faddz (UINT32 insn);
 	void decode_exec (UINT32 insn, UINT32 non_shadow);
-	void disasm (UINT32 addr, int len);
+	UINT32 disasm (UINT32 addr, int len);
 	void dbg_db (UINT32 addr, int len);
-    void debugger();
 	float get_fregval_s (int fr);
 	double get_fregval_d (int fr);
 	void set_fregval_s (int fr, float s);
 	void set_fregval_d (int fr, double d);
 	int has_delay_slot(UINT32 insn);
 	UINT32 ifetch (UINT32 pc);
+    UINT32 ifetch_notrap(UINT32 pc);
 	UINT32 get_address_translation (UINT32 vaddr, int is_dataref, int is_write);
 	UINT32 readmemi_emu (UINT32 addr, int size);
 	float get_fval_from_optype_s (UINT32 insn, int optype);

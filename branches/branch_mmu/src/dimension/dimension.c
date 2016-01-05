@@ -128,8 +128,24 @@ inline void nd_board_bput(Uint32 addr, Uint8 b) {
     nd_byteput(addr, b);
 }
 
-inline bool i860_trace(Uint32 addr) {
-    return /* ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION &&*/ (addr < 0x2FFFFFFF);
+inline Uint8 nd_board_cs8get(Uint32 addr) {
+    addr |= ND_BOARD_BITS;
+    ND_BOARD_ADDR_CHECK(addr, 0);
+    return nd_cs8get(addr);
+}
+
+
+bool nd_break_armed = true;
+inline bool i860_dbg_break(Uint32 addr) {
+    if(ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
+        if(nd_break_armed) {
+            nd_break_armed = false;
+            return true;
+        }
+    } else {
+        nd_break_armed = true;
+    }
+    return false;
 }
 
 /* Reset function */

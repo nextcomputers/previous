@@ -11,6 +11,8 @@
     you list me in the credits.
     Visit http://mamedev.org for licensing and usage restrictions.
 
+    Changes for previous/NeXTdimension by Simon Schubiger (SC)
+
 ***************************************************************************/
 
 #include <string.h>

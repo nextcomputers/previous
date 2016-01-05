@@ -297,23 +297,66 @@ static void nd_vram_bput(uaecptr addr, uae_u32 b)
 static uae_u32 nd_rom_lget(uaecptr addr)
 {
 	addr &= ND_EEPROM_MASK;
-	addr ^= 3; /* FIXME: really? */
+    addr |= 3; /* byte lane at msb */
 	return (ND_rom[addr] << 24);
 }
 
 static uae_u32 nd_rom_wget(uaecptr addr)
 {
 	addr &= ND_EEPROM_MASK;
-	addr ^= 3; /* FIXME: really? */
+    addr |= 3; /* byte lane at msb */
 	return (ND_rom[addr] << 8);
 }
 
 static uae_u32 nd_rom_bget(uaecptr addr)
 {
 	addr &= ND_EEPROM_MASK;
-	addr ^= 3; /* FIXME: really? */
+    addr |= 3; /* byte lane at msb */
 	return ND_rom[addr];
 }
+
+static uae_u32 nd_rom_cs8get(uaecptr addr)
+{
+    addr &= ND_EEPROM_MASK;
+    return ND_rom[addr];
+}
+
+/* Illegal access functions */
+
+static uae_u32 nd_illegal_lget(uaecptr addr)
+{
+    write_log("[ND] Illegal lget at %08X\n",addr);
+    return 0;
+}
+
+static uae_u32 nd_illegal_wget(uaecptr addr)
+{
+    write_log("[ND] Illegal wget at %08X\n",addr);
+    return 0;
+}
+
+static uae_u32 nd_illegal_bget(uaecptr addr)
+{
+    write_log("[ND] Illegal bget at %08X\n",addr);
+    return 0;
+}
+
+static void nd_illegal_lput(uaecptr addr, uae_u32 l)
+{
+    write_log("[ND] Illegal lput at %08X\n",addr);
+}
+
+static void nd_illegal_wput(uaecptr addr, uae_u32 w)
+{
+    write_log("[ND] Illegal wput at %08X\n",addr);
+}
+
+static void nd_illegal_bput(uaecptr addr, uae_u32 b)
+{
+    write_log("[ND] Illegal bput at %08X\n",addr);
+}
+
+
 
 /* NeXTdimension ROM access */
 static uae_u32 nd_rom_access_bget(uaecptr addr)
@@ -383,84 +426,102 @@ static nd_addrbank nd_ram_bank0 =
 {
 	nd_ram_bank0_lget, nd_ram_bank0_wget, nd_ram_bank0_bget,
 	nd_ram_bank0_lput, nd_ram_bank0_wput, nd_ram_bank0_bput,
-	nd_ram_bank0_lget, nd_ram_bank0_wget
+	nd_ram_bank0_bget
 };
 
 static nd_addrbank nd_ram_bank1 =
 {
     nd_ram_bank1_lget, nd_ram_bank1_wget, nd_ram_bank1_bget,
     nd_ram_bank1_lput, nd_ram_bank1_wput, nd_ram_bank1_bput,
-    nd_ram_bank1_lget, nd_ram_bank1_wget
+    nd_ram_bank1_bget
 };
 
 static nd_addrbank nd_ram_bank2 =
 {
     nd_ram_bank2_lget, nd_ram_bank2_wget, nd_ram_bank2_bget,
     nd_ram_bank2_lput, nd_ram_bank2_wput, nd_ram_bank2_bput,
-    nd_ram_bank2_lget, nd_ram_bank2_wget
+    nd_ram_bank2_bget
 };
 
 static nd_addrbank nd_ram_bank3 =
 {
     nd_ram_bank3_lget, nd_ram_bank3_wget, nd_ram_bank3_bget,
     nd_ram_bank3_lput, nd_ram_bank3_wput, nd_ram_bank3_bput,
-    nd_ram_bank3_lget, nd_ram_bank3_wget
+    nd_ram_bank3_bget
 };
 
 static nd_addrbank nd_ram_empty =
 {
     nd_ram_empty_lget, nd_ram_empty_wget, nd_ram_empty_bget,
     nd_ram_empty_lput, nd_ram_empty_wput, nd_ram_empty_bput,
-    nd_ram_empty_lget, nd_ram_empty_wget
+    nd_ram_empty_bget
 };
 
 static nd_addrbank nd_vram_bank =
 {
     nd_vram_lget, nd_vram_wget, nd_vram_bget,
     nd_vram_lput, nd_vram_wput, nd_vram_bput,
-    nd_vram_lget, nd_vram_wget
+    nd_vram_bget
 };
 
 static nd_addrbank nd_rom_bank =
 {
 	nd_rom_lget, nd_rom_wget, nd_rom_bget,
-	NULL, NULL, NULL,
-	nd_rom_lget, nd_rom_wget
+    nd_illegal_lput, nd_illegal_wput, nd_illegal_bput,
+    nd_rom_cs8get
+
 };
 
 static nd_addrbank nd_rom_access_bank =
 {
-    NULL, NULL, nd_rom_access_bget,
-    NULL, NULL, nd_rom_access_bput,
-    NULL, NULL
+    nd_illegal_lget, nd_illegal_wget, nd_rom_access_bget,
+    nd_illegal_lput, nd_illegal_wput, nd_rom_access_bput,
+    nd_illegal_bget
 };
 
 static nd_addrbank nd_dmem_bank =
 {
     nd_dmem_lget, nd_dmem_wget, nd_dmem_bget,
     nd_dmem_lput, nd_dmem_wput, nd_dmem_bput,
-    nd_dmem_lget, nd_dmem_wget
+    nd_dmem_bget
 };
 
 static nd_addrbank nd_io_bank =
 {
 	nd_io_lget, nd_io_wget, nd_io_bget,
 	nd_io_lput, nd_io_wput, nd_io_bput,
-	nd_io_lget, nd_io_wget
+	nd_io_bget
 };
 
 static nd_addrbank nd_ramdac_bank =
 {
     nd_ramdac_bget, nd_ramdac_bget, nd_ramdac_bget,
     nd_ramdac_bput, nd_ramdac_bput, nd_ramdac_bput,
-    nd_ramdac_bget, nd_ramdac_bget
+    nd_ramdac_bget
 };
+
+static nd_addrbank nd_illegal_bank =
+{
+    nd_illegal_lget, nd_illegal_wget, nd_illegal_bget,
+    nd_illegal_lput, nd_illegal_wput, nd_illegal_bput,
+    nd_illegal_bget
+};
+
+static void nd_init_mem_banks (void)
+{
+    int i;
+    for (i = 0; i < 65536; i++)
+        nd_put_mem_bank (i<<16, &nd_illegal_bank);
+}
 
 void nd_memory_init(void) {
 	
 	write_log("[ND] Memory init: Memory size: %iMB\n",
               Configuration_CheckDimensionMemory(ConfigureParams.Dimension.nMemoryBankSize));
 
+    /* Initialize banks with error memory */
+    nd_init_mem_banks();
+    
     /* Map main memory */
     if (ConfigureParams.Dimension.nMemoryBankSize[0]) {
         ND_RAM_bankmask0 = ND_RAM_BANKMASK|((ConfigureParams.Dimension.nMemoryBankSize[0]<<20)-1);

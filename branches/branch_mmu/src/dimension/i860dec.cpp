@@ -49,28 +49,23 @@
 #define get_iregval(gr)       (m_iregs[(gr)])
 #define set_iregval(gr, val)  (m_iregs[(gr)] = ((gr) == 0 ? 0 : (val)))
 
-float i860_cpu_device::get_fregval_s (int fr)
-{
-	fr = 31 - fr;
-	return *(float *)(&m_frg[fr * 4]);
+
+inline float i860_cpu_device::get_fregval_s (int fr) {
+    return *(float *)(&m_frg[fr * 4]);
 }
 
-double i860_cpu_device::get_fregval_d (int fr)
-{
-	fr = 31 - (fr + 1);
+inline double i860_cpu_device::get_fregval_d (int fr) {
     return *(double *)(&m_frg[fr * 4]);
 }
 
-void i860_cpu_device::set_fregval_s (int fr, float s)
-{
-    fr = 31 - fr;
-    *(float *)(&m_frg[fr * 4]) = s;
+inline void i860_cpu_device::set_fregval_s (int fr, float s) {
+    if(fr > 1)
+        *(float *)(&m_frg[fr * 4]) = s;
 }
 
-void i860_cpu_device::set_fregval_d (int fr, double d)
-{
-    fr = 31 - (fr + 1);
-    *(double *)(&m_frg[fr * 4]) = d;
+inline void i860_cpu_device::set_fregval_d (int fr, double d) {
+    if(fr > 1)
+        *(double *)(&m_frg[fr * 4]) = d;
 }
 
 int i860_cpu_device::has_delay_slot(UINT32 insn)
@@ -78,8 +73,9 @@ int i860_cpu_device::has_delay_slot(UINT32 insn)
 	int opc = (insn >> 26) & 0x3f;
 	if (opc == 0x10 || opc == 0x1a || opc == 0x1b || opc == 0x1d ||
 		opc == 0x1f || opc == 0x2d || (opc == 0x13 && (insn & 3) == 2))
-	return 1;
-	return 0;
+        return 1;
+    
+    return 0;
 }
 
 /* This is the external interface for asserting/deasserting pins on
@@ -143,17 +139,24 @@ UINT32 i860_cpu_device::ifetch (UINT32 pc)
 		phys_pc = pc;
 
 	if (GET_DIRBASE_CS8() || phys_pc >= 0xFFFE0000) {
-        w1  = rd8(phys_pc)<<24;
-        w1 |= rd8(phys_pc+1)<<16;
-        w1 |= rd8(phys_pc+2)<<8;
-        w1 |= rd8(phys_pc+3);
+        w1  = rdcs8(phys_pc);
+        w1 |= rdcs8(phys_pc+1)<<8;
+        w1 |= rdcs8(phys_pc+2)<<16;
+        w1 |= rdcs8(phys_pc+3)<<24;
 	} else {
-        w1 = rd32instr(phys_pc);
+        w1 = rd32i(phys_pc);
     }
 	
 	return w1;
 }
 
+UINT32 i860_cpu_device::ifetch_notrap(UINT32 pc) {
+    int before = m_pending_trap;
+    m_pending_trap = 0;
+    UINT32 result = ifetch(pc);
+    m_pending_trap = before;
+    return result;
+}
 
 /* Given a virtual address, perform the i860 address translation and
    return the corresponding physical address.
@@ -185,7 +188,7 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 
 	/* Get page directory entry at DTB:DIR:00.  */
 	pg_dir_entry_a = dtb | (vdir << 2);
-	pg_dir_entry = rd32pte(pg_dir_entry_a);
+	pg_dir_entry = rd32i(pg_dir_entry_a);
 
 	/* Check for non-present PDE.  */
 	if (!(pg_dir_entry & 1))
@@ -230,7 +233,7 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 	/* Get page table entry at PFA1:PAGE:00.  */
 	pfa1 = pg_dir_entry & 0xfffff000;
 	pg_tbl_entry_a = pfa1 | (vpage << 2);
-	pg_tbl_entry = rd32pte(pg_tbl_entry_a);
+	pg_tbl_entry = rd32i(pg_tbl_entry_a);
 
 	/* Check for non-present PTE.  */
 	if (!(pg_tbl_entry & 1))
@@ -273,8 +276,8 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 	/* Update A bit and check D bit.  */
 	ttpde = pg_dir_entry | 0x20;
 	ttpte = pg_tbl_entry | 0x20;
-	wr32pte(pg_dir_entry_a, ttpde);
-	wr32pte(pg_tbl_entry_a, ttpte);
+	wr32i(pg_dir_entry_a, ttpde);
+	wr32i(pg_tbl_entry_a, ttpte);
 
 	if (is_write && is_dataref && (pg_tbl_entry & 0x40) == 0)
 	{
@@ -315,7 +318,7 @@ UINT32 i860_cpu_device::readmemi_emu (UINT32 addr, int size)
 		{
 #if TRACE_PAGE_FAULT
             Log_Printf(LOG_WARN, "[i860] %08X: ## Page fault (readmemi_emu) virt=%08X", m_pc, addr);
-            debugger();
+//            debugger();
 #endif
 			m_exiting_readmem = 1;
 			return 0;
@@ -372,7 +375,7 @@ void i860_cpu_device::writememi_emu (UINT32 addr, int size, UINT32 data)
 		{
 #if TRACE_PAGE_FAULT
             Log_Printf(LOG_WARN, "[i860] 0x%08x: ## Page fault (writememi_emu) virt=%08X", m_pc, addr);
-            debugger();
+//            debugger();
 #endif
 			m_exiting_readmem = 2;
 			return;
@@ -420,7 +423,7 @@ void i860_cpu_device::fp_readmem_emu (UINT32 addr, int size, UINT8 *dest)
 		{
 #if TRACE_PAGE_FAULT
 			Log_Printf(LOG_WARN, "[i860] 0x%08x: ## Page fault (fp_readmem_emu) virt=%08X",m_pc,addr);
-            debugger();
+//            debugger();
 #endif
 			m_exiting_readmem = 3;
 			return;
@@ -461,7 +464,7 @@ void i860_cpu_device::fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT3
 		{
 #if TRACE_PAGE_FAULT
 			Log_Printf(LOG_WARN, "[i860] 0x%08x: ## Page fault (fp_writememi_emu) virt=%08X", m_pc,addr);
-            debugger();
+//            debugger();
 #endif
 			m_exiting_readmem = 4;
 			return;
@@ -624,7 +627,7 @@ inline INT32 sign_ext (UINT32 x, int n)
 void i860_cpu_device::unrecog_opcode (UINT32 pc, UINT32 insn)
 {
 	Log_Printf(LOG_WARN, "[i860:%08X] %08X   (unrecognized opcode)", pc, insn);
-    halt_i860();
+    halt_i860(true);
 }
 
 
@@ -678,7 +681,7 @@ void i860_cpu_device::insn_st_ctrl (UINT32 insn)
 #endif
 
     /* Look for CS8 bit turned off).  */
-    if (csrc2 == CR_DIRBASE && (get_iregval (isrc1) & 0x80) == 0) {
+    if (csrc2 == CR_DIRBASE && (get_iregval (isrc1) & 0x80) == 0 && GET_DIRBASE_CS8()) {
         Log_Printf(LOG_WARN, "[i860:%08X] Leaving CS8 mode", m_pc);
     }
     
@@ -693,9 +696,7 @@ void i860_cpu_device::insn_st_ctrl (UINT32 insn)
 		set_iregval (isrc1, (get_iregval (isrc1) & ~0x20));
 	}
 
-	if (csrc2 == CR_DIRBASE && (get_iregval (isrc1) & 1)
-		&& GET_DIRBASE_ATE () == 0)
-	{
+	if (csrc2 == CR_DIRBASE && (get_iregval (isrc1) & 1) && GET_DIRBASE_ATE () == 0){
 		Log_Printf(LOG_WARN, "[i860:%08X]** ATE going high!", m_pc);
 	}
 
@@ -901,12 +902,11 @@ void i860_cpu_device::insn_fsty (UINT32 insn)
 
 	/* Write data (value of freg fdest) to memory at eff.  */
 	if (size == 4)
-		fp_writemem_emu (eff, size, (UINT8 *)(&m_frg[4 * (31 - fdest)]), 0xff);
+		fp_writemem_emu (eff, size, (UINT8 *)(&m_frg[4 * fdest]), 0xff);
 	else if (size == 8)
-		fp_writemem_emu (eff, size, (UINT8 *)(&m_frg[4 * (31 - (fdest + 1))]), 0xff);
+		fp_writemem_emu (eff, size, (UINT8 *)(&m_frg[4 * fdest]), 0xff);
 	else
-		fp_writemem_emu (eff, size, (UINT8 *)(&m_frg[4 * (31 - (fdest + 3))]), 0xff);
-
+		fp_writemem_emu (eff, size, (UINT8 *)(&m_frg[4 * fdest]), 0xff);
 }
 
 
@@ -988,11 +988,11 @@ void i860_cpu_device::insn_fldy (UINT32 insn)
 		if (fdest > 1)
 		{
 			if (size == 4)
-				fp_readmem_emu (eff, size, (UINT8 *)&(m_frg[4 * (31 - fdest)]));
+				fp_readmem_emu (eff, size, (UINT8 *)&(m_frg[4 * fdest]));
 			else if (size == 8)
-				fp_readmem_emu (eff, size, (UINT8 *)&(m_frg[4 * (31 - (fdest + 1))]));
+				fp_readmem_emu (eff, size, (UINT8 *)&(m_frg[4 * fdest]));
 			else if (size == 16)
-				fp_readmem_emu (eff, size, (UINT8 *)&(m_frg[4 * (31 - (fdest + 3))]));
+				fp_readmem_emu (eff, size, (UINT8 *)&(m_frg[4 * fdest]));
 		}
 	}
 	else
@@ -1135,7 +1135,7 @@ void i860_cpu_device::insn_pstd (UINT32 insn)
 		}
 		orig_pm <<= 1;
 	}
-	bebuf = (UINT8 *)(&m_frg[4 * (31 - (fdest + 1))]);
+	bebuf = (UINT8 *)(&m_frg[4 * fdest]);
 	fp_writemem_emu (eff, 8, bebuf, wmask);
 }
 
@@ -4002,11 +4002,9 @@ void i860_cpu_device::decode_exec (UINT32 insn, UINT32 non_shadow)
     static char regs_buf[1024];
     UINT32 before[STATE_SZ];
     UINT32 after[STATE_SZ];
-    if(i860_trace(m_pc)) {
-        i860_disassembler(m_pc, insn, insn_buf);
-        get_state(before);
-        regs_buf[0] = 0;
-    }
+    i860_disassembler(m_pc, insn, insn_buf);
+    get_state(before);
+    regs_buf[0] = 0;
 #endif
 
 	flags = decode_tbl[upper_6bits].flags;
@@ -4043,17 +4041,10 @@ void i860_cpu_device::decode_exec (UINT32 insn, UINT32 non_shadow)
 		unrecog_opcode (m_pc, insn);
 
 #if TRACE_I860
-    if(i860_trace(m_pc)) {
-        get_state(after);
-        state_delta(regs_buf, before, after);
-        Log_Printf(LOG_WARN, "[i860:%08X] %s ; %s", before[I860_PC], insn_buf, regs_buf);
-        fflush(0);
-    }
+    get_state(after);
+    state_delta(regs_buf, before, after);
+    Log_Printf(LOG_WARN, "[i860:%08X] %s ; %s", before[I860_PC], insn_buf, regs_buf);
 #endif
-
-	/* For now, just treat every instruction as taking the same number of
-	   clocks-- a major oversimplification.  */
-	m_icount -= 9;
 }
 
 
@@ -4061,7 +4052,6 @@ void i860_cpu_device::decode_exec (UINT32 insn, UINT32 non_shadow)
 void i860_cpu_device::reset_i860 ()
 {
     m_halt   = false;
-    m_noints = false;
 
     UINT32 UNDEF_VAL = 0x55aa5500;
     
@@ -4132,30 +4122,25 @@ void i860_cpu_device::reset_i860 ()
 extern int i860_disassembler(UINT32 pc, UINT32 insn, char* buffer);
 
 /* Disassemble `len' instructions starting at `addr'.  */
-void i860_cpu_device::disasm (UINT32 addr, int len)
+UINT32 i860_cpu_device::disasm (UINT32 addr, int len)
 {
 	UINT32 insn;
 	int j;
 	for (j = 0; j < len; j++)
 	{
 		char buf[256];
-		UINT32 phys_addr = addr;
-		if (GET_DIRBASE_ATE ())
-			phys_addr = get_address_translation (addr, 1  /* is_dataref */, 0 /* is_write */);
-
 		/* Note that we print the incoming (possibly virtual) address as the
 		   PC rather than the translated address.  */
 		fprintf (stderr, " [i860] %08X: ", addr);
-		insn = rd32instr(phys_addr);
+		insn = ifetch_notrap(addr);
         i860_disassembler(addr, insn, buf);
         fprintf (stderr, "%s", buf);
 		fprintf (stderr, "\n");
 		addr += 4;
-#if 1
 		if (m_single_stepping == 1 && has_delay_slot (insn))
 			len += 1;
-#endif
 	}
+    return addr;
 }
 
 
@@ -4195,10 +4180,12 @@ void i860_cpu_device::dbg_db (UINT32 addr, int len)
 
 
 /* A simple internal debugger.  */
-void i860_cpu_device::debugger()
-{
+void i860_cpu_device::debugger() {
+    debugger("");
+}
+
+void i860_cpu_device::debugger(const char* format, ...) {
 	char buf[256];
-    char lastcmd;
 	UINT32 curr_disasm = m_pc;
 	UINT32 curr_dumpdb = 0;
 	int c = 0;
@@ -4206,7 +4193,6 @@ void i860_cpu_device::debugger()
 	if (m_single_stepping > 1 && m_single_stepping != m_pc)
 		return;
 
-	buf[0] = 0;
 
 	/* Always disassemble the upcoming instruction when single-stepping.  */
 	if (m_single_stepping) {
@@ -4214,14 +4200,27 @@ void i860_cpu_device::debugger()
 		if (has_delay_slot (2))
 			disasm (m_pc + 4, 1);
 	}
-	else
-		fprintf (stderr, "\n[i860] Emulator: internal debugger started (? for help).\n");
+    else {
+        va_list ap;
+        va_start (ap, format);
+        fprintf(stderr, "\n[i860]");
+        if(format[0]) {
+            fprintf(stderr, " (");
+            vfprintf (stderr, format, ap);
+        }
+        va_end (ap);
+        if(format[0])
+            fprintf(stderr, ")");
+        fprintf(stderr, " debugger started (? for help).\n");
+    }
 
+    buf[0] = 0;
 	fflush (stdin);
 
 	m_single_stepping = 0;
-	while (!m_single_stepping) {
-		fprintf (stderr, "- ");
+
+	while(!m_single_stepping) {
+		fprintf (stderr, ">");
         for(;;) {
 			char it = 0;
 			if (read(STDIN_FILENO, &it, 1) == 1) {
@@ -4234,53 +4233,84 @@ void i860_cpu_device::debugger()
 			}
 		}
         if(buf[0] == 0) {
-            buf[0] = lastcmd;
+            buf[0] = m_lastcmd;
             buf[1] = 0;
         } else {
-            lastcmd = buf[0];
+            m_lastcmd = buf[0];
         }
-		if (buf[0] == 'g') {
-			if (buf[1] == '0')
-				sscanf (buf + 1, "%x", &m_single_stepping);
-			else
-				break;
-			buf[1] = 0;
-			fprintf (stderr, "go until pc = 0x%08x.\n", m_single_stepping);
-			m_single_stepping = 0;    /* HACK */
-        } else if (buf[0] == 'r')
-			dump_state();
-		else if (buf[0] == 'u') {
-			if (buf[1] == '0')
-				sscanf (buf + 1, "%x", &curr_disasm);
-			disasm (curr_disasm, 10);
-			curr_disasm += 10 * 4;
-			buf[1] = 0;
-		} else if (buf[0] == 'p') {
-			if (buf[1] >= '0' && buf[1] <= '4')
-				dump_pipe (buf[1] - 0x30);
-			buf[1] = 0;
-		} else if (buf[0] == 's')
-			m_single_stepping = 1; else if (buf[0] == 'm') {
-			if (buf[1] == '0')
-				sscanf (buf + 1, "%x", &curr_dumpdb);
-			dbg_db (curr_dumpdb, 32);
-			curr_dumpdb += 32;
-        } else if (buf[0] == 'x' && buf[1] == '0') {
-			UINT32 v;
-			sscanf (buf + 1, "%x", &v);
-			if (GET_DIRBASE_ATE ())
-				fprintf (stderr, "vma 0x%08x ==> phys 0x%08x\n", v,
-							get_address_translation (v, 1, 0));
-			else
-				fprintf (stderr, "not in virtual address mode.\n");
-		}
-		else if (buf[0] == '?') {
-			fprintf (stderr, "  m: dump bytes (m[0xaddress])\n   r: dump registers\n   s: single-step\n   g: go back to emulator (g[0xaddress])\n   u: disassemble (u[0xaddress])\n   p: dump pipelines (p{0-4} for all, add, mul, load, graphics)\n   x: give virt->phys translation (x{0xaddress})\n");
-        } else
-			fprintf (stderr, "Bad command '%s'.\n", buf);
+        switch(buf[0]) {
+            case 'g':
+                if (buf[1] == '0')
+                    sscanf (buf + 1, "%x", &m_single_stepping);
+                else {
+                    m_single_stepping = 2;
+                    break;
+                }
+                buf[1] = 0;
+                fprintf (stderr, "go until pc = 0x%08x.\n", m_single_stepping);
+                break;
+            case 'h':
+                halt_i860(true);
+                m_single_stepping = 2;
+                break;
+            case 'c':
+                halt_i860(false);
+                m_single_stepping = 2;
+                break;
+            case 'r':
+                dump_state();
+                break;
+            case 'd':
+                if (buf[1] == '0')
+                    sscanf (buf + 1, "%x", &curr_disasm);
+                curr_disasm = disasm (curr_disasm, 10);
+                buf[1] = 0;
+                break;
+            case 'p':
+                if (buf[1] >= '0' && buf[1] <= '4')
+                    dump_pipe (buf[1] - 0x30);
+                buf[1] = 0;
+                break;
+           case 's':
+                m_single_stepping = 1;
+                break;
+            case 'm':
+                if (buf[1] == '0')
+                    sscanf (buf + 1, "%x", &curr_dumpdb);
+                dbg_db (curr_dumpdb, 32);
+                curr_dumpdb += 32;
+                break;
+            case 'x':
+                if(buf[1] == '0') {
+                    UINT32 v;
+                    sscanf (buf + 1, "%x", &v);
+                    if (GET_DIRBASE_ATE ())
+                        fprintf (stderr, "vma 0x%08x ==> phys 0x%08x\n", v, get_address_translation (v, 1, 0));
+                    else
+                        fprintf (stderr, "not in virtual address mode.\n");
+                    break;
+                }
+            case '?':
+                    fprintf (stderr,
+                             "   m: dump bytes (m[0xaddress])\n"
+                             "   r: dump registers\n"
+                             "   s: single-step\n"
+                             "   h: halt i860\n"
+                             "   c: continue i860\n"
+                             "   g: go back to emulator (g[0xaddress])\n"
+                             "   d: disassemble (u[0xaddress])\n"
+                             "   p: dump pipelines (p{0-4} for all, add, mul, load, graphics)\n"
+                             "   x: give virt->phys translation (x{0xaddress})\n");
+                    break;
+            default:
+                fprintf (stderr, "Bad command '%s'.\n", buf);
+                break;
+        }
 	}
 
 	/* Less noise when single-stepping.  */
-	if (m_single_stepping != 1)
+    if (m_single_stepping != 1) {
 		fprintf (stderr, "Debugger done, continuing emulation.\n");
+        m_single_stepping = 0;
+    }
 }

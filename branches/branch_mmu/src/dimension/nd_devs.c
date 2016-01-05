@@ -112,8 +112,10 @@ struct {
     uae_u32 csr;
     uae_u32 alpha;
     uae_u32 dma;
-    uae_u32 x;
-    uae_u32 y;
+    uae_u32 cpu_x;
+    uae_u32 cpu_y;
+    uae_u32 dma_x;
+    uae_u32 dma_y;
     uae_u32 iic_stat_addr;
     uae_u32 iic_data;
 } nd_dp;
@@ -149,8 +151,10 @@ void nd_devs_init() {
     nd_dp.csr           = 0;
     nd_dp.alpha         = 0;
     nd_dp.dma           = 0;
-    nd_dp.x             = 0;
-    nd_dp.y             = 0;
+    nd_dp.cpu_x         = 0xc;
+    nd_dp.cpu_y         = 0xc;
+    nd_dp.dma_x         = 0xd;
+    nd_dp.dma_y         = 0xd;
     nd_dp.iic_stat_addr = 0;
     nd_dp.iic_data      = 0;
 }
@@ -534,9 +538,13 @@ inline uae_u32 nd_dp_lget(uaecptr addr) {
         case 0x348:
             return nd_dp.dma;
         case 0x350:
-            return nd_dp.x;
+            return nd_dp.cpu_x;
         case 0x354:
-            return nd_dp.y;
+            return nd_dp.cpu_y;
+        case 0x358:
+            return nd_dp.dma_x;
+        case 0x35C:
+            return nd_dp.dma_y;
         case 0x360:
             if(nd_dp.iic_busy <= 0)
                 nd_dp.iic_stat_addr &= ~DP_IIC_BUSY;
@@ -563,10 +571,16 @@ inline void nd_dp_lput(uaecptr addr, uae_u32 v) {
             nd_dp.dma = v;
             break;
         case 0x350:
-            nd_dp.x = v;
+            nd_dp.cpu_x = v;
             break;
         case 0x354:
-            nd_dp.y = v;
+            nd_dp.cpu_y = v;
+            break;
+        case 0x358:
+            nd_dp.dma_x = v;
+            break;
+        case 0x35C:
+            nd_dp.dma_y = v;
             break;
         case 0x360:
             nd_dp.iic_msgsz = 0;
