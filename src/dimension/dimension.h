@@ -35,6 +35,7 @@ void nd_i860_init();
 void i860_Run(int nHostCycles);
 Uint32 i860_Disasm(char* buffer, Uint32 pc);
 bool i860_dbg_break(Uint32 addr);
+void nd_start_debugger(void);
 
 #define ND_LOG_IO_RD LOG_NONE
 #define ND_LOG_IO_WR LOG_WARN
