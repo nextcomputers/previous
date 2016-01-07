@@ -88,52 +88,41 @@ void nd_slot_bput(Uint32 addr, Uint8 b) {
     }
 }
 
-// TODO: (SC) hack to avoid access faults - should not happen anymore when i860 works properly
-#define ND_BOARD_ADDR_CHECK(addr,ret) if(addr < 0xF8000000) {Log_Printf(LOG_ERROR, "[ND] Illegal access at %08X", addr); return ret;}
-
 /* NeXTdimension board memory access */
 inline Uint32 nd_board_lget(Uint32 addr) {
     addr |= ND_BOARD_BITS;
-    ND_BOARD_ADDR_CHECK(addr,0);
     return nd_longget(addr);
 }
 
 inline Uint16 nd_board_wget(Uint32 addr) {
     addr |= ND_BOARD_BITS;
-    ND_BOARD_ADDR_CHECK(addr,0);
     return nd_wordget(addr);
 }
 
 inline Uint8 nd_board_bget(Uint32 addr) {
     addr |= ND_BOARD_BITS;
-    ND_BOARD_ADDR_CHECK(addr,0);
     return nd_byteget(addr);
 }
 
 inline void nd_board_lput(Uint32 addr, Uint32 l) {
     addr |= ND_BOARD_BITS;
-    ND_BOARD_ADDR_CHECK(addr,);
     nd_longput(addr, l);
 }
 
 inline void nd_board_wput(Uint32 addr, Uint16 w) {
     addr |= ND_BOARD_BITS;
-    ND_BOARD_ADDR_CHECK(addr,);
     nd_wordput(addr, w);
 }
 
 inline void nd_board_bput(Uint32 addr, Uint8 b) {
     addr |= ND_BOARD_BITS;
-    ND_BOARD_ADDR_CHECK(addr,);
     nd_byteput(addr, b);
 }
 
 inline Uint8 nd_board_cs8get(Uint32 addr) {
     addr |= ND_BOARD_BITS;
-    ND_BOARD_ADDR_CHECK(addr, 0);
     return nd_cs8get(addr);
 }
-
 
 /* Debugger */
 bool nd_start_debug = false;

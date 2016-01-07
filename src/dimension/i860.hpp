@@ -59,41 +59,26 @@ extern "C" {
     UINT32 nd_board_lget(UINT32 addr);
     void   nd_board_lput(UINT32 addr, UINT32 val);
     int    nd_process_interrupts(int nHostCycles);
+    bool   nd_dbg_cmd(const char* cmd);
     bool   i860_dbg_break(UINT32 addr);
+    void   Statusbar_Seti860Led(int value);
 }
 
 /***************************************************************************
     REGISTER ENUMERATION
 ***************************************************************************/
 
-enum {
-	I860_PC = 1,
-
-	I860_FIR,
-	I860_PSR,
-	I860_DIRBASE,
-	I860_DB,
-	I860_FSR,
-	I860_EPSR,
-
-	I860_R0,  I860_R1,  I860_R2,  I860_R3,  I860_R4,  I860_R5,  I860_R6,  I860_R7,  I860_R8,  I860_R9,
-	I860_R10, I860_R11, I860_R12, I860_R13, I860_R14, I860_R15, I860_R16, I860_R17, I860_R18, I860_R19,
-	I860_R20, I860_R21, I860_R22, I860_R23, I860_R24, I860_R25, I860_R26, I860_R27, I860_R28, I860_R29,
-	I860_R30, I860_R31,
-
-	I860_F0,  I860_F1,  I860_F2,  I860_F3,  I860_F4,  I860_F5,  I860_F6,  I860_F7,  I860_F8,  I860_F9,
-	I860_F10, I860_F11, I860_F12, I860_F13, I860_F14, I860_F15, I860_F16, I860_F17, I860_F18, I860_F19,
-	I860_F20, I860_F21, I860_F22, I860_F23, I860_F24, I860_F25, I860_F26, I860_F27, I860_F28, I860_F29,
-	I860_F30, I860_F31,
-};
-
-const int STATE_SZ = I860_F31+1;
-
 /* Defines for pending_trap.  */
 enum {
     TRAP_NORMAL        = 0x01,
     TRAP_IN_DELAY_SLOT = 0x02,
     TRAP_WAS_EXTERNAL  = 0x04
+};
+
+/* i860 pins.  */
+enum {
+    DEC_PIN_BUS_HOLD,       /* Bus HOLD pin.      */
+    DEC_PIN_RESET           /* System reset pin.  */
 };
 
 /* Macros for accessing register fields in instruction word.  */
@@ -220,15 +205,8 @@ enum {
 #define GET_FSR_SE()  ((m_cregs[CR_FSR] >> 8) & 1)
 #define SET_FSR_SE(val)  (m_cregs[CR_FSR] = (m_cregs[CR_FSR] & ~(1 << 8)) | (((val) & 1) << 8))
 
-#define BYTE_REV32(t)   \
-{ \
-(t) = ((UINT32)(t) >> 16) | ((UINT32)(t) << 16); \
-(t) = (((UINT32)(t) >> 8) & 0x00ff00ff) | (((UINT32)(t) << 8) & 0xff00ff00); \
-}
-#define BYTE_REV16(t)   \
-{ \
-(t) = (((UINT16)(t) >> 8) & 0x00ff) | (((UINT16)(t) << 8) & 0xff00); \
-}
+#define SWAP_UINT16(x) ((((UINT16)(x)) >> 8) | (((UINT16)(x)) << 8))
+#define SWAP_UINT32(x) ((((UINT32)(x)) >> 24) | ((((UINT32)(x)) & 0x00FF0000) >> 8) | ((((UINT32)(x)) & 0x0000FF00) << 8) | (((UINT32)(x)) << 24))
 
 /* Control register numbers.  */
 enum {
@@ -274,72 +252,51 @@ public:
 class i860_cpu_device {
 public:
 	// construction/destruction
-	i860_cpu_device();
+    i860_cpu_device() {}
 
     void init();
+    
+    // run one i860 cycle
     void run_cycle(int nHostCycles);
     
-	/* This is the external interface for asserting an external interrupt
-	   to the i860.  */
+	/* This is the external interface for asserting an external interrupt to the i860.  */
 	void i860_gen_interrupt();
 
-    /* This is the external interface for clearing an external interrupt
-     to the i860.  */
+    /* This is the external interface for clearing an external interrupt of the i860.  */
     void i860_clr_interrupt();
 
-	/* This is the external interface for asserting/deasserting a pin on
-	   the i860.  */
-	void i860_set_pin(int, int);
+    /* This is the external interface for reseting the i860.  */
+    void i860_reset();
 
-	/* Hard or soft reset.  */
-	void reset_i860();
-
-    /* Halt i860 */
-    bool m_halt;
-    
-    void halt_i860(bool state) {
-        if(state)
+    /* This is the external interface for halting the i860.  */
+    void i860_halt(bool state) {
+        if(state) {
+            m_halt = true;
             Log_Printf(LOG_WARN, "[i860] **** HALTED ****");
-        else
+        } else {
             Log_Printf(LOG_WARN, "[i860] **** RESTARTED ****");
-        m_halt = state;
+            m_halt = false;
+        }
     }
     
     /* Program counter (1 x 32-bits).  Reset starts at pc=0xffffff00.  */
     UINT32 m_pc;
     
     // device_disasm_interface overrides
-    virtual UINT32 disasm_min_opcode_bytes() const { return 4; }
-    virtual UINT32 disasm_max_opcode_bytes() const { return 4; }
-    virtual offs_t disasm(char *buffer, offs_t pc);
+    UINT32 disasm_min_opcode_bytes() const { return 4; }
+    UINT32 disasm_max_opcode_bytes() const { return 4; }
+    offs_t disasm(char *buffer, offs_t pc);
     
     // debugger
     void debugger(const char* format, ...);
     void debugger();
 protected:
-	// device-level overrides
-	virtual void device_start();
-	virtual void device_reset();
-
 	// device_execute_interface overrides
-	virtual UINT32 execute_min_cycles() const { return 1; }
-	virtual UINT32 execute_max_cycles() const { return 8; }
-	virtual UINT32 execute_input_lines() const { return 0; }
-
-    void get_state(UINT32* state) {
-        for(int i = 0; i < STATE_SZ; i++)
-            state[i] = m_regs[i].get();
-    }
-    
-    i860_reg & state(int regId, const char* name, UINT32 * reg) {
-        m_regs[regId].set(regId, name, reg);
-        return m_regs[regId];
-    }
-    
-    void state_delta(char* buffer, const UINT32* oldstate, const UINT32* newstate);
+	UINT32 execute_min_cycles() const { return 1; }
+	UINT32 execute_max_cycles() const { return 8; }
+	UINT32 execute_input_lines() const { return 0; }
 private:
     char m_lastcmd; // last debugger command
-    i860_reg m_regs[STATE_SZ];
     
 	/* Integer registers (32 x 32-bits).  */
 	UINT32 m_iregs[32];
@@ -422,16 +379,13 @@ private:
 		} stat;
 	} m_G;
 
-	/* Pins.  */
-	int m_pin_bus_hold;
-	int m_pin_reset;
-
 	/*
 	 * Other emulator state.
 	 */
-	int m_exiting_readmem;
-	int m_exiting_ifetch;
-
+	int  m_exiting_readmem;
+	int  m_exiting_ifetch;
+    bool m_halt;
+    
 	/* Indicate a control-flow instruction, so we know the PC is updated.  */
 	int m_pc_updated;
 
@@ -447,8 +401,10 @@ private:
 	/* Single stepping flag for internal use.  */
 	int m_single_stepping;
 
+    /* Dual instruction mode flag */
+    int m_dim;
+    
     /* memory access */
-
     inline void rddata(UINT32 addr, int size, UINT8* data) {
         switch(size) {
             case 4:
@@ -477,10 +433,10 @@ private:
                 wr32(addr+0, ((UINT32*)data)[1]);
                 break;
             case 16:
-                wr32(addr+4,  ((UINT32*)data)[0]);
-                wr32(addr+0,  ((UINT32*)data)[1]);
-                wr32(addr+12, ((UINT32*)data)[2]);
-                wr32(addr+8,  ((UINT32*)data)[3]);
+                wr32(addr+4, ((UINT32*)data)[0]);
+                wr32(addr+0, ((UINT32*)data)[1]);
+                wr32(addr+12,((UINT32*)data)[2]);
+                wr32(addr+8, ((UINT32*)data)[3]);
                 break;
         }
     }
@@ -538,6 +494,7 @@ private:
         else
             nd_board_lput(addr^4, val);
     }
+    
 	void writememi_emu (UINT32 addr, int size, UINT32 data);
 	void fp_readmem_emu (UINT32 addr, int size, UINT8 *dest);
 	void fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT32 wmask);
@@ -624,7 +581,7 @@ private:
 	UINT32 readmemi_emu (UINT32 addr, int size);
 	float get_fval_from_optype_s (UINT32 insn, int optype);
 	double get_fval_from_optype_d (UINT32 insn, int optype);
-
+    
 	typedef void (i860_cpu_device::*insn_func)(UINT32);
 	struct decode_tbl_t
 	{
@@ -636,13 +593,6 @@ private:
 	static const decode_tbl_t decode_tbl[64];
 	static const decode_tbl_t core_esc_decode_tbl[8];
 	static const decode_tbl_t fp_decode_tbl[128];
-};
-
-
-/* i860 pins.  */
-enum {
-	DEC_PIN_BUS_HOLD,       /* Bus HOLD pin.      */
-	DEC_PIN_RESET           /* System reset pin.  */
 };
 
 /* disassembler */
