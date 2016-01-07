@@ -1,3 +1,7 @@
+#include <stdio.h>
+#include <limits.h>
+#include <stdlib.h>
+
 #include "main.h"
 #include "configuration.h"
 #include "m68000.h"
@@ -52,7 +56,7 @@
 
 #define CSRDRAM_4MBIT       0x00000001
 
-struct {
+static struct {
     uae_u32 csr0;
     uae_u32 csr1;
     uae_u32 csr2;
@@ -96,15 +100,14 @@ const int VIDEO_V_FRONT       = 5 * VIDEO_HBL_CYC;
 const int VIDEO_V_BACK        = VIDEO_VBL_CYC - VIDEO_V_FRONT - (VIDEO_VIS_HEIGHT * VIDEO_HBL_CYC);
 
 /* Cycle count for VBL interrupts */
-int nd_vbl_cyc_count;
+static int nd_vbl_cyc_count;
 /* Cycle count for video interrupts */
-int nd_video_cyc_count;
-
+static int nd_video_cyc_count;
 
 #define DP_IIC_MORE 0x20000000
 #define DP_IIC_BUSY 0x80000000
 
-struct {
+static struct {
     uae_u8  iic_addr;
     uae_u8  iic_msg[4096];
     uae_u32 iic_msgsz;
@@ -125,7 +128,7 @@ void nd_devs_init() {
     nd_mc.csr1          = 0;
     nd_mc.csr2          = 0;
     nd_mc.sid           = ND_SLOT;
-    nd_mc.dma_csr       = 0x80000000;
+    nd_mc.dma_csr       = 0;
     nd_mc.dma_start     = 0;
     nd_mc.dma_width     = 0;
     nd_mc.dma_pstart    = 0;
@@ -159,7 +162,7 @@ void nd_devs_init() {
     nd_dp.iic_data      = 0;
 }
 
-const char* MC_RD_FORMAT = "[ND] Memory controller %s read %08X at %08X";
+static const char* MC_RD_FORMAT = "[ND] Memory controller %s read %08X at %08X";
 
 uae_u32 nd_mc_read_register(uaecptr addr) {
 	switch (addr&0x3FFF) {
@@ -236,7 +239,7 @@ uae_u32 nd_mc_read_register(uaecptr addr) {
 	return 0;
 }
 
-const char* ND_CSR0_BITS[] = {
+static const char* ND_CSR0_BITS[] = {
     "i860PIN_RESET",   "i860PIN_CS8",     "i860_IMASK",  "i860_INT",
     "BE_IMASK",        "BE_INT",          "VBL_IMASK",   "VBL_INT",
     "VBLANK",          "VIOVBL_IMASK",    "VIOVBL_INT",  "VIOBLANK",
@@ -247,7 +250,7 @@ const char* ND_CSR0_BITS[] = {
     "10000000",        "20000000",        "40000000",    "80000000",
 };
 
-const char* ND_CSR1_BITS[] = {
+static const char* ND_CSR1_BITS[] = {
     "CPU_INT",         "00000002",        "00000004",    "00000008",
     "00000010",        "00000020",        "00000040",    "00000080",
     "00000100",        "00000200",        "00000400",    "00000800",
@@ -258,7 +261,7 @@ const char* ND_CSR1_BITS[] = {
     "10000000",        "20000000",        "40000000",    "80000000",
 };
 
-const char* ND_CSR2_BITS[] = {
+static const char* ND_CSR2_BITS[] = {
     "GLOBAL_ACCESS",   "00000002",        "00000004",    "00000008",
     "00000010",        "00000020",        "00000040",    "00000080",
     "00000100",        "00000200",        "00000400",    "00000800",
@@ -269,29 +272,71 @@ const char* ND_CSR2_BITS[] = {
     "10000000",        "20000000",        "40000000",    "80000000",
 };
 
-const char* decodeBits(const char** strs, uae_u32 val) {
+static const char* ND_DMA_CSR_BITS[] = {
+    "VISIBLE_EN",      "BLANKED_EN",      "READ_EN",    "00000008",
+    "00000010",        "00000020",        "00000040",    "00000080",
+    "00000100",        "00000200",        "00000400",    "00000800",
+    "00001000",        "00002000",        "00004000",    "00008000",
+    "00010000",        "00020000",        "00040000",    "00080000",
+    "00100000",        "00200000",        "00400000",    "00800000",
+    "01000000",        "02000000",        "04000000",    "08000000",
+    "10000000",        "20000000",        "40000000",    "80000000",
+};
+
+static const char* ND_VRAM_BITS[] = {
+    "VBLANK",          "60HZ",            "EXT_SYNC",    "00000008",
+    "00000010",        "00000020",        "00000040",    "00000080",
+    "00000100",        "00000200",        "00000400",    "00000800",
+    "00001000",        "00002000",        "00004000",    "00008000",
+    "00010000",        "00020000",        "00040000",    "00080000",
+    "00100000",        "00200000",        "00400000",    "00800000",
+    "01000000",        "02000000",        "04000000",    "08000000",
+    "10000000",        "20000000",        "40000000",    "80000000",
+};
+
+static const char* ND_DRAM_BITS[] = {
+    "4MBIT",           "00000002",        "00000004",    "00000008",
+    "00000010",        "00000020",        "00000040",    "00000080",
+    "00000100",        "00000200",        "00000400",    "00000800",
+    "00001000",        "00002000",        "00004000",    "00008000",
+    "00010000",        "00020000",        "00040000",    "00080000",
+    "00100000",        "00200000",        "00400000",    "00800000",
+    "01000000",        "02000000",        "04000000",    "08000000",
+    "10000000",        "20000000",        "40000000",    "80000000",
+};
+
+static const char* decodeBits(const char** bits, uae_u32 val) {
     static char buffer[512];
-    char* result = buffer;
-    *result = 0;
-    for(int i = 0; i < 32; i++) {
-        if(val & (1 << i)) {
-            const char* str = strs[i];
-            while(*str) *result++ = *str++;
-            *result++ = '|';
+    char*       result = buffer;
+    
+    if(bits) {
+        *result = 0;
+        for(int i = 0; i < 32; i++) {
+            if(val & (1 << i)) {
+                const char* str = bits[i];
+                while(*str) *result++ = *str++;
+                *result++ = '|';
+            }
         }
-    }
-    if(result != buffer)
-        *--result = 0;
+        if(result != buffer)
+            *--result = 0;
+        }
+    else
+        sprintf(buffer, "%08X", val);
     return buffer;
 }
 
-const char* MC_WR_FORMAT   = "[ND] Memory controller %s write %08X at %08X";
-const char* MC_WR_FORMAT_S = "[ND] Memory controller %s write (%s) at %08X";
+static const char* MC_WR_FORMAT   = "[ND] Memory controller %s write %08X at %08X";
+static const char* MC_WR_FORMAT_S = "[ND] Memory controller %s write (%s) at %08X";
 
 void nd_mc_write_register(uaecptr addr, uae_u32 val) {
     switch (addr&0x3FFF) {
         case 0x0000:
             Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT_S,"csr0", decodeBits(ND_CSR0_BITS, val), addr);
+            if(val & CSR0_i860PIN_RESET) {
+                i860_reset();
+                val &= ~CSR0_i860PIN_RESET;
+            }
             nd_mc.csr0 = val;
             break;
         case 0x0010:
@@ -312,7 +357,7 @@ void nd_mc_write_register(uaecptr addr, uae_u32 val) {
             nd_mc.sid = val;
             break;
         case 0x1000:
-            Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT,"dma_csr", val,addr);
+            Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT_S,"dma_csr", decodeBits(ND_DMA_CSR_BITS, val),addr);
             nd_mc.dma_csr = val;
             break;
         case 0x1010:
@@ -376,11 +421,11 @@ void nd_mc_write_register(uaecptr addr, uae_u32 val) {
             nd_mc.dma_out_a = val;
             break;
         case 0x2000:
-            Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT,"vram", val,addr);
+            Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT_S,"vram", decodeBits(ND_VRAM_BITS, val),addr);
             nd_mc.vram = val;
             break;
         case 0x3000:
-            Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT,"dram", val,addr);
+            Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT_S,"dram", decodeBits(ND_DRAM_BITS, val),addr);
             nd_mc.dram = val;
             break;
         default:
@@ -431,12 +476,6 @@ int nd_process_interrupts(int nHostCycles) {
             result = 1;
     }
     
-    if(nd_mc.csr0 & CSR0_i860PIN_RESET) {
-        nd_i860_init();
-        nd_mc.csr0 &= ~CSR0_i860PIN_RESET;
-        result = 0;
-    }
-
     return result;
 }
 
@@ -465,7 +504,9 @@ inline void nd_io_bput(uaecptr addr, uae_u32 b) {
     
 }
 
-struct {
+/* NeXTdimension RAMDAC */
+
+static struct {
     int   addr;
     int   idx;
     Uint8 regs[0x1000];
@@ -479,7 +520,6 @@ static void nd_ramdac_autoinc() {
     }
 }
 
-/* NeXTdimension RAMDAC */
 inline uae_u32 nd_ramdac_bget(uaecptr addr) {
     uae_u32 result = 0;
     switch(addr & 0xF) {
@@ -524,11 +564,12 @@ inline void nd_ramdac_bput(uaecptr addr, uae_u32 b) {
     }
 }
 
-void nd_dp_iicmsg() {
+/* NeXTdimension data path */
+
+static void nd_dp_iicmsg() {
     Log_Printf(LOG_WARN, "[ND] data path IIC msg addr:%02X msg[%d]=%02X", nd_dp.iic_addr, nd_dp.iic_msgsz-1, nd_dp.iic_msg[nd_dp.iic_msgsz-1]);
 }
 
-/* NeXTdimension data path */
 inline uae_u32 nd_dp_lget(uaecptr addr) {
     switch(addr) {
         case 0x340:
@@ -598,6 +639,62 @@ inline void nd_dp_lput(uaecptr addr, uae_u32 v) {
             break;
         default:
             Log_Printf(LOG_WARN, "[ND] data path UNKNOWN write at %08X %08X",addr,v);
+    }
+}
+
+static const char* nd_dump_path = "nd_memory.bin";
+
+/* debugger stuff */
+bool nd_dbg_cmd(const char* buf) {
+    if(!(buf)) {
+        fprintf(stderr,
+                "   w: write NeXTdimension DRAM to file '%s'\n"
+                "   n: dump NeXTdimension registers\n"
+                , nd_dump_path);
+        return false;
+    }
+    
+    switch(buf[0]) {
+        case 'w': {
+            char tmp[PATH_MAX];
+            FILE* fp = fopen(nd_dump_path, "wb");
+            size_t size  = ConfigureParams.Dimension.nMemoryBankSize[0];
+            size        += ConfigureParams.Dimension.nMemoryBankSize[1];
+            size        += ConfigureParams.Dimension.nMemoryBankSize[2];
+            size        += ConfigureParams.Dimension.nMemoryBankSize[3];
+            fprintf(stderr, "Writing %luMB to '%s'...", size, realpath(nd_dump_path, tmp));
+            size <<= 20;
+            fwrite(ND_ram, sizeof(Uint8), size, fp);
+            fclose(fp);
+            fprintf(stderr, "done.");
+            return true;
+        }
+        case 'n': {
+            fprintf(stderr, "csr0        (%s)\n", decodeBits(ND_CSR0_BITS,    nd_mc.csr0));
+            fprintf(stderr, "csr1        (%s)\n", decodeBits(ND_CSR1_BITS,    nd_mc.csr1));
+            fprintf(stderr, "csr2        (%s)\n", decodeBits(ND_CSR2_BITS,    nd_mc.csr2));
+            fprintf(stderr, "sid         (%s)\n", decodeBits(0,               nd_mc.sid));
+            fprintf(stderr, "dma_csr     (%s)\n", decodeBits(ND_DMA_CSR_BITS, nd_mc.dma_csr));
+            fprintf(stderr, "dma_start   (%s)\n", decodeBits(0,               nd_mc.dma_start));
+            fprintf(stderr, "dma_width   (%s)\n", decodeBits(0,               nd_mc.dma_width));
+            fprintf(stderr, "dma_pstart  (%s)\n", decodeBits(0,               nd_mc.dma_pstart));
+            fprintf(stderr, "dma_pwidth  (%s)\n", decodeBits(0,               nd_mc.dma_pwidth));
+            fprintf(stderr, "dma_sstart  (%s)\n", decodeBits(0,               nd_mc.dma_sstart));
+            fprintf(stderr, "dma_swidth  (%s)\n", decodeBits(0,               nd_mc.dma_swidth));
+            fprintf(stderr, "dma_bsstart (%s)\n", decodeBits(0,               nd_mc.dma_bsstart));
+            fprintf(stderr, "dma_bswidth (%s)\n", decodeBits(0,               nd_mc.dma_bswidth));
+            fprintf(stderr, "dma_top     (%s)\n", decodeBits(0,               nd_mc.dma_top));
+            fprintf(stderr, "dma_bottom  (%s)\n", decodeBits(0,               nd_mc.dma_bottom));
+            fprintf(stderr, "dma_line_a  (%s)\n", decodeBits(0,               nd_mc.dma_line_a));
+            fprintf(stderr, "dma_curr_a  (%s)\n", decodeBits(0,               nd_mc.dma_curr_a));
+            fprintf(stderr, "dma_scurr_a (%s)\n", decodeBits(0,               nd_mc.dma_scurr_a));
+            fprintf(stderr, "dma_out_a   (%s)\n", decodeBits(0,               nd_mc.dma_out_a));
+            fprintf(stderr, "vram        (%s)\n", decodeBits(ND_VRAM_BITS,    nd_mc.vram));
+            fprintf(stderr, "dram        (%s)\n", decodeBits(ND_DRAM_BITS,    nd_mc.dram));
+            return true;
+        }
+        default:
+            return false;
     }
 }
 

@@ -122,7 +122,7 @@ static void flop_12d(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 	const char *const suffix[4] = { "ss", "sd", "ds", "dd" };
 	const char *prefix_d, *prefix_p;
 	prefix_p = (insn & 0x400) ? "p" : "";
-	prefix_d = (insn & 0x200) ? "d." : "";
+	prefix_d = (insn & 0x200) ? "d." : "  ";
 
 	/* Special case: pf[m]am and pf[m]sm families are always pipelined, so they
 	   do not have a prefix.  Also, for the pfmam and pfmsm families, replace
@@ -177,7 +177,7 @@ static void flop_1d(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 	const char *prefix_d, *prefix_p;
 	int s = (insn & 0x180) >> 7;
 	prefix_p = (insn & 0x400) ? "p" : "";
-	prefix_d = (insn & 0x200) ? "d." : "";
+	prefix_d = (insn & 0x200) ? "d." : "  ";
 	sprintf(buf, "%s%s%s%s\t%%f%d,%%f%d", prefix_d, prefix_p, mnemonic,
 		suffix[s], get_fsrc1 (insn), get_fdest (insn));
 }
@@ -190,7 +190,7 @@ static void flop_2d(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 	const char *const suffix[4] = { "ss", "sd", "ds", "dd" };
 	const char *prefix_d;
 	int s = (insn & 0x180) >> 7;
-	prefix_d = (insn & 0x200) ? "d." : "";
+	prefix_d = (insn & 0x200) ? "d." : "  ";
 	sprintf(buf, "%s%s%s\t%%f%d,%%f%d", prefix_d, mnemonic, suffix[s],
 		get_fsrc2 (insn), get_fdest (insn));
 }
@@ -200,7 +200,7 @@ static void flop_2d(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
  *  fxfr fsrc1,idest.  */
 static void flop_fxfr(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 {
-	const char *prefix_d = (insn & 0x200) ? "d." : "";
+	const char *prefix_d = (insn & 0x200) ? "d." : "  ";
 	sprintf(buf, "%s%s\t%%f%d,%%r%d", prefix_d, mnemonic, get_fsrc1 (insn),
 		get_idest (insn));
 }
@@ -398,70 +398,70 @@ static const decode_tbl_t decode_tbl[64] =
 	/* A slight bit of decoding for loads and stores is done in the
 	   execution routines (operand size and addressing mode), which
 	   is why their respective entries are identical.  */
-	{ int_ldx,   DEC_DECODED, "ld."        }, /* ld.b isrc1(isrc2),idest.  */
-	{ int_ldx,   DEC_DECODED, "ld."        }, /* ld.b #const(isrc2),idest.  */
-	{ int_1d,    DEC_DECODED, "ixfr"       }, /* ixfr isrc1ni,fdest.        */
-	{ int_stx,   DEC_DECODED, "st."        }, /* st.b isrc1ni,#const(isrc2).  */
-	{ int_ldx,   DEC_DECODED, "ld."        }, /* ld.{s,l} isrc1(isrc2),idest.  */
-	{ int_ldx,   DEC_DECODED, "ld."        }, /* ld.{s,l} #const(isrc2),idest.  */
+	{ int_ldx,   DEC_DECODED, "  ld."        }, /* ld.b isrc1(isrc2),idest.  */
+	{ int_ldx,   DEC_DECODED, "  ld."        }, /* ld.b #const(isrc2),idest.  */
+	{ int_1d,    DEC_DECODED, "  ixfr"       }, /* ixfr isrc1ni,fdest.        */
+	{ int_stx,   DEC_DECODED, "  st."        }, /* st.b isrc1ni,#const(isrc2).  */
+	{ int_ldx,   DEC_DECODED, "  ld."        }, /* ld.{s,l} isrc1(isrc2),idest.  */
+	{ int_ldx,   DEC_DECODED, "  ld."        }, /* ld.{s,l} #const(isrc2),idest.  */
 	{ 0,         0           , 0           },
-	{ int_stx,   DEC_DECODED, "st."        }, /* st.{s,l} isrc1ni,#const(isrc2),idest.*/
-	{ int_fldst, DEC_DECODED, "fld."       }, /* fld.{l,d,q} isrc1(isrc2)[++],fdest.  */
-	{ int_fldst, DEC_DECODED, "fld."       }, /* fld.{l,d,q} #const(isrc2)[++],fdest. */
-	{ int_fldst, DEC_DECODED, "fst."       }, /* fst.{l,d,q} fdest,isrc1(isrc2)[++]   */
-	{ int_fldst, DEC_DECODED, "fst."       }, /* fst.{l,d,q} fdest,#const(isrc2)[++]  */
-	{ int_cd,    DEC_DECODED, "ld.c"       }, /* ld.c csrc2,idest.                    */
-	{ int_flush, DEC_DECODED, "flush"      }, /* flush #const(isrc2) (or autoinc).    */
-	{ int_1c,    DEC_DECODED, "st.c"       }, /* st.c isrc1,csrc2.                    */
-	{ int_fldst, DEC_DECODED, "pstd."      }, /* pst.d fdest,#const(isrc2)[++].       */
-	{ int_1,     DEC_DECODED, "bri"        }, /* bri isrc1ni.                         */
-	{ int_12d,   DEC_DECODED, "trap"       }, /* trap isrc1ni,isrc2,idest.            */
+	{ int_stx,   DEC_DECODED, "  st."        }, /* st.{s,l} isrc1ni,#const(isrc2),idest.*/
+	{ int_fldst, DEC_DECODED, "  fld."       }, /* fld.{l,d,q} isrc1(isrc2)[++],fdest.  */
+	{ int_fldst, DEC_DECODED, "  fld."       }, /* fld.{l,d,q} #const(isrc2)[++],fdest. */
+	{ int_fldst, DEC_DECODED, "  fst."       }, /* fst.{l,d,q} fdest,isrc1(isrc2)[++]   */
+	{ int_fldst, DEC_DECODED, "  fst."       }, /* fst.{l,d,q} fdest,#const(isrc2)[++]  */
+	{ int_cd,    DEC_DECODED, "  ld.c"       }, /* ld.c csrc2,idest.                    */
+	{ int_flush, DEC_DECODED, "  flush"      }, /* flush #const(isrc2) (or autoinc).    */
+	{ int_1c,    DEC_DECODED, "  st.c"       }, /* st.c isrc1,csrc2.                    */
+	{ int_fldst, DEC_DECODED, "  pstd."      }, /* pst.d fdest,#const(isrc2)[++].       */
+	{ int_1,     DEC_DECODED, "  bri"        }, /* bri isrc1ni.                         */
+	{ int_12d,   DEC_DECODED, "  trap"       }, /* trap isrc1ni,isrc2,idest.            */
 	{ 0,         DEC_MORE,    0            }, /* FP ESCAPE FORMAT, more decode.       */
 	{ 0,         DEC_MORE,    0            }, /* CORE ESCAPE FORMAT, more decode.     */
-	{ int_12S,   DEC_DECODED, "btne"       }, /* btne isrc1,isrc2,sbroff.             */
-	{ int_i2S,   DEC_DECODED, "btne"       }, /* btne #const,isrc2,sbroff.            */
-	{ int_12S,   DEC_DECODED, "bte"        }, /* bte isrc1,isrc2,sbroff.              */
-	{ int_i2S,   DEC_DECODED, "bte"        }, /* bte #const5,isrc2,idest.             */
-	{ int_fldst, DEC_DECODED, "pfld."      }, /* pfld.{l,d,q} isrc1(isrc2)[++],fdest. */
-	{ int_fldst, DEC_DECODED, "pfld."      }, /* pfld.{l,d,q} #const(isrc2)[++],fdest.*/
-	{ int_L,     DEC_DECODED, "br"         }, /* br lbroff.    */
-	{ int_L,     DEC_DECODED, "call"       }, /* call lbroff . */
-	{ int_L,     DEC_DECODED, "bc"         }, /* bc lbroff.    */
-	{ int_L,     DEC_DECODED, "bc.t"       }, /* bc.t lbroff.  */
-	{ int_L,     DEC_DECODED, "bnc"        }, /* bnc lbroff.   */
-	{ int_L,     DEC_DECODED, "bnc.t"      }, /* bnc.t lbroff. */
-	{ int_12d,   DEC_DECODED, "addu"       }, /* addu isrc1,isrc2,idest.    */
-	{ int_i2d,   DEC_DECODED, "addu"       }, /* addu #const,isrc2,idest.   */
-	{ int_12d,   DEC_DECODED, "subu"       }, /* subu isrc1,isrc2,idest.    */
-	{ int_i2d,   DEC_DECODED, "subu"       }, /* subu #const,isrc2,idest.   */
-	{ int_12d,   DEC_DECODED, "adds"       }, /* adds isrc1,isrc2,idest.    */
-	{ int_i2d,   DEC_DECODED, "adds"       }, /* adds #const,isrc2,idest.   */
-	{ int_12d,   DEC_DECODED, "subs"       }, /* subs isrc1,isrc2,idest.    */
-	{ int_i2d,   DEC_DECODED, "subs"       }, /* subs #const,isrc2,idest.   */
-	{ int_12d,   DEC_DECODED, "shl"        }, /* shl isrc1,isrc2,idest.     */
-	{ int_i2d,   DEC_DECODED, "shl"        }, /* shl #const,isrc2,idest.    */
-	{ int_12d,   DEC_DECODED, "shr"        }, /* shr isrc1,isrc2,idest.     */
-	{ int_i2d,   DEC_DECODED, "shr"        }, /* shr #const,isrc2,idest.    */
-	{ int_12d,   DEC_DECODED, "shrd"       }, /* shrd isrc1ni,isrc2,idest.  */
-	{ int_12S,   DEC_DECODED, "bla"        }, /* bla isrc1ni,isrc2,sbroff.  */
-	{ int_12d,   DEC_DECODED, "shra"       }, /* shra isrc1,isrc2,idest.    */
-	{ int_i2d,   DEC_DECODED, "shra"       }, /* shra #const,isrc2,idest.   */
-	{ int_12d,   DEC_DECODED, "and"        }, /* and isrc1,isrc2,idest.     */
-	{ int_i2d,   DEC_DECODED, "and"        }, /* and #const,isrc2,idest.    */
+	{ int_12S,   DEC_DECODED, "  btne"       }, /* btne isrc1,isrc2,sbroff.             */
+	{ int_i2S,   DEC_DECODED, "  btne"       }, /* btne #const,isrc2,sbroff.            */
+	{ int_12S,   DEC_DECODED, "  bte"        }, /* bte isrc1,isrc2,sbroff.              */
+	{ int_i2S,   DEC_DECODED, "  bte"        }, /* bte #const5,isrc2,idest.             */
+	{ int_fldst, DEC_DECODED, "  pfld."      }, /* pfld.{l,d,q} isrc1(isrc2)[++],fdest. */
+	{ int_fldst, DEC_DECODED, "  pfld."      }, /* pfld.{l,d,q} #const(isrc2)[++],fdest.*/
+	{ int_L,     DEC_DECODED, "  br"         }, /* br lbroff.    */
+	{ int_L,     DEC_DECODED, "  call"       }, /* call lbroff . */
+	{ int_L,     DEC_DECODED, "  bc"         }, /* bc lbroff.    */
+	{ int_L,     DEC_DECODED, "  bc.t"       }, /* bc.t lbroff.  */
+	{ int_L,     DEC_DECODED, "  bnc"        }, /* bnc lbroff.   */
+	{ int_L,     DEC_DECODED, "  bnc.t"      }, /* bnc.t lbroff. */
+	{ int_12d,   DEC_DECODED, "  addu"       }, /* addu isrc1,isrc2,idest.    */
+	{ int_i2d,   DEC_DECODED, "  addu"       }, /* addu #const,isrc2,idest.   */
+	{ int_12d,   DEC_DECODED, "  subu"       }, /* subu isrc1,isrc2,idest.    */
+	{ int_i2d,   DEC_DECODED, "  subu"       }, /* subu #const,isrc2,idest.   */
+	{ int_12d,   DEC_DECODED, "  adds"       }, /* adds isrc1,isrc2,idest.    */
+	{ int_i2d,   DEC_DECODED, "  adds"       }, /* adds #const,isrc2,idest.   */
+	{ int_12d,   DEC_DECODED, "  subs"       }, /* subs isrc1,isrc2,idest.    */
+	{ int_i2d,   DEC_DECODED, "  subs"       }, /* subs #const,isrc2,idest.   */
+	{ int_12d,   DEC_DECODED, "  shl"        }, /* shl isrc1,isrc2,idest.     */
+	{ int_i2d,   DEC_DECODED, "  shl"        }, /* shl #const,isrc2,idest.    */
+	{ int_12d,   DEC_DECODED, "  shr"        }, /* shr isrc1,isrc2,idest.     */
+	{ int_i2d,   DEC_DECODED, "  shr"        }, /* shr #const,isrc2,idest.    */
+	{ int_12d,   DEC_DECODED, "  shrd"       }, /* shrd isrc1ni,isrc2,idest.  */
+	{ int_12S,   DEC_DECODED, "  bla"        }, /* bla isrc1ni,isrc2,sbroff.  */
+	{ int_12d,   DEC_DECODED, "  shra"       }, /* shra isrc1,isrc2,idest.    */
+	{ int_i2d,   DEC_DECODED, "  shra"       }, /* shra #const,isrc2,idest.   */
+	{ int_12d,   DEC_DECODED, "  and"        }, /* and isrc1,isrc2,idest.     */
+	{ int_i2d,   DEC_DECODED, "  and"        }, /* and #const,isrc2,idest.    */
 	{ 0,         0           , 0           },
-	{ int_i2d,   DEC_DECODED, "andh"       }, /* andh #const,isrc2,idest.   */
-	{ int_12d,   DEC_DECODED, "andnot"     }, /* andnot isrc1,isrc2,idest.  */
-	{ int_i2d,   DEC_DECODED, "andnot"     }, /* andnot #const,isrc2,idest. */
+	{ int_i2d,   DEC_DECODED, "  andh"       }, /* andh #const,isrc2,idest.   */
+	{ int_12d,   DEC_DECODED, "  andnot"     }, /* andnot isrc1,isrc2,idest.  */
+	{ int_i2d,   DEC_DECODED, "  andnot"     }, /* andnot #const,isrc2,idest. */
 	{ 0,         0           , 0           },
-	{ int_i2d,   DEC_DECODED, "andnoth"    }, /* andnoth #const,isrc2,idest.*/
-	{ int_12d,   DEC_DECODED, "or"         }, /* or isrc1,isrc2,idest.      */
-	{ int_i2d,   DEC_DECODED, "or"         }, /* or #const,isrc2,idest.     */
+	{ int_i2d,   DEC_DECODED, "  andnoth"    }, /* andnoth #const,isrc2,idest.*/
+	{ int_12d,   DEC_DECODED, "  or"         }, /* or isrc1,isrc2,idest.      */
+	{ int_i2d,   DEC_DECODED, "  or"         }, /* or #const,isrc2,idest.     */
 	{ 0,         0           , 0           },
-	{ int_i2d,   DEC_DECODED, "orh"        }, /* orh #const,isrc2,idest.    */
-	{ int_12d,   DEC_DECODED, "xor"        }, /* xor isrc1,isrc2,idest.     */
-	{ int_i2d,   DEC_DECODED, "xor"        }, /* xor #const,isrc2,idest.    */
+	{ int_i2d,   DEC_DECODED, "  orh"        }, /* orh #const,isrc2,idest.    */
+	{ int_12d,   DEC_DECODED, "  xor"        }, /* xor isrc1,isrc2,idest.     */
+	{ int_i2d,   DEC_DECODED, "  xor"        }, /* xor #const,isrc2,idest.    */
 	{ 0,         0           , 0           },
-	{ int_i2d,   DEC_DECODED, "xorh"       }, /* xorh #const,isrc2,idest.   */
+	{ int_i2d,   DEC_DECODED, "  xorh"       }, /* xorh #const,isrc2,idest.   */
 };
 
 
@@ -469,13 +469,13 @@ static const decode_tbl_t decode_tbl[64] =
 static const decode_tbl_t core_esc_decode_tbl[8] =
 {
 	{ 0,         0          , 0           },
-	{ int_0,     DEC_DECODED, "lock"      }, /* lock.           */
-	{ int_1,     DEC_DECODED, "calli"     }, /* calli isrc1ni.  */
+	{ int_0,     DEC_DECODED, "  lock"      }, /* lock.           */
+	{ int_1,     DEC_DECODED, "  calli"     }, /* calli isrc1ni.  */
 	{ 0,         0          , 0           },
-	{ int_0,     DEC_DECODED, "intovr"    }, /* intovr.         */
+	{ int_0,     DEC_DECODED, "  intovr"    }, /* intovr.         */
 	{ 0,         0          , 0           },
 	{ 0,         0          , 0           },
-	{ int_0,     DEC_DECODED, "unlock"    }, /* unlock.         */
+	{ int_0,     DEC_DECODED, "  unlock"    }, /* unlock.         */
 };
 
 
@@ -657,7 +657,7 @@ int i860_disassembler(UINT32 pc, UINT32 insn, char* buffer)
 	int upper_6bits = (insn >> 26) & 0x3f;
 	char flags = decode_tbl[upper_6bits].flags;
     if(insn == 0xA0000000) {
-        strcpy(buffer, "nop");
+        strcpy(buffer, "  nop");
         unrecognized_op = 0;
     }
 	else if (flags & DEC_DECODED)

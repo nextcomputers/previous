@@ -27,6 +27,7 @@ Uint64 swap64(Uint64 val);
 Uint32 swap32(Uint32 val);
 Uint16 swap16(Uint16 val);
 
+extern Uint8 ND_ram[64*1024*1024];
 extern Uint8 ND_rom[128*1024];
 extern Uint8 ND_vram[4*1024*1024];
 
@@ -35,10 +36,11 @@ void nd_i860_init();
 void i860_Run(int nHostCycles);
 Uint32 i860_Disasm(char* buffer, Uint32 pc);
 bool i860_dbg_break(Uint32 addr);
+void i860_reset();
 void nd_start_debugger(void);
 
 #define ND_LOG_IO_RD LOG_NONE
-#define ND_LOG_IO_WR LOG_WARN
+#define ND_LOG_IO_WR LOG_NONE
 
 #endif
 
