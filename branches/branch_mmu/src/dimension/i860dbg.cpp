@@ -112,6 +112,11 @@ void i860_cpu_device::debugger(const char* format, ...) {
             case 'w':
                 nd_dbg_cmd(buf);
                 break;
+            case 'k':
+                m_console[m_console_idx] = 0;
+                fputs(m_console, stderr);
+                fflush(stderr);
+                break;
             case 'm':
                 if (buf[1] == '0')
                     sscanf (buf + 1, "%x", &curr_dumpdb);
@@ -136,6 +141,7 @@ void i860_cpu_device::debugger(const char* format, ...) {
                          "   h: halt i860\n"
                          "   c: continue i860\n"
                          "   g: go back to emulator (g[0xaddress])\n"
+                         "   k: print console buffer\n"
                          "   d: disassemble (u[0xaddress])\n"
                          "   p: dump pipelines (p{0-4} for all, add, mul, load, graphics)\n"
                          "   x: give virt->phys translation (x{0xaddress})\n");

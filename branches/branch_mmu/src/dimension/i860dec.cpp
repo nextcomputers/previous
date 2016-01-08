@@ -87,7 +87,7 @@ void i860_cpu_device::i860_gen_interrupt()
 	   bit EPSR.INT (which tracks the INT pin).  */
 	if (GET_PSR_IM ()) {
 		SET_PSR_IN (1);
-		m_pending_trap = TRAP_WAS_EXTERNAL;
+		m_pending_trap |= TRAP_WAS_EXTERNAL;
 	}
     SET_EPSR_INT (1);
 
@@ -353,6 +353,22 @@ void i860_cpu_device::writememi_emu (UINT32 addr, int size, UINT32 data)
 #if TRACE_RDWR_MEM
 	Log_Printf(LOG_WARN, "[i860] wrmem (ATE=%d) addr = 0x%08x, size = %d, data = 0x%08x\n", GET_DIRBASE_ATE (), addr, size, data); fflush(0);
 #endif
+
+    if(addr == 0xF83FE800 || addr == 0xF80ff800) {
+        if(data == 0) {
+            // catch ND console writes
+            UINT32 ptr = addr + 4;
+            int count = readmemi_emu(ptr, 4);
+            ptr += 4;
+            if(count < 1024) { // sanity check
+                for(int i = 0; i < count; i++) {
+                    char ch =readmemi_emu(ptr++, 1);
+                    if(ch == '\r') continue;
+                    m_console[m_console_idx++] = ch;
+                }
+            }
+        }
+    }
 
 	/* If virtual mode, do translation.  */
 	if (GET_DIRBASE_ATE ())
@@ -902,13 +918,10 @@ void i860_cpu_device::insn_fldy (UINT32 insn)
 		m_L[2] = m_L[1];
 		m_L[1] = m_L[0];
 		if (size == 8) {
-			UINT8 *t = (UINT8 *)&(m_L[0].val.d);
-            t[0] = bebuf[0]; t[1] = bebuf[1]; t[2] = bebuf[2]; t[3] = bebuf[3];
-            t[4] = bebuf[4]; t[5] = bebuf[5]; t[6] = bebuf[6]; t[7] = bebuf[7];
+            m_L[0].val.d = *((double*)bebuf);
 			m_L[0].stat.lrp = 1;
 		} else {
-			UINT8 *t = (UINT8 *)&(m_L[0].val.s);
-            t[0] = bebuf[0]; t[1] = bebuf[1]; t[2] = bebuf[2]; t[3] = bebuf[3];
+            m_L[0].val.s = *((float*)bebuf);
 			m_L[0].stat.lrp = 0;
 		}
 	}
@@ -1713,6 +1726,7 @@ void i860_cpu_device::insn_xorh_imm (UINT32 insn)
 /* Execute "trap isrc1ni,isrc2,idest" instruction.  */
 void i860_cpu_device::insn_trap (UINT32 insn)
 {
+    debugger("Software TRAP");
 	SET_PSR_IT (1);
 	m_pending_trap = TRAP_NORMAL;
 }
