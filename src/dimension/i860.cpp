@@ -59,11 +59,13 @@ void i860_cpu_device::run_cycle(int nHostCycles) {
     
     decode_exec (ifetch (m_pc), 1);
     
-    if(nd_process_interrupts(nHostCycles))
-        i860_gen_interrupt();
-    else
-        i860_clr_interrupt();
-
+    if(!(m_pending_trap)) {
+        if(nd_process_interrupts(nHostCycles))
+            i860_gen_interrupt();
+        else
+            i860_clr_interrupt();
+    }
+    
     m_exiting_ifetch = 0;
     m_exiting_readmem = 0;
     
@@ -129,6 +131,7 @@ void i860_cpu_device::run_cycle(int nHostCycles) {
 void i860_cpu_device::init() {
     m_single_stepping = 0;
     m_lastcmd         = 0;
+    m_console_idx     = 0;
 
     // some sanity checks for endianess
     int    err    = 0;

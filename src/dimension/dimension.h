@@ -34,7 +34,6 @@ extern Uint8 ND_vram[4*1024*1024];
 void dimension_reset(void);
 void nd_i860_init();
 void i860_Run(int nHostCycles);
-Uint32 i860_Disasm(char* buffer, Uint32 pc);
 bool i860_dbg_break(Uint32 addr);
 void i860_reset();
 void nd_start_debugger(void);

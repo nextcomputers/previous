@@ -297,6 +297,8 @@ protected:
 	UINT32 execute_input_lines() const { return 0; }
 private:
     char m_lastcmd; // last debugger command
+    char m_console[4*1024*1024];
+    int  m_console_idx;
     
 	/* Integer registers (32 x 32-bits).  */
 	UINT32 m_iregs[32];
@@ -315,6 +317,7 @@ private:
 		float s;
 		double d;
 	} m_KR, m_KI, m_T;
+    
 	UINT64 m_merge;
 
 	/* The adder pipeline, always 3 stages.  */
