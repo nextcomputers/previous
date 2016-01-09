@@ -126,21 +126,16 @@ inline Uint8 nd_board_cs8get(Uint32 addr) {
 
 /* Debugger */
 bool nd_start_debug = false;
-bool nd_break_armed = true;
 
 void nd_start_debugger(void) {
 	nd_start_debug = true;
 }
 
 inline bool i860_dbg_break(Uint32 addr) {
+  //  if(addr == 0xF8001534) return true;
     if(nd_start_debug) {
-        if(nd_break_armed) {
-            nd_break_armed = false;
-			nd_start_debug = false;
-            return true;
-        }
-    } else {
-        nd_break_armed = true;
+        nd_start_debug = false;
+        return true;
     }
     return false;
 }

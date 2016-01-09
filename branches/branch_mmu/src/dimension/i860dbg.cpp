@@ -19,10 +19,10 @@ extern int i860_disassembler(UINT32 pc, UINT32 insn, char* buffer);
 
 /* A simple internal debugger.  */
 void i860_cpu_device::debugger() {
-    debugger("");
+    debugger(0, "");
 }
 
-void i860_cpu_device::debugger(const char* format, ...) {
+void i860_cpu_device::debugger(char cmd, const char* format, ...) {
     char buf[256];
     UINT32 curr_disasm = m_pc;
     UINT32 curr_dumpdb = 0;
@@ -43,35 +43,44 @@ void i860_cpu_device::debugger(const char* format, ...) {
         if(format[0])
             fprintf(stderr, ")");
         fprintf(stderr, " debugger started (? for help).\n");
-        }
-    
-    disasm (m_pc, 1);
-    if (has_delay_slot (2))
-        disasm (m_pc + 4, 1);
-    
+    }
+        
+    if(!(cmd)) {
+        disasm (m_pc, 1);
+        if (has_delay_slot (2))
+            disasm (m_pc + 4, 1);
+    }
+
     buf[0] = 0;
     fflush (stdin);
     
     m_single_stepping = 0;
     
     while(!m_single_stepping) {
-        fprintf (stderr, ">");
-        for(;;) {
-            char it = 0;
-            if (read(STDIN_FILENO, &it, 1) == 1) {
-                if (it == '\n') {
-                    buf[c] = 0;
-                    c = 0;
-                    break;
-                }
-                buf[c++] = it;
-            }
-        }
-        if(buf[0] == 0) {
-            buf[0] = m_lastcmd;
-            buf[1] = 0;
+        if(cmd) {
+            m_lastcmd = cmd;
+            buf[0]    = cmd;
+            buf[1]    = 0;
+            cmd       = 0;
         } else {
-            m_lastcmd = buf[0];
+            fprintf (stderr, ">");
+            for(;;) {
+                char it = 0;
+                if (read(STDIN_FILENO, &it, 1) == 1) {
+                    if (it == '\n') {
+                        buf[c] = 0;
+                        c = 0;
+                        break;
+                    }
+                    buf[c++] = it;
+                }
+            }
+            if(buf[0] == 0) {
+                buf[0] = m_lastcmd;
+                buf[1] = 0;
+            } else {
+                m_lastcmd = buf[0];
+            }
         }
         switch(buf[0]) {
             case 'g':

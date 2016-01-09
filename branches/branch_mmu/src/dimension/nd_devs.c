@@ -80,7 +80,7 @@ static struct {
     uae_u32 dram;
 } nd_mc;
 
-const int I860_CYC            = 33 * 1000 * 1000;
+const int I860_CYC            = 25 * 1000 * 1000;
 const int VBL_CYC             = I860_CYC / 68;
 const int HEIGHT              = 900; // guess
 const int VIS_HEIGHT          = 832;
@@ -162,82 +162,6 @@ void nd_devs_init() {
     nd_dp.iic_data      = 0;
 }
 
-static const char* MC_RD_FORMAT = "[ND] Memory controller %s read %08X at %08X";
-
-uae_u32 nd_mc_read_register(uaecptr addr) {
-	switch (addr&0x3FFF) {
-		case 0x0000:
-			Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"csr0", nd_mc.csr0,addr);
-			return nd_mc.csr0;
-		case 0x0010:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"csr1", nd_mc.csr1,addr);
-			return nd_mc.csr1;
-		case 0x0020:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"csr2", nd_mc.csr2,addr);
-			return nd_mc.csr2;
-		case 0x0030:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"sid", nd_mc.sid,addr);
-			return nd_mc.sid;
-		case 0x1000:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_csr", nd_mc.dma_csr,addr);
-            return nd_mc.dma_csr;
-        case 0x1010:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_start", nd_mc.dma_start,addr);
-            return nd_mc.dma_start;
-        case 0x1020:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_width", nd_mc.dma_width,addr);
-            return nd_mc.dma_width;
-        case 0x1030:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_pstart", nd_mc.dma_pstart,addr);
-            return nd_mc.dma_pstart;
-        case 0x1040:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_pwidth", nd_mc.dma_pwidth,addr);
-            return nd_mc.dma_pwidth;
-        case 0x1050:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_sstart", nd_mc.dma_sstart,addr);
-            return nd_mc.dma_sstart;
-        case 0x1060:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_swidth", nd_mc.dma_swidth,addr);
-            return nd_mc.dma_swidth;
-        case 0x1070:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_bsstart", nd_mc.dma_bsstart,addr);
-            return nd_mc.dma_bsstart;
-        case 0x1080:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_bswidth", nd_mc.dma_bswidth,addr);
-            return nd_mc.dma_bswidth;
-        case 0x1090:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_top", nd_mc.dma_top,addr);
-            return nd_mc.dma_top;
-        case 0x10A0:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_bottom", nd_mc.dma_bottom,addr);
-            return nd_mc.dma_bottom;
-        case 0x10B0:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_line_a", nd_mc.dma_line_a,addr);
-            return nd_mc.dma_line_a;
-        case 0x10C0:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_curr_a", nd_mc.dma_curr_a,addr);
-            return nd_mc.dma_curr_a;
-        case 0x10D0:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_line_a", nd_mc.dma_line_a,addr);
-            return nd_mc.dma_line_a;
-        case 0x10E0:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_scurr_a", nd_mc.dma_scurr_a,addr);
-            return nd_mc.dma_scurr_a;
-        case 0x10F0:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_out_a", nd_mc.dma_out_a,addr);
-            return nd_mc.dma_out_a;
-		case 0x2000:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"vram", nd_mc.vram,addr);
-            return nd_mc.vram;
-		case 0x3000:
-            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dram", nd_mc.dram,addr);
-            return nd_mc.dram;
-		default:
-			Log_Printf(LOG_WARN, "[ND] Memory controller UNKNOWN read at %08X",addr);
-            break;
-	}
-	return 0;
-}
 
 static const char* ND_CSR0_BITS[] = {
     "i860PIN_RESET",   "i860PIN_CS8",     "i860_IMASK",  "i860_INT",
@@ -320,10 +244,88 @@ static const char* decodeBits(const char** bits, uae_u32 val) {
         }
         if(result != buffer)
             *--result = 0;
-        }
+    }
     else
         sprintf(buffer, "%08X", val);
     return buffer;
+}
+
+static const char* MC_RD_FORMAT   = "[ND] Memory controller %s read %08X at %08X";
+static const char* MC_RD_FORMAT_S = "[ND] Memory controller %s read (%s) at %08X";
+
+uae_u32 nd_mc_read_register(uaecptr addr) {
+	switch (addr&0x3FFF) {
+		case 0x0000:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT_S,"csr0", decodeBits(ND_CSR0_BITS, nd_mc.csr0),addr);
+			return nd_mc.csr0;
+		case 0x0010:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT_S,"csr1", decodeBits(ND_CSR1_BITS, nd_mc.csr1),addr);
+			return nd_mc.csr1;
+		case 0x0020:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT_S,"csr2", decodeBits(ND_CSR2_BITS, nd_mc.csr2),addr);
+			return nd_mc.csr2;
+		case 0x0030:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"sid", nd_mc.sid,addr);
+			return nd_mc.sid;
+		case 0x1000:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT_S,"dma_csr", decodeBits(ND_DMA_CSR_BITS, nd_mc.dma_csr),addr);
+            return nd_mc.dma_csr;
+        case 0x1010:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_start", nd_mc.dma_start,addr);
+            return nd_mc.dma_start;
+        case 0x1020:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_width", nd_mc.dma_width,addr);
+            return nd_mc.dma_width;
+        case 0x1030:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_pstart", nd_mc.dma_pstart,addr);
+            return nd_mc.dma_pstart;
+        case 0x1040:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_pwidth", nd_mc.dma_pwidth,addr);
+            return nd_mc.dma_pwidth;
+        case 0x1050:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_sstart", nd_mc.dma_sstart,addr);
+            return nd_mc.dma_sstart;
+        case 0x1060:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_swidth", nd_mc.dma_swidth,addr);
+            return nd_mc.dma_swidth;
+        case 0x1070:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_bsstart", nd_mc.dma_bsstart,addr);
+            return nd_mc.dma_bsstart;
+        case 0x1080:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_bswidth", nd_mc.dma_bswidth,addr);
+            return nd_mc.dma_bswidth;
+        case 0x1090:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_top", nd_mc.dma_top,addr);
+            return nd_mc.dma_top;
+        case 0x10A0:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_bottom", nd_mc.dma_bottom,addr);
+            return nd_mc.dma_bottom;
+        case 0x10B0:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_line_a", nd_mc.dma_line_a,addr);
+            return nd_mc.dma_line_a;
+        case 0x10C0:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_curr_a", nd_mc.dma_curr_a,addr);
+            return nd_mc.dma_curr_a;
+        case 0x10D0:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_line_a", nd_mc.dma_line_a,addr);
+            return nd_mc.dma_line_a;
+        case 0x10E0:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_scurr_a", nd_mc.dma_scurr_a,addr);
+            return nd_mc.dma_scurr_a;
+        case 0x10F0:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT,"dma_out_a", nd_mc.dma_out_a,addr);
+            return nd_mc.dma_out_a;
+		case 0x2000:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT_S,"vram", decodeBits(ND_VRAM_BITS, nd_mc.vram),addr);
+            return nd_mc.vram;
+		case 0x3000:
+            Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT_S,"dram", decodeBits(ND_DRAM_BITS, nd_mc.dram),addr);
+            return nd_mc.dram;
+		default:
+			Log_Printf(LOG_WARN, "[ND] Memory controller UNKNOWN read at %08X",addr);
+            break;
+	}
+	return 0;
 }
 
 static const char* MC_WR_FORMAT   = "[ND] Memory controller %s write %08X at %08X";
@@ -436,6 +438,8 @@ void nd_mc_write_register(uaecptr addr, uae_u32 val) {
 
 /* interrupt processing */
 int nd_process_interrupts(int nHostCycles) {
+    //static Uint32 oldcsr0;
+    
     nd_vbl_cyc_count   -= nHostCycles;
     nd_video_cyc_count -= nHostCycles;
     
@@ -475,6 +479,13 @@ int nd_process_interrupts(int nHostCycles) {
         if(nd_mc.csr0 & CSR0_BE_IMASK)
             result = 1;
     }
+ 
+    /*
+    if(result && (oldcsr0 ^ nd_mc.csr0)) {
+        oldcsr0 = nd_mc.csr0;
+        Log_Printf(LOG_WARN, "[ND] external interrupt csr0=%s", decodeBits(ND_CSR0_BITS, nd_mc.csr0));
+    }
+    */
     
     return result;
 }
