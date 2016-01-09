@@ -13,6 +13,7 @@
 #include "ioMemTables.h"
 #include "m68000.h"
 #include "configuration.h"
+#include "dimension.h"
 #include "sysReg.h"
 #include "rtcnvram.h"
 
@@ -843,7 +844,14 @@ void nvram_init(void) {
         case MC68HC68T1: rtc.ram[17] &= ~NEW_CLOCK_CHIP; break;
         default: break;
     }
-    
+#if ENABLE_DIMENSION
+	/* Set prefered console slot */
+	if (ConfigureParams.Dimension.bEnabled &&
+		ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
+		rtc.ram[17] |= USE_CONSOLE_SLOT;
+		rtc.ram[17] |= (ND_SLOT>>1)<<3;
+	}
+#endif
     /* Re-calculate checksum */
     nvram_checksum(1);
 }
