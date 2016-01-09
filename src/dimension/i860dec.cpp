@@ -49,23 +49,22 @@
 #define get_iregval(gr)       (m_iregs[(gr)])
 #define set_iregval(gr, val)  (m_iregs[(gr)] = ((gr) == 0 ? 0 : (val)))
 
-
 inline float i860_cpu_device::get_fregval_s (int fr) {
-    return *(float *)(&m_frg[fr * 4]);
-}
-
-inline double i860_cpu_device::get_fregval_d (int fr) {
-    return *(double *)(&m_frg[fr * 4]);
+    return *(float*)(&m_frg[fr * 4]);
 }
 
 inline void i860_cpu_device::set_fregval_s (int fr, float s) {
     if(fr > 1)
-        *(float *)(&m_frg[fr * 4]) = s;
+        *(float*)(&m_frg[fr * 4]) = s;
+}
+
+inline double i860_cpu_device::get_fregval_d (int fr) {
+    return *(double*)(&m_frg[fr * 4]);
 }
 
 inline void i860_cpu_device::set_fregval_d (int fr, double d) {
     if(fr > 1)
-        *(double *)(&m_frg[fr * 4]) = d;
+        *(double*)(&m_frg[fr * 4]) = d;
 }
 
 int i860_cpu_device::has_delay_slot(UINT32 insn)
@@ -355,18 +354,42 @@ void i860_cpu_device::writememi_emu (UINT32 addr, int size, UINT32 data)
 #endif
 
     if(addr == 0xF83FE800 || addr == 0xF80ff800) {
-        if(data == 0) {
-            // catch ND console writes
-            UINT32 ptr = addr + 4;
-            int count = readmemi_emu(ptr, 4);
-            ptr += 4;
-            if(count < 1024) { // sanity check
-                for(int i = 0; i < count; i++) {
-                    char ch =readmemi_emu(ptr++, 1);
-                    if(ch == '\r') continue;
-                    m_console[m_console_idx++] = ch;
+        switch(data) {
+            case 0: {
+                // catch ND console writes
+                UINT32 ptr   = addr + 4;
+                int    count = readmemi_emu(ptr, 4);
+                int    col   = 0;
+                ptr += 4;
+                if(count < 1024) { // sanity check
+                    for(int i = 0; i < count; i++) {
+                        char ch =readmemi_emu(ptr++, 1);
+                        switch(ch) { // msg cleanup & tab expand for debugger console
+                            case '\r': continue;
+                            case '\t': while(col++ % 16) m_console[m_console_idx++] = ' '; continue;
+                            case '\n':
+                                col = -1;
+                                // fall-through
+                            default:
+                                m_console[m_console_idx++] = ch;
+                                col++;
+                                break;
+                        }
+                    }
+                    m_console[m_console_idx] = 0;
+                    if(strstr(m_console, "NeXTdimension Trap:"))
+                        m_break_on_next_msg = true;
+                } }
+                break;
+            case 4:
+                debugger('k', "NeXTdimension Exit");
+                break;
+            case 5:
+                if(m_break_on_next_msg) {
+                    m_break_on_next_msg = false;
+                    debugger('k', "NeXTdimension Trap");
                 }
-            }
+                break;
         }
     }
 
@@ -378,7 +401,6 @@ void i860_cpu_device::writememi_emu (UINT32 addr, int size, UINT32 data)
 		{
 #if TRACE_PAGE_FAULT
             Log_Printf(LOG_WARN, "[i860] 0x%08x: ## Page fault (writememi_emu) virt=%08X", m_pc, addr);
-//            debugger();
 #endif
 			m_exiting_readmem = 2;
 			return;
@@ -442,7 +464,7 @@ void i860_cpu_device::fp_readmem_emu (UINT32 addr, int size, UINT8 *dest)
 		return;
 	}
 
-    rddata(addr, size, dest);
+    frddata(addr, size, dest);
 }
 
 
@@ -504,7 +526,7 @@ void i860_cpu_device::fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT3
             if (wmask & 0x01) wr8(addr+7, data[7]);
         }
     } else {
-        wrdata(addr, size, data);
+        fwrdata(addr, size, data);
     }
 }
 
@@ -878,15 +900,13 @@ void i860_cpu_device::insn_fldy (UINT32 insn)
 		/* Scalar version writes the current result to fdest.  */
 		/* Read data at 'eff' into freg 'fdest' (reads to f0 or f1 are
 		   thrown away).  */
-		if (fdest > 1)
-		{
-			if (size == 4)
-				fp_readmem_emu (eff, size, (UINT8 *)&(m_frg[4 * fdest]));
-			else if (size == 8)
-				fp_readmem_emu (eff, size, (UINT8 *)&(m_frg[4 * fdest]));
-			else if (size == 16)
-				fp_readmem_emu (eff, size, (UINT8 *)&(m_frg[4 * fdest]));
-		}
+        fp_readmem_emu (eff, size, (UINT8 *)&(m_frg[4 * fdest]));
+		if (fdest == 0) {
+            // (SC) special case with fdest=fr0. fr0 & fr1 are overwritten with values from mem
+            // but always read as zero. Fix it.
+            m_frg[0] = 0; m_frg[1] = 0; m_frg[2] = 0; m_frg[3] = 0;
+            m_frg[4] = 0; m_frg[5] = 0; m_frg[6] = 0; m_frg[7] = 0;
+        }
 	}
 	else
 	{
@@ -1726,7 +1746,7 @@ void i860_cpu_device::insn_xorh_imm (UINT32 insn)
 /* Execute "trap isrc1ni,isrc2,idest" instruction.  */
 void i860_cpu_device::insn_trap (UINT32 insn)
 {
-    debugger("Software TRAP");
+    debugger('d', "Software TRAP");
 	SET_PSR_IT (1);
 	m_pending_trap = TRAP_NORMAL;
 }
