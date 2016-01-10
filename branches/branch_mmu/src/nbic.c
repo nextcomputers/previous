@@ -566,7 +566,22 @@ void nextbus_init(void) {
         nextbus_slot[ND_SLOT].wput = nd_slot_wput;
         nextbus_slot[ND_SLOT].bput = nd_slot_bput;
         
-        dimension_reset();
-    }
+        dimension_init();
+	} else {
+		nextbus_board[ND_SLOT].lget = nb_timeout_lget;
+		nextbus_board[ND_SLOT].wget = nb_timeout_wget;
+		nextbus_board[ND_SLOT].bget = nb_timeout_bget;
+		nextbus_board[ND_SLOT].lput = nb_timeout_lput;
+		nextbus_board[ND_SLOT].wput = nb_timeout_wput;
+		nextbus_board[ND_SLOT].bput = nb_timeout_bput;
+		nextbus_slot[ND_SLOT].lget = nb_timeout_lget;
+		nextbus_slot[ND_SLOT].wget = nb_timeout_wget;
+		nextbus_slot[ND_SLOT].bget = nb_timeout_bget;
+		nextbus_slot[ND_SLOT].lput = nb_timeout_lput;
+		nextbus_slot[ND_SLOT].wput = nb_timeout_wput;
+		nextbus_slot[ND_SLOT].bput = nb_timeout_bput;
+		
+		dimension_uninit();
+	}
 #endif
 }

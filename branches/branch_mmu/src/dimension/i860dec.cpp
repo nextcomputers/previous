@@ -598,6 +598,7 @@ void i860_cpu_device::insn_st_ctrl (UINT32 insn)
     /* Look for CS8 bit turned off).  */
     if (csrc2 == CR_DIRBASE && (get_iregval (isrc1) & 0x80) == 0 && GET_DIRBASE_CS8()) {
         Log_Printf(LOG_WARN, "[i860:%08X] Leaving CS8 mode", m_pc);
+		Statusbar_SetNdLed(2);
     }
     
 	/* Look for ITI bit turned on (but it never actually is written --

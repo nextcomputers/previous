@@ -61,7 +61,7 @@ extern "C" {
     int    nd_process_interrupts(int nHostCycles);
     bool   nd_dbg_cmd(const char* cmd);
     bool   i860_dbg_break(UINT32 addr);
-    void   Statusbar_Seti860Led(int value);
+    void   Statusbar_SetNdLed(int state);
 }
 
 /***************************************************************************
@@ -255,6 +255,8 @@ public:
     i860_cpu_device() {}
 
     void init();
+	
+	void uninit();
     
     // run one i860 cycle
     void run_cycle(int nHostCycles);
@@ -273,9 +275,11 @@ public:
         if(state) {
             m_halt = true;
             Log_Printf(LOG_WARN, "[i860] **** HALTED ****");
+			Statusbar_SetNdLed(0);
         } else {
             Log_Printf(LOG_WARN, "[i860] **** RESTARTED ****");
             m_halt = false;
+			Statusbar_SetNdLed(1);
         }
     }
     
