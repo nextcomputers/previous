@@ -901,8 +901,8 @@ void i860_cpu_device::insn_fldy (UINT32 insn)
 		/* Read data at 'eff' into freg 'fdest' (reads to f0 or f1 are
 		   thrown away).  */
         fp_readmem_emu (eff, size, (UINT8 *)&(m_frg[4 * fdest]));
-		if (fdest == 0) {
-            // (SC) special case with fdest=fr0. fr0 & fr1 are overwritten with values from mem
+		if (fdest < 2) {
+            // (SC) special case with fdest=fr0/fr1. fr0 & fr1 are overwritten with values from mem
             // but always read as zero. Fix it.
             m_frg[0] = 0; m_frg[1] = 0; m_frg[2] = 0; m_frg[3] = 0;
             m_frg[4] = 0; m_frg[5] = 0; m_frg[6] = 0; m_frg[7] = 0;
