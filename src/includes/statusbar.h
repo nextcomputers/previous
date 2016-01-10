@@ -24,6 +24,7 @@ extern int Statusbar_GetHeight(void);
 extern void Statusbar_BlinkLed(drive_index_t drive);
 extern void Statusbar_SetSystemLed(bool state);
 extern void Statusbar_SetDspLed(bool state);
+extern void Statusbar_SetNdLed(int state);
 
 extern void Statusbar_Init(SDL_Surface *screen);
 extern void Statusbar_UpdateInfo(void);

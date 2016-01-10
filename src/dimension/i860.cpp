@@ -29,6 +29,10 @@ extern "C" {
     void nd_i860_init() {
         nd_i860.init();
     }
+	
+	void nd_i860_uninit() {
+		nd_i860.uninit();
+	}
     
     void i860_Run(int nHostCycles) {
 #if 0
@@ -57,7 +61,6 @@ extern "C" {
 }
 
 void i860_cpu_device::run_cycle(int nHostCycles) {
-    Statusbar_Seti860Led(m_halt ? 0 : (GET_DIRBASE_CS8() ? 1 : 2));
 
     if(m_halt) return;
     
@@ -321,6 +324,10 @@ error:
     }
     
     i860_reset();
+}
+
+void i860_cpu_device::uninit() {
+	i860_halt(true);
 }
 
 offs_t i860_cpu_device::disasm(char* buffer, offs_t pc) {

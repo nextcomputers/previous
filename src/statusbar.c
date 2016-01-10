@@ -79,21 +79,19 @@ static SDL_Rect DspLedRect;
 static bool bOldDspLed;
 
 #if ENABLE_DIMENSION
-static SDL_Rect i860LedRect;
-static int bOldi860Led;
+static SDL_Rect NdLedRect;
+static int nOldNdLed;
 #endif
 
 /* led colors */
 static Uint32 LedColorOn, LedColorOff, SysColorOn, SysColorOff, DspColorOn, DspColorOff;
 #if ENABLE_DIMENSION
-static Uint32 i860ColorHalt;
-static Uint32 i860ColorCS8;
-static Uint32 i860ColorRun;
+static Uint32 NdColorOn, NdColorCS8, NdColorOff;
 #endif
 static Uint32 GrayBg, LedColorBg;
 
 
-#define MAX_MESSAGE_LEN 69 /* changed for Previous, was 50 */
+#define MAX_MESSAGE_LEN 66 /* changed for Previous, was 50 */
 typedef struct msg_item {
 	struct msg_item *next;
 	char msg[MAX_MESSAGE_LEN+1];
@@ -175,8 +173,8 @@ void Statusbar_BlinkLed(drive_index_t drive)
 
 /*-----------------------------------------------------------------------*/
 /**
- * Set system, dsp and i860 led state, anything enabling led with this
- * needs also to take care of disabling it.
+ * Set system, dsp and nextdimension led state, anything enabling led with 
+ * this needs also to take care of disabling it.
  */
 void Statusbar_SetSystemLed(bool state)
 {
@@ -189,9 +187,9 @@ void Statusbar_SetDspLed(bool state)
 }
 
 #if ENABLE_DIMENSION
-void Statusbar_Seti860Led(int value)
+void Statusbar_SetNdLed(int state)
 {
-    bOldi860Led = value;
+    nOldNdLed = state;
 }
 #endif
 
@@ -244,9 +242,9 @@ void Statusbar_Init(SDL_Surface *surf)
 	DspColorOff = SDL_MapRGB(surf->format, 0x00, 0x00, 0x40);
 	DspColorOn  = SDL_MapRGB(surf->format, 0x00, 0x00, 0xe0);
 #if ENABLE_DIMENSION
-    i860ColorHalt = SDL_MapRGB(surf->format, 0x00, 0x00, 0x00);
-    i860ColorCS8  = SDL_MapRGB(surf->format, 0xe0, 0x70, 0x00);
-    i860ColorRun  = SDL_MapRGB(surf->format, 0x00, 0xe0, 0x00);
+    NdColorOff  = SDL_MapRGB(surf->format, 0x00, 0x00, 0x40);
+    NdColorCS8  = SDL_MapRGB(surf->format, 0xe0, 0x00, 0x00);
+    NdColorOn   = SDL_MapRGB(surf->format, 0x00, 0x00, 0xe0);
 #endif
 	GrayBg      = SDL_MapRGB(surf->format, 0xb5, 0xb7, 0xaa);
 
@@ -344,18 +342,18 @@ void Statusbar_Init(SDL_Surface *surf)
 
 #if ENABLE_DIMENSION
     /* draw i860 led box */
-    i860LedRect = LedRect;
-    i860LedRect.x = surf->w - 13*fontw - i860LedRect.w;
-    ledbox.x = i860LedRect.x - 1;
-    SDLGui_Text(ledbox.x - 5*fontw - fontw/2, MessageRect.y, "i860:");
+    NdLedRect = LedRect;
+    NdLedRect.x = surf->w - 15*fontw - NdLedRect.w;
+    ledbox.x = NdLedRect.x - 1;
+    SDLGui_Text(ledbox.x - 3*fontw - fontw/2, MessageRect.y, "ND:");
     SDL_FillRect(surf, &ledbox, LedColorBg);
-    SDL_FillRect(surf, &i860LedRect, i860ColorHalt);
-    bOldi860Led = 0;
+    SDL_FillRect(surf, &NdLedRect, NdColorOff);
+    nOldNdLed = 0;
 #endif
 
 	/* draw dsp led box */
 	DspLedRect = LedRect;
-	DspLedRect.x = surf->w - 7*fontw - DspLedRect.w;
+	DspLedRect.x = surf->w - 8*fontw - DspLedRect.w;
 	ledbox.x = DspLedRect.x - 1;
 	SDLGui_Text(ledbox.x - 4*fontw - fontw/2, MessageRect.y, "DSP:");
 	SDL_FillRect(surf, &ledbox, LedColorBg);
@@ -727,14 +725,15 @@ void Statusbar_Update(SDL_Surface *surf)
     DEBUGPRINT(("SCR2 LED = ON\n"));
     
 #if ENABLE_DIMENSION
-    /* Draw i860 LED */
-    switch(bOldi860Led) {
-        case 0: color = i860ColorHalt; break;
-        case 1: color = i860ColorCS8;  break;
-        case 2: color = i860ColorRun;  break;
+    /* Draw NeXTdimension LED */
+    switch(nOldNdLed) {
+        case 0: color = NdColorOff; break;
+        case 1: color = NdColorCS8;  break;
+        case 2: color = NdColorOn;  break;
+		default: color = NdColorOff; break;
     }
-    SDL_FillRect(surf, &i860LedRect, color);
-    SDL_UpdateRects(surf, 1, &i860LedRect);
-    DEBUGPRINT(("i860 LED = ON\n"));
+    SDL_FillRect(surf, &NdLedRect, color);
+    SDL_UpdateRects(surf, 1, &NdLedRect);
+    DEBUGPRINT(("ND LED = ON\n"));
 #endif
 }

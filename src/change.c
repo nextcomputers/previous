@@ -194,6 +194,7 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
     if (current->Dimension.bEnabled != changed->Dimension.bEnabled ||
         strcmp(current->Dimension.szRomFileName, changed->Dimension.szRomFileName)) {
         printf("dimension reset\n");
+		return true;
     }
     for (i = 0; i < 4; i++) {
         if (current->Dimension.nMemoryBankSize[i] != changed->Dimension.nMemoryBankSize[i]) {

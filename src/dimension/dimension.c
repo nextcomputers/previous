@@ -142,11 +142,15 @@ inline bool i860_dbg_break(Uint32 addr) {
 
 /* Reset function */
 
-void dimension_reset(void) {
+void dimension_init(void) {
     nd_nbic_init();
     nd_devs_init();
     nd_memory_init();
     nd_i860_init();
+}
+
+void dimension_uninit(void) {
+	nd_i860_uninit();
 }
 
 #endif
