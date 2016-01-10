@@ -4014,8 +4014,7 @@ void i860_cpu_device::i860_reset() {
 	m_fir_gets_trap_addr = 0;
     
     /* dual instruction mode is off after reset */
-    m_dim       = 0;
-    m_headstart = 30 * 1000 * 1000; // give the ROM a litle head-start before resuming normal m68k/i860 clock interlock
-
+    m_dim = 0;
+    
     i860_halt(false);
 }

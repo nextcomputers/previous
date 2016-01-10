@@ -33,11 +33,30 @@ extern "C" {
 	void nd_i860_uninit() {
 		nd_i860.uninit();
 	}
+	
+	int nd_speed_hack;
+	
+	void nd_set_speed_hack(int state) {
+		nd_speed_hack = state;
+	}
     
     void i860_Run(int nHostCycles) {
-        nd_i860.run_cycles(nHostCycles);
-    }
-    
+		if (nd_speed_hack) {
+			while(nHostCycles) {
+				if(i860_dbg_break(nd_i860.m_pc))
+					nd_i860.debugger('d', "BREAK at pc=%08X", nd_i860.m_pc);
+				
+				nd_i860.run_cycle(1);
+				nHostCycles -= 1;
+			}
+		} else {
+			if(i860_dbg_break(nd_i860.m_pc))
+				nd_i860.debugger('d', "BREAK at pc=%08X", nd_i860.m_pc);
+			
+			nd_i860.run_cycle(nHostCycles);
+		}
+	}
+	
     offs_t i860_Disasm(char* buffer, offs_t pc) {
         return nd_i860.disasm(buffer, pc);
     }
@@ -47,18 +66,7 @@ extern "C" {
     }
 }
 
-void i860_cpu_device::run_cycles(int nHostCycles) {
-    if(m_headstart) {
-        for(int i = 0; i < 10; i++)
-            run_cycle(nHostCycles);
-        m_headstart--;
-    } else
-        run_cycle(nHostCycles);
-}
-
 void i860_cpu_device::run_cycle(int nHostCycles) {
-    if(i860_dbg_break(m_pc))
-        debugger('d', "BREAK at pc=%08X", m_pc);
 
     if(m_halt) return;
     
