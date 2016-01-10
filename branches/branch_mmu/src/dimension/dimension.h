@@ -39,6 +39,7 @@ void i860_Run(int nHostCycles);
 bool i860_dbg_break(Uint32 addr);
 void i860_reset();
 void nd_start_debugger(void);
+void nd_set_speed_hack(int state);
 
 #define ND_LOG_IO_RD LOG_NONE
 #define ND_LOG_IO_WR LOG_NONE

@@ -80,33 +80,29 @@ static struct {
     uae_u32 dram;
 } nd_mc;
 
-const  int I860_CYC_ROM        = 100 * 1000; // reduced cycle time for faster ROM checks
-const  int HEIGHT              = 900; // guess
-const  int VIS_HEIGHT          = 832;
-const  int WIDTH               = 1152;
-const  int VIS_WIDTH           = 1120;
-static int I860_CYC;
-static int VBL_CYC;
-static int HBL_CYC;
-static int V_FRONT;
-static int V_BACK;
+const int I860_CYC            = 25 * 1000 * 1000;
+const int VBL_CYC             = I860_CYC / 68;
+const int HEIGHT              = 900; // guess
+const int VIS_HEIGHT          = 832;
+const int WIDTH               = 1152;
+const int VIS_WIDTH           = 1120;
+const int HBL_CYC             = I860_CYC / (68 * HEIGHT);
+const int V_FRONT             = 1 * HBL_CYC;
+const int V_BACK              = VBL_CYC - V_FRONT - (VIS_HEIGHT * HBL_CYC);
 
-const  int VIDEO_HEIGHT        = 525;
-const  int VIDEO_VIS_HEIGHT    = 480;
-const  int VIDEO_WIDTH         = 720;
-const  int VIDEO_VIS_WIDTH     = 640;
-static int VIDEO_VBL_CYC;
-static int VIDEO_HBL_CYC;
-static int VIDEO_V_FRONT;
-static int VIDEO_V_BACK;
+const int VIDEO_VBL_CYC       = I860_CYC / 60; // assume NTSC @ 60Hz
+const int VIDEO_HEIGHT        = 525;
+const int VIDEO_VIS_HEIGHT    = 480;
+const int VIDEO_WIDTH         = 720;
+const int VIDEO_VIS_WIDTH     = 640;
+const int VIDEO_HBL_CYC       = I860_CYC / (60 * VIDEO_HEIGHT);
+const int VIDEO_V_FRONT       = 5 * VIDEO_HBL_CYC;
+const int VIDEO_V_BACK        = VIDEO_VBL_CYC - VIDEO_V_FRONT - (VIDEO_VIS_HEIGHT * VIDEO_HBL_CYC);
 
 /* Cycle count for VBL interrupts */
 static int nd_vbl_cyc_count;
 /* Cycle count for video interrupts */
 static int nd_video_cyc_count;
-/* CS8 flag for cycle count switch */
-static Uint32 nd_cyc_cs8 = 0;
-
 
 #define DP_IIC_MORE 0x20000000
 #define DP_IIC_BUSY 0x80000000
@@ -128,7 +124,7 @@ static struct {
 } nd_dp;
 
 void nd_devs_init() {
-    nd_mc.csr0          = CSR0_i860PIN_CS8;
+    nd_mc.csr0          = 0;
     nd_mc.csr1          = 0;
     nd_mc.csr2          = 0;
     nd_mc.sid           = ND_SLOT;
@@ -149,6 +145,11 @@ void nd_devs_init() {
     nd_mc.dma_out_a     = 0;
     nd_mc.vram          = 0;
     nd_mc.dram          = 0;
+    
+    nd_vbl_cyc_count    = VBL_CYC;
+    nd_video_cyc_count  = VIDEO_VBL_CYC;
+	nd_set_speed_hack(0);
+    
     nd_dp.iic_msgsz     = 0;
     nd_dp.iic_addr      = 0;
     nd_dp.csr           = 0;
@@ -160,8 +161,6 @@ void nd_devs_init() {
     nd_dp.dma_y         = 0xd;
     nd_dp.iic_stat_addr = 0;
     nd_dp.iic_data      = 0;
-    
-    nd_cyc_cs8          = 0;
 }
 
 
@@ -341,6 +340,7 @@ void nd_mc_write_register(uaecptr addr, uae_u32 val) {
                 i860_reset();
                 val &= ~CSR0_i860PIN_RESET;
             }
+			nd_set_speed_hack((val & 0x00008000) ? 0 : 1);		
             nd_mc.csr0 = val;
             break;
         case 0x0010:
@@ -440,20 +440,7 @@ void nd_mc_write_register(uaecptr addr, uae_u32 val) {
 
 /* interrupt processing */
 int nd_process_interrupts(int nHostCycles) {
-    if(nd_cyc_cs8 ^ (nd_mc.csr0 & CSR0_i860PIN_CS8)) {
-        nd_cyc_cs8    = nd_mc.csr0 & CSR0_i860PIN_CS8;
-        I860_CYC      = nd_cyc_cs8 ? I860_CYC_ROM : ConfigureParams.System.nCpuFreq * 1000 * 1000;
-        
-        VBL_CYC       = I860_CYC / 68; // ND runs @ 68Hz
-        HBL_CYC       = I860_CYC / (68 * HEIGHT);
-        V_FRONT       = 1 * HBL_CYC;
-        V_BACK        = VBL_CYC - V_FRONT - (VIS_HEIGHT * HBL_CYC);
-        
-        VIDEO_VBL_CYC = I860_CYC / 60; // assume NTSC @ 60Hz
-        VIDEO_HBL_CYC = I860_CYC / (60 * VIDEO_HEIGHT);
-        VIDEO_V_FRONT = 5 * VIDEO_HBL_CYC;
-        VIDEO_V_BACK  = VIDEO_VBL_CYC - VIDEO_V_FRONT - (VIDEO_VIS_HEIGHT * VIDEO_HBL_CYC);
-    }
+    //static Uint32 oldcsr0;
     
     nd_vbl_cyc_count   -= nHostCycles;
     nd_video_cyc_count -= nHostCycles;
@@ -495,6 +482,13 @@ int nd_process_interrupts(int nHostCycles) {
             result = 1;
     }
  
+    /*
+    if(result && (oldcsr0 ^ nd_mc.csr0)) {
+        oldcsr0 = nd_mc.csr0;
+        Log_Printf(LOG_WARN, "[ND] external interrupt csr0=%s", decodeBits(ND_CSR0_BITS, nd_mc.csr0));
+    }
+    */
+    
     return result;
 }
 
