@@ -260,6 +260,8 @@ public:
     
     // run one i860 cycle
     void run_cycle(int nHostCycles);
+    // run multiple i860 cycles (e.g for head-start)
+    void run_cycles(int nHostCycles);
     
 	/* This is the external interface for asserting an external interrupt to the i860.  */
 	void i860_gen_interrupt();
@@ -283,9 +285,6 @@ public:
         }
     }
     
-    /* Program counter (1 x 32-bits).  Reset starts at pc=0xffffff00.  */
-    UINT32 m_pc;
-    
     // device_disasm_interface overrides
     UINT32 disasm_min_opcode_bytes() const { return 4; }
     UINT32 disasm_max_opcode_bytes() const { return 4; }
@@ -294,16 +293,16 @@ public:
     // debugger
     void debugger(char cmd, const char* format, ...);
     void debugger();
-protected:
-	// device_execute_interface overrides
-	UINT32 execute_min_cycles() const { return 1; }
-	UINT32 execute_max_cycles() const { return 8; }
-	UINT32 execute_input_lines() const { return 0; }
 private:
     char m_lastcmd; // last debugger command
     char m_console[4*1024*1024];
     int  m_console_idx;
     bool m_break_on_next_msg;
+    
+    /* Program counter (1 x 32-bits).  Reset starts at pc=0xffffff00.  */
+    UINT32 m_pc;
+
+    int    m_headstart;
     
 	/* Integer registers (32 x 32-bits).  */
 	UINT32 m_iregs[32];
