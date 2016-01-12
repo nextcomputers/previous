@@ -32,6 +32,7 @@
  * NeXTdimension specfic notes:
  * - (SC) Added support for i860's MSB/LSB-first mode (BE = 1/0).
  * - (SC) We assume that the host CPU is little endian (for now, will be fixed)
+ * - (SC) Instruction cache implemented (not present in MAME version)
  * Generic notes:
  * - There is some amount of code duplication (e.g., see the
  *   various insn_* routines for the branches and FP routines) that
@@ -44,28 +45,6 @@
  */
 #include <math.h>
 #include <assert.h>
-
-/* Get/set general register value -- watch for r0 on writes.  */
-#define get_iregval(gr)       (m_iregs[(gr)])
-#define set_iregval(gr, val)  (m_iregs[(gr)] = ((gr) == 0 ? 0 : (val)))
-
-inline float i860_cpu_device::get_fregval_s (int fr) {
-    return *(float*)(&m_frg[fr * 4]);
-}
-
-inline void i860_cpu_device::set_fregval_s (int fr, float s) {
-    if(fr > 1)
-        *(float*)(&m_frg[fr * 4]) = s;
-}
-
-inline double i860_cpu_device::get_fregval_d (int fr) {
-    return *(double*)(&m_frg[fr * 4]);
-}
-
-inline void i860_cpu_device::set_fregval_d (int fr, double d) {
-    if(fr > 1)
-        *(double*)(&m_frg[fr * 4]) = d;
-}
 
 int i860_cpu_device::has_delay_slot(UINT32 insn)
 {
@@ -86,7 +65,7 @@ void i860_cpu_device::i860_gen_interrupt()
 	   bit EPSR.INT (which tracks the INT pin).  */
 	if (GET_PSR_IM ()) {
 		SET_PSR_IN (1);
-		m_pending_trap |= TRAP_WAS_EXTERNAL;
+		m_flow |= TRAP_WAS_EXTERNAL;
 	}
     SET_EPSR_INT (1);
 
@@ -102,46 +81,83 @@ void i860_cpu_device::i860_clr_interrupt() {
     SET_EPSR_INT (0);
 }
 
-/* Fetch instructions from instruction cache.
-   Note: The instruction cache is not implemented for MAME version,
-   this just fetches and returns 1 instruction from memory.  */
-UINT32 i860_cpu_device::ifetch (UINT32 pc)
-{
-	UINT32 phys_pc = 0;
-	UINT32 w1 = 0;
-    
-	/* If virtual mode, get translation.  */
-	if (GET_DIRBASE_ATE ())
-	{
-		phys_pc = get_address_translation (pc, 0  /* is_dataref */, 0 /* is_write */);
-		m_exiting_ifetch = 0;
-		if (m_pending_trap && (GET_PSR_DAT () || GET_PSR_IAT ()))
-		{
-			m_exiting_ifetch = 1;
-			return 0xffeeffee;
-		}
-	}
-	else
-		phys_pc = pc;
+static int c_hit;
+static int c_mis;
 
-	if (GET_DIRBASE_CS8() || phys_pc >= 0xFFFE0000) {
-        w1  = rdcs8(phys_pc);
-        w1 |= rdcs8(phys_pc+1)<<8;
-        w1 |= rdcs8(phys_pc+2)<<16;
-        w1 |= rdcs8(phys_pc+3)<<24;
-	} else {
-        w1 = rd32i(phys_pc);
+bool i860_cpu_device::load_icache(UINT32 pc) {
+    UINT32           vaddr = pc & ~(I860_CACHE_LINE_MASK << 2);
+    UINT32           paddr;
+    i860_cache_line* line = &m_icache[icache_line(pc)];
+    if(line->vaddr != vaddr) {
+        if (GET_DIRBASE_ATE ()) {
+            paddr = get_address_translation (pc, 0  /* is_dataref */, 0 /* is_write */) & ~(I860_CACHE_LINE_MASK << 2);
+            m_flow &= ~EXITING_IFETCH;
+            if (PENDING_TRAP() && (GET_PSR_DAT () || GET_PSR_IAT ())) {
+                m_flow |= EXITING_IFETCH;
+                return false;
+            }
+        } else
+            paddr = vaddr;
+        
+        line->vaddr   = vaddr;
+        UINT32* data = line->data;
+        
+        if (GET_DIRBASE_CS8()) {
+            for(int i = 1<<I860_CACHE_LINE_SZ; --i >= 0;) {
+                UINT32 v = rdcs8(paddr+3); v <<= 8;
+                v       |= rdcs8(paddr+2); v <<= 8;
+                v       |= rdcs8(paddr+1); v <<= 8;
+                v       |= rdcs8(paddr+0);
+                *data++ = v;
+                paddr  += 4;
+            }
+        } else {
+            for(int i = 1<<I860_CACHE_LINE_SZ; --i >= 0;) {
+                *data++ = rd32i(paddr);
+                paddr  += 4;
+            }
+        }
     }
-	
-	return w1;
+    return true;
+}
+
+void i860_cpu_device::invalidate_icache() {
+    for(int i = (1<<I860_ICACHE_SZ); --i >=0;)
+        m_icache[i].vaddr = 0xFFFFFFFF;
+    
+}
+
+void i860_cpu_device::invalidate_tlb() {
+    for(int i = (1<<I860_TLB_SZ); --i >=0;)
+        m_tlb[i].vaddr = 0xFFFFFFFF;
 }
 
 UINT32 i860_cpu_device::ifetch_notrap(UINT32 pc) {
-    int before = m_pending_trap;
-    m_pending_trap = 0;
-    UINT32 result = ifetch(pc);
-    m_pending_trap = before;
+    UINT32 before     = m_flow;
+    m_flow &= ~TRAP_MASK;
+    UINT32 result  = ifetch(pc);
+    m_flow = before;
     return result;
+}
+
+UINT32 i860_cpu_device::ifetch(UINT32 pc) {
+    if(load_icache(pc))
+        return m_icache[icache_line(pc)].data[icache_off(pc)];
+    return 0xffeeffee;
+}
+
+UINT64 i860_cpu_device::ifetch64(UINT32 pc) {
+    if(load_icache(pc)) {
+        pc &= ~4;
+        i860_cache_line* line = &m_icache[icache_line(pc)];
+        // fetch high word first
+        UINT64 result = line->data[icache_off(pc+4)];
+        result <<= 32;
+        // fetch low word
+        result |= line->data[icache_off(pc)];
+        return result;
+    }
+    return 0xffeeffeeffeeffeeLL;
 }
 
 /* Given a virtual address, perform the i860 address translation and
@@ -156,19 +172,24 @@ UINT32 i860_cpu_device::ifetch_notrap(UINT32 pc) {
    here only accesses memory.  */
 UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, int is_write)
 {
-	UINT32 vdir = (vaddr >> 22) & 0x3ff;
-	UINT32 vpage = (vaddr >> 12) & 0x3ff;
-	UINT32 voffset = vaddr & 0xfff;
-	UINT32 dtb = (m_cregs[CR_DIRBASE]) & 0xfffff000;
+    UINT32 voffset        = vaddr & I860_PAGE_OFF_MASK;
+    UINT32 tlbidx         = vaddr & I860_TLB_MASK;
+    
+    if(m_tlb[tlbidx].vaddr == (vaddr & I860_TLB_ADDR_MASK))
+        return (m_tlb[tlbidx].paddr_flags & I860_TLB_ADDR_MASK) + voffset;
+    
+    UINT32 vpage          = (vaddr >> I860_PAGE_SZ) & 0x3ff;
+    UINT32 vdir           = (vaddr >> 22) & 0x3ff;
+	UINT32 dtb            = (m_cregs[CR_DIRBASE]) & I860_TLB_ADDR_MASK;
 	UINT32 pg_dir_entry_a = 0;
-	UINT32 pg_dir_entry = 0;
+	UINT32 pg_dir_entry   = 0;
 	UINT32 pg_tbl_entry_a = 0;
-	UINT32 pg_tbl_entry = 0;
-	UINT32 pfa1 = 0;
-	UINT32 pfa2 = 0;
-	UINT32 ret = 0;
-	UINT32 ttpde = 0;
-	UINT32 ttpte = 0;
+	UINT32 pg_tbl_entry   = 0;
+	UINT32 pfa1           = 0;
+	UINT32 pfa2           = 0;
+	UINT32 ret            = 0;
+	UINT32 ttpde          = 0;
+	UINT32 ttpte          = 0;
 
 	assert (GET_DIRBASE_ATE ());
 
@@ -184,7 +205,7 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 			SET_PSR_DAT (1);
 		else
 			SET_PSR_IAT (1);
-		m_pending_trap = TRAP_NORMAL;
+		m_flow |= TRAP_NORMAL;
 
 		/* Dummy return.  */
 		return 0;
@@ -196,7 +217,7 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 		&& (GET_PSR_U () || GET_EPSR_WP ()))   /* PSR_U = 1 or EPSR_WP = 1.  */
 	{
 		SET_PSR_DAT (1);
-		m_pending_trap = TRAP_NORMAL;
+        m_flow |= TRAP_NORMAL;
 		/* Dummy return.  */
 		return 0;
 	}
@@ -209,7 +230,7 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 			SET_PSR_DAT (1);
 		else
 			SET_PSR_IAT (1);
-		m_pending_trap = TRAP_NORMAL;
+		m_flow |= TRAP_NORMAL;
 		/* Dummy return.  */
 		return 0;
 	}
@@ -229,7 +250,7 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 			SET_PSR_DAT (1);
 		else
 			SET_PSR_IAT (1);
-		m_pending_trap = TRAP_NORMAL;
+		m_flow |= TRAP_NORMAL;
 
 		/* Dummy return.  */
 		return 0;
@@ -241,7 +262,7 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 		&& (GET_PSR_U () || GET_EPSR_WP ()))   /* PSR_U = 1 or EPSR_WP = 1.  */
 	{
 		SET_PSR_DAT (1);
-		m_pending_trap = TRAP_NORMAL;
+		m_flow |= TRAP_NORMAL;
 		/* Dummy return.  */
 		return 0;
 	}
@@ -254,7 +275,7 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 			SET_PSR_DAT (1);
 		else
 			SET_PSR_IAT (1);
-		m_pending_trap = TRAP_NORMAL;
+		m_flow |= TRAP_NORMAL;
 		/* Dummy return.  */
 		return 0;
 	}
@@ -270,17 +291,20 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 		/* Log_Printf(LOG_WARN, "[i860] DAT trap on write without dirty bit v0x%08x/p0x%08x\n",
 		   vaddr, (pg_tbl_entry & ~0xfff)|voffset); */
 		SET_PSR_DAT (1);
-		m_pending_trap = TRAP_NORMAL;
+		m_flow |= TRAP_NORMAL;
 		/* Dummy return.  */
 		return 0;
 	}
 
 	pfa2 = (pg_tbl_entry & 0xfffff000);
+    
+    m_tlb[tlbidx].vaddr       = vaddr & I860_TLB_ADDR_MASK;
+    m_tlb[tlbidx].paddr_flags = pfa2;
+    
 	ret = pfa2 | voffset;
 
 #if TRACE_ADDR_TRANSLATION
-	Log_Printf(LOG_WARN, "[i860] get_address_translation: virt(0x%08x) -> phys(0x%08x)\n",
-				vaddr, ret);
+	Log_Printf(LOG_WARN, "[i860] get_address_translation: virt(0x%08x) -> phys(0x%08x)\n", vaddr, ret);
 #endif
 
 	return ret;
@@ -300,13 +324,13 @@ UINT32 i860_cpu_device::readmemi_emu (UINT32 addr, int size)
 	if (GET_DIRBASE_ATE ())
 	{
 		UINT32 phys = get_address_translation (addr, 1 /* is_dataref */, 0 /* is_write */);
-		if (m_pending_trap && (GET_PSR_IAT () || GET_PSR_DAT ()))
+		if (PENDING_TRAP() && (GET_PSR_IAT () || GET_PSR_DAT ()))
 		{
 #if TRACE_PAGE_FAULT
             Log_Printf(LOG_WARN, "[i860] %08X: ## Page fault (readmemi_emu) virt=%08X", m_pc, addr);
 //            debugger();
 #endif
-			m_exiting_readmem = 1;
+			SET_EXITING_MEMRW(EXITING_READMEM);
 			return 0;
 		}
 		addr = phys;
@@ -316,30 +340,17 @@ UINT32 i860_cpu_device::readmemi_emu (UINT32 addr, int size)
 	if (((addr & ~(size - 1)) == m_cregs[CR_DB]) && GET_PSR_BR ())
 	{
 		SET_PSR_DAT (1);
-		m_pending_trap = TRAP_NORMAL;
+		m_flow |= TRAP_NORMAL;
 		return 0;
 	}
 
 	/* Now do the actual read.  */
-	if (size == 1)
-	{
-		UINT32 ret = rd8(addr);
-		return ret & 0xff;
-	}
-	else if (size == 2)
-	{
-		UINT32 ret = rd16(addr);
-		return ret & 0xffff;
-	}
-	else if (size == 4)
-	{
-		UINT32 ret = rd32(addr);
-		return ret;
-	}
-	else
-		assert (0);
-
-	return 0;
+    switch(size) {
+        case 1: return rd8(addr);
+        case 2: return rd16(addr);
+        case 4: return rd32(addr);
+        default: return 0;
+    }
 }
 
 
@@ -397,12 +408,12 @@ void i860_cpu_device::writememi_emu (UINT32 addr, int size, UINT32 data)
 	if (GET_DIRBASE_ATE ())
 	{
 		UINT32 phys = get_address_translation (addr, 1 /* is_dataref */, 1 /* is_write */);
-		if (m_pending_trap && (GET_PSR_IAT () || GET_PSR_DAT ()))
+		if (PENDING_TRAP() && (GET_PSR_IAT () || GET_PSR_DAT ()))
 		{
 #if TRACE_PAGE_FAULT
             Log_Printf(LOG_WARN, "[i860] 0x%08x: ## Page fault (writememi_emu) virt=%08X", m_pc, addr);
 #endif
-			m_exiting_readmem = 2;
+			SET_EXITING_MEMRW(EXITING_WRITEMEM);
 			return;
 		}
 		addr = phys;
@@ -412,19 +423,16 @@ void i860_cpu_device::writememi_emu (UINT32 addr, int size, UINT32 data)
 	if (((addr & ~(size - 1)) == m_cregs[CR_DB]) && GET_PSR_BW ())
 	{
 		SET_PSR_DAT (1);
-		m_pending_trap = TRAP_NORMAL;
+		m_flow |= TRAP_NORMAL;
 		return;
 	}
 
 	/* Now do the actual write.  */
-	if (size == 1)
-		wr8(addr, data);
-	else if (size == 2)
-		wr16(addr, data);
-	else if (size == 4)
-		wr32(addr, data);
-	else
-		assert (0);
+    switch(size) {
+        case 1: wr8 (addr, data); break;
+        case 2: wr16(addr, data); break;
+        case 4: wr32(addr, data); break;
+    }
 }
 
 
@@ -444,13 +452,13 @@ void i860_cpu_device::fp_readmem_emu (UINT32 addr, int size, UINT8 *dest)
 	if (GET_DIRBASE_ATE ())
 	{
 		UINT32 phys = get_address_translation (addr, 1 /* is_dataref */, 0 /* is_write */);
-		if (m_pending_trap && (GET_PSR_IAT () || GET_PSR_DAT ()))
+		if (PENDING_TRAP() && (GET_PSR_IAT () || GET_PSR_DAT ()))
 		{
 #if TRACE_PAGE_FAULT
 			Log_Printf(LOG_WARN, "[i860] 0x%08x: ## Page fault (fp_readmem_emu) virt=%08X",m_pc,addr);
 //            debugger();
 #endif
-			m_exiting_readmem = 3;
+			SET_EXITING_MEMRW(EXITING_FPREADMEM);
 			return;
 		}
 		addr = phys;
@@ -460,11 +468,11 @@ void i860_cpu_device::fp_readmem_emu (UINT32 addr, int size, UINT8 *dest)
 	if (((addr & ~(size - 1)) == m_cregs[CR_DB]) && GET_PSR_BR ())
 	{
 		SET_PSR_DAT (1);
-		m_pending_trap = TRAP_NORMAL;
+		m_flow |= TRAP_NORMAL;
 		return;
 	}
 
-    frddata(addr, size, dest);
+    rddata(addr, size, dest);
 }
 
 
@@ -485,13 +493,13 @@ void i860_cpu_device::fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT3
 	if (GET_DIRBASE_ATE ())
 	{
 		UINT32 phys = get_address_translation (addr, 1 /* is_dataref */, 1 /* is_write */);
-		if (m_pending_trap && GET_PSR_DAT ())
+		if (PENDING_TRAP() && GET_PSR_DAT ())
 		{
 #if TRACE_PAGE_FAULT
 			Log_Printf(LOG_WARN, "[i860] 0x%08x: ## Page fault (fp_writememi_emu) virt=%08X", m_pc,addr);
 //            debugger();
 #endif
-			m_exiting_readmem = 4;
+			SET_EXITING_MEMRW(EXITING_WRITEMEM);
 			return;
 		}
 		addr = phys;
@@ -501,7 +509,7 @@ void i860_cpu_device::fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT3
 	if (((addr & ~(size - 1)) == m_cregs[CR_DB]) && GET_PSR_BW ())
 	{
 		SET_PSR_DAT (1);
-		m_pending_trap = TRAP_NORMAL;
+        m_flow |= TRAP_NORMAL;
 		return;
 	}
 
@@ -526,7 +534,7 @@ void i860_cpu_device::fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT3
             if (wmask & 0x01) wr8(addr+7, data[7]);
         }
     } else {
-        fwrdata(addr, size, data);
+        wrdata(addr, size, data);
     }
 }
 
@@ -566,14 +574,14 @@ void i860_cpu_device::insn_ld_ctrl (UINT32 insn)
 	   2. Not first load of fir after a trap = address of the ld.c insn.  */
 	if (csrc2 == CR_FIR)
 	{
-		if (m_fir_gets_trap_addr)
+		if (m_flow & FIR_GETS_TRAP)
 			set_iregval (idest, m_cregs[csrc2]);
 		else
 		{
 			m_cregs[csrc2] = m_pc;
 			set_iregval (idest, m_cregs[csrc2]);
 		}
-		m_fir_gets_trap_addr = 0;
+        m_flow &= ~FIR_GETS_TRAP;
 	}
 	else
 		set_iregval (idest, m_cregs[csrc2]);
@@ -605,15 +613,15 @@ void i860_cpu_device::insn_st_ctrl (UINT32 insn)
 	   it always appears to be 0).  */
 	if (csrc2 == CR_DIRBASE && (get_iregval (isrc1) & 0x20))
 	{
-		/* NOTE: The actual icache and TLB flush are unimplemented for
-		   the MAME version.  */
-
+        invalidate_icache();
+        invalidate_tlb();
+        
 		/* Make sure ITI isn't actually written.  */
 		set_iregval (isrc1, (get_iregval (isrc1) & ~0x20));
 	}
 
 	if (csrc2 == CR_DIRBASE && (get_iregval (isrc1) & 1) && GET_DIRBASE_ATE () == 0){
-		Log_Printf(LOG_WARN, "[i860:%08X]** ATE going high!", m_pc);
+		Log_Printf(LOG_WARN, "[i860:%08X]** Switching to virtual addressing (ATE=1)", m_pc);
 	}
 
 	/* Update the register -- unless it is fir which cannot be updated.  */
@@ -694,7 +702,7 @@ void i860_cpu_device::insn_ldx (UINT32 insn)
 	{
 		Log_Printf(LOG_WARN, "[i860:%08X] Unaligned access detected (0x%08x)", m_pc, eff);
 		SET_PSR_DAT (1);
-		m_pending_trap = TRAP_NORMAL;
+		m_flow |= TRAP_NORMAL;
 		return;
 	}
 #endif
@@ -708,7 +716,7 @@ void i860_cpu_device::insn_ldx (UINT32 insn)
 	{
 		UINT32 readval = sign_ext (readmemi_emu (eff, size), size * 8);
 		/* Do not update register on page fault.  */
-		if (m_exiting_readmem)
+		if (GET_EXITING_MEMRW())
 		{
 			return;
 		}
@@ -718,7 +726,7 @@ void i860_cpu_device::insn_ldx (UINT32 insn)
 	{
 		UINT32 readval = readmemi_emu (eff, size);
 		/* Do not update register on page fault.  */
-		if (m_exiting_readmem)
+		if (GET_EXITING_MEMRW())
 		{
 			return;
 		}
@@ -751,7 +759,7 @@ void i860_cpu_device::insn_stx (UINT32 insn)
 
 	/* Write data (value of reg isrc1) to memory at eff.  */
 	writememi_emu (eff, size, get_iregval (isrc1));
-	if (m_exiting_readmem)
+	if (GET_EXITING_MEMRW())
 		return;
 }
 
@@ -796,7 +804,7 @@ void i860_cpu_device::insn_fsty (UINT32 insn)
 	{
 		Log_Printf(LOG_WARN, "[i860:%08X] Unaligned access detected (0x%08x)", m_pc, eff);
 		SET_PSR_DAT (1);
-		m_pending_trap = TRAP_NORMAL;
+		m_flow |= TRAP_NORMAL;
 		return;
 	}
 #endif
@@ -817,12 +825,7 @@ void i860_cpu_device::insn_fsty (UINT32 insn)
 	}
 
 	/* Write data (value of freg fdest) to memory at eff.  */
-	if (size == 4)
-		fp_writemem_emu (eff, size, (UINT8 *)(&m_frg[4 * fdest]), 0xff);
-	else if (size == 8)
-		fp_writemem_emu (eff, size, (UINT8 *)(&m_frg[4 * fdest]), 0xff);
-	else
-		fp_writemem_emu (eff, size, (UINT8 *)(&m_frg[4 * fdest]), 0xff);
+	fp_writemem_emu (eff, size, (UINT8 *)(&m_fregs[4 * fdest]), 0xff);
 }
 
 
@@ -889,7 +892,7 @@ void i860_cpu_device::insn_fldy (UINT32 insn)
 	{
 		Log_Printf(LOG_WARN, "[i860:%08X] Unaligned access detected (0x%08x)", m_pc, eff);
 		SET_PSR_DAT (1);
-        m_pending_trap = TRAP_NORMAL;
+        m_flow |= TRAP_NORMAL;
 		return;
 	}
 #endif
@@ -901,12 +904,12 @@ void i860_cpu_device::insn_fldy (UINT32 insn)
 		/* Scalar version writes the current result to fdest.  */
 		/* Read data at 'eff' into freg 'fdest' (reads to f0 or f1 are
 		   thrown away).  */
-        fp_readmem_emu (eff, size, (UINT8 *)&(m_frg[4 * fdest]));
+        fp_readmem_emu(eff, size, (UINT8 *)&(m_fregs[4 * fdest]));
 		if (fdest < 2) {
             // (SC) special case with fdest=fr0/fr1. fr0 & fr1 are overwritten with values from mem
             // but always read as zero. Fix it.
-            m_frg[0] = 0; m_frg[1] = 0; m_frg[2] = 0; m_frg[3] = 0;
-            m_frg[4] = 0; m_frg[5] = 0; m_frg[6] = 0; m_frg[7] = 0;
+            m_fregs[0] = 0; m_fregs[1] = 0; m_fregs[2] = 0; m_fregs[3] = 0;
+            m_fregs[4] = 0; m_fregs[5] = 0; m_fregs[6] = 0; m_fregs[7] = 0;
         }
 	}
 	else
@@ -917,7 +920,7 @@ void i860_cpu_device::insn_fldy (UINT32 insn)
 		   properly restarted.  */
 		UINT8 bebuf[8];
 		fp_readmem_emu (eff, size, bebuf);
-		if (m_pending_trap && m_exiting_readmem)
+		if (PENDING_TRAP() && GET_EXITING_MEMRW())
 			goto ab_op;
 
 		/* Pipelined version writes fdest with the result from the last
@@ -996,7 +999,7 @@ void i860_cpu_device::insn_pstd (UINT32 insn)
 	{
 		Log_Printf(LOG_WARN, "[i860:%08X] Unaligned access detected (0x%08x)", m_pc, eff);
 		SET_PSR_DAT (1);
-		m_pending_trap = TRAP_NORMAL;
+		m_flow |= TRAP_NORMAL;
 		return;
 	}
 #endif
@@ -1046,7 +1049,7 @@ void i860_cpu_device::insn_pstd (UINT32 insn)
 		}
 		orig_pm <<= 1;
 	}
-	bebuf = (UINT8 *)(&m_frg[4 * fdest]);
+	bebuf = (UINT8 *)(&m_fregs[4 * fdest]);
 	fp_writemem_emu (eff, 8, bebuf, wmask);
 }
 
@@ -1086,13 +1089,10 @@ void i860_cpu_device::insn_addu (UINT32 insn)
 	     CC = bit 31 carry.
 	 */
 	tmp = (UINT64)src1val + (UINT64)(get_iregval (isrc2));
-	if ((tmp >> 32) & 1)
-	{
+	if ((tmp >> 32) & 1) {
 		SET_PSR_CC (1);
 		SET_EPSR_OF (1);
-	}
-	else
-	{
+	} else {
 		SET_PSR_CC (0);
 		SET_EPSR_OF (0);
 	}
@@ -1749,7 +1749,7 @@ void i860_cpu_device::insn_trap (UINT32 insn)
 {
     debugger('d', "Software TRAP");
 	SET_PSR_IT (1);
-	m_pending_trap = TRAP_NORMAL;
+	m_flow |= TRAP_NORMAL;
 }
 
 
@@ -1759,7 +1759,7 @@ void i860_cpu_device::insn_intovr (UINT32 insn)
 	if (GET_EPSR_OF ())
 	{
 		SET_PSR_IT (1);
-		m_pending_trap = TRAP_NORMAL;
+		m_flow |= TRAP_NORMAL;
 	}
 }
 
@@ -1788,7 +1788,7 @@ void i860_cpu_device::insn_bte (UINT32 insn)
 	else
 		m_pc += 4;
 
-	m_pc_updated = 1;
+	SET_PC_UPDATED();
 }
 
 
@@ -1816,7 +1816,7 @@ void i860_cpu_device::insn_bte_imm (UINT32 insn)
 	else
 		m_pc += 4;
 
-	m_pc_updated = 1;
+    SET_PC_UPDATED();
 }
 
 
@@ -1844,7 +1844,7 @@ void i860_cpu_device::insn_btne (UINT32 insn)
 	else
 		m_pc += 4;
 
-	m_pc_updated = 1;
+    SET_PC_UPDATED();
 }
 
 
@@ -1872,7 +1872,7 @@ void i860_cpu_device::insn_btne_imm (UINT32 insn)
 	else
 		m_pc += 4;
 
-	m_pc_updated = 1;
+    SET_PC_UPDATED();
 }
 
 
@@ -1888,15 +1888,15 @@ void i860_cpu_device::insn_bc (UINT32 insn)
 	target_addr = (INT32)m_pc + 4 + (lbroff << 2);
 
 	/* Determine comparison result.  */
-	res = (GET_PSR_CC () == 1);
-
+    res = m_dim_cc_valid ? m_dim_cc : (GET_PSR_CC () == 1);
+    
 	/* Branch routines always update the PC.  */
 	if (res)
 		m_pc = target_addr;
 	else
 		m_pc += 4;
 
-	m_pc_updated = 1;
+    SET_PC_UPDATED();
 }
 
 
@@ -1912,7 +1912,7 @@ void i860_cpu_device::insn_bnc (UINT32 insn)
 	target_addr = (INT32)m_pc + 4 + (lbroff << 2);
 
 	/* Determine comparison result.  */
-	res = (GET_PSR_CC () == 0);
+    res = m_dim_cc_valid ? !(m_dim_cc) : (GET_PSR_CC () == 0);
 
 	/* Branch routines always update the PC, since pc_updated is set
 	   in the decode routine.  */
@@ -1921,7 +1921,7 @@ void i860_cpu_device::insn_bnc (UINT32 insn)
 	else
 		m_pc += 4;
 
-	m_pc_updated = 1;
+    SET_PC_UPDATED();
 }
 
 
@@ -1948,9 +1948,9 @@ void i860_cpu_device::insn_bct (UINT32 insn)
 		m_pc += 4;
 		decode_exec (ifetch (orig_pc + 4), 0);
 		m_pc = orig_pc;
-		if (m_pending_trap )
+		if (PENDING_TRAP() )
 		{
-			m_pending_trap |= TRAP_IN_DELAY_SLOT;
+			m_flow |= TRAP_IN_DELAY_SLOT;
 			goto ab_op;
 		}
 	}
@@ -1962,7 +1962,7 @@ void i860_cpu_device::insn_bct (UINT32 insn)
 	else
 		m_pc += 8;
 
-	m_pc_updated = 1;
+    SET_PC_UPDATED();
 
 	ab_op:
 	;
@@ -1992,9 +1992,9 @@ void i860_cpu_device::insn_bnct (UINT32 insn)
 		m_pc += 4;
 		decode_exec (ifetch (orig_pc + 4), 0);
 		m_pc = orig_pc;
-		if (m_pending_trap )
+		if (PENDING_TRAP() )
 		{
-			m_pending_trap |= TRAP_IN_DELAY_SLOT;
+			m_flow |= TRAP_IN_DELAY_SLOT;
 			goto ab_op;
 		}
 	}
@@ -2006,7 +2006,7 @@ void i860_cpu_device::insn_bnct (UINT32 insn)
 	else
 		m_pc += 8;
 
-	m_pc_updated = 1;
+    SET_PC_UPDATED();
 
 	ab_op:
 	;
@@ -2028,9 +2028,9 @@ void i860_cpu_device::insn_call (UINT32 insn)
 	m_pc += 4;
 	decode_exec (ifetch (orig_pc + 4), 0);
 	m_pc = orig_pc;
-	if (m_pending_trap )
+	if (PENDING_TRAP() )
 	{
-		m_pending_trap |= TRAP_IN_DELAY_SLOT;
+		m_flow |= TRAP_IN_DELAY_SLOT;
 		goto ab_op;
 	}
 
@@ -2039,7 +2039,7 @@ void i860_cpu_device::insn_call (UINT32 insn)
 
 	/* New target.  */
 	m_pc = target_addr;
-	m_pc_updated = 1;
+    SET_PC_UPDATED();
 
 	ab_op:;
 }
@@ -2060,15 +2060,15 @@ void i860_cpu_device::insn_br (UINT32 insn)
 	m_pc += 4;
 	decode_exec (ifetch (orig_pc + 4), 0);
 	m_pc = orig_pc;
-	if (m_pending_trap )
+	if (PENDING_TRAP() )
 	{
-		m_pending_trap |= TRAP_IN_DELAY_SLOT;
+		m_flow |= TRAP_IN_DELAY_SLOT;
 		goto ab_op;
 	}
 
 	/* New target.  */
 	m_pc = target_addr;
-	m_pc_updated = 1;
+    SET_PC_UPDATED();
 
 	ab_op:;
 }
@@ -2094,9 +2094,9 @@ void i860_cpu_device::insn_bri (UINT32 insn)
 	m_pc = orig_pc;
 
 	/* Delay slot insn caused a trap, abort operation.  */
-	if (m_pending_trap )
+	if (PENDING_TRAP() )
 	{
-		m_pending_trap |= TRAP_IN_DELAY_SLOT;
+		m_flow |= TRAP_IN_DELAY_SLOT;
 		goto ab_op;
 	}
 
@@ -2111,13 +2111,13 @@ void i860_cpu_device::insn_bri (UINT32 insn)
 		SET_PSR_U (GET_PSR_PU ());
 		SET_PSR_IM (GET_PSR_PIM ());
 
-		m_fir_gets_trap_addr = 0;
+        m_flow &= ~FIR_GETS_TRAP;
 	}
 
 	/* Update PC.  */
 	m_pc = orig_src1_val;
 
-	m_pc_updated = 1;
+    SET_PC_UPDATED();
 	ab_op:;
 }
 
@@ -2144,16 +2144,16 @@ void i860_cpu_device::insn_calli (UINT32 insn)
 	m_pc += 4;
 	decode_exec (ifetch (orig_pc + 4), 0);
 	m_pc = orig_pc;
-	if (m_pending_trap )
+	if (PENDING_TRAP() )
 	{
 		set_iregval (1, orig_src1_val);
-		m_pending_trap |= TRAP_IN_DELAY_SLOT;
+		m_flow |= TRAP_IN_DELAY_SLOT;
 		goto ab_op;
 	}
 
 	/* Set new PC.  */
 	m_pc = orig_src1_val;
-	m_pc_updated = 1;
+    SET_PC_UPDATED();
 
 	ab_op:;
 }
@@ -2193,9 +2193,9 @@ void i860_cpu_device::insn_bla (UINT32 insn)
 	m_pc += 4;
 	decode_exec (ifetch (orig_pc + 4), 0);
 	m_pc = orig_pc;
-	if (m_pending_trap )
+	if (PENDING_TRAP() )
 	{
-		m_pending_trap |= TRAP_IN_DELAY_SLOT;
+		m_flow |= TRAP_IN_DELAY_SLOT;
 		goto ab_op;
 	}
 
@@ -2209,7 +2209,7 @@ void i860_cpu_device::insn_bla (UINT32 insn)
 	}
 	SET_PSR_LCC (lcc_tmp);
 
-	m_pc_updated = 1;
+    SET_PC_UPDATED();
 	ab_op:;
 }
 
@@ -2956,7 +2956,7 @@ void i860_cpu_device::insn_frcp (UINT32 insn)
 			{
 				SET_PSR_FT (1);
 				SET_FSR_SE (1);
-				m_pending_trap = GET_FSR_FTE ();
+				m_flow |= GET_FSR_FTE ();
 			}
 			/* Set fdest to INF or some other exceptional value here?  */
 		}
@@ -2985,7 +2985,7 @@ void i860_cpu_device::insn_frcp (UINT32 insn)
 			{
 				SET_PSR_FT (1);
 				SET_FSR_SE (1);
-				m_pending_trap = GET_FSR_FTE ();
+				m_flow |= GET_FSR_FTE ();
 			}
 			/* Set fdest to INF or some other exceptional value here?  */
 		}
@@ -3041,7 +3041,7 @@ void i860_cpu_device::insn_frsqr (UINT32 insn)
 			{
 				SET_PSR_FT (1);
 				SET_FSR_SE (1);
-				m_pending_trap = GET_FSR_FTE ();
+				m_flow |= GET_FSR_FTE ();
 			}
 			/* Set fdest to INF or some other exceptional value here?  */
 		}
@@ -3068,7 +3068,7 @@ void i860_cpu_device::insn_frsqr (UINT32 insn)
 			{
 				SET_PSR_FT (1);
 				SET_FSR_SE (1);
-				m_pending_trap = GET_FSR_FTE ();
+				m_flow |= GET_FSR_FTE ();
 			}
 			/* Set fdest to INF or some other exceptional value here?  */
 		}
@@ -3334,8 +3334,7 @@ void i860_cpu_device::insn_fiadd_sub (UINT32 insn)
 
 /* Execute pf{gt,le,eq}.{ss,dd} fsrc1,fsrc2,fdest.
    Opcode pfgt has R bit cleared; pfle has R bit set.  */
-void i860_cpu_device::insn_fcmp (UINT32 insn)
-{
+void i860_cpu_device::insn_fcmp (UINT32 insn) {
 	UINT32 fsrc1 = get_fsrc1 (insn);
 	UINT32 fsrc2 = get_fsrc2 (insn);
 	UINT32 fdest = get_fdest (insn);
@@ -3346,6 +3345,10 @@ void i860_cpu_device::insn_fcmp (UINT32 insn)
 	int is_gt = ((insn & 0x81) == 0x00);
 	int is_le = ((insn & 0x81) == 0x80);
 
+    /* Save the CC for DIM bc/bnc */
+    m_dim_cc       = GET_PSR_CC();
+    m_dim_cc_valid = m_dim;
+    
 	/* Do the operation.  Source and result precision must be the same.
 	     pfgt: CC set     if fsrc1 > fsrc2, else cleared.
 	     pfle: CC cleared if fsrc1 <= fsrc2, else set.
@@ -3354,27 +3357,24 @@ void i860_cpu_device::insn_fcmp (UINT32 insn)
 	   Note that the compares write an undefined (but non-exceptional)
 	   result into the first stage of the adder pipeline.  We'll model
 	   this by just pushing in dbl_ or sgl_tmp_dest which equal 0.0.  */
-	if (src_prec)
-	{
+	if (src_prec) {
 		double v1 = get_fregval_d (fsrc1);
 		double v2 = get_fregval_d (fsrc2);
 		if (is_gt)                /* gt.  */
-			SET_PSR_CC (v1 > v2 ? 1 : 0);
+			SET_PSR_CC_F (v1 > v2 ? 1 : 0);
 		else if (is_le)           /* le.  */
-			SET_PSR_CC (v1 <= v2 ? 0 : 1);
+			SET_PSR_CC_F (v1 <= v2 ? 0 : 1);
 		else                      /* eq.  */
-			SET_PSR_CC (v1 == v2 ? 1 : 0);
-	}
-	else
-	{
+			SET_PSR_CC_F (v1 == v2 ? 1 : 0);
+	} else {
 		float v1 = get_fregval_s (fsrc1);
 		float v2 = get_fregval_s (fsrc2);
 		if (is_gt)                /* gt.  */
-			SET_PSR_CC (v1 > v2 ? 1 : 0);
+			SET_PSR_CC_F (v1 > v2 ? 1 : 0);
 		else if (is_le)           /* le.  */
-			SET_PSR_CC (v1 <= v2 ? 0 : 1);
+			SET_PSR_CC_F (v1 <= v2 ? 0 : 1);
 		else                      /* eq.  */
-			SET_PSR_CC (v1 == v2 ? 1 : 0);
+			SET_PSR_CC_F (v1 == v2 ? 1 : 0);
 	}
 
 	/* FIXME: Set result-status bits besides ARP. And copy to fsr from
@@ -3398,13 +3398,10 @@ void i860_cpu_device::insn_fcmp (UINT32 insn)
 	   first stage.  */
 	m_A[2] = m_A[1];
 	m_A[1] = m_A[0];
-	if (src_prec)
-	{
+	if (src_prec) {
 		m_A[0].val.d = dbl_tmp_dest;
 		m_A[0].stat.arp = 1;
-	}
-	else
-	{
+	} else {
 		m_A[0].val.s = sgl_tmp_dest;
 		m_A[0].stat.arp = 0;
 	}
@@ -3894,56 +3891,42 @@ const i860_cpu_device::decode_tbl_t i860_cpu_device::fp_decode_tbl[128] = {
 	{ 0,                0}, /* 0x7F */
 };
 
-
 /*
  * Main decoder driver.
  *  insn = instruction at the current PC to execute.
  *  non_shadow = This insn is not in the shadow of a delayed branch).
  */
-void i860_cpu_device::decode_exec (UINT32 insn, UINT32 non_shadow)
-{
+void i860_cpu_device::decode_exec (UINT32 insn, UINT32 non_shadow) {
+    if(m_flow & EXITING_IFETCH) return;
+    
 	int upper_6bits = (insn >> 26) & 0x3f;
 	char flags = 0;
 	int unrecognized = 1;
 
-	if (m_exiting_ifetch)
-		return;
-
 	flags = decode_tbl[upper_6bits].flags;
-	if (flags & DEC_DECODED)
-	{
+	if (flags & DEC_DECODED) {
 		(this->*decode_tbl[upper_6bits].insn_exec)(insn);
 		unrecognized = 0;
 	}
-	else if (flags & DEC_MORE)
-	{
-		if (upper_6bits == 0x12)
-		{
-            if(insn & 0x200) {
-                if(m_dim < 2) m_dim++;
-            } else {
-                if(m_dim > 0) m_dim--;
-            }
+	else if (flags & DEC_MORE) {
+		if (upper_6bits == 0x12) {
 			/* FP instruction format handled here.  */
 			char fp_flags = fp_decode_tbl[insn & 0x7f].flags;
-			if (fp_flags & DEC_DECODED)
-			{
+			if (fp_flags & DEC_DECODED) {
 				(this->*fp_decode_tbl[insn & 0x7f].insn_exec)(insn);
 				unrecognized = 0;
 			}
 		}
-		else if (upper_6bits == 0x13)
-		{
+		else if (upper_6bits == 0x13) {
 			/* Core escape instruction format handled here.  */
 			char esc_flags = core_esc_decode_tbl[insn & 0x3].flags;
-			if (esc_flags & DEC_DECODED)
-			{
+			if (esc_flags & DEC_DECODED) {
 				(this->*core_esc_decode_tbl[insn & 0x3].insn_exec)(insn);
 				unrecognized = 0;
 			}
 		}
 	}
-
+    
 	if (unrecognized)
 		unrecog_opcode (m_pc, insn);
 }
@@ -4006,15 +3989,20 @@ void i860_cpu_device::i860_reset() {
 	/* Set fir, fsr, KR, KI, MERGE, T to undefined.  */
 	m_cregs[CR_FIR] = UNDEF_VAL;
 	m_cregs[CR_FSR] = UNDEF_VAL;
-	m_KR.d = 0.0;
-	m_KI.d = 0.0;
-	m_T.d = 0.0;
-	m_merge = UNDEF_VAL;
-
-	m_fir_gets_trap_addr = 0;
+	m_KR.d          = 0.0;
+	m_KI.d          = 0.0;
+	m_T.d           = 0.0;
+	m_merge         = UNDEF_VAL;
+	m_flow          = 0;
     
     /* dual instruction mode is off after reset */
-    m_dim = 0;
+    m_dim           = false;
+    m_dim_cc_valid  = false;
+    m_dim_dbg       = true;
+    
+    /* invalidate caches */
+    invalidate_icache();
+    invalidate_tlb();
     
     i860_halt(false);
 }

@@ -43,109 +43,243 @@ extern "C" {
     void i860_Run(int nHostCycles) {
 		if (nd_speed_hack) {
 			while(nHostCycles) {
-				if(i860_dbg_break(nd_i860.m_pc))
-					nd_i860.debugger('d', "BREAK at pc=%08X", nd_i860.m_pc);
-				
-				nd_i860.run_cycle(1);
-				nHostCycles -= 1;
+				nd_i860.run_cycle(2);
+				nHostCycles -= 2;
 			}
-		} else {
-			if(i860_dbg_break(nd_i860.m_pc))
-				nd_i860.debugger('d', "BREAK at pc=%08X", nd_i860.m_pc);
-			
+		} else
 			nd_i860.run_cycle(nHostCycles);
-		}
 	}
-	
-    offs_t i860_Disasm(char* buffer, offs_t pc) {
-        return nd_i860.disasm(buffer, pc);
-    }
     
     void i860_reset() {
         nd_i860.i860_reset();
     }
 }
 
-void i860_cpu_device::run_cycle(int nHostCycles) {
+inline UINT32 i860_cpu_device::rd32i(UINT32 addr) {
+    return nd_board_lget(addr^4);
+}
 
-    if(m_halt) return;
-    
-    UINT32 savepc = m_pc;
-    m_pc_updated = 0;
-    m_pending_trap = 0;
-    
-    savepc = m_pc;
-    
-    decode_exec (ifetch (m_pc), 1);
-    
-    if(!(m_pending_trap)) {
-        if(nd_process_interrupts(nHostCycles))
-            i860_gen_interrupt();
-        else
-            i860_clr_interrupt();
+inline void i860_cpu_device::wr32i(UINT32 addr, UINT32 val) {
+    nd_board_lput(addr^4, val);
+}
+
+inline UINT8 i860_cpu_device::rdcs8(UINT32 addr) {
+    return nd_board_cs8get(addr);
+}
+
+inline UINT8 i860_cpu_device::rd8(UINT32 addr) {
+    if (GET_EPSR_BE())  return nd_board_bget(addr);
+    else                return nd_board_bget(addr^7);
+}
+
+inline UINT16 i860_cpu_device::rd16(UINT32 addr) {
+    if (GET_EPSR_BE())  return nd_board_wget(addr);
+    else                return nd_board_wget(addr^6);
+}
+
+inline UINT32 i860_cpu_device::rd32(UINT32 addr) {
+    if(GET_EPSR_BE())   return nd_board_lget(addr);
+    else                return nd_board_lget(addr^4);
+}
+
+inline void i860_cpu_device::wr8(UINT32 addr, UINT8 val) {
+    if (GET_EPSR_BE())  nd_board_bput(addr,   val);
+    else                nd_board_bput(addr^7, val);
+}
+
+inline void i860_cpu_device::wr16(UINT32 addr, UINT16 val) {
+    if (GET_EPSR_BE())  nd_board_wput(addr,   val);
+    else                nd_board_wput(addr^6, val);
+}
+
+inline void i860_cpu_device::wr32(UINT32 addr, UINT32 val) {
+    if (GET_EPSR_BE())  nd_board_lput(addr  , val);
+    else                nd_board_lput(addr^4, val);
+}
+
+inline void i860_cpu_device::rddata(UINT32 addr, int size, UINT8* data) {
+    switch(size) {
+        case 4:
+            *((UINT32*)data) = rd32(addr);
+            break;
+        case 8:
+            ((UINT32*)data)[0] = rd32(addr+4);
+            ((UINT32*)data)[1] = rd32(addr+0);
+            break;
+        case 16:
+            ((UINT32*)data)[0] = rd32(addr+4);
+            ((UINT32*)data)[1] = rd32(addr+0);
+            ((UINT32*)data)[2] = rd32(addr+12);
+            ((UINT32*)data)[3] = rd32(addr+8);
+            break;
+    }
+}
+
+inline void i860_cpu_device::wrdata(UINT32 addr, int size, UINT8* data) {
+    switch(size) {
+        case 4:
+            wr32(addr, *((UINT32*)data));
+            break;
+        case 8:
+            wr32(addr+4, ((UINT32*)data)[0]);
+            wr32(addr+0, ((UINT32*)data)[1]);
+            break;
+        case 16:
+            wr32(addr+4,  ((UINT32*)data)[0]);
+            wr32(addr+0,  ((UINT32*)data)[1]);
+            wr32(addr+12, ((UINT32*)data)[2]);
+            wr32(addr+8,  ((UINT32*)data)[3]);
+            break;
+    }
+}
+
+inline UINT32 i860_cpu_device::get_iregval(int gr) {
+    return m_iregs[gr];
+}
+
+inline void i860_cpu_device::set_iregval(int gr, UINT32 val) {
+    if(gr > 0)
+        m_iregs[gr] = val;
+}
+
+inline float i860_cpu_device::get_fregval_s (int fr) {
+    return *(float*)(&m_fregs[fr * 4]);
+}
+
+inline void i860_cpu_device::set_fregval_s (int fr, float s) {
+    if(fr > 1)
+        *(float*)(&m_fregs[fr * 4]) = s;
+}
+
+inline double i860_cpu_device::get_fregval_d (int fr) {
+    return *(double*)(&m_fregs[fr * 4]);
+}
+
+inline void i860_cpu_device::set_fregval_d (int fr, double d) {
+    if(fr > 1)
+        *(double*)(&m_fregs[fr * 4]) = d;
+}
+
+inline void i860_cpu_device::SET_PSR_CC(int val) {
+    if(!(m_dim_cc_valid))
+        m_cregs[CR_PSR] = (m_cregs[CR_PSR] & ~(1 << 2)) | ((val & 1) << 2);
+}
+
+void i860_cpu_device::handle_trap(UINT32 savepc) {
+    static char buffer[128];
+    buffer[0] = 0;
+    strcat(buffer, "TRAP");
+    if(m_flow & TRAP_NORMAL)        strcat(buffer, " [Normal]");
+    if(m_flow & TRAP_IN_DELAY_SLOT) strcat(buffer, " [Delay Slot]");
+    if(m_flow & TRAP_WAS_EXTERNAL)  strcat(buffer, " [External]");
+    if(!(GET_PSR_IT() || GET_PSR_FT() || GET_PSR_IAT() || GET_PSR_DAT() || GET_PSR_IN()))
+        strcat(buffer, " >Reset<");
+    else {
+        if(GET_PSR_IT())  strcat(buffer, " >Instruction Fault<");
+        if(GET_PSR_FT())  strcat(buffer, " >Floating Point Fault<");
+        if(GET_PSR_IAT()) strcat(buffer, " >Instruction Access Fault<");
+        if(GET_PSR_DAT()) strcat(buffer, " >Data Access Fault<");
+        if(GET_PSR_IN())  strcat(buffer, " >Interrupt<");
     }
     
-    m_exiting_ifetch = 0;
-    m_exiting_readmem = 0;
+    if(!((GET_PSR_IAT() || GET_PSR_DAT() || GET_PSR_IN()))) {
+        debugger('d', buffer);
+    } else {
+        //            Log_Printf(LOG_WARN, "[ND] %s", buffer);
+    }
     
-    if (m_pending_trap) {
-        static char buffer[128];
-        buffer[0] = 0;
-        strcat(buffer, "TRAP");
-        if(m_pending_trap & TRAP_NORMAL)        strcat(buffer, " [Normal]");
-        if(m_pending_trap & TRAP_IN_DELAY_SLOT) strcat(buffer, " [Delay Slot]");
-        if(m_pending_trap & TRAP_WAS_EXTERNAL)  strcat(buffer, " [External]");
-        if(!(GET_PSR_IT() || GET_PSR_FT() || GET_PSR_IAT() || GET_PSR_DAT() || GET_PSR_IN()))
-            strcat(buffer, " >Reset<");
-        else {
-            if(GET_PSR_IT())  strcat(buffer, " >Instruction Fault<");
-            if(GET_PSR_FT())  strcat(buffer, " >Floating Point Fault<");
-            if(GET_PSR_IAT()) strcat(buffer, " >Instruction Access Fault<");
-            if(GET_PSR_DAT()) strcat(buffer, " >Data Access Fault<");
-            if(GET_PSR_IN())  strcat(buffer, " >Interrupt<");
-        }
-        if(!((GET_PSR_IAT() || GET_PSR_DAT() || GET_PSR_IN()))) {
-            debugger('d', buffer);
+    /* If we need to trap, change PC to trap address.
+     Also set supervisor mode, copy U and IM to their
+     previous versions, clear IM.  */
+    if(m_flow & TRAP_WAS_EXTERNAL) {
+        if (GET_PC_UPDATED()) {
+            m_cregs[CR_FIR] = m_pc;
         } else {
-//            Log_Printf(LOG_WARN, "[ND] %s", buffer);
-        }
-
-        /* If we need to trap, change PC to trap address.
-         Also set supervisor mode, copy U and IM to their
-         previous versions, clear IM.  */
-        if(m_pending_trap & TRAP_WAS_EXTERNAL)
-        {
-            if (!m_pc_updated)
-                m_cregs[CR_FIR] = savepc + 4;
-            else
-                m_cregs[CR_FIR] = m_pc;
-        }
-        else if (m_pending_trap & TRAP_IN_DELAY_SLOT)
-        {
             m_cregs[CR_FIR] = savepc + 4;
         }
-        else
-            m_cregs[CR_FIR] = savepc;
-        
-        m_fir_gets_trap_addr = 1;
-        SET_PSR_PU (GET_PSR_U ());
-        SET_PSR_PIM (GET_PSR_IM ());
-        SET_PSR_U (0);
-        SET_PSR_IM (0);
-        SET_PSR_DIM (0);
-        SET_PSR_DS (0);
-        m_pc = 0xffffff00;
-        m_pending_trap = 0;
     }
-    else if (!m_pc_updated)
-    {
-        /* If the PC wasn't updated by a control flow instruction, just
-         bump to next sequential instruction.  */
-        m_pc += 4;
+    else if (m_flow & TRAP_IN_DELAY_SLOT) {
+        m_cregs[CR_FIR] = savepc + 4;
+    }
+    else
+        m_cregs[CR_FIR] = savepc;
+    
+    m_flow |= FIR_GETS_TRAP;
+    SET_PSR_PU (GET_PSR_U ());
+    SET_PSR_PIM (GET_PSR_IM ());
+    SET_PSR_U (0);
+    SET_PSR_IM (0);
+    SET_PSR_DIM (0);
+    SET_PSR_DS (0);
+    m_pc = 0xffffff00;
+}
+
+void i860_cpu_device::run_cycle(int nHostCycles) {
+    if(i860_dbg_break(m_pc)) debugger('d', "BREAK at pc=%08X", m_pc);
+    
+    if(m_halt) return;
+    
+    m_dim_cc_valid = false;
+    CLEAR_FLOW();
+    bool   dim     = false;
+    UINT64 insn64  = ifetch64(m_pc);
+    
+    if(!(m_pc & 4)) {
+        UINT32 savepc  = m_pc;
+        
+        if(m_single_stepping) debugger(0,0);
+        
+        if(insn64 == INSN_FNOP || insn64 == INSN_FNOP_DIM)
+            dim = m_dim;
+        else if((insn64 & INSN_MASK_DIM) == INSN_FP_DIM)
+            dim = true;
+        
+        decode_exec(insn64, 1);
+        
+        if (PENDING_TRAP()) {
+            handle_trap(savepc);
+            goto done;
+        } else if(GET_PC_UPDATED()) {
+            goto done;
+        } else {
+            // If the PC wasn't updated by a control flow instruction, just bump to next sequential instruction.
+            m_pc   += 4;
+            CLEAR_FLOW();
+        }
     }
     
-    if(m_single_stepping)
-        debugger(0,0);
+    if(m_pc & 4) {
+        UINT32 savepc  = m_pc;
+        
+        if(m_single_stepping) debugger(0,0);
+        
+        decode_exec(insn64 >> 32, 1);
+        
+        
+        // only check for external interrupts
+        // - on high-word (speedup)
+        // - not DIM (safety :-)
+        // - when no other traps are pending
+        if(!(m_dim) && !(PENDING_TRAP())) {
+            if(nd_process_interrupts(nHostCycles))
+                i860_gen_interrupt();
+            else
+                i860_clr_interrupt();
+        }
+        
+        if (PENDING_TRAP()) {
+            handle_trap(savepc);
+        } else if (GET_PC_UPDATED()) {
+            goto done;
+        } else {
+            // If the PC wasn't updated by a control flow instruction, just bump to next sequential instruction.
+            m_pc += 4;
+        }
+    }
+done:
+    if(m_dim != dim) {
+        m_dim = dim;
+    }
 }
 
 int i860_cpu_device::memtest(bool be) {
@@ -229,8 +363,8 @@ int i860_cpu_device::memtest(bool be) {
     
     UINT8* uint8p = (UINT8*)&uint64;
     set_fregval_d(2, *((double*)uint8p));
-    fp_writemem_emu(P_TEST_ADDR, 8, &m_frg[8], 0xff);
-    fp_readmem_emu (P_TEST_ADDR, 8, &m_frg[8]);
+    fp_writemem_emu(P_TEST_ADDR, 8, &m_fregs[8], 0xff);
+    fp_readmem_emu (P_TEST_ADDR, 8, &m_fregs[8]);
     *((double*)&uint64) = get_fregval_d(2);
     if(uint64 != 0x0123456789ABCDEFLL) return err+4;
     
@@ -249,6 +383,8 @@ void i860_cpu_device::init() {
     m_console_idx       = 0;
     m_break_on_next_msg = false;
     
+    m_dim       = false;
+
     // some sanity checks for endianess
     int    err    = 0;
     {
@@ -271,10 +407,10 @@ void i860_cpu_device::init() {
                 {err = 100+i; goto error;}
         }
         for(int i = 2; i < 32; i++) {
-            if(m_frg[i*4+3] != i)    {err = 200+i; goto error;}
-            if(m_frg[i*4+2] != 0x23) {err = 200+i; goto error;}
-            if(m_frg[i*4+1] != 0x45) {err = 200+i; goto error;}
-            if(m_frg[i*4+0] != 0x67) {err = 200+i; goto error;}
+            if(m_fregs[i*4+3] != i)    {err = 200+i; goto error;}
+            if(m_fregs[i*4+2] != 0x23) {err = 200+i; goto error;}
+            if(m_fregs[i*4+1] != 0x45) {err = 200+i; goto error;}
+            if(m_fregs[i*4+0] != 0x67) {err = 200+i; goto error;}
         }
     }
     
@@ -308,14 +444,14 @@ void i860_cpu_device::init() {
             if((*(UINT32*)&lo) !=  0x89ABCDEF)            {err = 10100+i; goto error;}
         }
         for(int i = 1; i < 16; i++) {
-            if(m_frg[i*8+7] != i)    {err = 10200+i; goto error;}
-            if(m_frg[i*8+6] != 0x23) {err = 10200+i; goto error;}
-            if(m_frg[i*8+5] != 0x45) {err = 10200+i; goto error;}
-            if(m_frg[i*8+4] != 0x67) {err = 10200+i; goto error;}
-            if(m_frg[i*8+3] != 0x89) {err = 10200+i; goto error;}
-            if(m_frg[i*8+2] != 0xAB) {err = 10200+i; goto error;}
-            if(m_frg[i*8+1] != 0xCD) {err = 10200+i; goto error;}
-            if(m_frg[i*8+0] != 0xEF) {err = 10200+i; goto error;}
+            if(m_fregs[i*8+7] != i)    {err = 10200+i; goto error;}
+            if(m_fregs[i*8+6] != 0x23) {err = 10200+i; goto error;}
+            if(m_fregs[i*8+5] != 0x45) {err = 10200+i; goto error;}
+            if(m_fregs[i*8+4] != 0x67) {err = 10200+i; goto error;}
+            if(m_fregs[i*8+3] != 0x89) {err = 10200+i; goto error;}
+            if(m_fregs[i*8+2] != 0xAB) {err = 10200+i; goto error;}
+            if(m_fregs[i*8+1] != 0xCD) {err = 10200+i; goto error;}
+            if(m_fregs[i*8+0] != 0xEF) {err = 10200+i; goto error;}
         }
     }
     
