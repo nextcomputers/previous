@@ -327,3 +327,15 @@ void i860_cpu_device::dump_state()
     fprintf(stderr, "dirbase: CS8=%d ATE=%d 0x%08x",              GET_DIRBASE_CS8(), GET_DIRBASE_ATE(), m_cregs[CR_DIRBASE]);
     fprintf(stderr, "    fir: 0x%08x fsr: 0x%08x pc:0x%08x\n", m_cregs[CR_FIR], m_cregs[CR_FSR], m_pc);
 }
+
+void i860_cpu_device::i860_halt(bool state) {
+    if(state) {
+        m_halt = true;
+        Log_Printf(LOG_WARN, "[i860] **** HALTED ****");
+        Statusbar_SetNdLed(0);
+    } else {
+        Log_Printf(LOG_WARN, "[i860] **** RESTARTED ****");
+        m_halt = false;
+        Statusbar_SetNdLed(1);
+    }
+}

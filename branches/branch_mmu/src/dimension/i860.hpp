@@ -32,6 +32,7 @@
 #define TRACE_UNDEFINED_I860 1
 #define TRACE_UNALIGNED_MEM  1
 #define TRACE_EXT_INT        0
+#define ENABLE_DIM           0
 
 const int LOG_WARN = 3;
 extern "C" void Log_Printf(int nType, const char *psFormat, ...);
@@ -68,17 +69,29 @@ extern "C" {
     REGISTER ENUMERATION
 ***************************************************************************/
 
-/* Defines for pending_trap.  */
-enum {
-    TRAP_NORMAL        = 0x01,
-    TRAP_IN_DELAY_SLOT = 0x02,
-    TRAP_WAS_EXTERNAL  = 0x04
-};
 
-/* i860 pins.  */
+/* Various m_flow control flags (pending traps, pc update) */
 enum {
-    DEC_PIN_BUS_HOLD,       /* Bus HOLD pin.      */
-    DEC_PIN_RESET           /* System reset pin.  */
+    FLOW_CLEAR_MASK    = 0xF0000000,
+    /* Indicate an instruction just generated a trap, so we know the PC
+     needs to go to the trap address.  */
+    TRAP_NORMAL        = 0x00000001,
+    TRAP_IN_DELAY_SLOT = 0x00000002,
+    TRAP_WAS_EXTERNAL  = 0x00000004,
+    TRAP_MASK          = 0x00000007,
+    /* Indicate a control-flow instruction, so we know the PC is updated.  */
+    PC_UPDATED         = 0x00000100,
+    /* Various memory access faults */
+    EXITING_IFETCH     = 0x00001000,
+    EXITING_READMEM    = 0x00010000,
+    EXITING_WRITEMEM   = 0x00020000,
+    EXITING_FPREADMEM  = 0x00030000,
+    EXITING_FPWRITEMEM = 0x00040000,
+    EXITING_MEMRW      = 0x00070000,
+    /* This is 1 if the next fir load gets the trap address, otherwise
+     it is 0 to get the ld.c address.  This is set to 1 only when a
+     non-reset trap occurs.  */
+    FIR_GETS_TRAP      = 0x10000000,
 };
 
 /* Macros for accessing register fields in instruction word.  */
@@ -115,8 +128,8 @@ enum {
 #define SET_PSR_SC(val)  (m_cregs[CR_PSR] = (m_cregs[CR_PSR] & ~0x003e0000) | (((val) & 0x1f) << 17))
 
 /* PSR: CC flag (PSR[2]):  set/get.  */
-#define GET_PSR_CC()  ((m_cregs[CR_PSR] >> 2) & 1)
-#define SET_PSR_CC(val)  (m_cregs[CR_PSR] = (m_cregs[CR_PSR] & ~(1 << 2)) | (((val) & 1) << 2))
+#define GET_PSR_CC()      ((m_cregs[CR_PSR] >> 2) & 1)
+#define SET_PSR_CC_F(val) (m_cregs[CR_PSR] = (m_cregs[CR_PSR] & ~(1 << 2)) | (((val) & 1) << 2))
 
 /* PSR: IT flag (PSR[8]):  set/get.  */
 #define GET_PSR_IT()  ((m_cregs[CR_PSR] >> 8) & 1)
@@ -182,7 +195,6 @@ enum {
 #define GET_EPSR_INT()  ((m_cregs[CR_EPSR] >> 17) & 1)
 #define SET_EPSR_INT(val)  (m_cregs[CR_EPSR] = (m_cregs[CR_EPSR] & ~(1 << 17)) | (((val) & 1) << 17))
 
-
 /* EPSR: OF flag (EPSR[24]):  set/get.  */
 #define GET_EPSR_OF()  ((m_cregs[CR_EPSR] >> 24) & 1)
 #define SET_EPSR_OF(val)  (m_cregs[CR_EPSR] = (m_cregs[CR_EPSR] & ~(1 << 24)) | (((val) & 1) << 24))
@@ -197,6 +209,9 @@ enum {
 /* DIRBASE: CS8 bit (DIRBASE[7]):  get.  */
 #define GET_DIRBASE_CS8()  ((m_cregs[CR_DIRBASE] >> 7) & 1)
 
+/* DIRBASE: CS8 bit (DIRBASE[7]):  get.  */
+#define GET_DIRBASE_ITI()  ((m_cregs[CR_DIRBASE] >> 5) & 1)
+
 /* FSR: FTE bit (FSR[5]):  set/get.  */
 #define GET_FSR_FTE()  ((m_cregs[CR_FSR] >> 5) & 1)
 #define SET_FSR_FTE(val)  (m_cregs[CR_FSR] = (m_cregs[CR_FSR] & ~(1 << 5)) | (((val) & 1) << 5))
@@ -205,8 +220,49 @@ enum {
 #define GET_FSR_SE()  ((m_cregs[CR_FSR] >> 8) & 1)
 #define SET_FSR_SE(val)  (m_cregs[CR_FSR] = (m_cregs[CR_FSR] & ~(1 << 8)) | (((val) & 1) << 8))
 
-#define SWAP_UINT16(x) ((((UINT16)(x)) >> 8) | (((UINT16)(x)) << 8))
-#define SWAP_UINT32(x) ((((UINT32)(x)) >> 24) | ((((UINT32)(x)) & 0x00FF0000) >> 8) | ((((UINT32)(x)) & 0x0000FF00) << 8) | (((UINT32)(x)) << 24))
+#define CLEAR_FLOW() (m_flow &= FLOW_CLEAR_MASK)
+
+/* check for pending trap */
+#define PENDING_TRAP() (m_flow & TRAP_MASK)
+
+/* check for updated PC */
+#define GET_PC_UPDATED() (m_flow & PC_UPDATED)
+#define SET_PC_UPDATED() m_flow |= PC_UPDATED
+
+/* access fault traps */
+#define GET_EXITING_MEMRW()    (m_flow & EXITING_MEMRW)
+#define SET_EXITING_MEMRW(val) (m_flow = (val) | (m_flow & ~EXITING_MEMRW))
+
+const UINT32 INSN_NOP      = 0xA0000000;
+const UINT32 INSN_DIM      = 0x00000200;
+const UINT32 INSN_FNOP     = 0xB0000000;
+const UINT32 INSN_FNOP_DIM = INSN_FNOP | INSN_DIM;
+const UINT32 INSN_FP       = 0x48000000;
+const UINT32 INSN_FP_DIM   = INSN_FP   | INSN_DIM;
+const UINT32 INSN_MASK     = 0xFC000000;
+const UINT32 INSN_MASK_DIM = INSN_MASK | INSN_DIM;
+
+const size_t I860_CACHE_LINE_SZ   = 1; // in powers of two words (2^1 = 2 words)
+const size_t I860_ICACHE_SZ       = 9; // in powers of two lines (2^9 = 512; 512 x 2 words = 4 kbytes)
+const size_t I860_CACHE_LINE_MASK = (1<<I860_CACHE_LINE_SZ)-1;
+const size_t I860_ICACHE_MASK     = (1<<I860_ICACHE_SZ)-1;
+const size_t I860_TLB_SZ          = 12; // in powers of two
+const size_t I860_TLB_MASK        = (1<<I860_TLB_SZ)-1;
+const size_t I860_PAGE_SZ         = 12; // in powers of two
+const size_t I860_PAGE_OFF_MASK   = (1<<I860_PAGE_SZ)-1;
+const size_t I860_TLB_ADDR_MASK   = ~I860_PAGE_OFF_MASK;
+const size_t I860_TLB_FLAGS       = I860_PAGE_OFF_MASK;
+
+struct i860_cache_line {
+    UINT32   vaddr;
+    UINT32   flags;
+    UINT32   data[1<<I860_CACHE_LINE_SZ];
+};
+
+struct i860_tlb_entry {
+    UINT32 vaddr;
+    UINT32 paddr_flags;
+};
 
 /* Control register numbers.  */
 enum {
@@ -271,17 +327,7 @@ public:
     void i860_reset();
 
     /* This is the external interface for halting the i860.  */
-    void i860_halt(bool state) {
-        if(state) {
-            m_halt = true;
-            Log_Printf(LOG_WARN, "[i860] **** HALTED ****");
-			Statusbar_SetNdLed(0);
-        } else {
-            Log_Printf(LOG_WARN, "[i860] **** RESTARTED ****");
-            m_halt = false;
-			Statusbar_SetNdLed(1);
-        }
-    }
+    void i860_halt(bool state);
     
     /* Program counter (1 x 32-bits).  Reset starts at pc=0xffffff00.  */
     UINT32 m_pc;
@@ -294,28 +340,29 @@ public:
     // debugger
     void debugger(char cmd, const char* format, ...);
     void debugger();
-protected:
-	// device_execute_interface overrides
-	UINT32 execute_min_cycles() const { return 1; }
-	UINT32 execute_max_cycles() const { return 8; }
-	UINT32 execute_input_lines() const { return 0; }
 private:
     char m_lastcmd; // last debugger command
-    char m_console[4*1024*1024];
+    char m_console[512*1024];
     int  m_console_idx;
     bool m_break_on_next_msg;
     
 	/* Integer registers (32 x 32-bits).  */
-	UINT32 m_iregs[32];
-
+	UINT32  m_iregs[32];
+    
 	/* Floating point registers (32 x 32-bits, 16 x 64 bits, or 8 x 128 bits).
 	   When referenced as pairs or quads, the higher numbered registers
 	   are the upper bits. E.g., double precision f0 is f1:f0.  */
-	UINT8 m_frg[32 * 4];
+	UINT8   m_fregs[32 * 4];
 
 	/* Control registers (6 x 32-bits).  */
 	UINT32 m_cregs[6];
 
+    /* Dual instruction mode flags */
+    bool m_dim;
+    bool m_dim_dbg;
+    bool m_dim_cc;
+    bool m_dim_cc_valid;
+    
 	/* Special registers (4 x 64-bits).  */
 	union
 	{
@@ -387,116 +434,42 @@ private:
 		} stat;
 	} m_G;
 
+    /* Instruction cache */
+    i860_cache_line m_icache[1<<I860_ICACHE_SZ];
+    
+    /* Translation look-aside buffer */
+    i860_tlb_entry  m_tlb[1<<I860_TLB_SZ];
+    
 	/*
-	 * Other emulator state.
+	 * Halt state.
 	 */
-	int  m_exiting_readmem;
-	int  m_exiting_ifetch;
     bool m_halt;
     
-	/* Indicate a control-flow instruction, so we know the PC is updated.  */
-	int m_pc_updated;
-
-	/* Indicate an instruction just generated a trap, so we know the PC
-	   needs to go to the trap address.  */
-	int m_pending_trap;
-
-	/* This is 1 if the next fir load gets the trap address, otherwise
-	   it is 0 to get the ld.c address.  This is set to 1 only when a
-	   non-reset trap occurs.  */
-	int m_fir_gets_trap_addr;
-
-	/* Single stepping flag for internal use.  */
-	int m_single_stepping;
-
-    /* Dual instruction mode flag */
-    int m_dim;
+	/* Indicate an instruction just generated a trap,
+     needs to go to the trap address or a control-flow 
+     instruction, so we know the PC is updated.  */
+	UINT32 m_flow;
     
+    /* Single stepping state - for internal use.  */
+    int m_single_stepping;
+
     /* memory access */
-    inline void frddata(UINT32 addr, int size, UINT8* data) {
-        switch(size) {
-            case 4:
-                *((UINT32*)data) = rd32(addr);
-                break;
-            case 8:
-                ((UINT32*)data)[0] = rd32(addr+4);
-                ((UINT32*)data)[1] = rd32(addr+0);
-                break;
-            case 16:
-                ((UINT32*)data)[0] = rd32(addr+4);
-                ((UINT32*)data)[1] = rd32(addr+0);
-                ((UINT32*)data)[2] = rd32(addr+12);
-                ((UINT32*)data)[3] = rd32(addr+8);
-                break;
-        }
-    }
+    void   rddata(UINT32 addr, int size, UINT8* data);
+    void   wrdata(UINT32 addr, int size, UINT8* data);
+    UINT32 rd32i(UINT32 addr);
+    void   wr32i(UINT32 addr, UINT32 val);
+    UINT8  rdcs8(UINT32 addr);
+    UINT8  rd8(UINT32 addr);
+    UINT16 rd16(UINT32 addr);
+    UINT32 rd32(UINT32 addr);
+    void   wr8(UINT32 addr, UINT8 val);
+    void   wr16(UINT32 addr, UINT16 val);
+    void   wr32(UINT32 addr, UINT32 val);
+	void   writememi_emu (UINT32 addr, int size, UINT32 data);
+	void   fp_readmem_emu (UINT32 addr, int size, UINT8 *dest);
+	void   fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT32 wmask);
 
-    inline void fwrdata(UINT32 addr, int size, UINT8* data) {
-        switch(size) {
-            case 4:
-                wr32(addr, *((UINT32*)data));
-                break;
-            case 8:
-                wr32(addr+4, ((UINT32*)data)[0]);
-                wr32(addr+0, ((UINT32*)data)[1]);
-                break;
-            case 16:
-                wr32(addr+4,  ((UINT32*)data)[0]);
-                wr32(addr+0,  ((UINT32*)data)[1]);
-                wr32(addr+12, ((UINT32*)data)[2]);
-                wr32(addr+8,  ((UINT32*)data)[3]);
-                break;
-        }
-    }
-
-    inline UINT32 rd32i(UINT32 addr) {
-        return nd_board_lget(addr^4);
-    }
-    
-    inline void wr32i(UINT32 addr, UINT32 val) {
-        nd_board_lput(addr^4, val);
-    }
-    
-    inline UINT8 rdcs8(UINT32 addr) {
-        return nd_board_cs8get(addr);
-    }
-    
-    inline UINT8 rd8(UINT32 addr) {
-        if (GET_EPSR_BE())  return nd_board_bget(addr);
-        else                return nd_board_bget(addr^7);
-    }
-    
-    inline UINT16 rd16(UINT32 addr) {
-        if (GET_EPSR_BE())  return nd_board_wget(addr);
-        else                return nd_board_wget(addr^6);
-    }
-    
-    inline UINT32 rd32(UINT32 addr) {
-        if(GET_EPSR_BE())   return nd_board_lget(addr);
-        else                return nd_board_lget(addr^4);
-    }
-    
-    inline void wr8(UINT32 addr, UINT8 val) {
-        if (GET_EPSR_BE())  nd_board_bput(addr,   val);
-        else                nd_board_bput(addr^7, val);
-    }
-    
-    inline void wr16(UINT32 addr, UINT16 val) {
-        if (GET_EPSR_BE())  nd_board_wput(addr,   val);
-        else                nd_board_wput(addr^6, val);
-    }
-    
-    inline void wr32(UINT32 addr, UINT32 val) {
-        if (GET_EPSR_BE())  nd_board_lput(addr  , val);
-        else                nd_board_lput(addr^4, val);
-    }
-    
-	void writememi_emu (UINT32 addr, int size, UINT32 data);
-	void fp_readmem_emu (UINT32 addr, int size, UINT8 *dest);
-	void fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT32 wmask);
-	void dump_pipe (int type);
-	void dump_state ();
-	void unrecog_opcode (UINT32 pc, UINT32 insn);
+    /* instructions */
 	void insn_ld_ctrl (UINT32 insn);
 	void insn_st_ctrl (UINT32 insn);
 	void insn_ldx (UINT32 insn);
@@ -564,16 +537,29 @@ private:
 	void insn_faddp (UINT32 insn);
 	void insn_faddz (UINT32 insn);
     
-    float  get_fregval_s (int fr);
-    double get_fregval_d (int fr);
-    void   set_fregval_s (int fr, float s);
-    void   set_fregval_d (int fr, double d);
+    /* register access */
+    UINT32 get_iregval(int gr);
     void   set_iregval(int gr, UINT32 val);
-
-    UINT32 ifetch (UINT32 pc);
+    float  get_fregval_s (int fr);
+    void   set_fregval_s (int fr, float s);
+    double get_fregval_d (int fr);
+    void   set_fregval_d (int fr, double d);
+    void   SET_PSR_CC(int val);
+    
+    size_t icache_line(UINT32 pc) {return (pc >> (2+I860_CACHE_LINE_SZ)) & I860_ICACHE_MASK;};
+    size_t icache_off(UINT32 pc)  {return (pc >>  2)                     & I860_CACHE_LINE_MASK;};
+    bool   load_icache(UINT32 pc);
+    void   invalidate_icache();
+    void   invalidate_tlb();
+    UINT64 ifetch64(UINT32 pc);
+    UINT32 ifetch(UINT32 pc);
     UINT32 ifetch_notrap(UINT32 pc);
+    void   handle_trap(UINT32 savepc);
+    void   unrecog_opcode (UINT32 pc, UINT32 insn);
 
     void   decode_exec (UINT32 insn, UINT32 non_shadow);
+    void   dump_pipe (int type);
+    void   dump_state ();
 	UINT32 disasm (UINT32 addr, int len);
 	void   dbg_db (UINT32 addr, int len);
 	int    has_delay_slot(UINT32 insn);

@@ -57,7 +57,7 @@ static void int_12d(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 		sprintf(buf, "d.%s\t%%r%d,%%r%d,%%r%d", mnemonic,
 			get_isrc1 (insn), get_isrc2 (insn), get_idest (insn));
 	else
-		sprintf(buf, "%s\t%%r%d,%%r%d,%%r%d", mnemonic,
+		sprintf(buf, "  %s\t%%r%d,%%r%d,%%r%d", mnemonic,
 			get_isrc1 (insn), get_isrc2 (insn), get_idest (insn));
 }
 
@@ -70,10 +70,10 @@ static void int_i2d(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 	   Print as hex for the bitwise operations.  */
 	int upper_6bits = (insn >> 26) & 0x3f;
 	if (upper_6bits >= 0x30 && upper_6bits <= 0x3f)
-		sprintf(buf, "%s\t0x%04x,%%r%d,%%r%d", mnemonic,
+		sprintf(buf, "  %s\t0x%04x,%%r%d,%%r%d", mnemonic,
 			(UINT32)(get_imm16 (insn)), get_isrc2 (insn), get_idest (insn));
 	else
-		sprintf(buf, "%s\t%d,%%r%d,%%r%d", mnemonic,
+		sprintf(buf, "  %s\t%d,%%r%d,%%r%d", mnemonic,
 			sign_ext(get_imm16 (insn), 16), get_isrc2 (insn), get_idest (insn));
 }
 
@@ -81,21 +81,21 @@ static void int_i2d(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 /* Integer (mixed) 2-address  isrc1ni,fdest.  */
 static void int_1d(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 {
-	sprintf(buf, "%s\t%%r%d,%%f%d", mnemonic, get_isrc1 (insn), get_fdest (insn));
+	sprintf(buf, "  %s\t%%r%d,%%f%d", mnemonic, get_isrc1 (insn), get_fdest (insn));
 }
 
 
 /* Integer (mixed) 2-address  csrc2,idest.  */
 static void int_cd(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 {
-	sprintf(buf, "%s\t%%%s,%%r%d", mnemonic, cr2str[get_creg (insn)], get_idest (insn));
+	sprintf(buf, "  %s\t%%%s,%%r%d", mnemonic, cr2str[get_creg (insn)], get_idest (insn));
 }
 
 
 /* Integer (mixed) 2-address  isrc1,csrc2.  */
 static void int_1c(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 {
-	sprintf(buf, "%s\t%%r%d,%%%s", mnemonic, get_isrc1(insn), cr2str[get_creg (insn)]);
+	sprintf(buf, "  %s\t%%r%d,%%%s", mnemonic, get_isrc1(insn), cr2str[get_creg (insn)]);
 }
 
 
@@ -103,7 +103,7 @@ static void int_1c(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
  *   mnemonic %rs1  */
 static void int_1(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 {
-	sprintf(buf, "%s\t%%r%d", mnemonic, get_isrc1 (insn));
+	sprintf(buf, "  %s\t%%r%d", mnemonic, get_isrc1 (insn));
 }
 
 
@@ -111,7 +111,7 @@ static void int_1(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
  *   mnemonic  */
 static void int_0(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 {
-	sprintf(buf, "%s", mnemonic);
+	sprintf(buf, "  %s", mnemonic);
 }
 
 
@@ -213,7 +213,7 @@ static void int_12S(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 	INT32 sbroff = sign_ext ((((insn >> 5) & 0xf800) | (insn & 0x07ff)), 16);
 	INT32 rel = (INT32)pc + (sbroff << 2) + 4;
 
-	sprintf(buf, "%s\t%%r%d,%%r%d,0x%08x", mnemonic, get_isrc1 (insn),
+	sprintf(buf, "  %s\t%%r%d,%%r%d,0x%08x", mnemonic, get_isrc1 (insn),
 		get_isrc2 (insn), (UINT32)rel);
 }
 
@@ -225,7 +225,7 @@ static void int_i2S(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 	INT32 sbroff = sign_ext ((((insn >> 5) & 0xf800) | (insn & 0x07ff)), 16);
 	INT32 rel = (INT32)pc + (sbroff << 2) + 4;
 
-	sprintf(buf, "%s\t%d,%%r%d,0x%08x", mnemonic, ((insn >> 11) & 0x1f),
+	sprintf(buf, "  %s\t%d,%%r%d,0x%08x", mnemonic, ((insn >> 11) & 0x1f),
 		get_isrc2 (insn), (UINT32)rel);
 }
 
@@ -237,7 +237,7 @@ static void int_L(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 	INT32 lbroff =  sign_ext ((insn & 0x03ffffff), 26);
 	INT32 rel = (INT32)pc + (lbroff << 2) + 4;
 
-	sprintf(buf, "%s\t0x%08x", mnemonic, (UINT32)rel);
+	sprintf(buf, "  %s\t0x%08x", mnemonic, (UINT32)rel);
 }
 
 
@@ -261,11 +261,11 @@ static void int_ldx(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 		INT32 immsrc1 = sign_ext (get_imm16 (insn), 16);
 		int size = sizes[idx];
 		immsrc1 &= ~(size - 1);
-		sprintf(buf, "%s%s\t%d(%%r%d),%%r%d", mnemonic, suffix[idx],
+		sprintf(buf, "  %s%s\t%d(%%r%d),%%r%d", mnemonic, suffix[idx],
 			immsrc1, get_isrc2 (insn), get_idest (insn));
 	}
 	else
-		sprintf(buf, "%s%s\t%%r%d(%%r%d),%%r%d", mnemonic, suffix[idx],
+		sprintf(buf, "  %s%s\t%%r%d(%%r%d),%%r%d", mnemonic, suffix[idx],
 			get_isrc1 (insn), get_isrc2 (insn), get_idest (insn));
 }
 
@@ -286,7 +286,7 @@ static void int_stx(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 	/* Chop off lower bits of displacement.  */
 	size = sizes[idx];
 	immsrc &= ~(size - 1);
-	sprintf(buf, "%s%s\t%%r%d,%d(%%r%d)", mnemonic, suffix[idx],
+	sprintf(buf, "  %s%s\t%%r%d,%d(%%r%d)", mnemonic, suffix[idx],
 		get_isrc1 (insn), immsrc, get_isrc2 (insn));
 }
 
@@ -337,21 +337,21 @@ static void int_fldst(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 		/* Chop off lower bits of displacement.  */
 		immsrc1 &= ~(size - 1);
 		if (is_load)
-			sprintf(buf, "%s%s%s\t%d(%%r%d)%s,%%f%d", piped_suff[piped], mnemonic,
+			sprintf(buf, "  %s%s%s\t%d(%%r%d)%s,%%f%d", piped_suff[piped], mnemonic,
 				suffix[idx], immsrc1, get_isrc2 (insn), auto_suff[auto_inc],
 				get_fdest (insn));
 		else
-			sprintf(buf, "%s%s\t%%f%d,%d(%%r%d)%s", mnemonic, suffix[idx],
+			sprintf(buf, "  %s%s\t%%f%d,%d(%%r%d)%s", mnemonic, suffix[idx],
 				get_fdest (insn), immsrc1, get_isrc2 (insn), auto_suff[auto_inc]);
 	}
 	else
 	{
 		if (is_load)
-			sprintf(buf, "%s%s%s\t%%r%d(%%r%d)%s,%%f%d", piped_suff[piped],
+			sprintf(buf, "  %s%s%s\t%%r%d(%%r%d)%s,%%f%d", piped_suff[piped],
 				mnemonic, suffix[idx], get_isrc1 (insn), get_isrc2 (insn),
 				auto_suff[auto_inc], get_fdest (insn));
 		else
-			sprintf(buf, "%s%s\t%%f%d,%%r%d(%%r%d)%s", mnemonic, suffix[idx],
+			sprintf(buf, "  %s%s\t%%f%d,%%r%d(%%r%d)%s", mnemonic, suffix[idx],
 				get_fdest (insn), get_isrc1 (insn), get_isrc2 (insn),
 				auto_suff[auto_inc]);
 	}
@@ -364,7 +364,7 @@ static void int_flush(char *buf, char *mnemonic, UINT32 pc, UINT32 insn)
 	const char *const auto_suff[2] = { "", "++" };
 	INT32 immsrc = sign_ext (get_imm16 (insn), 16);
 	immsrc &= ~(16-1);
-	sprintf(buf, "%s\t%d(%%r%d)%s", mnemonic, immsrc, get_isrc2 (insn),
+	sprintf(buf, "  %s\t%d(%%r%d)%s", mnemonic, immsrc, get_isrc2 (insn),
 		auto_suff[(insn & 1)]);
 }
 
@@ -398,70 +398,70 @@ static const decode_tbl_t decode_tbl[64] =
 	/* A slight bit of decoding for loads and stores is done in the
 	   execution routines (operand size and addressing mode), which
 	   is why their respective entries are identical.  */
-	{ int_ldx,   DEC_DECODED, "  ld."        }, /* ld.b isrc1(isrc2),idest.  */
-	{ int_ldx,   DEC_DECODED, "  ld."        }, /* ld.b #const(isrc2),idest.  */
-	{ int_1d,    DEC_DECODED, "  ixfr"       }, /* ixfr isrc1ni,fdest.        */
-	{ int_stx,   DEC_DECODED, "  st."        }, /* st.b isrc1ni,#const(isrc2).  */
-	{ int_ldx,   DEC_DECODED, "  ld."        }, /* ld.{s,l} isrc1(isrc2),idest.  */
-	{ int_ldx,   DEC_DECODED, "  ld."        }, /* ld.{s,l} #const(isrc2),idest.  */
+	{ int_ldx,   DEC_DECODED, "ld."        }, /* ld.b isrc1(isrc2),idest.  */
+	{ int_ldx,   DEC_DECODED, "ld."        }, /* ld.b #const(isrc2),idest.  */
+	{ int_1d,    DEC_DECODED, "ixfr"       }, /* ixfr isrc1ni,fdest.        */
+	{ int_stx,   DEC_DECODED, "st."        }, /* st.b isrc1ni,#const(isrc2).  */
+	{ int_ldx,   DEC_DECODED, "ld."        }, /* ld.{s,l} isrc1(isrc2),idest.  */
+	{ int_ldx,   DEC_DECODED, "ld."        }, /* ld.{s,l} #const(isrc2),idest.  */
 	{ 0,         0           , 0           },
-	{ int_stx,   DEC_DECODED, "  st."        }, /* st.{s,l} isrc1ni,#const(isrc2),idest.*/
-	{ int_fldst, DEC_DECODED, "  fld."       }, /* fld.{l,d,q} isrc1(isrc2)[++],fdest.  */
-	{ int_fldst, DEC_DECODED, "  fld."       }, /* fld.{l,d,q} #const(isrc2)[++],fdest. */
-	{ int_fldst, DEC_DECODED, "  fst."       }, /* fst.{l,d,q} fdest,isrc1(isrc2)[++]   */
-	{ int_fldst, DEC_DECODED, "  fst."       }, /* fst.{l,d,q} fdest,#const(isrc2)[++]  */
-	{ int_cd,    DEC_DECODED, "  ld.c"       }, /* ld.c csrc2,idest.                    */
-	{ int_flush, DEC_DECODED, "  flush"      }, /* flush #const(isrc2) (or autoinc).    */
-	{ int_1c,    DEC_DECODED, "  st.c"       }, /* st.c isrc1,csrc2.                    */
-	{ int_fldst, DEC_DECODED, "  pstd."      }, /* pst.d fdest,#const(isrc2)[++].       */
-	{ int_1,     DEC_DECODED, "  bri"        }, /* bri isrc1ni.                         */
-	{ int_12d,   DEC_DECODED, "  trap"       }, /* trap isrc1ni,isrc2,idest.            */
+	{ int_stx,   DEC_DECODED, "st."        }, /* st.{s,l} isrc1ni,#const(isrc2),idest.*/
+	{ int_fldst, DEC_DECODED, "fld."       }, /* fld.{l,d,q} isrc1(isrc2)[++],fdest.  */
+	{ int_fldst, DEC_DECODED, "fld."       }, /* fld.{l,d,q} #const(isrc2)[++],fdest. */
+	{ int_fldst, DEC_DECODED, "fst."       }, /* fst.{l,d,q} fdest,isrc1(isrc2)[++]   */
+	{ int_fldst, DEC_DECODED, "fst."       }, /* fst.{l,d,q} fdest,#const(isrc2)[++]  */
+	{ int_cd,    DEC_DECODED, "ld.c"       }, /* ld.c csrc2,idest.                    */
+	{ int_flush, DEC_DECODED, "flush"      }, /* flush #const(isrc2) (or autoinc).    */
+	{ int_1c,    DEC_DECODED, "st.c"       }, /* st.c isrc1,csrc2.                    */
+	{ int_fldst, DEC_DECODED, "pstd."      }, /* pst.d fdest,#const(isrc2)[++].       */
+	{ int_1,     DEC_DECODED, "bri"        }, /* bri isrc1ni.                         */
+	{ int_12d,   DEC_DECODED, "trap"       }, /* trap isrc1ni,isrc2,idest.            */
 	{ 0,         DEC_MORE,    0            }, /* FP ESCAPE FORMAT, more decode.       */
 	{ 0,         DEC_MORE,    0            }, /* CORE ESCAPE FORMAT, more decode.     */
-	{ int_12S,   DEC_DECODED, "  btne"       }, /* btne isrc1,isrc2,sbroff.             */
-	{ int_i2S,   DEC_DECODED, "  btne"       }, /* btne #const,isrc2,sbroff.            */
-	{ int_12S,   DEC_DECODED, "  bte"        }, /* bte isrc1,isrc2,sbroff.              */
-	{ int_i2S,   DEC_DECODED, "  bte"        }, /* bte #const5,isrc2,idest.             */
-	{ int_fldst, DEC_DECODED, "  pfld."      }, /* pfld.{l,d,q} isrc1(isrc2)[++],fdest. */
-	{ int_fldst, DEC_DECODED, "  pfld."      }, /* pfld.{l,d,q} #const(isrc2)[++],fdest.*/
-	{ int_L,     DEC_DECODED, "  br"         }, /* br lbroff.    */
-	{ int_L,     DEC_DECODED, "  call"       }, /* call lbroff . */
-	{ int_L,     DEC_DECODED, "  bc"         }, /* bc lbroff.    */
-	{ int_L,     DEC_DECODED, "  bc.t"       }, /* bc.t lbroff.  */
-	{ int_L,     DEC_DECODED, "  bnc"        }, /* bnc lbroff.   */
-	{ int_L,     DEC_DECODED, "  bnc.t"      }, /* bnc.t lbroff. */
-	{ int_12d,   DEC_DECODED, "  addu"       }, /* addu isrc1,isrc2,idest.    */
-	{ int_i2d,   DEC_DECODED, "  addu"       }, /* addu #const,isrc2,idest.   */
-	{ int_12d,   DEC_DECODED, "  subu"       }, /* subu isrc1,isrc2,idest.    */
-	{ int_i2d,   DEC_DECODED, "  subu"       }, /* subu #const,isrc2,idest.   */
-	{ int_12d,   DEC_DECODED, "  adds"       }, /* adds isrc1,isrc2,idest.    */
-	{ int_i2d,   DEC_DECODED, "  adds"       }, /* adds #const,isrc2,idest.   */
-	{ int_12d,   DEC_DECODED, "  subs"       }, /* subs isrc1,isrc2,idest.    */
-	{ int_i2d,   DEC_DECODED, "  subs"       }, /* subs #const,isrc2,idest.   */
-	{ int_12d,   DEC_DECODED, "  shl"        }, /* shl isrc1,isrc2,idest.     */
-	{ int_i2d,   DEC_DECODED, "  shl"        }, /* shl #const,isrc2,idest.    */
-	{ int_12d,   DEC_DECODED, "  shr"        }, /* shr isrc1,isrc2,idest.     */
-	{ int_i2d,   DEC_DECODED, "  shr"        }, /* shr #const,isrc2,idest.    */
-	{ int_12d,   DEC_DECODED, "  shrd"       }, /* shrd isrc1ni,isrc2,idest.  */
-	{ int_12S,   DEC_DECODED, "  bla"        }, /* bla isrc1ni,isrc2,sbroff.  */
-	{ int_12d,   DEC_DECODED, "  shra"       }, /* shra isrc1,isrc2,idest.    */
-	{ int_i2d,   DEC_DECODED, "  shra"       }, /* shra #const,isrc2,idest.   */
-	{ int_12d,   DEC_DECODED, "  and"        }, /* and isrc1,isrc2,idest.     */
-	{ int_i2d,   DEC_DECODED, "  and"        }, /* and #const,isrc2,idest.    */
+	{ int_12S,   DEC_DECODED, "btne"       }, /* btne isrc1,isrc2,sbroff.             */
+	{ int_i2S,   DEC_DECODED, "btne"       }, /* btne #const,isrc2,sbroff.            */
+	{ int_12S,   DEC_DECODED, "bte"        }, /* bte isrc1,isrc2,sbroff.              */
+	{ int_i2S,   DEC_DECODED, "bte"        }, /* bte #const5,isrc2,idest.             */
+	{ int_fldst, DEC_DECODED, "pfld."      }, /* pfld.{l,d,q} isrc1(isrc2)[++],fdest. */
+	{ int_fldst, DEC_DECODED, "pfld."      }, /* pfld.{l,d,q} #const(isrc2)[++],fdest.*/
+	{ int_L,     DEC_DECODED, "br"         }, /* br lbroff.    */
+	{ int_L,     DEC_DECODED, "call"       }, /* call lbroff . */
+	{ int_L,     DEC_DECODED, "bc"         }, /* bc lbroff.    */
+	{ int_L,     DEC_DECODED, "bc.t"       }, /* bc.t lbroff.  */
+	{ int_L,     DEC_DECODED, "bnc"        }, /* bnc lbroff.   */
+	{ int_L,     DEC_DECODED, "bnc.t"      }, /* bnc.t lbroff. */
+	{ int_12d,   DEC_DECODED, "addu"       }, /* addu isrc1,isrc2,idest.    */
+	{ int_i2d,   DEC_DECODED, "addu"       }, /* addu #const,isrc2,idest.   */
+	{ int_12d,   DEC_DECODED, "subu"       }, /* subu isrc1,isrc2,idest.    */
+	{ int_i2d,   DEC_DECODED, "subu"       }, /* subu #const,isrc2,idest.   */
+	{ int_12d,   DEC_DECODED, "adds"       }, /* adds isrc1,isrc2,idest.    */
+	{ int_i2d,   DEC_DECODED, "adds"       }, /* adds #const,isrc2,idest.   */
+	{ int_12d,   DEC_DECODED, "subs"       }, /* subs isrc1,isrc2,idest.    */
+	{ int_i2d,   DEC_DECODED, "subs"       }, /* subs #const,isrc2,idest.   */
+	{ int_12d,   DEC_DECODED, "shl"        }, /* shl isrc1,isrc2,idest.     */
+	{ int_i2d,   DEC_DECODED, "shl"        }, /* shl #const,isrc2,idest.    */
+	{ int_12d,   DEC_DECODED, "shr"        }, /* shr isrc1,isrc2,idest.     */
+	{ int_i2d,   DEC_DECODED, "shr"        }, /* shr #const,isrc2,idest.    */
+	{ int_12d,   DEC_DECODED, "shrd"       }, /* shrd isrc1ni,isrc2,idest.  */
+	{ int_12S,   DEC_DECODED, "bla"        }, /* bla isrc1ni,isrc2,sbroff.  */
+	{ int_12d,   DEC_DECODED, "shra"       }, /* shra isrc1,isrc2,idest.    */
+	{ int_i2d,   DEC_DECODED, "shra"       }, /* shra #const,isrc2,idest.   */
+	{ int_12d,   DEC_DECODED, "and"        }, /* and isrc1,isrc2,idest.     */
+	{ int_i2d,   DEC_DECODED, "and"        }, /* and #const,isrc2,idest.    */
 	{ 0,         0           , 0           },
-	{ int_i2d,   DEC_DECODED, "  andh"       }, /* andh #const,isrc2,idest.   */
-	{ int_12d,   DEC_DECODED, "  andnot"     }, /* andnot isrc1,isrc2,idest.  */
-	{ int_i2d,   DEC_DECODED, "  andnot"     }, /* andnot #const,isrc2,idest. */
+	{ int_i2d,   DEC_DECODED, "andh"       }, /* andh #const,isrc2,idest.   */
+	{ int_12d,   DEC_DECODED, "andnot"     }, /* andnot isrc1,isrc2,idest.  */
+	{ int_i2d,   DEC_DECODED, "andnot"     }, /* andnot #const,isrc2,idest. */
 	{ 0,         0           , 0           },
-	{ int_i2d,   DEC_DECODED, "  andnoth"    }, /* andnoth #const,isrc2,idest.*/
-	{ int_12d,   DEC_DECODED, "  or"         }, /* or isrc1,isrc2,idest.      */
-	{ int_i2d,   DEC_DECODED, "  or"         }, /* or #const,isrc2,idest.     */
+	{ int_i2d,   DEC_DECODED, "andnoth"    }, /* andnoth #const,isrc2,idest.*/
+	{ int_12d,   DEC_DECODED, "or"         }, /* or isrc1,isrc2,idest.      */
+	{ int_i2d,   DEC_DECODED, "or"         }, /* or #const,isrc2,idest.     */
 	{ 0,         0           , 0           },
-	{ int_i2d,   DEC_DECODED, "  orh"        }, /* orh #const,isrc2,idest.    */
-	{ int_12d,   DEC_DECODED, "  xor"        }, /* xor isrc1,isrc2,idest.     */
-	{ int_i2d,   DEC_DECODED, "  xor"        }, /* xor #const,isrc2,idest.    */
+	{ int_i2d,   DEC_DECODED, "orh"        }, /* orh #const,isrc2,idest.    */
+	{ int_12d,   DEC_DECODED, "xor"        }, /* xor isrc1,isrc2,idest.     */
+	{ int_i2d,   DEC_DECODED, "xor"        }, /* xor #const,isrc2,idest.    */
 	{ 0,         0           , 0           },
-	{ int_i2d,   DEC_DECODED, "  xorh"       }, /* xorh #const,isrc2,idest.   */
+	{ int_i2d,   DEC_DECODED, "xorh"       }, /* xorh #const,isrc2,idest.   */
 };
 
 
@@ -469,13 +469,13 @@ static const decode_tbl_t decode_tbl[64] =
 static const decode_tbl_t core_esc_decode_tbl[8] =
 {
 	{ 0,         0          , 0           },
-	{ int_0,     DEC_DECODED, "  lock"      }, /* lock.           */
-	{ int_1,     DEC_DECODED, "  calli"     }, /* calli isrc1ni.  */
+	{ int_0,     DEC_DECODED, "lock"      }, /* lock.           */
+	{ int_1,     DEC_DECODED, "calli"     }, /* calli isrc1ni.  */
 	{ 0,         0          , 0           },
-	{ int_0,     DEC_DECODED, "  intovr"    }, /* intovr.         */
+	{ int_0,     DEC_DECODED, "intovr"    }, /* intovr.         */
 	{ 0,         0          , 0           },
 	{ 0,         0          , 0           },
-	{ int_0,     DEC_DECODED, "  unlock"    }, /* unlock.         */
+	{ int_0,     DEC_DECODED, "unlock"    }, /* unlock.         */
 };
 
 
@@ -649,38 +649,35 @@ static void i860_dasm_tab_replacer(char* buf, int tab_size)
 }
 
 
-int i860_disassembler(UINT32 pc, UINT32 insn, char* buffer)
-{
+int i860_disassembler(UINT32 pc, UINT32 insn, char* buffer) {
 	int unrecognized_op = 1;
-    
     
 	int upper_6bits = (insn >> 26) & 0x3f;
 	char flags = decode_tbl[upper_6bits].flags;
-    if(insn == 0xA0000000) {
+    if(insn == INSN_NOP) {
         strcpy(buffer, "  nop");
         unrecognized_op = 0;
-    }
-	else if (flags & DEC_DECODED)
-	{
+    } else if(insn == INSN_FNOP) {
+        strcpy(buffer, "  fnop");
+        unrecognized_op = 0;
+    } else if(insn == INSN_FNOP_DIM) {
+        strcpy(buffer, "d.fnop");
+        unrecognized_op = 0;
+    } else if (flags & DEC_DECODED) {
 		const char *s = decode_tbl[upper_6bits].mnemonic;
 		decode_tbl[upper_6bits].insn_dis (buffer, (char *)s, pc, insn);
 		unrecognized_op = 0;
-	}
-	else if (flags & DEC_MORE)
-	{
-		if (upper_6bits == 0x12)
-		{
+	} else if (flags & DEC_MORE) {
+		if (upper_6bits == 0x12) {
 			/* FP instruction format handled here.  */
 			char fp_flags = fp_decode_tbl[insn & 0x7f].flags;
 			const char *s = fp_decode_tbl[insn & 0x7f].mnemonic;
-			if (fp_flags & DEC_DECODED)
-			{
+			if (fp_flags & DEC_DECODED) {
 				fp_decode_tbl[insn & 0x7f].insn_dis (buffer, (char *)s, pc, insn);
 				unrecognized_op = 0;
 			}
 		}
-		else if (upper_6bits == 0x13)
-		{
+		else if (upper_6bits == 0x13) {
 			/* Core escape instruction format handled here.  */
 			char esc_flags = core_esc_decode_tbl[insn & 0x3].flags;
 			const char *s = core_esc_decode_tbl[insn & 0x3].mnemonic;
@@ -693,7 +690,7 @@ int i860_disassembler(UINT32 pc, UINT32 insn, char* buffer)
 	}
 
 	if (unrecognized_op)
-		sprintf (buffer, ".long\t%#08x", insn);
+		sprintf (buffer, "  .long\t%#08x", insn);
 
 	/* Replace tabs with spaces */
 	i860_dasm_tab_replacer(buffer, 10);
