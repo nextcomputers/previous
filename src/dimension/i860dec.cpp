@@ -33,6 +33,7 @@
  * - (SC) Added support for i860's MSB/LSB-first mode (BE = 1/0).
  * - (SC) We assume that the host CPU is little endian (for now, will be fixed)
  * - (SC) Instruction cache implemented (not present in MAME version)
+ * - (SC) Added dual-instruction-mode support (removed in MAME version)
  * Generic notes:
  * - There is some amount of code duplication (e.g., see the
  *   various insn_* routines for the branches and FP routines) that
@@ -45,6 +46,15 @@
  */
 #include <math.h>
 #include <assert.h>
+
+#define DELAY_SLOT() \
+    m_pc += 4; \
+    decode_exec(ifetch(orig_pc+4)); \
+    if(m_dim) { \
+        m_pc += 4; \
+        decode_exec(ifetch(orig_pc+8)); \
+    } \
+    m_pc = orig_pc
 
 int i860_cpu_device::has_delay_slot(UINT32 insn)
 {
@@ -175,12 +185,12 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
     UINT32 voffset        = vaddr & I860_PAGE_OFF_MASK;
     UINT32 tlbidx         = vaddr & I860_TLB_MASK;
     
-    if(m_tlb[tlbidx].vaddr == (vaddr & I860_TLB_ADDR_MASK))
-        return (m_tlb[tlbidx].paddr_flags & I860_TLB_ADDR_MASK) + voffset;
+    if(m_tlb[tlbidx].vaddr == (vaddr & I860_PAGE_FRAME_MASK))
+        return (m_tlb[tlbidx].paddr_flags & I860_PAGE_FRAME_MASK) + voffset;
     
     UINT32 vpage          = (vaddr >> I860_PAGE_SZ) & 0x3ff;
     UINT32 vdir           = (vaddr >> 22) & 0x3ff;
-	UINT32 dtb            = (m_cregs[CR_DIRBASE]) & I860_TLB_ADDR_MASK;
+	UINT32 dtb            = (m_cregs[CR_DIRBASE]) & I860_PAGE_FRAME_MASK;
 	UINT32 pg_dir_entry_a = 0;
 	UINT32 pg_dir_entry   = 0;
 	UINT32 pg_tbl_entry_a = 0;
@@ -238,7 +248,7 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 	/* FIXME: How exactly to handle A check/update?.  */
 
 	/* Get page table entry at PFA1:PAGE:00.  */
-	pfa1 = pg_dir_entry & 0xfffff000;
+	pfa1 = pg_dir_entry & I860_PAGE_FRAME_MASK;
 	pg_tbl_entry_a = pfa1 | (vpage << 2);
 	pg_tbl_entry = rd32i(pg_tbl_entry_a);
 
@@ -296,9 +306,9 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 		return 0;
 	}
 
-	pfa2 = (pg_tbl_entry & 0xfffff000);
+	pfa2 = (pg_tbl_entry & I860_PAGE_FRAME_MASK);
     
-    m_tlb[tlbidx].vaddr       = vaddr & I860_TLB_ADDR_MASK;
+    m_tlb[tlbidx].vaddr       = vaddr & I860_PAGE_FRAME_MASK;
     m_tlb[tlbidx].paddr_flags = pfa2;
     
 	ret = pfa2 | voffset;
@@ -393,7 +403,7 @@ void i860_cpu_device::writememi_emu (UINT32 addr, int size, UINT32 data)
                 } }
                 break;
             case 4:
-                debugger('k', "NeXTdimension Exit");
+                debugger('k', "NeXTdimension exit(%d)", readmemi_emu(addr+8, 1));
                 break;
             case 5:
                 if(m_break_on_next_msg) {
@@ -1938,16 +1948,14 @@ void i860_cpu_device::insn_bct (UINT32 insn)
 	target_addr = (INT32)m_pc + 4 + (lbroff << 2);
 
 	/* Determine comparison result.  */
-	res = (GET_PSR_CC () == 1);
+	res = m_dim_cc_valid ? m_dim_cc : (GET_PSR_CC () == 1);
 
 	/* Careful. Unlike bla, the delay slot instruction is only executed
 	   if the branch is taken.  */
 	if (res)
 	{
 		/* Execute delay slot instruction.  */
-		m_pc += 4;
-		decode_exec (ifetch (orig_pc + 4), 0);
-		m_pc = orig_pc;
+        DELAY_SLOT();
 		if (PENDING_TRAP() )
 		{
 			m_flow |= TRAP_IN_DELAY_SLOT;
@@ -1982,16 +1990,14 @@ void i860_cpu_device::insn_bnct (UINT32 insn)
 	target_addr = (INT32)m_pc + 4 + (lbroff << 2);
 
 	/* Determine comparison result.  */
-	res = (GET_PSR_CC () == 0);
+    res = m_dim_cc_valid ? !(m_dim_cc) : (GET_PSR_CC () == 0);
 
 	/* Careful. Unlike bla, the delay slot instruction is only executed
 	   if the branch is taken.  */
 	if (res)
 	{
 		/* Execute delay slot instruction.  */
-		m_pc += 4;
-		decode_exec (ifetch (orig_pc + 4), 0);
-		m_pc = orig_pc;
+        DELAY_SLOT();
 		if (PENDING_TRAP() )
 		{
 			m_flow |= TRAP_IN_DELAY_SLOT;
@@ -2025,9 +2031,7 @@ void i860_cpu_device::insn_call (UINT32 insn)
 	target_addr = (INT32)m_pc + 4 + (lbroff << 2);
 
 	/* Execute the delay slot instruction.  */
-	m_pc += 4;
-	decode_exec (ifetch (orig_pc + 4), 0);
-	m_pc = orig_pc;
+    DELAY_SLOT();
 	if (PENDING_TRAP() )
 	{
 		m_flow |= TRAP_IN_DELAY_SLOT;
@@ -2057,9 +2061,7 @@ void i860_cpu_device::insn_br (UINT32 insn)
 	target_addr = (INT32)m_pc + 4 + (lbroff << 2);
 
 	/* Execute the delay slot instruction.  */
-	m_pc += 4;
-	decode_exec (ifetch (orig_pc + 4), 0);
-	m_pc = orig_pc;
+    DELAY_SLOT();
 	if (PENDING_TRAP() )
 	{
 		m_flow |= TRAP_IN_DELAY_SLOT;
@@ -2088,10 +2090,11 @@ void i860_cpu_device::insn_bri (UINT32 insn)
 	m_cregs[CR_PSR] &= ~PSR_ALL_TRAP_BITS_MASK;
 #endif
 
+    if(m_dim && PENDING_TRAP())
+        goto ab_op;
+    
 	/* Execute the delay slot instruction.  */
-	m_pc += 4;
-	decode_exec (ifetch (orig_pc + 4), 0);
-	m_pc = orig_pc;
+    DELAY_SLOT();
 
 	/* Delay slot insn caused a trap, abort operation.  */
 	if (PENDING_TRAP() )
@@ -2111,6 +2114,13 @@ void i860_cpu_device::insn_bri (UINT32 insn)
 		SET_PSR_U (GET_PSR_PU ());
 		SET_PSR_IM (GET_PSR_PIM ());
 
+        // (SC) we don't emulate DIM traps for now
+        // m_dim = GET_PSR_DIM();
+        // if(m_dim) {
+        //    Log_Printf(LOG_WARN, "Return from DIM");
+        //}
+        //SET_PSR_DIM(0);
+        m_dim   = m_save_dim;
         m_flow &= ~FIR_GETS_TRAP;
 	}
 
@@ -2141,9 +2151,7 @@ void i860_cpu_device::insn_calli (UINT32 insn)
 	set_iregval (1, m_pc + 8);
 
 	/* Execute the delay slot instruction.  */
-	m_pc += 4;
-	decode_exec (ifetch (orig_pc + 4), 0);
-	m_pc = orig_pc;
+    DELAY_SLOT();
 	if (PENDING_TRAP() )
 	{
 		set_iregval (1, orig_src1_val);
@@ -2190,9 +2198,7 @@ void i860_cpu_device::insn_bla (UINT32 insn)
 	set_iregval (isrc2, get_iregval (isrc1) + orig_isrc2val);
 
 	/* Execute the delay slot instruction.  */
-	m_pc += 4;
-	decode_exec (ifetch (orig_pc + 4), 0);
-	m_pc = orig_pc;
+    DELAY_SLOT();
 	if (PENDING_TRAP() )
 	{
 		m_flow |= TRAP_IN_DELAY_SLOT;
@@ -3477,7 +3483,7 @@ void i860_cpu_device::insn_fzchk (UINT32 insn)
 
 	dbl_tmp_dest = *(double *)&r;
 	SET_PSR_PM (pm);
-	m_merge = 0;
+    m_merge = 0;
 
 	/* FIXME: Copy result-status bit IRP to fsr from last stage.  */
 	/* FIXME: Scalar version flows through all stages.  */
@@ -3568,7 +3574,7 @@ void i860_cpu_device::insn_faddp (UINT32 insn)
 
 	r = iv1 + iv2;
 	dbl_tmp_dest = *(double *)&r;
-
+    
 	/* Update the merge register depending on the pixel size.
 	   PS: 0 = 8 bits, 1 = 16 bits, 2 = 32-bits.  */
 	if (ps == 0)
@@ -3633,7 +3639,7 @@ void i860_cpu_device::insn_faddz (UINT32 insn)
 	r = iv1 + iv2;
 	dbl_tmp_dest = *(double *)&r;
 
-	/* Update the merge register depending on the pixel size.  */
+	/* Update the merge register.  */
 	m_merge = ((m_merge >> 16) & ~0xffff0000ffff0000ULL);
 	m_merge |= (r & 0xffff0000ffff0000ULL);
 
@@ -3894,9 +3900,9 @@ const i860_cpu_device::decode_tbl_t i860_cpu_device::fp_decode_tbl[128] = {
 /*
  * Main decoder driver.
  *  insn = instruction at the current PC to execute.
- *  non_shadow = This insn is not in the shadow of a delayed branch).
+ *  non_shadow = This insn is not in the shadow of a delayed branch - (SC) unused, removed).
  */
-void i860_cpu_device::decode_exec (UINT32 insn, UINT32 non_shadow) {
+void i860_cpu_device::decode_exec (UINT32 insn) {
     if(m_flow & EXITING_IFETCH) return;
     
 	int upper_6bits = (insn >> 26) & 0x3f;
@@ -3992,13 +3998,12 @@ void i860_cpu_device::i860_reset() {
 	m_KR.d          = 0.0;
 	m_KI.d          = 0.0;
 	m_T.d           = 0.0;
-	m_merge         = UNDEF_VAL;
+	m_merge         = 0;
 	m_flow          = 0;
     
     /* dual instruction mode is off after reset */
     m_dim           = false;
     m_dim_cc_valid  = false;
-    m_dim_dbg       = true;
     
     /* invalidate caches */
     invalidate_icache();

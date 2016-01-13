@@ -320,12 +320,13 @@ void i860_cpu_device::dump_state()
         fprintf (stderr, "%%f%-3d: 0x%08x  ", rn, *(UINT32 *)&ff);
     }
     fprintf (stderr, "\n");
-    fprintf(stderr, "    psr: CC=%d LCC=%d SC=%d IM=%d U=%d IT=%d FT=%d IAT=%d DAT=%d IN=%d\n",
+    fprintf(stderr, "    psr: CC=%d LCC=%d SC=%d IM=%d U=%d IT=%d FT=%d IAT=%d DAT=%d IN=%d PS=%d PM=%08X\n",
             GET_PSR_CC (), GET_PSR_LCC (), GET_PSR_SC (), GET_PSR_IM (), GET_PSR_U (),
-            GET_PSR_IT (), GET_PSR_FT (), GET_PSR_IAT (), GET_PSR_DAT (), GET_PSR_IN ());
+            GET_PSR_IT (), GET_PSR_FT (), GET_PSR_IAT (), GET_PSR_DAT (), GET_PSR_IN (), GET_PSR_PS(), GET_PSR_PM());
     fprintf(stderr, "   epsr: INT=%d, OF=%d BE=%d WP=%d\n",       GET_EPSR_INT (), GET_EPSR_OF (), GET_EPSR_BE (), GET_EPSR_WP());
     fprintf(stderr, "dirbase: CS8=%d ATE=%d 0x%08x",              GET_DIRBASE_CS8(), GET_DIRBASE_ATE(), m_cregs[CR_DIRBASE]);
     fprintf(stderr, "    fir: 0x%08x fsr: 0x%08x pc:0x%08x\n", m_cregs[CR_FIR], m_cregs[CR_FSR], m_pc);
+    fprintf(stderr, "  merge: 0x%016llx\n", m_merge);
 }
 
 void i860_cpu_device::i860_halt(bool state) {
