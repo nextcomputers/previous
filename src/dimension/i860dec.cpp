@@ -47,14 +47,19 @@
 #include <math.h>
 #include <assert.h>
 
-#define DELAY_SLOT() \
+#define DELAY_SLOT() do{\
     m_pc += 4; \
-    decode_exec(ifetch(orig_pc+4)); \
-    if(m_dim) { \
-        m_pc += 4; \
-        decode_exec(ifetch(orig_pc+8)); \
+    UINT32 insn = ifetch(orig_pc+4);\
+    decode_exec(insn); \
+    if(m_dim) {\
+        if((insn & INSN_MASK_DIM) == INSN_FP_DIM || insn == INSN_FNOP_DIM) { \
+            m_pc += 4; \
+            decode_exec(ifetch(orig_pc+8)); \
+        } else {\
+            Log_Printf(LOG_WARN, "[i860] Dual mode exit in delay slot");\
+        }\
     } \
-    m_pc = orig_pc
+    m_pc = orig_pc;}while(0)
 
 int i860_cpu_device::has_delay_slot(UINT32 insn)
 {
@@ -298,7 +303,7 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 
 	if (is_write && is_dataref && (pg_tbl_entry & 0x40) == 0)
 	{
-		/* Log_Printf(LOG_WARN, "[i860] DAT trap on write without dirty bit v0x%08x/p0x%08x\n",
+		/* Log_Printf(LOG_WARN, "[i860] DAT trap on write without dirty bit v%08X/p%08X\n",
 		   vaddr, (pg_tbl_entry & ~0xfff)|voffset); */
 		SET_PSR_DAT (1);
 		m_flow |= TRAP_NORMAL;
@@ -314,7 +319,7 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 	ret = pfa2 | voffset;
 
 #if TRACE_ADDR_TRANSLATION
-	Log_Printf(LOG_WARN, "[i860] get_address_translation: virt(0x%08x) -> phys(0x%08x)\n", vaddr, ret);
+	Log_Printf(LOG_WARN, "[i860] get_address_translation: virt(%08X) -> phys(%08X)\n", vaddr, ret);
 #endif
 
 	return ret;
@@ -371,12 +376,13 @@ UINT32 i860_cpu_device::readmemi_emu (UINT32 addr, int size)
 void i860_cpu_device::writememi_emu (UINT32 addr, int size, UINT32 data)
 {
 #if TRACE_RDWR_MEM
-	Log_Printf(LOG_WARN, "[i860] wrmem (ATE=%d) addr = 0x%08x, size = %d, data = 0x%08x\n", GET_DIRBASE_ATE (), addr, size, data); fflush(0);
+	Log_Printf(LOG_WARN, "[i860] wrmem (ATE=%d) addr = %08X, size = %d, data = %08X\n", GET_DIRBASE_ATE (), addr, size, data); fflush(0);
 #endif
 
     if(addr == 0xF83FE800 || addr == 0xF80ff800) {
         switch(data) {
-            case 0: {
+            case 0:
+            case 4: {
                 // catch ND console writes
                 UINT32 ptr   = addr + 4;
                 int    count = readmemi_emu(ptr, 4);
@@ -400,11 +406,11 @@ void i860_cpu_device::writememi_emu (UINT32 addr, int size, UINT32 data)
                     m_console[m_console_idx] = 0;
                     if(strstr(m_console, "NeXTdimension Trap:"))
                         m_break_on_next_msg = true;
-                } }
+                    if(data == 4)
+                        debugger('k', "NeXTdimension exit(%d)", readmemi_emu(addr + 8, 1));
+                }
                 break;
-            case 4:
-                debugger('k', "NeXTdimension exit(%d)", readmemi_emu(addr+8, 1));
-                break;
+                }
             case 5:
                 if(m_break_on_next_msg) {
                     m_break_on_next_msg = false;
@@ -421,7 +427,7 @@ void i860_cpu_device::writememi_emu (UINT32 addr, int size, UINT32 data)
 		if (PENDING_TRAP() && (GET_PSR_IAT () || GET_PSR_DAT ()))
 		{
 #if TRACE_PAGE_FAULT
-            Log_Printf(LOG_WARN, "[i860] 0x%08x: ## Page fault (writememi_emu) virt=%08X", m_pc, addr);
+            Log_Printf(LOG_WARN, "[i860] %08X: ## Page fault (writememi_emu) virt=%08X", m_pc, addr);
 #endif
 			SET_EXITING_MEMRW(EXITING_WRITEMEM);
 			return;
@@ -453,7 +459,7 @@ void i860_cpu_device::writememi_emu (UINT32 addr, int size, UINT32 data)
 void i860_cpu_device::fp_readmem_emu (UINT32 addr, int size, UINT8 *dest)
 {
 #if TRACE_RDWR_MEM
-	Log_Printf(LOG_WARN, "[i860] fp_rdmem (ATE=%d) addr = 0x%08x, size = %d\n", GET_DIRBASE_ATE (), addr, size); fflush(0);
+	Log_Printf(LOG_WARN, "[i860] fp_rdmem (ATE=%d) addr = %08X, size = %d\n", GET_DIRBASE_ATE (), addr, size); fflush(0);
 #endif
 
 	assert (size == 4 || size == 8 || size == 16);
@@ -465,7 +471,7 @@ void i860_cpu_device::fp_readmem_emu (UINT32 addr, int size, UINT8 *dest)
 		if (PENDING_TRAP() && (GET_PSR_IAT () || GET_PSR_DAT ()))
 		{
 #if TRACE_PAGE_FAULT
-			Log_Printf(LOG_WARN, "[i860] 0x%08x: ## Page fault (fp_readmem_emu) virt=%08X",m_pc,addr);
+			Log_Printf(LOG_WARN, "[i860] %08X: ## Page fault (fp_readmem_emu) virt=%08X",m_pc,addr);
 //            debugger();
 #endif
 			SET_EXITING_MEMRW(EXITING_FPREADMEM);
@@ -494,7 +500,7 @@ void i860_cpu_device::fp_readmem_emu (UINT32 addr, int size, UINT8 *dest)
 void i860_cpu_device::fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT32 wmask)
 {
 #if TRACE_RDWR_MEM
-	Log_Printf(LOG_WARN, "[i860] fp_wrmem (ATE=%d) addr = 0x%08x, size = %d", GET_DIRBASE_ATE (), addr, size); fflush(0);
+	Log_Printf(LOG_WARN, "[i860] fp_wrmem (ATE=%d) addr = %08X, size = %d", GET_DIRBASE_ATE (), addr, size); fflush(0);
 #endif
 
 	assert (size == 4 || size == 8 || size == 16);
@@ -506,7 +512,7 @@ void i860_cpu_device::fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT3
 		if (PENDING_TRAP() && GET_PSR_DAT ())
 		{
 #if TRACE_PAGE_FAULT
-			Log_Printf(LOG_WARN, "[i860] 0x%08x: ## Page fault (fp_writememi_emu) virt=%08X", m_pc,addr);
+			Log_Printf(LOG_WARN, "[i860] %08X: ## Page fault (fp_writememi_emu) virt=%08X", m_pc,addr);
 //            debugger();
 #endif
 			SET_EXITING_MEMRW(EXITING_WRITEMEM);
@@ -710,7 +716,7 @@ void i860_cpu_device::insn_ldx (UINT32 insn)
 #if TRACE_UNALIGNED_MEM
 	if (eff & (size - 1))
 	{
-		Log_Printf(LOG_WARN, "[i860:%08X] Unaligned access detected (0x%08x)", m_pc, eff);
+		Log_Printf(LOG_WARN, "[i860:%08X] Unaligned access detected (%08X)", m_pc, eff);
 		SET_PSR_DAT (1);
 		m_flow |= TRAP_NORMAL;
 		return;
@@ -812,7 +818,7 @@ void i860_cpu_device::insn_fsty (UINT32 insn)
 #if TRACE_UNALIGNED_MEM
 	if (eff & (size - 1))
 	{
-		Log_Printf(LOG_WARN, "[i860:%08X] Unaligned access detected (0x%08x)", m_pc, eff);
+		Log_Printf(LOG_WARN, "[i860:%08X] Unaligned access detected (%08X)", m_pc, eff);
 		SET_PSR_DAT (1);
 		m_flow |= TRAP_NORMAL;
 		return;
@@ -900,7 +906,7 @@ void i860_cpu_device::insn_fldy (UINT32 insn)
 #if TRACE_UNALIGNED_MEM
 	if (eff & (size - 1))
 	{
-		Log_Printf(LOG_WARN, "[i860:%08X] Unaligned access detected (0x%08x)", m_pc, eff);
+		Log_Printf(LOG_WARN, "[i860:%08X] Unaligned access detected (%08X)", m_pc, eff);
 		SET_PSR_DAT (1);
         m_flow |= TRAP_NORMAL;
 		return;
@@ -1007,7 +1013,7 @@ void i860_cpu_device::insn_pstd (UINT32 insn)
 #if TRACE_UNALIGNED_MEM
 	if (eff & (8 - 1))
 	{
-		Log_Printf(LOG_WARN, "[i860:%08X] Unaligned access detected (0x%08x)", m_pc, eff);
+		Log_Printf(LOG_WARN, "[i860:%08X] Unaligned access detected (%08X)", m_pc, eff);
 		SET_PSR_DAT (1);
 		m_flow |= TRAP_NORMAL;
 		return;
@@ -1963,12 +1969,12 @@ void i860_cpu_device::insn_bct (UINT32 insn)
 		}
 	}
 
-	/* Since this branch is delayed, we must jump 2 instructions if
+	/* Since this branch is delayed, we must jump 2 or 3 instructions if
 	   if isn't taken.  */
 	if (res)
 		m_pc = target_addr;
 	else
-		m_pc += 8;
+        m_pc += m_dim ? 12 : 8;
 
     SET_PC_UPDATED();
 
@@ -2005,12 +2011,11 @@ void i860_cpu_device::insn_bnct (UINT32 insn)
 		}
 	}
 
-	/* Since this branch is delayed, we must jump 2 instructions if
-	   if isn't taken.  */
+	/* Since this branch is delayed, we must jump 2 or 3 instructions if if isn't taken.  */
 	if (res)
 		m_pc = target_addr;
 	else
-		m_pc += 8;
+        m_pc += m_dim ? 12 : 8;
 
     SET_PC_UPDATED();
 
@@ -2209,9 +2214,8 @@ void i860_cpu_device::insn_bla (UINT32 insn)
 		m_pc = target_addr;
 	else
 	{
-		/* Since this branch is delayed, we must jump 2 instructions if
-		   if isn't taken.  */
-		m_pc += 8;
+		/* Since this branch is delayed, we must jump 2 or 3 instructions if if isn't taken.  */
+        m_pc += m_dim ? 12 : 8;
 	}
 	SET_PSR_LCC (lcc_tmp);
 
@@ -3353,7 +3357,7 @@ void i860_cpu_device::insn_fcmp (UINT32 insn) {
 
     /* Save the CC for DIM bc/bnc */
     m_dim_cc       = GET_PSR_CC();
-    m_dim_cc_valid = m_dim;
+    m_dim_cc_valid = m_dim != DIM_NONE;
     
 	/* Do the operation.  Source and result precision must be the same.
 	     pfgt: CC set     if fsrc1 > fsrc2, else cleared.
@@ -4002,7 +4006,7 @@ void i860_cpu_device::i860_reset() {
 	m_flow          = 0;
     
     /* dual instruction mode is off after reset */
-    m_dim           = false;
+    m_dim           = DIM_NONE;
     m_dim_cc_valid  = false;
     
     /* invalidate caches */
