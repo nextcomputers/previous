@@ -23,6 +23,8 @@ void i860_cpu_device::debugger() {
 }
 
 void i860_cpu_device::debugger(char cmd, const char* format, ...) {
+    if(!(isatty(fileno(stdin)))) return;
+    
     char buf[256];
     UINT32 curr_disasm = m_pc;
     UINT32 curr_dumpdb = 0;

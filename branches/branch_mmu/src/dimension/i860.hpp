@@ -28,7 +28,7 @@
 
 #define TRACE_I860           0
 #define TRACE_RDWR_MEM       0
-#define TRACE_PAGE_FAULT     1
+#define TRACE_PAGE_FAULT     0
 #define TRACE_UNDEFINED_I860 1
 #define TRACE_UNALIGNED_MEM  1
 #define TRACE_EXT_INT        0
@@ -91,6 +91,13 @@ enum {
      it is 0 to get the ld.c address.  This is set to 1 only when a
      non-reset trap occurs.  */
     FIR_GETS_TRAP      = 0x10000000,
+};
+
+/* dual mode instruction state */
+enum {
+    DIM_NONE,
+    DIM_TEMP,
+    DIM_FULL,
 };
 
 /* Macros for accessing register fields in instruction word.  */
@@ -357,8 +364,8 @@ private:
 	UINT32 m_cregs[6];
 
     /* Dual instruction mode flags */
-    bool m_dim;
-    bool m_save_dim;
+    int  m_dim;
+    int  m_save_dim;
     bool m_dim_cc;
     bool m_dim_cc_valid;
     

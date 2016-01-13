@@ -214,12 +214,12 @@ void i860_cpu_device::handle_trap(UINT32 savepc, bool dim) {
     SET_PSR_U (0);
     SET_PSR_IM (0);
     // (SC) we don't emulate DIM traps for now
-    //SET_PSR_DIM (m_dim);
+    //SET_PSR_DIM (m_dim != DIM_NONE);
     //m_dim = false;
-    //SET_PSR_DS (m_dim != dim);
+    //SET_PSR_DS ((m_dim != DIM_NONE) != dim);
     SET_PSR_DIM (0);
     m_save_dim = m_dim;
-    m_dim      = false;
+    m_dim      = DIM_NONE;
     SET_PSR_DS (0);
     m_pc = 0xffffff00;
 }
@@ -231,8 +231,8 @@ void i860_cpu_device::run_cycle(int nHostCycles) {
     
     m_dim_cc_valid = false;
     CLEAR_FLOW();
-    bool   dim     = false;
-    UINT64 insn64  = ifetch64(m_pc);
+    bool   dim_insn = false;
+    UINT64 insn64   = ifetch64(m_pc);
     
     if(!(m_pc & 4)) {
         UINT32 savepc  = m_pc;
@@ -241,14 +241,14 @@ void i860_cpu_device::run_cycle(int nHostCycles) {
         
         UINT32 insnLow = insn64;
         if(insnLow == INSN_FNOP || insnLow == INSN_FNOP_DIM)
-            dim = m_dim;
+            dim_insn = m_dim != DIM_NONE;
         else if((insnLow & INSN_MASK_DIM) == INSN_FP_DIM)
-            dim = true;
-                
+            dim_insn = true;
+        
         decode_exec(insnLow);
         
         if (PENDING_TRAP()) {
-            handle_trap(savepc, dim);
+            handle_trap(savepc, dim_insn);
             goto done;
         } else if(GET_PC_UPDATED()) {
             goto done;
@@ -279,7 +279,7 @@ void i860_cpu_device::run_cycle(int nHostCycles) {
         }
         
         if (PENDING_TRAP()) {
-            handle_trap(savepc, dim);
+            handle_trap(savepc, dim_insn);
         } else if (GET_PC_UPDATED()) {
             goto done;
         } else {
@@ -288,8 +288,18 @@ void i860_cpu_device::run_cycle(int nHostCycles) {
         }
     }
 done:
-    if(m_dim != dim) {
-        m_dim = dim;
+    switch (m_dim) {
+        case DIM_NONE:
+            if(dim_insn)
+                m_dim = DIM_TEMP;
+            break;
+        case DIM_TEMP:
+            m_dim = dim_insn ? DIM_FULL : DIM_NONE;
+            break;
+        case DIM_FULL:
+            if(!(dim_insn))
+                m_dim = DIM_TEMP;
+            break;
     }
 }
 
@@ -393,8 +403,7 @@ void i860_cpu_device::init() {
     m_lastcmd           = 0;
     m_console_idx       = 0;
     m_break_on_next_msg = false;
-    
-    m_dim       = false;
+    m_dim               = DIM_NONE;
 
     // some sanity checks for endianess
     int    err    = 0;
