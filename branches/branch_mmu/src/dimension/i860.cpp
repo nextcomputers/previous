@@ -165,7 +165,7 @@ inline void i860_cpu_device::SET_PSR_CC(int val) {
         m_cregs[CR_PSR] = (m_cregs[CR_PSR] & ~(1 << 2)) | ((val & 1) << 2);
 }
 
-void i860_cpu_device::handle_trap(UINT32 savepc) {
+void i860_cpu_device::handle_trap(UINT32 savepc, bool dim) {
     static char buffer[128];
     buffer[0] = 0;
     strcat(buffer, "TRAP");
@@ -185,9 +185,13 @@ void i860_cpu_device::handle_trap(UINT32 savepc) {
     if(!((GET_PSR_IAT() || GET_PSR_DAT() || GET_PSR_IN()))) {
         debugger('d', buffer);
     } else {
-        //            Log_Printf(LOG_WARN, "[ND] %s", buffer);
+        //            Log_Printf(LOG_WARN, "[i860] %s", buffer);
     }
     
+    if(m_dim)
+        Log_Printf(LOG_WARN, "[i860] Trap while DIM %s", buffer);
+    
+
     /* If we need to trap, change PC to trap address.
      Also set supervisor mode, copy U and IM to their
      previous versions, clear IM.  */
@@ -209,7 +213,13 @@ void i860_cpu_device::handle_trap(UINT32 savepc) {
     SET_PSR_PIM (GET_PSR_IM ());
     SET_PSR_U (0);
     SET_PSR_IM (0);
+    // (SC) we don't emulate DIM traps for now
+    //SET_PSR_DIM (m_dim);
+    //m_dim = false;
+    //SET_PSR_DS (m_dim != dim);
     SET_PSR_DIM (0);
+    m_save_dim = m_dim;
+    m_dim      = false;
     SET_PSR_DS (0);
     m_pc = 0xffffff00;
 }
@@ -229,15 +239,16 @@ void i860_cpu_device::run_cycle(int nHostCycles) {
         
         if(m_single_stepping) debugger(0,0);
         
-        if(insn64 == INSN_FNOP || insn64 == INSN_FNOP_DIM)
+        UINT32 insnLow = insn64;
+        if(insnLow == INSN_FNOP || insnLow == INSN_FNOP_DIM)
             dim = m_dim;
-        else if((insn64 & INSN_MASK_DIM) == INSN_FP_DIM)
+        else if((insnLow & INSN_MASK_DIM) == INSN_FP_DIM)
             dim = true;
-        
-        decode_exec(insn64, 1);
+                
+        decode_exec(insnLow);
         
         if (PENDING_TRAP()) {
-            handle_trap(savepc);
+            handle_trap(savepc, dim);
             goto done;
         } else if(GET_PC_UPDATED()) {
             goto done;
@@ -252,9 +263,9 @@ void i860_cpu_device::run_cycle(int nHostCycles) {
         UINT32 savepc  = m_pc;
         
         if(m_single_stepping) debugger(0,0);
-        
-        decode_exec(insn64 >> 32, 1);
-        
+
+        UINT32 insnHigh= insn64 >> 32;
+        decode_exec(insnHigh);
         
         // only check for external interrupts
         // - on high-word (speedup)
@@ -268,7 +279,7 @@ void i860_cpu_device::run_cycle(int nHostCycles) {
         }
         
         if (PENDING_TRAP()) {
-            handle_trap(savepc);
+            handle_trap(savepc, dim);
         } else if (GET_PC_UPDATED()) {
             goto done;
         } else {

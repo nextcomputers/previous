@@ -32,7 +32,6 @@
 #define TRACE_UNDEFINED_I860 1
 #define TRACE_UNALIGNED_MEM  1
 #define TRACE_EXT_INT        0
-#define ENABLE_DIM           0
 
 const int LOG_WARN = 3;
 extern "C" void Log_Printf(int nType, const char *psFormat, ...);
@@ -250,7 +249,7 @@ const size_t I860_TLB_SZ          = 12; // in powers of two
 const size_t I860_TLB_MASK        = (1<<I860_TLB_SZ)-1;
 const size_t I860_PAGE_SZ         = 12; // in powers of two
 const size_t I860_PAGE_OFF_MASK   = (1<<I860_PAGE_SZ)-1;
-const size_t I860_TLB_ADDR_MASK   = ~I860_PAGE_OFF_MASK;
+const size_t I860_PAGE_FRAME_MASK = ~I860_PAGE_OFF_MASK;
 const size_t I860_TLB_FLAGS       = I860_PAGE_OFF_MASK;
 
 struct i860_cache_line {
@@ -359,7 +358,7 @@ private:
 
     /* Dual instruction mode flags */
     bool m_dim;
-    bool m_dim_dbg;
+    bool m_save_dim;
     bool m_dim_cc;
     bool m_dim_cc_valid;
     
@@ -554,10 +553,10 @@ private:
     UINT64 ifetch64(UINT32 pc);
     UINT32 ifetch(UINT32 pc);
     UINT32 ifetch_notrap(UINT32 pc);
-    void   handle_trap(UINT32 savepc);
+    void   handle_trap(UINT32 savepc, bool dim);
     void   unrecog_opcode (UINT32 pc, UINT32 insn);
 
-    void   decode_exec (UINT32 insn, UINT32 non_shadow);
+    void   decode_exec (UINT32 insn);
     void   dump_pipe (int type);
     void   dump_state ();
 	UINT32 disasm (UINT32 addr, int len);
