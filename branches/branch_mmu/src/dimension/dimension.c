@@ -127,6 +127,7 @@ inline Uint8 nd_board_cs8get(Uint32 addr) {
 /* Reset function */
 
 void dimension_init(void) {
+    nd_i860_uninit();
     nd_nbic_init();
     nd_devs_init();
     nd_memory_init();
