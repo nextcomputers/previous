@@ -430,6 +430,13 @@ void i860_cpu_device::init() {
 #if ENABLE_I860_THREAD
     if(!(is_halted())) uninit();
 #endif
+    /* Configurations - keep in sync with i860cfg.h */
+    static const char* CFGS[8];
+    for(int i = 0; i < 8; i++) CFGS[i] = "Unknown emulator configuration";
+    CFGS[CONF_I860_SPEED]     = CONF_STR(CONF_I860_SPEED);
+    CFGS[CONF_I860_DEV]       = CONF_STR(CONF_I860_DEV);
+    CFGS[CONF_I860_NO_THREAD] = CONF_STR(CONF_I860_NO_THREAD);
+    Log_Printf(LOG_WARN, "[i860] Emulator configured for %s", CFGS[CONF_I860]);
     
     m_single_stepping   = 0;
     m_lastcmd           = 0;
