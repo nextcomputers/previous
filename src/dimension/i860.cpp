@@ -427,9 +427,6 @@ int i860_cpu_device::memtest(bool be) {
 }
 
 void i860_cpu_device::init() {
-#if ENABLE_I860_THREAD
-    if(!(is_halted())) uninit();
-#endif
     /* Configurations - keep in sync with i860cfg.h */
     static const char* CFGS[8];
     for(int i = 0; i < 8; i++) CFGS[i] = "Unknown emulator configuration";
@@ -531,6 +528,8 @@ error:
 }
 
 void i860_cpu_device::uninit() {
+    if(is_halted()) return;
+    
 	halt(true);
     send_msg(MSG_I860_KILL);
 #if ENABLE_I860_THREAD
