@@ -9,11 +9,17 @@
 #ifndef i860cfg_h
 #define i860cfg_h
 
+/* Emulator configurations - keep in sync with i860_cpu_device::init() */
+
 #define CONF_I860_SPEED     1
 #define CONF_I860_DEV       2
 #define CONF_I860_NO_THREAD 3
+#define CONF_STR(CONF) #CONF
 
-#define CONF_I860 CONF_I860_DEV
+/* Change this to select your emulator configuration */
+#define CONF_I860 CONF_I860_SPEED
+
+/* Emulator configurations */
 
 #if CONF_I860==CONF_I860_DEV
 #define TRACE_I860           0
@@ -25,6 +31,7 @@
 #define ENABLE_I860_THREAD   1
 #define ENABLE_I860_TLB      1
 
+
 #elif CONF_I860==CONF_I860_SPEED
 #define TRACE_I860           0
 #define TRACE_RDWR_MEM       0
@@ -34,6 +41,7 @@
 #define TRACE_EXT_INT        0
 #define ENABLE_I860_THREAD   1
 #define ENABLE_I860_TLB      1
+
 
 #elif CONF_I860==CONF_I860_NO_THREAD
 #define TRACE_I860           0
