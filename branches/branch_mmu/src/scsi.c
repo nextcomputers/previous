@@ -18,6 +18,7 @@
 
 
 #define BLOCKSIZE 512
+#define ENABLE_WRITE 0
 
 #define LUN_DISK 0 // for now only LUN 0 is valid for our phys drives
 
@@ -137,6 +138,8 @@ struct {
     
     Uint32 lba;
     Uint32 blockcounter;
+    
+    Uint8** shadow;
 } SCSIdisk[ESP_MAX_DEVS];
 
 
@@ -179,6 +182,8 @@ void SCSI_Init(void) {
         SCSIdisk[i].sense.valid = false;
         SCSIdisk[i].lba = SCSIdisk[i].blockcounter = 0;
 
+        SCSIdisk[i].shadow = NULL;
+        
         Log_Printf(LOG_WARN, "SCSI Disk%i: %s\n",i,ConfigureParams.SCSI.target[i].szImageName);
     }
 }
@@ -600,11 +605,21 @@ void scsi_write_sector(void) {
 	if ((SCSIdisk[target].dsk==NULL) || (fseek(SCSIdisk[target].dsk, SCSIdisk[target].lba*BLOCKSIZE, SEEK_SET) != 0)) {
         n = 0;
 	} else {
-#if 1
+#if ENABLE_WRITE
         n = fwrite(scsi_buffer.data, BLOCKSIZE, 1, SCSIdisk[target].dsk);
 #else
         n=1;
         Log_Printf(LOG_SCSI_LEVEL, "[SCSI] WARNING: File write disabled!");
+        if(SCSIdisk[target].shadow) {
+            if(!(SCSIdisk[target].shadow[SCSIdisk[target].lba]))
+                SCSIdisk[target].shadow[SCSIdisk[target].lba] = malloc(BLOCKSIZE);
+            memcpy(SCSIdisk[target].shadow[SCSIdisk[target].lba], scsi_buffer.data, BLOCKSIZE);
+        } else {
+            Uint32 blocks = SCSIdisk[target].size / BLOCKSIZE;
+            SCSIdisk[target].shadow = malloc(sizeof(Uint8*) * blocks);
+            for(int i = blocks; --i >= 0;)
+                SCSIdisk[target].shadow[i] = NULL;
+        }
 #endif
         scsi_buffer.limit=BLOCKSIZE;
         scsi_buffer.size=0;
@@ -673,7 +688,12 @@ void scsi_read_sector(void) {
 	if ((SCSIdisk[target].dsk==NULL) || (fseek(SCSIdisk[target].dsk, SCSIdisk[target].lba*BLOCKSIZE, SEEK_SET) != 0)) {
         n = 0;
 	} else {
-        n = fread(scsi_buffer.data, BLOCKSIZE, 1, SCSIdisk[target].dsk);
+        if(SCSIdisk[target].shadow && SCSIdisk[target].shadow[SCSIdisk[target].lba]) {
+            memcpy(scsi_buffer.data, SCSIdisk[target].shadow[SCSIdisk[target].lba], BLOCKSIZE);
+            n = 1;
+        } else {
+            n = fread(scsi_buffer.data, BLOCKSIZE, 1, SCSIdisk[target].dsk);
+        }
         scsi_buffer.limit=scsi_buffer.size=BLOCKSIZE;
     }
     

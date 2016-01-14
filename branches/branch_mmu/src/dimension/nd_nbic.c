@@ -5,6 +5,7 @@
 #include "sysdeps.h"
 #include "sysReg.h"
 #include "nd_nbic.h"
+#include "i860cfg.h"
 
 #if ENABLE_DIMENSION
 
@@ -12,6 +13,10 @@
 #define ND_NBIC_ID		0xC0000001
 #define ND_NBIC_INTR    0x80
 
+static
+#if ENABLE_I860_THREAD
+volatile
+#endif
 struct {
     Uint32 control;
     Uint32 id;
@@ -109,7 +114,6 @@ Uint8 nd_nbic_intmask_read(Uint32 addr) {
 void nd_nbic_intmask_write(Uint32 addr, Uint8 val) {
     Log_Printf(LOG_WARN, "[ND] NBIC Interrupt mask write %02X at %08X",val,addr);
     nd_nbic.intmask = val;
-	nd_nbic_interrupt();
 }
 
 Uint8 nd_nbic_zero_read(Uint32 addr) {
@@ -227,7 +231,6 @@ void nd_nbic_set_intstatus(bool set) {
 	} else {
         nd_nbic.intstatus &= ~ND_NBIC_INTR;
 	}
-	nd_nbic_interrupt();
 }
 
 

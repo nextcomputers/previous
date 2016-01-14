@@ -124,22 +124,6 @@ inline Uint8 nd_board_cs8get(Uint32 addr) {
     return nd_cs8get(addr);
 }
 
-/* Debugger */
-bool nd_start_debug = false;
-
-void nd_start_debugger(void) {
-	nd_start_debug = true;
-}
-
-inline bool i860_dbg_break(Uint32 addr) {
-  //  if(addr == 0xF8001534) return true;
-    if(nd_start_debug) {
-        nd_start_debug = false;
-        return true;
-    }
-    return false;
-}
-
 /* Reset function */
 
 void dimension_init(void) {

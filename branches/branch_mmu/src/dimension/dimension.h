@@ -3,7 +3,7 @@
 #ifndef __DIMENSION_H__
 #define __DIMENSION_H__
 
-#define ENABLE_DIMENSION    0
+#define ENABLE_DIMENSION     0
 #define ND_SLOT 2
 
 #if ENABLE_DIMENSION
@@ -36,7 +36,6 @@ void dimension_uninit(void);
 void nd_i860_init();
 void nd_i860_uninit();
 void i860_Run(int nHostCycles);
-bool i860_dbg_break(Uint32 addr);
 void i860_reset();
 void nd_start_debugger(void);
 void nd_set_speed_hack(int state);

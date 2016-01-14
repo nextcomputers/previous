@@ -17,6 +17,11 @@
 
 extern int i860_disassembler(UINT32 pc, UINT32 insn, char* buffer);
 
+void i860_cpu_device::check_debug_lock() {
+    SDL_AtomicLock(&m_debugger_lock);
+    SDL_AtomicUnlock(&m_debugger_lock);
+}
+
 /* A simple internal debugger.  */
 void i860_cpu_device::debugger() {
     debugger(0, "");
@@ -33,6 +38,8 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
     if (m_single_stepping > 1 && m_single_stepping != m_pc)
         return;
     
+    SDL_AtomicLock(&m_debugger_lock);
+    
     if(format) {
         va_list ap;
         va_start (ap, format);
@@ -47,11 +54,8 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
         fprintf(stderr, " debugger started (? for help).\n");
     }
         
-    if(!(cmd)) {
-        disasm (m_pc, 1);
-        if (has_delay_slot (2))
-            disasm (m_pc + 4, 1);
-    }
+    if(!(cmd))
+        disasm (m_pc, 1+delay_slots(ifetch_notrap(m_pc)));
 
     buf[0] = 0;
     fflush (stdin);
@@ -96,11 +100,11 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
                 fprintf (stderr, "go until pc = 0x%08x.\n", m_single_stepping);
                 break;
             case 'h':
-                i860_halt(true);
+                halt(true);
                 m_single_stepping = 2;
                 break;
             case 'c':
-                i860_halt(false);
+                halt(false);
                 m_single_stepping = 2;
                 break;
             case 'r':
@@ -170,6 +174,7 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
         fprintf (stderr, "Debugger done, continuing emulation.\n");
         m_single_stepping = 0;
     }
+    SDL_AtomicUnlock(&m_debugger_lock);
 }
 
 /* Disassemble `len' instructions starting at `addr'.  */
@@ -177,8 +182,7 @@ UINT32 i860_cpu_device::disasm (UINT32 addr, int len)
 {
 	UINT32 insn;
 	int j;
-	for (j = 0; j < len; j++)
-	{
+	for (j = 0; j < len; j++) {
 		char buf[256];
 		/* Note that we print the incoming (possibly virtual) address as the
 		   PC rather than the translated address.  */
@@ -188,8 +192,8 @@ UINT32 i860_cpu_device::disasm (UINT32 addr, int len)
         fprintf (stderr, "%s", buf);
 		fprintf (stderr, "\n");
 		addr += 4;
-		if (m_single_stepping == 1 && has_delay_slot (insn))
-			len += 1;
+		if (m_single_stepping == 1)
+            len += delay_slots(insn);
 	}
     return addr;
 }
@@ -331,7 +335,7 @@ void i860_cpu_device::dump_state()
     fprintf(stderr, "  merge: 0x%016llx\n", m_merge);
 }
 
-void i860_cpu_device::i860_halt(bool state) {
+void i860_cpu_device::halt(bool state) {
     if(state) {
         m_halt = true;
         Log_Printf(LOG_WARN, "[i860] **** HALTED ****");

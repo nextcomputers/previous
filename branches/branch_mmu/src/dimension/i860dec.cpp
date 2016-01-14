@@ -34,6 +34,7 @@
  * - (SC) We assume that the host CPU is little endian (for now, will be fixed)
  * - (SC) Instruction cache implemented (not present in MAME version)
  * - (SC) Added dual-instruction-mode support (removed in MAME version)
+ * - (SC) Added rounding mode support and insn_fix
  * Generic notes:
  * - There is some amount of code duplication (e.g., see the
  *   various insn_* routines for the branches and FP routines) that
@@ -45,7 +46,10 @@
  *
  */
 #include <math.h>
+#include <fenv.h>
 #include <assert.h>
+
+#pragma STDC FENV_ACCESS on
 
 #define DELAY_SLOT() do{\
     m_pc += 4; \
@@ -56,24 +60,22 @@
             m_pc += 4; \
             decode_exec(ifetch(orig_pc+8)); \
         } else {\
-            Log_Printf(LOG_WARN, "[i860] Dual mode exit in delay slot");\
+            debugger('d',"[i860] Dual mode exit in delay slot orig_pc=%08X", orig_pc);\
         }\
     } \
     m_pc = orig_pc;}while(0)
 
-int i860_cpu_device::has_delay_slot(UINT32 insn)
-{
+int i860_cpu_device::delay_slots(UINT32 insn) {
 	int opc = (insn >> 26) & 0x3f;
 	if (opc == 0x10 || opc == 0x1a || opc == 0x1b || opc == 0x1d ||
 		opc == 0x1f || opc == 0x2d || (opc == 0x13 && (insn & 3) == 2))
-        return 1;
-    
+        return insn & INSN_DIM ? 2 : 1;
     return 0;
 }
 
 /* This is the external interface for indicating an external interrupt
    to the i860.  */
-void i860_cpu_device::i860_gen_interrupt()
+void i860_cpu_device::gen_interrupt()
 {
 	/* If interrupts are enabled, then set PSR.IN and prepare for trap.
 	   Otherwise, the external interrupt is ignored.  We also set
@@ -92,7 +94,7 @@ void i860_cpu_device::i860_gen_interrupt()
 
 /* This is the external interface for indicating an external interrupt
  to the i860.  */
-void i860_cpu_device::i860_clr_interrupt() {
+void i860_cpu_device::clr_interrupt() {
     SET_EPSR_INT (0);
 }
 
@@ -190,8 +192,10 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
     UINT32 voffset        = vaddr & I860_PAGE_OFF_MASK;
     UINT32 tlbidx         = vaddr & I860_TLB_MASK;
     
+#if ENABLE_I860_TLB
     if(m_tlb[tlbidx].vaddr == (vaddr & I860_PAGE_FRAME_MASK))
         return (m_tlb[tlbidx].paddr_flags & I860_PAGE_FRAME_MASK) + voffset;
+#endif
     
     UINT32 vpage          = (vaddr >> I860_PAGE_SZ) & 0x3ff;
     UINT32 vdir           = (vaddr >> 22) & 0x3ff;
@@ -565,8 +569,9 @@ inline INT32 sign_ext (UINT32 x, int n)
 
 
 void i860_cpu_device::unrecog_opcode (UINT32 pc, UINT32 insn) {
-	Log_Printf(LOG_WARN, "[i860:%08X] %08X   (unrecognized opcode)", pc, insn);
-    i860_halt(true);
+	debugger('d', "unrecognized opcode %08X pc=%08X", insn, pc);
+    SET_PSR_IT (1);
+    m_flow |= TRAP_NORMAL;
 }
 
 
@@ -677,6 +682,12 @@ void i860_cpu_device::insn_st_ctrl (UINT32 insn)
 		UINT32 enew = get_iregval (isrc1) & 0x003e01ef;
 		UINT32 tmp = m_cregs[CR_FSR] & ~0x003e01ef;
 		m_cregs[CR_FSR] = enew | tmp;
+        switch(GET_FSR_RM()) {
+            case 0: fesetround(FE_TONEAREST);  break;
+            case 1: fesetround(FE_DOWNWARD);   break;
+            case 2: fesetround(FE_UPWARD);     break;
+            case 3: fesetround(FE_TOWARDZERO); break;
+        }
 	}
 	else if (csrc2 != CR_FIR)
 		m_cregs[csrc2] = get_iregval (isrc1);
@@ -868,13 +879,15 @@ void i860_cpu_device::insn_fldy (UINT32 insn)
 	/* Bit 26 determines the addressing mode (reg+reg or disp+reg).  */
 	form_disp_reg = (insn & 0x04000000);
 
+#if TRACE_UNDEFINED_I860
 	/* There is no pipelined load quad.  */
 	if (piped && size == 16)
 	{
 		unrecog_opcode (m_pc, insn);
 		return;
 	}
-
+#endif
+    
 	/* FIXME: Check for undefined behavior, non-even or non-quad
 	   register operands for fld.d and fld.q respectively.  */
 
@@ -2278,6 +2291,7 @@ void i860_cpu_device::insn_fmul (UINT32 insn)
 	int is_pfmul3 = insn & 0x4;
 	int num_stages = (src_prec && !is_pfmul3) ? 2 : 3;
 
+#if TRACE_UNDEFINED_I860
 	/* Only .dd is valid for pfmul.  */
 	if (is_pfmul3 && (insn & 0x180) != 0x180)
 	{
@@ -2291,7 +2305,8 @@ void i860_cpu_device::insn_fmul (UINT32 insn)
 		unrecog_opcode (m_pc, insn);
 		return;
 	}
-
+#endif
+    
 	/* For pipelined version, retrieve the contents of the last stage
 	   of the pipeline, whose precision is specified by the MRP bit
 	   of the stage's result-status bits.  Note for pfmul, the number
@@ -2411,13 +2426,15 @@ void i860_cpu_device::insn_fmlow (UINT32 insn)
 	INT64 i2 = *(UINT64 *)&v2;
 	INT64 tmp = 0;
 
+#if TRACE_UNDEFINED_I860
 	/* Only .dd is valid for fmlow.  */
 	if ((insn & 0x180) != 0x180)
 	{
 		unrecog_opcode (m_pc, insn);
 		return;
 	}
-
+#endif
+    
 	/* The lower 32-bits are obvious.  What exactly goes in the upper
 	   bits?
 	   Technically, the upper-most 10 bits are undefined, but i'd like
@@ -2446,13 +2463,15 @@ void i860_cpu_device::insn_fadd_sub (UINT32 insn)
 	double dbl_last_stage_contents = 0.0;
 	float sgl_last_stage_contents = 0.0;
 
+#if TRACE_UNDEFINED_I860
 	/* Check for invalid .ds combination.  */
 	if ((insn & 0x180) == 0x100)
 	{
 		unrecog_opcode (m_pc, insn);
 		return;
 	}
-
+#endif
+    
 	/* For pipelined version, retrieve the contents of the last stage
 	   of the pipeline, whose precision is specified by the ARP bit
 	   of the stage's result-status bits.  There are always three stages
@@ -2550,6 +2569,52 @@ void i860_cpu_device::insn_fadd_sub (UINT32 insn)
 	}
 }
 
+/* Execute 0x32, [p]fix.{ss,sd,dd}  (SC) added and implemented this */
+void i860_cpu_device::insn_fix(UINT32 insn) {
+    UINT32 fsrc1 = get_fsrc1 (insn);
+    UINT32 fdest = get_fdest (insn);
+    int src_prec = insn & 0x100;     /* 1 = double, 0 = single.  */
+    int res_prec = insn & 0x080;     /* 1 = double, 0 = single.  */
+    int piped = insn & 0x400;        /* 1 = pipelined, 0 = scalar.  */
+    
+#if TRACE_UNDEFINED_I860
+    /* Check for invalid .ds or .ss combinations.  */
+    if ((insn & 0x080) == 0) {
+        unrecog_opcode (m_pc, insn);
+        return;
+    }
+#endif
+    
+    /* Do the operation, being careful about source and result
+     precision.  Operation: fdest = integer part of fsrc1 in
+     lower 32-bits.  */
+    if (src_prec) {
+        double v1 = get_fregval_d (fsrc1);
+        INT32 iv = rint(v1);
+        /* We always write a single, since the lower 32-bits of fdest
+         get the result (and the even numbered reg is the lower).  */
+        set_fregval_s (fdest, *(float *)&iv);
+    }
+    else
+    {
+        float v1 = get_fregval_s (fsrc1);
+        INT32 iv = rint(v1);
+        /* We always write a single, since the lower 32-bits of fdest
+         get the result (and the even numbered reg is the lower).  */
+        set_fregval_s (fdest, *(float *)&iv);
+    }
+    
+    /* FIXME: Handle updating of pipestages for pfix.  */
+    /* Includes looking at ARP (add result precision.) */
+    if (piped)
+    {
+        Log_Printf(LOG_WARN, "[i860:%08X] insn_fix: FIXME: pipelined not functional yet", m_pc);
+        if (res_prec)
+            set_fregval_d (fdest, 0.0);
+        else
+            set_fregval_s (fdest, 0.0);
+    }
+}
 
 /* Operand types for PFAM/PFMAM routine below.  */
 enum {
@@ -2712,22 +2777,26 @@ void i860_cpu_device::insn_dualop (UINT32 insn)
 	int T_loaded = src_opers[dpc].T_loaded;
 	int K_loaded = src_opers[dpc].K_loaded;
 
+#if TRACE_UNDEFINED_I860
 	/* Check for invalid .ds combination.  */
 	if ((insn & 0x180) == 0x100)
 	{
 		unrecog_opcode (m_pc, insn);
 		return;
 	}
-
+#endif
+    
 	if (is_pfam == 0)
 	{
+#if TRACE_UNDEFINED_I860
 		/* Check for invalid DPC combination 16 for PFMAM.  */
 		if (dpc == 16)
 		{
 			unrecog_opcode (m_pc, insn);
 			return;
 		}
-
+#endif
+        
 		/* PFMAM table adjustments (M_unit_op1 is never a pipe stage,
 		   so no adjustment made for it).   */
 		M_unit_op2 = (M_unit_op2 & FLAGM) ? OP_MPIPE : M_unit_op2;
@@ -3024,6 +3093,7 @@ void i860_cpu_device::insn_frsqr (UINT32 insn)
 	int src_prec = insn & 0x100;     /* 1 = double, 0 = single.  */
 	int res_prec = insn & 0x080;     /* 1 = double, 0 = single.  */
 
+#if TRACE_UNDEFINED_I860
 	/* Check for invalid .ds combination.  */
 	if ((insn & 0x180) == 0x100)
 	{
@@ -3037,7 +3107,8 @@ void i860_cpu_device::insn_frsqr (UINT32 insn)
 		unrecog_opcode (m_pc, insn);
 		return;
 	}
-
+#endif
+    
 	/* Do the operation, being careful about source and result
 	   precision.  */
 	if (src_prec)
@@ -3126,13 +3197,15 @@ void i860_cpu_device::insn_ftrunc (UINT32 insn)
 	int res_prec = insn & 0x080;     /* 1 = double, 0 = single.  */
 	int piped = insn & 0x400;        /* 1 = pipelined, 0 = scalar.  */
 
+#if TRACE_UNDEFINED_I860
 	/* Check for invalid .ds or .ss combinations.  */
 	if ((insn & 0x080) == 0)
 	{
 		unrecog_opcode (m_pc, insn);
 		return;
 	}
-
+#endif
+    
 	/* Do the operation, being careful about source and result
 	   precision.  Operation: fdest = integer part of fsrc1 in
 	   lower 32-bits.  */
@@ -3256,14 +3329,15 @@ void i860_cpu_device::insn_fiadd_sub (UINT32 insn)
 	double dbl_tmp_dest = 0.0;
 	float sgl_tmp_dest = 0.0;
 
+#if TRACE_UNDEFINED_I860
 	/* Check for invalid .ds and .sd combinations.  */
-	if ((insn & 0x180) == 0x100
-		|| (insn & 0x180) == 0x080)
+	if ((insn & 0x180) == 0x100 || (insn & 0x180) == 0x080)
 	{
 		unrecog_opcode (m_pc, insn);
 		return;
 	}
-
+#endif
+    
 	/* Do the operation, being careful about source and result
 	   precision.  */
 	if (src_prec)
@@ -3436,13 +3510,15 @@ void i860_cpu_device::insn_fzchk (UINT32 insn)
 	UINT64 r = 0;
 	char pm = GET_PSR_PM ();
 
+#if TRACE_UNDEFINED_I860
 	/* Check for S and R bits set.  */
 	if ((insn & 0x180) != 0x180)
 	{
 		unrecog_opcode (m_pc, insn);
 		return;
 	}
-
+#endif
+    
 	/* Do the operation.  The fzchks version operates in parallel on
 	   four 16-bit pixels, while the fzchkl operates on two 32-bit
 	   pixels (pixels are unsigned ordinals in this context).  */
@@ -3525,13 +3601,15 @@ void i860_cpu_device::insn_form (UINT32 insn)
 	double v1 = get_fregval_d (fsrc1);
 	UINT64 iv1 = *(UINT64 *)&v1;
 
+#if TRACE_UNDEFINED_I860
 	/* Check for S and R bits set.  */
 	if ((insn & 0x180) != 0x180)
 	{
 		unrecog_opcode (m_pc, insn);
 		return;
 	}
-
+#endif
+    
 	iv1 |= m_merge;
 	dbl_tmp_dest = *(double *)&iv1;
 	m_merge = 0;
@@ -3821,7 +3899,7 @@ const i860_cpu_device::decode_tbl_t i860_cpu_device::fp_decode_tbl[128] = {
 	{ 0,                0}, /* 0x2F */
 	{ &i860_cpu_device::insn_fadd_sub,    DEC_DECODED}, /* 0x30, [p]fadd.{ss,sd,dd} */
 	{ &i860_cpu_device::insn_fadd_sub,    DEC_DECODED}, /* 0x31, [p]fsub.{ss,sd,dd} */
-	{ 0,                0}, /* 0x32, [p]fix.{ss,sd,dd}  FIXME: nyi. */
+	{ &i860_cpu_device::insn_fix,         DEC_DECODED}, /* 0x32, [p]fix.{ss,sd,dd} */
 	{ &i860_cpu_device::insn_famov,       DEC_DECODED}, /* 0x33, [p]famov.{ss,sd,ds,dd} */
 	{ &i860_cpu_device::insn_fcmp,        DEC_DECODED}, /* 0x34, pf{gt,le}.{ss,dd} */
 	{ &i860_cpu_device::insn_fcmp,        DEC_DECODED}, /* 0x35, pfeq.{ss,dd} */
@@ -3943,7 +4021,7 @@ void i860_cpu_device::decode_exec (UINT32 insn) {
 
 
 /* Set-up all the default power-on/reset values.  */
-void i860_cpu_device::i860_reset() {
+void i860_cpu_device::reset() {
     UINT32 UNDEF_VAL = 0x55aa5500;
     
 	int i;
@@ -4013,5 +4091,5 @@ void i860_cpu_device::i860_reset() {
     invalidate_icache();
     invalidate_tlb();
     
-    i860_halt(false);
+    halt(false);
 }
