@@ -9,6 +9,7 @@
 #include "dimension.h"
 #include "nd_devs.h"
 #include "nd_nbic.h"
+#include "i860cfg.h"
 
 #if ENABLE_DIMENSION
 
@@ -56,7 +57,11 @@
 
 #define CSRDRAM_4MBIT       0x00000001
 
-static struct {
+static
+#if ENABLE_I860_THREAD
+volatile
+#endif
+struct {
     uae_u32 csr0;
     uae_u32 csr1;
     uae_u32 csr2;
@@ -440,8 +445,6 @@ void nd_mc_write_register(uaecptr addr, uae_u32 val) {
 
 /* interrupt processing */
 int nd_process_interrupts(int nHostCycles) {
-    //static Uint32 oldcsr0;
-    
     nd_vbl_cyc_count   -= nHostCycles;
     nd_video_cyc_count -= nHostCycles;
     
@@ -481,13 +484,6 @@ int nd_process_interrupts(int nHostCycles) {
         if(nd_mc.csr0 & CSR0_BE_IMASK)
             result = 1;
     }
- 
-    /*
-    if(result && (oldcsr0 ^ nd_mc.csr0)) {
-        oldcsr0 = nd_mc.csr0;
-        Log_Printf(LOG_WARN, "[ND] external interrupt csr0=%s", decodeBits(ND_CSR0_BITS, nd_mc.csr0));
-    }
-    */
     
     return result;
 }

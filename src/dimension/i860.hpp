@@ -25,13 +25,10 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <SDL.h>
+#include <SDL_thread.h>
 
-#define TRACE_I860           0
-#define TRACE_RDWR_MEM       0
-#define TRACE_PAGE_FAULT     0
-#define TRACE_UNDEFINED_I860 1
-#define TRACE_UNALIGNED_MEM  1
-#define TRACE_EXT_INT        0
+#include "i860cfg.h"
 
 const int LOG_WARN = 3;
 extern "C" void Log_Printf(int nType, const char *psFormat, ...);
@@ -59,8 +56,8 @@ extern "C" {
     UINT32 nd_board_lget(UINT32 addr);
     void   nd_board_lput(UINT32 addr, UINT32 val);
     int    nd_process_interrupts(int nHostCycles);
+    void   nd_nbic_interrupt(void);
     bool   nd_dbg_cmd(const char* cmd);
-    bool   i860_dbg_break(UINT32 addr);
     void   Statusbar_SetNdLed(int state);
 }
 
@@ -91,6 +88,13 @@ enum {
      it is 0 to get the ld.c address.  This is set to 1 only when a
      non-reset trap occurs.  */
     FIR_GETS_TRAP      = 0x10000000,
+};
+
+enum {
+    MSG_NONE          = 0x00,
+    MSG_I860_RESET    = 0x01,
+    MSG_I860_KILL     = 0x02,
+    MSG_DBG_BREAK     = 0x04,
 };
 
 /* dual mode instruction state */
@@ -226,6 +230,10 @@ enum {
 #define GET_FSR_SE()  ((m_cregs[CR_FSR] >> 8) & 1)
 #define SET_FSR_SE(val)  (m_cregs[CR_FSR] = (m_cregs[CR_FSR] & ~(1 << 8)) | (((val) & 1) << 8))
 
+/* FSR: SE bit (RM[3..2]):  set/get.  */
+#define GET_FSR_RM()    ((m_cregs[CR_FSR] >> 2) & 3)
+#define SET_FSR_RM(val) (m_cregs[CR_FSR] = (m_cregs[CR_FSR] & ~0xC) | (((val) & 3) << 2))
+
 #define CLEAR_FLOW() (m_flow &= FLOW_CLEAR_MASK)
 
 /* check for pending trap */
@@ -314,44 +322,45 @@ public:
 class i860_cpu_device {
 public:
 	// construction/destruction
-    i860_cpu_device() {}
-
+    i860_cpu_device();
+    
+    /* External interface */
+    void send_msg(int msg);
     void init();
-	
-	void uninit();
-    
-    // run one i860 cycle
+    void uninit();
+    void halt(bool state);
+    inline bool is_halted() {return m_halt;};
+
+    /* run one i860 cycle */
     void run_cycle(int nHostCycles);
-    
-	/* This is the external interface for asserting an external interrupt to the i860.  */
-	void i860_gen_interrupt();
-
-    /* This is the external interface for clearing an external interrupt of the i860.  */
-    void i860_clr_interrupt();
-
-    /* This is the external interface for reseting the i860.  */
-    void i860_reset();
-
-    /* This is the external interface for halting the i860.  */
-    void i860_halt(bool state);
-    
-    /* Program counter (1 x 32-bits).  Reset starts at pc=0xffffff00.  */
-    UINT32 m_pc;
-    
-    // device_disasm_interface overrides
-    UINT32 disasm_min_opcode_bytes() const { return 4; }
-    UINT32 disasm_max_opcode_bytes() const { return 4; }
-    offs_t disasm(char *buffer, offs_t pc);
-    
+    /* Run the i860 thread */
+    void run();
+    /* i860 thread message handler */
+    bool   handle_msgs();
+    /* Lock & wait if i860 debugger is running */
+    void    check_debug_lock();
+private:
     // debugger
     void debugger(char cmd, const char* format, ...);
     void debugger();
-private:
-    char m_lastcmd; // last debugger command
+    
+    /* Message port for host->i860 communication */
+    SDL_atomic_t m_port;
+    
+#if ENABLE_I860_THREAD
+    SDL_Thread*  m_thread;
+#endif
+    SDL_SpinLock m_debugger_lock;
+    
+    /* Debugger stuff */
+    char m_lastcmd;
     char m_console[512*1024];
     int  m_console_idx;
     bool m_break_on_next_msg;
     
+    /* Program counter (1 x 32-bits).  Reset starts at pc=0xffffff00.  */
+    UINT32 m_pc;
+
 	/* Integer registers (32 x 32-bits).  */
 	UINT32  m_iregs[32];
     
@@ -447,9 +456,9 @@ private:
     i860_tlb_entry  m_tlb[1<<I860_TLB_SZ];
     
 	/*
-	 * Halt state.
+	 * Halt state. Can be set externally
 	 */
-    bool m_halt;
+    volatile bool m_halt;
     
 	/* Indicate an instruction just generated a trap,
      needs to go to the trap address or a control-flow 
@@ -535,6 +544,7 @@ private:
 	void insn_frsqr (UINT32 insn);
 	void insn_fxfr (UINT32 insn);
 	void insn_ftrunc (UINT32 insn);
+    void insn_fix (UINT32 insn);
 	void insn_famov (UINT32 insn);
 	void insn_fiadd_sub (UINT32 insn);
 	void insn_fcmp (UINT32 insn);
@@ -562,19 +572,27 @@ private:
     UINT32 ifetch_notrap(UINT32 pc);
     void   handle_trap(UINT32 savepc, bool dim);
     void   unrecog_opcode (UINT32 pc, UINT32 insn);
-
+    
     void   decode_exec (UINT32 insn);
     void   dump_pipe (int type);
     void   dump_state ();
 	UINT32 disasm (UINT32 addr, int len);
+    offs_t disasm(char* buffer, offs_t pc);
 	void   dbg_db (UINT32 addr, int len);
-	int    has_delay_slot(UINT32 insn);
+	int    delay_slots(UINT32 insn);
 	UINT32 get_address_translation (UINT32 vaddr, int is_dataref, int is_write);
 	UINT32 readmemi_emu (UINT32 addr, int size);
 	float  get_fval_from_optype_s (UINT32 insn, int optype);
 	double get_fval_from_optype_d (UINT32 insn, int optype);
     int    memtest(bool be);
     
+    /* This is theinterface for asserting an external interrupt to the i860.  */
+    void gen_interrupt();
+    /* This is the interface for clearing an external interrupt of the i860.  */
+    void clr_interrupt();
+    /* This is the interface for reseting the i860.  */
+    void reset();
+
 	typedef void (i860_cpu_device::*insn_func)(UINT32);
 	struct decode_tbl_t
 	{

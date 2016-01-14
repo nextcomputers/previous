@@ -20,7 +20,6 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-
 #include "i860.hpp"
 
 static i860_cpu_device nd_i860;
@@ -31,7 +30,7 @@ extern "C" {
     }
 	
 	void nd_i860_uninit() {
-		nd_i860.uninit();
+        nd_i860.uninit();
 	}
 	
 	int nd_speed_hack;
@@ -40,19 +39,44 @@ extern "C" {
 		nd_speed_hack = state;
 	}
     
+    void nd_start_debugger(void) {
+        nd_i860.send_msg(MSG_DBG_BREAK);
+    }
+
     void i860_Run(int nHostCycles) {
-		if (nd_speed_hack) {
-			while(nHostCycles) {
-				nd_i860.run_cycle(2);
-				nHostCycles -= 2;
-			}
-		} else
-			nd_i860.run_cycle(nHostCycles);
+#if ENABLE_I860_THREAD
+        nd_i860.check_debug_lock();
+#else
+        nd_i860.handle_msgs();
+
+        if(nd_i860.is_halted()) return;
+
+        if (nd_speed_hack) {
+            while(nHostCycles) {
+                nd_i860.run_cycle(2);
+                nHostCycles -= 2;
+            }
+        } else
+            nd_i860.run_cycle(nHostCycles);
+#endif
+        nd_nbic_interrupt();
 	}
     
-    void i860_reset() {
-        nd_i860.i860_reset();
+    int i860_thread(void* data) {
+        ((i860_cpu_device*)data)->run();
+        return 0;
     }
+    
+    void i860_reset() {
+        nd_i860.send_msg(MSG_I860_RESET);
+    }
+}
+
+i860_cpu_device::i860_cpu_device() {
+#if ENABLE_I860_THREAD
+    m_thread = NULL;
+#endif
+    m_halt = true;
 }
 
 inline UINT32 i860_cpu_device::rd32i(UINT32 addr) {
@@ -165,6 +189,14 @@ inline void i860_cpu_device::SET_PSR_CC(int val) {
         m_cregs[CR_PSR] = (m_cregs[CR_PSR] & ~(1 << 2)) | ((val & 1) << 2);
 }
 
+void i860_cpu_device::send_msg(int msg) {
+    /* Get pending messages */
+    int pmsg = SDL_AtomicGet(&m_port);
+    /* If this message is not already pending, add it. */
+    if(!(pmsg & msg))
+        SDL_AtomicAdd(&m_port, msg);
+}
+
 void i860_cpu_device::handle_trap(UINT32 savepc, bool dim) {
     static char buffer[128];
     buffer[0] = 0;
@@ -225,10 +257,6 @@ void i860_cpu_device::handle_trap(UINT32 savepc, bool dim) {
 }
 
 void i860_cpu_device::run_cycle(int nHostCycles) {
-    if(i860_dbg_break(m_pc)) debugger('d', "BREAK at pc=%08X", m_pc);
-    
-    if(m_halt) return;
-    
     m_dim_cc_valid = false;
     CLEAR_FLOW();
     bool   dim_insn = false;
@@ -273,9 +301,9 @@ void i860_cpu_device::run_cycle(int nHostCycles) {
         // - when no other traps are pending
         if(!(m_dim) && !(PENDING_TRAP())) {
             if(nd_process_interrupts(nHostCycles))
-                i860_gen_interrupt();
+                gen_interrupt();
             else
-                i860_clr_interrupt();
+                clr_interrupt();
         }
         
         if (PENDING_TRAP()) {
@@ -399,6 +427,10 @@ int i860_cpu_device::memtest(bool be) {
 }
 
 void i860_cpu_device::init() {
+#if ENABLE_I860_THREAD
+    if(!(is_halted())) uninit();
+#endif
+    
     m_single_stepping   = 0;
     m_lastcmd           = 0;
     m_console_idx       = 0;
@@ -484,12 +516,50 @@ error:
         fflush(stderr);
         exit(err);
     }
-    
-    i860_reset();
+
+    send_msg(MSG_I860_RESET);
+#if ENABLE_I860_THREAD
+    m_thread = SDL_CreateThread(i860_thread, "[ND] i860", this);
+#endif
 }
 
 void i860_cpu_device::uninit() {
-	i860_halt(true);
+	halt(true);
+    send_msg(MSG_I860_KILL);
+#if ENABLE_I860_THREAD
+    int status;
+    if(m_thread) {
+        SDL_WaitThread(m_thread, &status);
+        m_thread = NULL;
+    }
+    send_msg(MSG_NONE);
+#endif
+}
+
+/* Message disaptcher */
+bool i860_cpu_device::handle_msgs() {
+    int msg = SDL_AtomicSet(&m_port, 0);
+    if(msg & MSG_I860_KILL)
+        return false;
+    if(msg & MSG_I860_RESET)
+        reset();
+    if(msg & MSG_DBG_BREAK)
+        debugger('d', "BREAK at pc=%08X", m_pc);
+    return true;
+}
+
+void i860_cpu_device::run() {
+    while(handle_msgs()) {
+        
+        /* Sleep a bit if halted */
+        if(m_halt) {
+            SDL_Delay(100);
+            continue;
+        }
+        
+        /* Run i860 */
+        run_cycle(2);
+    }
 }
 
 offs_t i860_cpu_device::disasm(char* buffer, offs_t pc) {

@@ -6,5 +6,4 @@ void nd_nbic_wput(Uint32 addr, Uint16 w);
 void nd_nbic_bput(Uint32 addr, Uint8 b);
 
 void nd_nbic_init(void);
-void nd_nbic_interrupt(void);
 void nd_nbic_set_intstatus(bool set);
