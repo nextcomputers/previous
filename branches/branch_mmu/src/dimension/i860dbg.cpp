@@ -55,7 +55,7 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
     }
         
     if(!(cmd))
-        disasm (m_pc, 1+delay_slots(ifetch_notrap(m_pc)));
+        disasm (m_pc, (m_dim ? 2 : 1) + delay_slots(ifetch_notrap(m_pc)));
 
     buf[0] = 0;
     fflush (stdin);
@@ -132,6 +132,11 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
                 fputs(m_console, stderr);
                 fflush(stderr);
                 break;
+            case 't':
+                SET_PSR_IT (1);
+                m_flow |= TRAP_NORMAL;
+                m_single_stepping = 2;
+                break;
             case 'm':
                 if (buf[1] == '0')
                     sscanf (buf + 1, "%x", &curr_dumpdb);
@@ -159,6 +164,7 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
                          "   k: print console buffer\n"
                          "   d: disassemble (u[0xaddress])\n"
                          "   p: dump pipelines (p{0-4} for all, add, mul, load, graphics)\n"
+                         "   t: trap on next instruction\n"
                          "   x: give virt->phys translation (x{0xaddress})\n");
                 nd_dbg_cmd(0);
                 break;
@@ -189,11 +195,8 @@ UINT32 i860_cpu_device::disasm (UINT32 addr, int len)
 		fprintf (stderr, " [i860] %08X: ", addr);
 		insn = ifetch_notrap(addr);
         i860_disassembler(addr, insn, buf);
-        fprintf (stderr, "%s", buf);
-		fprintf (stderr, "\n");
+        fprintf (stderr, "%s\n", buf);
 		addr += 4;
-		if (m_single_stepping == 1)
-            len += delay_slots(insn);
 	}
     return addr;
 }
@@ -216,7 +219,7 @@ void i860_cpu_device::dbg_db (UINT32 addr, int len)
 			if (GET_DIRBASE_ATE ())
 				phys_addr = get_address_translation (addr, 1  /* is_dataref */, 0 /* is_write */);
 
-			b[i] = rd8(phys_addr);
+			rdmem[1](phys_addr, (UINT32*)&b[i]);
 			fprintf (stderr, "%02x ", b[i]);
 			addr++;
 		}

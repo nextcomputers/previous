@@ -55,11 +55,39 @@ extern "C" {
     void   nd_board_wput(UINT32 addr, UINT16 val);
     UINT32 nd_board_lget(UINT32 addr);
     void   nd_board_lput(UINT32 addr, UINT32 val);
-    int    nd_process_interrupts(int nHostCycles);
+    void   nd_board_put (UINT32 addr, UINT32 val);
+    
+    void   nd_board_rd8_le  (UINT32 addr, UINT32* val);
+    void   nd_board_rd16_le (UINT32 addr, UINT32* val);
+    void   nd_board_rd32_le (UINT32 addr, UINT32* val);
+    void   nd_board_rd64_le (UINT32 addr, UINT32* val);
+    void   nd_board_rd128_le(UINT32 addr, UINT32* val);
+
+    void   nd_board_rd8_be  (UINT32 addr, UINT32* val);
+    void   nd_board_rd16_be (UINT32 addr, UINT32* val);
+    void   nd_board_rd32_be (UINT32 addr, UINT32* val);
+    void   nd_board_rd64_be (UINT32 addr, UINT32* val);
+    void   nd_board_rd128_be(UINT32 addr, UINT32* val);
+
+    void   nd_board_wr8_le  (UINT32 addr, const UINT32* val);
+    void   nd_board_wr16_le (UINT32 addr, const UINT32* val);
+    void   nd_board_wr32_le (UINT32 addr, const UINT32* val);
+    void   nd_board_wr64_le (UINT32 addr, const UINT32* val);
+    void   nd_board_wr128_le(UINT32 addr, const UINT32* val);
+    
+    void   nd_board_wr8_be  (UINT32 addr, const UINT32* val);
+    void   nd_board_wr16_be (UINT32 addr, const UINT32* val);
+    void   nd_board_wr32_be (UINT32 addr, const UINT32* val);
+    void   nd_board_wr64_be (UINT32 addr, const UINT32* val);
+    void   nd_board_wr128_be(UINT32 addr, const UINT32* val);
+
     void   nd_nbic_interrupt(void);
     bool   nd_dbg_cmd(const char* cmd);
     void   Statusbar_SetNdLed(int state);
 }
+
+typedef void (*mem_rd_func)(UINT32, UINT32*);
+typedef void (*mem_wr_func)(UINT32, const UINT32*);
 
 /***************************************************************************
     REGISTER ENUMERATION
@@ -88,6 +116,8 @@ enum {
      it is 0 to get the ld.c address.  This is set to 1 only when a
      non-reset trap occurs.  */
     FIR_GETS_TRAP      = 0x10000000,
+    /* An external interrupt occured. */
+    EXT_INTR           = 0x20000000,
 };
 
 enum {
@@ -95,6 +125,7 @@ enum {
     MSG_I860_RESET    = 0x01,
     MSG_I860_KILL     = 0x02,
     MSG_DBG_BREAK     = 0x04,
+    MSG_INTR          = 0x08,
 };
 
 /* dual mode instruction state */
@@ -256,9 +287,7 @@ const UINT32 INSN_FP_DIM   = INSN_FP   | INSN_DIM;
 const UINT32 INSN_MASK     = 0xFC000000;
 const UINT32 INSN_MASK_DIM = INSN_MASK | INSN_DIM;
 
-const size_t I860_CACHE_LINE_SZ   = 1; // in powers of two words (2^1 = 2 words)
 const size_t I860_ICACHE_SZ       = 9; // in powers of two lines (2^9 = 512; 512 x 2 words = 4 kbytes)
-const size_t I860_CACHE_LINE_MASK = (1<<I860_CACHE_LINE_SZ)-1;
 const size_t I860_ICACHE_MASK     = (1<<I860_ICACHE_SZ)-1;
 const size_t I860_TLB_SZ          = 12; // in powers of two
 const size_t I860_TLB_MASK        = (1<<I860_TLB_SZ)-1;
@@ -266,17 +295,6 @@ const size_t I860_PAGE_SZ         = 12; // in powers of two
 const size_t I860_PAGE_OFF_MASK   = (1<<I860_PAGE_SZ)-1;
 const size_t I860_PAGE_FRAME_MASK = ~I860_PAGE_OFF_MASK;
 const size_t I860_TLB_FLAGS       = I860_PAGE_OFF_MASK;
-
-struct i860_cache_line {
-    UINT32   vaddr;
-    UINT32   flags;
-    UINT32   data[1<<I860_CACHE_LINE_SZ];
-};
-
-struct i860_tlb_entry {
-    UINT32 vaddr;
-    UINT32 paddr_flags;
-};
 
 /* Control register numbers.  */
 enum {
@@ -331,26 +349,44 @@ public:
     void halt(bool state);
     inline bool is_halted() {return m_halt;};
 
-    /* run one i860 cycle */
-    void run_cycle(int nHostCycles);
+    /* Run one i860 cycle */
+    void run_cycle();
     /* Run the i860 thread */
     void run();
     /* i860 thread message handler */
     bool   handle_msgs();
     /* Lock & wait if i860 debugger is running */
     void    check_debug_lock();
+    /* External tick event for the i860 emulator to update real-time dependent state + interrupt flag */
+    void   tick(bool intr);
 private:
     // debugger
     void debugger(char cmd, const char* format, ...);
     void debugger();
     
     /* Message port for host->i860 communication */
-    SDL_atomic_t m_port;
+    volatile int m_port;
+    SDL_SpinLock m_port_lock;
     
 #if ENABLE_I860_THREAD
     SDL_Thread*  m_thread;
 #endif
     SDL_SpinLock m_debugger_lock;
+
+#if ENABLE_PERF_COUNTERS
+    UINT64 m_insn_decoded;
+    UINT64 m_icache_hit;
+    UINT64 m_icache_miss;
+    UINT64 m_icache_inval;
+    UINT64 m_tlb_hit;
+    UINT64 m_tlb_miss;
+    UINT64 m_tlb_inval;
+    UINT64 m_intrs;
+    UINT32 m_time_delta_ms;
+    UINT32 m_abs_time_ms;
+    
+    void dump_reset_perfc();
+#endif
     
     /* Debugger stuff */
     char m_lastcmd;
@@ -450,10 +486,12 @@ private:
 	} m_G;
 
     /* Instruction cache */
-    i860_cache_line m_icache[1<<I860_ICACHE_SZ];
+    UINT64 m_icache[1<<I860_ICACHE_SZ];
+    UINT32 m_icache_vaddr[1<<I860_ICACHE_SZ];
     
     /* Translation look-aside buffer */
-    i860_tlb_entry  m_tlb[1<<I860_TLB_SZ];
+    UINT32 m_tlb_vaddr[1<<I860_TLB_SZ];
+    UINT32 m_tlb_paddr[1<<I860_TLB_SZ];
     
 	/*
 	 * Halt state. Can be set externally
@@ -469,20 +507,14 @@ private:
     int m_single_stepping;
 
     /* memory access */
-    void   rddata(UINT32 addr, int size, UINT8* data);
-    void   wrdata(UINT32 addr, int size, UINT8* data);
-    UINT32 rd32i(UINT32 addr);
-    void   wr32i(UINT32 addr, UINT32 val);
+    mem_rd_func rdmem[17];
+    mem_wr_func wrmem[17];
+    
+    void   set_mem_access(bool be);
     UINT8  rdcs8(UINT32 addr);
-    UINT8  rd8(UINT32 addr);
-    UINT16 rd16(UINT32 addr);
-    UINT32 rd32(UINT32 addr);
-    void   wr8(UINT32 addr, UINT8 val);
-    void   wr16(UINT32 addr, UINT16 val);
-    void   wr32(UINT32 addr, UINT32 val);
-	void   writememi_emu (UINT32 addr, int size, UINT32 data);
-	void   fp_readmem_emu (UINT32 addr, int size, UINT8 *dest);
-	void   fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT32 wmask);
+	void   writemem_emu(UINT32 addr, int size, UINT8 *data);
+	void   writemem_emu(UINT32 addr, int size, UINT8 *data, UINT32 wmask);
+    void   readmem_emu (UINT32 addr, int size, UINT8 *data);
 
     /* instructions */
 	void insn_ld_ctrl (UINT32 insn);
@@ -562,8 +594,6 @@ private:
     void   set_fregval_d (int fr, double d);
     void   SET_PSR_CC(int val);
     
-    size_t icache_line(UINT32 pc) {return (pc >> (2+I860_CACHE_LINE_SZ)) & I860_ICACHE_MASK;};
-    size_t icache_off(UINT32 pc)  {return (pc >>  2)                     & I860_CACHE_LINE_MASK;};
     bool   load_icache(UINT32 pc);
     void   invalidate_icache();
     void   invalidate_tlb();
@@ -581,7 +611,6 @@ private:
 	void   dbg_db (UINT32 addr, int len);
 	int    delay_slots(UINT32 insn);
 	UINT32 get_address_translation (UINT32 vaddr, int is_dataref, int is_write);
-	UINT32 readmemi_emu (UINT32 addr, int size);
 	float  get_fval_from_optype_s (UINT32 insn, int optype);
 	double get_fval_from_optype_d (UINT32 insn, int optype);
     int    memtest(bool be);
@@ -592,6 +621,7 @@ private:
     void clr_interrupt();
     /* This is the interface for reseting the i860.  */
     void reset();
+    void intr();
 
 	typedef void (i860_cpu_device::*insn_func)(UINT32);
 	struct decode_tbl_t
