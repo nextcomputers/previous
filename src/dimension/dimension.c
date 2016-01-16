@@ -89,6 +89,125 @@ void nd_slot_bput(Uint32 addr, Uint8 b) {
 }
 
 /* NeXTdimension board memory access */
+
+void   nd_board_rd8_be(Uint32 addr, Uint32* val) {
+    addr  |= ND_BOARD_BITS;
+    *((Uint8*)val) = nd_byteget(addr);
+}
+
+void   nd_board_rd16_be(Uint32 addr, Uint32* val) {
+    addr |= ND_BOARD_BITS;
+    *((Uint16*)val) = nd_wordget(addr);
+}
+
+void   nd_board_rd32_be(Uint32 addr, Uint32* val) {
+    addr  |= ND_BOARD_BITS;
+    val[0] = nd_longget(addr);
+}
+
+void   nd_board_rd64_be(Uint32 addr, Uint32* val) {
+    addr  |= ND_BOARD_BITS;
+    val[0] = nd_longget(addr+4);
+    val[1] = nd_longget(addr+0);
+}
+
+void   nd_board_rd128_be(Uint32 addr, Uint32* val) {
+    addr   |= ND_BOARD_BITS;
+    val[0]  = nd_longget(addr+4);
+    val[1]  = nd_longget(addr+0);
+    val[2] = nd_longget(addr+12);
+    val[3]  = nd_longget(addr+8);
+}
+
+void   nd_board_wr8_be(Uint32 addr, const Uint32* val) {
+    addr |= ND_BOARD_BITS;
+    nd_byteput(addr, *((Uint8*)val));
+}
+
+void   nd_board_wr16_be(Uint32 addr, const Uint32* val) {
+    addr |= ND_BOARD_BITS;
+    nd_wordput(addr, *((Uint16*)val));
+}
+
+void   nd_board_wr32_be(Uint32 addr, const Uint32* val) {
+    addr |= ND_BOARD_BITS;
+    nd_longput(addr, val[0]);
+}
+
+void   nd_board_wr64_be(Uint32 addr, const Uint32* val) {
+    addr |= ND_BOARD_BITS;
+    nd_longput(addr+4, val[0]);
+    nd_longput(addr+0, val[1]);
+}
+
+void   nd_board_wr128_be(Uint32 addr, const Uint32* val) {
+    addr |= ND_BOARD_BITS;
+    nd_longput(addr+4,  val[0]);
+    nd_longput(addr+0,  val[1]);
+    nd_longput(addr+12, val[2]);
+    nd_longput(addr+8,  val[3]);
+}
+
+void   nd_board_rd8_le(Uint32 addr, Uint32* val) {
+    addr  |= ND_BOARD_BITS;
+    *((Uint8*)val) = nd_byteget(addr^7);
+}
+
+void   nd_board_rd16_le(Uint32 addr, Uint32* val) {
+    addr |= ND_BOARD_BITS;
+    *((Uint16*)val) = nd_wordget(addr^6);
+}
+
+void   nd_board_rd32_le(Uint32 addr, Uint32* val) {
+    addr  |= ND_BOARD_BITS;
+    val[0] = nd_longget(addr^4);
+}
+
+void   nd_board_rd64_le(Uint32 addr, Uint32* val) {
+    addr  |= ND_BOARD_BITS;
+    val[0] = nd_longget(addr+0);
+    val[1] = nd_longget(addr+4);
+}
+
+void   nd_board_rd128_le(Uint32 addr, Uint32* val) {
+    addr   |= ND_BOARD_BITS;
+    val[0]  = nd_longget(addr+0);
+    val[1]  = nd_longget(addr+4);
+    val[2]  = nd_longget(addr+8);
+    val[3]  = nd_longget(addr+12);
+}
+
+void   nd_board_wr8_le(Uint32 addr, const Uint32* val) {
+    addr |= ND_BOARD_BITS;
+    nd_byteput(addr^7, *((Uint8*)val));
+}
+
+void   nd_board_wr16_le(Uint32 addr, const Uint32* val) {
+    addr |= ND_BOARD_BITS;
+    nd_wordput(addr^6, *((Uint16*)val));
+}
+
+void   nd_board_wr32_le(Uint32 addr, const Uint32* val) {
+    addr |= ND_BOARD_BITS;
+    nd_longput(addr^4, val[0]);
+}
+
+void   nd_board_wr64_le(Uint32 addr, const Uint32* val) {
+    addr |= ND_BOARD_BITS;
+    nd_longput(addr+0, val[0]);
+    nd_longput(addr+4, val[1]);
+}
+
+void   nd_board_wr128_le(Uint32 addr, const Uint32* val) {
+    addr |= ND_BOARD_BITS;
+    nd_longput(addr+0,  val[0]);
+    nd_longput(addr+4,  val[1]);
+    nd_longput(addr+8,  val[2]);
+    nd_longput(addr+12, val[3]);
+}
+
+//------
+
 inline Uint32 nd_board_lget(Uint32 addr) {
     addr |= ND_BOARD_BITS;
     return nd_longget(addr);
@@ -107,6 +226,20 @@ inline Uint8 nd_board_bget(Uint32 addr) {
 inline void nd_board_lput(Uint32 addr, Uint32 l) {
     addr |= ND_BOARD_BITS;
     nd_longput(addr, l);
+}
+
+inline void nd_board_put64(Uint32 addr, Uint32 l0, Uint32 l1) {
+    addr |= ND_BOARD_BITS;
+    nd_longput(addr+4, l0);
+    nd_longput(addr+0, l1);
+}
+
+inline void nd_board_put128(Uint32 addr, Uint32 l0, Uint32 l1, Uint32 l2, Uint32 l3) {
+    addr |= ND_BOARD_BITS;
+    nd_longput(addr+4,  l0);
+    nd_longput(addr+0,  l1);
+    nd_longput(addr+12, l2);
+    nd_longput(addr+8,  l3);
 }
 
 inline void nd_board_wput(Uint32 addr, Uint16 w) {

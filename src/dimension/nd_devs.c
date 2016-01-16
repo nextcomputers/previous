@@ -10,6 +10,7 @@
 #include "nd_devs.h"
 #include "nd_nbic.h"
 #include "i860cfg.h"
+#include "SDL.h"
 
 #if ENABLE_DIMENSION
 
@@ -85,30 +86,6 @@ struct {
     uae_u32 dram;
 } nd_mc;
 
-const int I860_CYC            = 25 * 1000 * 1000;
-const int VBL_CYC             = I860_CYC / 68;
-const int HEIGHT              = 900; // guess
-const int VIS_HEIGHT          = 832;
-const int WIDTH               = 1152;
-const int VIS_WIDTH           = 1120;
-const int HBL_CYC             = I860_CYC / (68 * HEIGHT);
-const int V_FRONT             = 1 * HBL_CYC;
-const int V_BACK              = VBL_CYC - V_FRONT - (VIS_HEIGHT * HBL_CYC);
-
-const int VIDEO_VBL_CYC       = I860_CYC / 60; // assume NTSC @ 60Hz
-const int VIDEO_HEIGHT        = 525;
-const int VIDEO_VIS_HEIGHT    = 480;
-const int VIDEO_WIDTH         = 720;
-const int VIDEO_VIS_WIDTH     = 640;
-const int VIDEO_HBL_CYC       = I860_CYC / (60 * VIDEO_HEIGHT);
-const int VIDEO_V_FRONT       = 5 * VIDEO_HBL_CYC;
-const int VIDEO_V_BACK        = VIDEO_VBL_CYC - VIDEO_V_FRONT - (VIDEO_VIS_HEIGHT * VIDEO_HBL_CYC);
-
-/* Cycle count for VBL interrupts */
-static int nd_vbl_cyc_count;
-/* Cycle count for video interrupts */
-static int nd_video_cyc_count;
-
 #define DP_IIC_MORE 0x20000000
 #define DP_IIC_BUSY 0x80000000
 
@@ -128,7 +105,53 @@ static struct {
     uae_u32 iic_data;
 } nd_dp;
 
+/* Because of SDL time (in)accuracy timing is very approximative */
+const int DISPLAY_VBL_MS = 1000 / 68; // main display at 68Hz, actually this is 71.42 Hz because (int)1000/(int)68Hz=14ms
+const int VIDEO_VBL_MS   = 1000 / 60; // NTSC display at 60Hz, actually this is 62.5 Hz because (int)1000/(int)60Hz=16ms
+const int BLANK_MS       = 10;        // Give some blank time for both
+
+static Uint32 nd_display_vbl(Uint32 interval, void *param) {
+    Uint32 csr0 = nd_mc.csr0;
+    if(csr0 & CSR0_VBLANK) {
+        csr0 &= ~CSR0_VBLANK;
+        interval = DISPLAY_VBL_MS-BLANK_MS;
+    } else {
+        csr0 |= CSR0_VBL_INT | CSR0_VBLANK;
+        i860_tick((nd_mc.csr0 & CSR0_VBL_IMASK) != 0);
+        interval = BLANK_MS;
+    }
+    nd_mc.csr0 = csr0;
+    return interval;
+}
+
+static Uint32 nd_video_vbl(Uint32 interval, void *param) {
+    Uint32 csr0 = nd_mc.csr0;
+    if(csr0 & CSR0_VIOBLANK) {
+        csr0 &= ~CSR0_VIOBLANK;
+        interval = VIDEO_VBL_MS-BLANK_MS;
+    } else {
+        nd_mc.csr0 |= CSR0_VIOVBL_INT | CSR0_VIOBLANK;
+        i860_tick((nd_mc.csr0 & CSR0_VIOVBL_IMASK) != 0);
+        interval = BLANK_MS;
+    }
+    nd_mc.csr0 = csr0;
+    return interval;
+}
+
 void nd_devs_init() {
+    static bool first = true;
+    static SDL_TimerID displayVBL;
+    static SDL_TimerID videoVBL;
+    if(first) {
+        first = false;
+        // main display at 68Hz
+        displayVBL = SDL_AddTimer(DISPLAY_VBL_MS,  nd_display_vbl, NULL);
+        // NTSC video at 60Hz
+        videoVBL   = SDL_AddTimer(VIDEO_VBL_MS, nd_video_vbl, NULL);
+    }
+    
+    nd_set_speed_hack(0);
+
     nd_mc.csr0          = 0;
     nd_mc.csr1          = 0;
     nd_mc.csr2          = 0;
@@ -150,11 +173,6 @@ void nd_devs_init() {
     nd_mc.dma_out_a     = 0;
     nd_mc.vram          = 0;
     nd_mc.dram          = 0;
-    
-    nd_vbl_cyc_count    = VBL_CYC;
-    nd_video_cyc_count  = VIDEO_VBL_CYC;
-	nd_set_speed_hack(0);
-    
     nd_dp.iic_msgsz     = 0;
     nd_dp.iic_addr      = 0;
     nd_dp.csr           = 0;
@@ -345,7 +363,13 @@ void nd_mc_write_register(uaecptr addr, uae_u32 val) {
                 i860_reset();
                 val &= ~CSR0_i860PIN_RESET;
             }
-			nd_set_speed_hack((val & 0x00008000) ? 0 : 1);		
+            if ((nd_mc.csr0 & CSR0_i860_INT) && (nd_mc.csr0 & CSR0_i860_IMASK))
+                i860_tick(true);
+            
+            if((nd_mc.csr0 & CSR0_BE_INT) && (nd_mc.csr0 & CSR0_BE_IMASK))
+                i860_tick(true);
+            
+			nd_set_speed_hack((val & 0x00008000) ? 0 : 1);
             nd_mc.csr0 = val;
             break;
         case 0x0010:
@@ -441,51 +465,6 @@ void nd_mc_write_register(uaecptr addr, uae_u32 val) {
             Log_Printf(LOG_WARN, "[ND] Memory controller UNKNOWN write at %08X",addr);
             break;
 	}
-}
-
-/* interrupt processing */
-int nd_process_interrupts(int nHostCycles) {
-    nd_vbl_cyc_count   -= nHostCycles;
-    nd_video_cyc_count -= nHostCycles;
-    
-    int result = 0;
-
-    if(nd_vbl_cyc_count >= V_FRONT && nd_vbl_cyc_count < V_BACK)
-        nd_mc.csr0 &= ~CSR0_VBLANK;
-    else
-        nd_mc.csr0 |= CSR0_VBLANK;
-
-    if(nd_vbl_cyc_count <= 0) {
-        nd_mc.csr0 |= CSR0_VBL_INT;
-        if(nd_mc.csr0 & CSR0_VBL_IMASK)
-            result = 1;
-        nd_vbl_cyc_count = VBL_CYC;
-    }
-
-    if(nd_video_cyc_count >= VIDEO_V_FRONT && nd_video_cyc_count < VIDEO_V_BACK)
-        nd_mc.csr0 &= ~CSR0_VIOBLANK;
-    else
-        nd_mc.csr0 |= CSR0_VIOBLANK;
-
-    
-    if(nd_video_cyc_count <= 0) {
-        nd_mc.csr0 |= CSR0_VIOVBL_INT;
-        if(nd_mc.csr0 & CSR0_VIOVBL_IMASK)
-            result = 1;
-        nd_video_cyc_count = VIDEO_VBL_CYC;
-    }
-    
-    if (nd_mc.csr0 & CSR0_i860_INT) {
-        if(nd_mc.csr0 & CSR0_i860_IMASK)
-            result = 1;
-    }
-    
-    if (nd_mc.csr0 & CSR0_BE_INT) {
-        if(nd_mc.csr0 & CSR0_BE_IMASK)
-            result = 1;
-    }
-    
-    return result;
 }
 
 /* NeXTdimension device space */

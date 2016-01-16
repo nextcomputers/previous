@@ -51,6 +51,7 @@
 
 #pragma STDC FENV_ACCESS on
 
+#define DELAY_SLOT_PC() (m_dim ? 12 : 8)
 #define DELAY_SLOT() do{\
     m_pc += 4; \
     UINT32 insn = ifetch(orig_pc+4);\
@@ -69,8 +70,12 @@ int i860_cpu_device::delay_slots(UINT32 insn) {
 	int opc = (insn >> 26) & 0x3f;
 	if (opc == 0x10 || opc == 0x1a || opc == 0x1b || opc == 0x1d ||
 		opc == 0x1f || opc == 0x2d || (opc == 0x13 && (insn & 3) == 2))
-        return insn & INSN_DIM ? 2 : 1;
+        return m_dim ? 2 : 1;
     return 0;
+}
+
+void i860_cpu_device::intr() {
+    m_flow |= EXT_INTR;
 }
 
 /* This is the external interface for indicating an external interrupt
@@ -89,6 +94,9 @@ void i860_cpu_device::gen_interrupt()
 #if TRACE_EXT_INT
     Log_Printf(LOG_WARN, "[i860] i860_gen_interrupt: External interrupt received %s", GET_PSR_IM() ? "[PSR.IN set, preparing to trap]" : "[ignored (interrupts disabled)]");
 #endif
+#if ENABLE_PERF_COUNTERS
+    m_intrs++;
+#endif
 }
 
 
@@ -98,16 +106,16 @@ void i860_cpu_device::clr_interrupt() {
     SET_EPSR_INT (0);
 }
 
-static int c_hit;
-static int c_mis;
-
 bool i860_cpu_device::load_icache(UINT32 pc) {
-    UINT32           vaddr = pc & ~(I860_CACHE_LINE_MASK << 2);
+    UINT32           vaddr = pc & ~7;
     UINT32           paddr;
-    i860_cache_line* line = &m_icache[icache_line(pc)];
-    if(line->vaddr != vaddr) {
+    int              cidx = (vaddr>>3) & I860_ICACHE_MASK;
+    if(m_icache_vaddr[cidx] != vaddr) {
+#if ENABLE_PERF_COUNTERS
+        m_icache_miss++;
+#endif
         if (GET_DIRBASE_ATE ()) {
-            paddr = get_address_translation (pc, 0  /* is_dataref */, 0 /* is_write */) & ~(I860_CACHE_LINE_MASK << 2);
+            paddr = get_address_translation (pc, 0  /* is_dataref */, 0 /* is_write */) & ~7;
             m_flow &= ~EXITING_IFETCH;
             if (PENDING_TRAP() && (GET_PSR_DAT () || GET_PSR_IAT ())) {
                 m_flow |= EXITING_IFETCH;
@@ -116,37 +124,40 @@ bool i860_cpu_device::load_icache(UINT32 pc) {
         } else
             paddr = vaddr;
         
-        line->vaddr   = vaddr;
-        UINT32* data = line->data;
-        
+        m_icache_vaddr[cidx] = vaddr;
+        UINT64 insn64;
         if (GET_DIRBASE_CS8()) {
-            for(int i = 1<<I860_CACHE_LINE_SZ; --i >= 0;) {
-                UINT32 v = rdcs8(paddr+3); v <<= 8;
-                v       |= rdcs8(paddr+2); v <<= 8;
-                v       |= rdcs8(paddr+1); v <<= 8;
-                v       |= rdcs8(paddr+0);
-                *data++ = v;
-                paddr  += 4;
-            }
+            insn64  = rdcs8(paddr+7); insn64 <<= 8;
+            insn64 |= rdcs8(paddr+6); insn64 <<= 8;
+            insn64 |= rdcs8(paddr+5); insn64 <<= 8;
+            insn64 |= rdcs8(paddr+4); insn64 <<= 8;
+            insn64 |= rdcs8(paddr+3); insn64 <<= 8;
+            insn64 |= rdcs8(paddr+2); insn64 <<= 8;
+            insn64 |= rdcs8(paddr+1); insn64 <<= 8;
+            insn64 |= rdcs8(paddr+0);
         } else {
-            for(int i = 1<<I860_CACHE_LINE_SZ; --i >= 0;) {
-                *data++ = rd32i(paddr);
-                paddr  += 4;
-            }
+            nd_board_rd64_be(paddr, (UINT32*)&insn64);
         }
+        m_icache[cidx] = insn64;
     }
+#if ENABLE_PERF_COUNTERS
+    else m_icache_hit++;
+#endif
     return true;
 }
 
 void i860_cpu_device::invalidate_icache() {
-    for(int i = (1<<I860_ICACHE_SZ); --i >=0;)
-        m_icache[i].vaddr = 0xFFFFFFFF;
-    
+    memset(m_icache_vaddr, 0xff, sizeof(UINT32) * (1<<I860_ICACHE_SZ));
+#if ENABLE_PERF_COUNTERS
+    m_icache_inval++;
+#endif
 }
 
 void i860_cpu_device::invalidate_tlb() {
-    for(int i = (1<<I860_TLB_SZ); --i >=0;)
-        m_tlb[i].vaddr = 0xFFFFFFFF;
+    memset(m_tlb_vaddr, 0xff, sizeof(UINT32) * (1<<I860_TLB_SZ));
+#if ENABLE_PERF_COUNTERS
+    m_tlb_inval++;
+#endif
 }
 
 UINT32 i860_cpu_device::ifetch_notrap(UINT32 pc) {
@@ -158,22 +169,12 @@ UINT32 i860_cpu_device::ifetch_notrap(UINT32 pc) {
 }
 
 UINT32 i860_cpu_device::ifetch(UINT32 pc) {
-    if(load_icache(pc))
-        return m_icache[icache_line(pc)].data[icache_off(pc)];
-    return 0xffeeffee;
+    return pc & 4 ? ifetch64(pc) >> 32 : ifetch64(pc);
 }
 
 UINT64 i860_cpu_device::ifetch64(UINT32 pc) {
-    if(load_icache(pc)) {
-        pc &= ~4;
-        i860_cache_line* line = &m_icache[icache_line(pc)];
-        // fetch high word first
-        UINT64 result = line->data[icache_off(pc+4)];
-        result <<= 32;
-        // fetch low word
-        result |= line->data[icache_off(pc)];
-        return result;
-    }
+    if(load_icache(pc))
+        return m_icache[(pc >> 3) & I860_ICACHE_MASK];
     return 0xffeeffeeffeeffeeLL;
 }
 
@@ -190,13 +191,21 @@ UINT64 i860_cpu_device::ifetch64(UINT32 pc) {
 UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, int is_write)
 {
     UINT32 voffset        = vaddr & I860_PAGE_OFF_MASK;
-    UINT32 tlbidx         = vaddr & I860_TLB_MASK;
+    UINT32 tlbidx         = ((vaddr << 1) | is_write) & I860_TLB_MASK;
     
 #if ENABLE_I860_TLB
-    if(m_tlb[tlbidx].vaddr == (vaddr & I860_PAGE_FRAME_MASK))
-        return (m_tlb[tlbidx].paddr_flags & I860_PAGE_FRAME_MASK) + voffset;
+    if(m_tlb_vaddr[tlbidx] == (vaddr & I860_PAGE_FRAME_MASK)) {
+#if ENABLE_PERF_COUNTERS
+        m_tlb_hit++;
 #endif
-    
+        return (m_tlb_paddr[tlbidx] & I860_PAGE_FRAME_MASK) + voffset;
+    }
+#endif
+
+#if ENABLE_PERF_COUNTERS
+    m_tlb_miss++;
+#endif
+
     UINT32 vpage          = (vaddr >> I860_PAGE_SZ) & 0x3ff;
     UINT32 vdir           = (vaddr >> 22) & 0x3ff;
 	UINT32 dtb            = (m_cregs[CR_DIRBASE]) & I860_PAGE_FRAME_MASK;
@@ -214,7 +223,7 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 
 	/* Get page directory entry at DTB:DIR:00.  */
 	pg_dir_entry_a = dtb | (vdir << 2);
-	pg_dir_entry = rd32i(pg_dir_entry_a);
+    nd_board_rd32_le(pg_dir_entry_a, &pg_dir_entry);
 
 	/* Check for non-present PDE.  */
 	if (!(pg_dir_entry & 1))
@@ -259,7 +268,7 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 	/* Get page table entry at PFA1:PAGE:00.  */
 	pfa1 = pg_dir_entry & I860_PAGE_FRAME_MASK;
 	pg_tbl_entry_a = pfa1 | (vpage << 2);
-	pg_tbl_entry = rd32i(pg_tbl_entry_a);
+    nd_board_rd32_le(pg_tbl_entry_a, &pg_tbl_entry);
 
 	/* Check for non-present PTE.  */
 	if (!(pg_tbl_entry & 1))
@@ -302,8 +311,8 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 	/* Update A bit and check D bit.  */
 	ttpde = pg_dir_entry | 0x20;
 	ttpte = pg_tbl_entry | 0x20;
-	wr32i(pg_dir_entry_a, ttpde);
-	wr32i(pg_tbl_entry_a, ttpte);
+    nd_board_wr32_le(pg_dir_entry_a, &ttpde);
+    nd_board_wr32_le(pg_tbl_entry_a, &ttpte);
 
 	if (is_write && is_dataref && (pg_tbl_entry & 0x40) == 0)
 	{
@@ -317,8 +326,8 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 
 	pfa2 = (pg_tbl_entry & I860_PAGE_FRAME_MASK);
     
-    m_tlb[tlbidx].vaddr       = vaddr & I860_PAGE_FRAME_MASK;
-    m_tlb[tlbidx].paddr_flags = pfa2;
+    m_tlb_vaddr[tlbidx] = vaddr & I860_PAGE_FRAME_MASK;
+    m_tlb_paddr[tlbidx] = pfa2;
     
 	ret = pfa2 | voffset;
 
@@ -329,72 +338,27 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 	return ret;
 }
 
-
-/* Read memory emulation.
-     addr = address to read.
-     size = size of read in bytes.  */
-UINT32 i860_cpu_device::readmemi_emu (UINT32 addr, int size)
-{
-#if TRACE_RDWR_MEM
-    Log_Printf(LOG_WARN, "[i860] rdmem (ATE=%d) addr=%08X, val=", GET_DIRBASE_ATE (), addr);
-#endif
-
-	/* If virtual mode, do translation.  */
-	if (GET_DIRBASE_ATE ())
-	{
-		UINT32 phys = get_address_translation (addr, 1 /* is_dataref */, 0 /* is_write */);
-		if (PENDING_TRAP() && (GET_PSR_IAT () || GET_PSR_DAT ()))
-		{
-#if TRACE_PAGE_FAULT
-            Log_Printf(LOG_WARN, "[i860] %08X: ## Page fault (readmemi_emu) virt=%08X", m_pc, addr);
-//            debugger();
-#endif
-			SET_EXITING_MEMRW(EXITING_READMEM);
-			return 0;
-		}
-		addr = phys;
-	}
-
-	/* First check for match to db register (before read).  */
-	if (((addr & ~(size - 1)) == m_cregs[CR_DB]) && GET_PSR_BR ())
-	{
-		SET_PSR_DAT (1);
-		m_flow |= TRAP_NORMAL;
-		return 0;
-	}
-
-	/* Now do the actual read.  */
-    switch(size) {
-        case 1: return rd8(addr);
-        case 2: return rd16(addr);
-        case 4: return rd32(addr);
-        default: return 0;
-    }
-}
-
-
 /* Write memory emulation.
      addr = address to write.
      size = size of write in bytes.
      data = data to write.  */
-void i860_cpu_device::writememi_emu (UINT32 addr, int size, UINT32 data)
-{
+void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data) {
 #if TRACE_RDWR_MEM
 	Log_Printf(LOG_WARN, "[i860] wrmem (ATE=%d) addr = %08X, size = %d, data = %08X\n", GET_DIRBASE_ATE (), addr, size, data); fflush(0);
 #endif
 
     if(addr == 0xF83FE800 || addr == 0xF80ff800) {
-        switch(data) {
+        switch(*((UINT32*)data)) {
             case 0:
             case 4: {
                 // catch ND console writes
                 UINT32 ptr   = addr + 4;
-                int    count = readmemi_emu(ptr, 4);
+                int    count; readmem_emu(ptr, 4, (UINT8*)&count);
                 int    col   = 0;
                 ptr += 4;
                 if(count < 1024) { // sanity check
                     for(int i = 0; i < count; i++) {
-                        char ch =readmemi_emu(ptr++, 1);
+                        char ch; readmem_emu(ptr++, 1, (UINT8*)&ch);
                         switch(ch) { // msg cleanup & tab expand for debugger console
                             case '\r': continue;
                             case '\t': while(col++ % 16) m_console[m_console_idx++] = ' '; continue;
@@ -410,8 +374,10 @@ void i860_cpu_device::writememi_emu (UINT32 addr, int size, UINT32 data)
                     m_console[m_console_idx] = 0;
                     if(strstr(m_console, "NeXTdimension Trap:"))
                         m_break_on_next_msg = true;
-                    if(data == 4)
-                        debugger('k', "NeXTdimension exit(%d)", readmemi_emu(addr + 8, 1));
+                    if(*((UINT32*)data) == 4) {
+                        char exit_code; readmem_emu(addr + 8, 1, (UINT8*)&exit_code);
+                        debugger('k', "NeXTdimension exit(%d)", exit_code);
+                    }
                 }
                 break;
                 }
@@ -439,6 +405,7 @@ void i860_cpu_device::writememi_emu (UINT32 addr, int size, UINT32 data)
 		addr = phys;
 	}
 
+#if ENABLE_I860_DB_BREAK
 	/* First check for match to db register (before write).  */
 	if (((addr & ~(size - 1)) == m_cregs[CR_DB]) && GET_PSR_BW ())
 	{
@@ -446,13 +413,10 @@ void i860_cpu_device::writememi_emu (UINT32 addr, int size, UINT32 data)
 		m_flow |= TRAP_NORMAL;
 		return;
 	}
-
+#endif
+    
 	/* Now do the actual write.  */
-    switch(size) {
-        case 1: wr8 (addr, data); break;
-        case 2: wr16(addr, data); break;
-        case 4: wr32(addr, data); break;
-    }
+    wrmem[size](addr, (UINT32*)data);
 }
 
 
@@ -460,14 +424,12 @@ void i860_cpu_device::writememi_emu (UINT32 addr, int size, UINT32 data)
      addr = address to read.
      size = size of read in bytes.
      dest = memory to put read data.  */
-void i860_cpu_device::fp_readmem_emu (UINT32 addr, int size, UINT8 *dest)
+void i860_cpu_device::readmem_emu (UINT32 addr, int size, UINT8 *dest)
 {
 #if TRACE_RDWR_MEM
 	Log_Printf(LOG_WARN, "[i860] fp_rdmem (ATE=%d) addr = %08X, size = %d\n", GET_DIRBASE_ATE (), addr, size); fflush(0);
 #endif
-
-	assert (size == 4 || size == 8 || size == 16);
-
+    
 	/* If virtual mode, do translation.  */
 	if (GET_DIRBASE_ATE ())
 	{
@@ -484,6 +446,7 @@ void i860_cpu_device::fp_readmem_emu (UINT32 addr, int size, UINT8 *dest)
 		addr = phys;
 	}
 
+#if ENABLE_I860_DB_BREAK
 	/* First check for match to db register (before read).  */
 	if (((addr & ~(size - 1)) == m_cregs[CR_DB]) && GET_PSR_BR ())
 	{
@@ -491,8 +454,8 @@ void i860_cpu_device::fp_readmem_emu (UINT32 addr, int size, UINT8 *dest)
 		m_flow |= TRAP_NORMAL;
 		return;
 	}
-
-    rddata(addr, size, dest);
+#endif
+    rdmem[size](addr, (UINT32*)dest);
 }
 
 
@@ -501,7 +464,7 @@ void i860_cpu_device::fp_readmem_emu (UINT32 addr, int size, UINT8 *dest)
      size = size of write in bytes.
      data = pointer to the data.
      wmask = bit mask of bytes to write (only for pst.d).  */
-void i860_cpu_device::fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT32 wmask)
+void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data, UINT32 wmask)
 {
 #if TRACE_RDWR_MEM
 	Log_Printf(LOG_WARN, "[i860] fp_wrmem (ATE=%d) addr = %08X, size = %d", GET_DIRBASE_ATE (), addr, size); fflush(0);
@@ -525,6 +488,7 @@ void i860_cpu_device::fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT3
 		addr = phys;
 	}
 
+#if ENABLE_I860_DB_BREAK
 	/* First check for match to db register (before read).  */
 	if (((addr & ~(size - 1)) == m_cregs[CR_DB]) && GET_PSR_BW ())
 	{
@@ -532,29 +496,19 @@ void i860_cpu_device::fp_writemem_emu (UINT32 addr, int size, UINT8 *data, UINT3
         m_flow |= TRAP_NORMAL;
 		return;
 	}
-
+#endif
+    
     if(size == 8 && wmask != 0xff) {
-        if(GET_EPSR_BE()) {
-            if (wmask & 0x80) wr8(addr+7, data[0]);
-            if (wmask & 0x40) wr8(addr+6, data[1]);
-            if (wmask & 0x20) wr8(addr+5, data[2]);
-            if (wmask & 0x10) wr8(addr+4, data[3]);
-            if (wmask & 0x08) wr8(addr+3, data[4]);
-            if (wmask & 0x04) wr8(addr+2, data[5]);
-            if (wmask & 0x02) wr8(addr+1, data[6]);
-            if (wmask & 0x01) wr8(addr+0, data[7]);
-        } else {
-            if (wmask & 0x80) wr8(addr+0, data[0]);
-            if (wmask & 0x40) wr8(addr+1, data[1]);
-            if (wmask & 0x20) wr8(addr+2, data[2]);
-            if (wmask & 0x10) wr8(addr+3, data[3]);
-            if (wmask & 0x08) wr8(addr+4, data[4]);
-            if (wmask & 0x04) wr8(addr+5, data[5]);
-            if (wmask & 0x02) wr8(addr+6, data[6]);
-            if (wmask & 0x01) wr8(addr+7, data[7]);
-        }
+        if (wmask & 0x80) wrmem[1](addr+0, (UINT32*)&data[0]);
+        if (wmask & 0x40) wrmem[1](addr+1, (UINT32*)&data[1]);
+        if (wmask & 0x20) wrmem[1](addr+2, (UINT32*)&data[2]);
+        if (wmask & 0x10) wrmem[1](addr+3, (UINT32*)&data[3]);
+        if (wmask & 0x08) wrmem[1](addr+4, (UINT32*)&data[4]);
+        if (wmask & 0x04) wrmem[1](addr+5, (UINT32*)&data[5]);
+        if (wmask & 0x02) wrmem[1](addr+6, (UINT32*)&data[6]);
+        if (wmask & 0x01) wrmem[1](addr+7, (UINT32*)&data[7]);
     } else {
-        wrdata(addr, size, data);
+        wrmem[size](addr, (UINT32*)data);
     }
 }
 
@@ -662,6 +616,9 @@ void i860_cpu_device::insn_st_ctrl (UINT32 insn)
 			enew = get_iregval (isrc1) & ~0x003e1fff;
 			tmp = m_cregs[CR_EPSR] & 0x003e1fff;
 		}
+        if((enew ^ m_cregs[CR_EPSR]) & 0x00800000) { // BE/LE change
+            set_mem_access((enew & 0x00800000) != 0);
+        }
 		m_cregs[CR_EPSR] = enew | tmp;
 	}
 	else if (csrc2 == CR_PSR)
@@ -739,9 +696,9 @@ void i860_cpu_device::insn_ldx (UINT32 insn)
 	   Below, the readmemi_emu() needs to happen outside of the
 	   set_iregval macro (otherwise the readmem won't occur if r0
 	   is the target register).  */
-	if (size < 4)
-	{
-		UINT32 readval = sign_ext (readmemi_emu (eff, size), size * 8);
+	if (size < 4) {
+        UINT32 readval = 0; readmem_emu(eff, size, (UINT8*)&readval);
+        readval = sign_ext (readval, size * 8);
 		/* Do not update register on page fault.  */
 		if (GET_EXITING_MEMRW())
 		{
@@ -751,7 +708,7 @@ void i860_cpu_device::insn_ldx (UINT32 insn)
 	}
 	else
 	{
-		UINT32 readval = readmemi_emu (eff, size);
+        UINT32 readval; readmem_emu(eff, size, (UINT8*)&readval);
 		/* Do not update register on page fault.  */
 		if (GET_EXITING_MEMRW())
 		{
@@ -785,7 +742,8 @@ void i860_cpu_device::insn_stx (UINT32 insn)
 	eff = (UINT32)(immsrc + (INT32)get_iregval (isrc2));
 
 	/* Write data (value of reg isrc1) to memory at eff.  */
-	writememi_emu (eff, size, get_iregval (isrc1));
+    UINT32 tmp32 = get_iregval (isrc1);
+	writemem_emu (eff, size, (UINT8*)&tmp32);
 	if (GET_EXITING_MEMRW())
 		return;
 }
@@ -852,7 +810,7 @@ void i860_cpu_device::insn_fsty (UINT32 insn)
 	}
 
 	/* Write data (value of freg fdest) to memory at eff.  */
-	fp_writemem_emu (eff, size, (UINT8 *)(&m_fregs[4 * fdest]), 0xff);
+	writemem_emu (eff, size, (UINT8 *)(&m_fregs[4 * fdest]), 0xff);
 }
 
 
@@ -933,7 +891,7 @@ void i860_cpu_device::insn_fldy (UINT32 insn)
 		/* Scalar version writes the current result to fdest.  */
 		/* Read data at 'eff' into freg 'fdest' (reads to f0 or f1 are
 		   thrown away).  */
-        fp_readmem_emu(eff, size, (UINT8 *)&(m_fregs[4 * fdest]));
+        readmem_emu(eff, size, (UINT8 *)&(m_fregs[4 * fdest]));
 		if (fdest < 2) {
             // (SC) special case with fdest=fr0/fr1. fr0 & fr1 are overwritten with values from mem
             // but always read as zero. Fix it.
@@ -948,7 +906,7 @@ void i860_cpu_device::insn_fldy (UINT32 insn)
 		   stay unaffected after a trap so that the instruction can be
 		   properly restarted.  */
 		UINT8 bebuf[8];
-		fp_readmem_emu (eff, size, bebuf);
+		readmem_emu (eff, size, bebuf);
 		if (PENDING_TRAP() && GET_EXITING_MEMRW())
 			goto ab_op;
 
@@ -992,7 +950,6 @@ void i860_cpu_device::insn_pstd (UINT32 insn)
 	UINT32 fdest = get_fdest (insn);
 	UINT32 eff = 0;
 	int auto_inc = (insn & 1);
-	UINT8 *bebuf = 0;
 	int pm = GET_PSR_PM ();
 	int i;
 	UINT32 wmask;
@@ -1078,8 +1035,7 @@ void i860_cpu_device::insn_pstd (UINT32 insn)
 		}
 		orig_pm <<= 1;
 	}
-	bebuf = (UINT8 *)(&m_fregs[4 * fdest]);
-	fp_writemem_emu (eff, 8, bebuf, wmask);
+	writemem_emu (eff, 8, (UINT8 *)(&m_fregs[4 * fdest]), wmask);
 }
 
 
@@ -1967,7 +1923,7 @@ void i860_cpu_device::insn_bct (UINT32 insn)
 	target_addr = (INT32)m_pc + 4 + (lbroff << 2);
 
 	/* Determine comparison result.  */
-	res = m_dim_cc_valid ? m_dim_cc : (GET_PSR_CC () == 1);
+	res = (GET_PSR_CC () == 1);
 
 	/* Careful. Unlike bla, the delay slot instruction is only executed
 	   if the branch is taken.  */
@@ -1987,7 +1943,7 @@ void i860_cpu_device::insn_bct (UINT32 insn)
 	if (res)
 		m_pc = target_addr;
 	else
-        m_pc += m_dim ? 12 : 8;
+        m_pc += DELAY_SLOT_PC();
 
     SET_PC_UPDATED();
 
@@ -2009,7 +1965,7 @@ void i860_cpu_device::insn_bnct (UINT32 insn)
 	target_addr = (INT32)m_pc + 4 + (lbroff << 2);
 
 	/* Determine comparison result.  */
-    res = m_dim_cc_valid ? !(m_dim_cc) : (GET_PSR_CC () == 0);
+    res = (GET_PSR_CC () == 0);
 
 	/* Careful. Unlike bla, the delay slot instruction is only executed
 	   if the branch is taken.  */
@@ -2028,7 +1984,7 @@ void i860_cpu_device::insn_bnct (UINT32 insn)
 	if (res)
 		m_pc = target_addr;
 	else
-        m_pc += m_dim ? 12 : 8;
+        m_pc += DELAY_SLOT_PC();
 
     SET_PC_UPDATED();
 
@@ -2057,7 +2013,7 @@ void i860_cpu_device::insn_call (UINT32 insn)
 	}
 
 	/* Sets the return pointer (r1).  */
-	set_iregval (1, orig_pc + 8);
+	set_iregval (1, orig_pc + DELAY_SLOT_PC());
 
 	/* New target.  */
 	m_pc = target_addr;
@@ -2166,7 +2122,7 @@ void i860_cpu_device::insn_calli (UINT32 insn)
 #endif
 
 	/* Set return pointer before executing delay slot instruction.  */
-	set_iregval (1, m_pc + 8);
+	set_iregval (1, m_pc + DELAY_SLOT_PC());
 
 	/* Execute the delay slot instruction.  */
     DELAY_SLOT();
@@ -2228,7 +2184,7 @@ void i860_cpu_device::insn_bla (UINT32 insn)
 	else
 	{
 		/* Since this branch is delayed, we must jump 2 or 3 instructions if if isn't taken.  */
-        m_pc += m_dim ? 12 : 8;
+        m_pc += DELAY_SLOT_PC();
 	}
 	SET_PSR_LCC (lcc_tmp);
 
@@ -2441,7 +2397,7 @@ void i860_cpu_device::insn_fmlow (UINT32 insn)
 	   to be undefined in the same way as the real i860 if possible.  */
 
 	/* Keep lower 53 bits of multiply.  */
-	tmp = i1 * i2;
+    tmp = i1 * i2;
 	tmp &= 0x001fffffffffffffULL;
 	tmp |= (i1 & 0x8000000000000000LL) ^ (i2 & 0x8000000000000000LL);
 	set_fregval_d (fdest, *(double *)&tmp);
@@ -3987,6 +3943,10 @@ const i860_cpu_device::decode_tbl_t i860_cpu_device::fp_decode_tbl[128] = {
 void i860_cpu_device::decode_exec (UINT32 insn) {
     if(m_flow & EXITING_IFETCH) return;
     
+#if ENABLE_PERF_COUNTERS
+    m_insn_decoded++;
+#endif
+    
 	int upper_6bits = (insn >> 26) & 0x3f;
 	char flags = 0;
 	int unrecognized = 1;
@@ -4090,6 +4050,9 @@ void i860_cpu_device::reset() {
     /* invalidate caches */
     invalidate_icache();
     invalidate_tlb();
+    
+    /* memory access is little endian */
+    set_mem_access(false);
     
     halt(false);
 }

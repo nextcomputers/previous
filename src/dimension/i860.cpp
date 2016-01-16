@@ -53,11 +53,11 @@ extern "C" {
 
         if (nd_speed_hack) {
             while(nHostCycles) {
-                nd_i860.run_cycle(2);
+                nd_i860.run_cycle();
                 nHostCycles -= 2;
             }
         } else
-            nd_i860.run_cycle(nHostCycles);
+            nd_i860.run_cycle();
 #endif
         nd_nbic_interrupt();
 	}
@@ -70,91 +70,52 @@ extern "C" {
     void i860_reset() {
         nd_i860.send_msg(MSG_I860_RESET);
     }
+    
+    void i860_tick(bool intr) {
+        nd_i860.tick(intr);
+    }
 }
 
 i860_cpu_device::i860_cpu_device() {
 #if ENABLE_I860_THREAD
     m_thread = NULL;
 #endif
+#if ENABLE_PERF_COUNTERS
+    dump_reset_perfc();
+#endif
     m_halt = true;
 }
 
-inline UINT32 i860_cpu_device::rd32i(UINT32 addr) {
-    return nd_board_lget(addr^4);
-}
-
-inline void i860_cpu_device::wr32i(UINT32 addr, UINT32 val) {
-    nd_board_lput(addr^4, val);
+void i860_cpu_device::set_mem_access(bool be) {
+    if(be) {
+        rdmem[1]  = nd_board_rd8_be;
+        rdmem[2]  = nd_board_rd16_be;
+        rdmem[4]  = nd_board_rd32_be;
+        rdmem[8]  = nd_board_rd64_be;
+        rdmem[16] = nd_board_rd128_be;
+        
+        wrmem[1]  = nd_board_wr8_be;
+        wrmem[2]  = nd_board_wr16_be;
+        wrmem[4]  = nd_board_wr32_be;
+        wrmem[8]  = nd_board_wr64_be;
+        wrmem[16] = nd_board_wr128_be;
+    } else {
+        rdmem[1]  = nd_board_rd8_le;
+        rdmem[2]  = nd_board_rd16_le;
+        rdmem[4]  = nd_board_rd32_le;
+        rdmem[8]  = nd_board_rd64_le;
+        rdmem[16] = nd_board_rd128_le;
+        
+        wrmem[1]  = nd_board_wr8_le;
+        wrmem[2]  = nd_board_wr16_le;
+        wrmem[4]  = nd_board_wr32_le;
+        wrmem[8]  = nd_board_wr64_le;
+        wrmem[16] = nd_board_wr128_le;
+    }
 }
 
 inline UINT8 i860_cpu_device::rdcs8(UINT32 addr) {
     return nd_board_cs8get(addr);
-}
-
-inline UINT8 i860_cpu_device::rd8(UINT32 addr) {
-    if (GET_EPSR_BE())  return nd_board_bget(addr);
-    else                return nd_board_bget(addr^7);
-}
-
-inline UINT16 i860_cpu_device::rd16(UINT32 addr) {
-    if (GET_EPSR_BE())  return nd_board_wget(addr);
-    else                return nd_board_wget(addr^6);
-}
-
-inline UINT32 i860_cpu_device::rd32(UINT32 addr) {
-    if(GET_EPSR_BE())   return nd_board_lget(addr);
-    else                return nd_board_lget(addr^4);
-}
-
-inline void i860_cpu_device::wr8(UINT32 addr, UINT8 val) {
-    if (GET_EPSR_BE())  nd_board_bput(addr,   val);
-    else                nd_board_bput(addr^7, val);
-}
-
-inline void i860_cpu_device::wr16(UINT32 addr, UINT16 val) {
-    if (GET_EPSR_BE())  nd_board_wput(addr,   val);
-    else                nd_board_wput(addr^6, val);
-}
-
-inline void i860_cpu_device::wr32(UINT32 addr, UINT32 val) {
-    if (GET_EPSR_BE())  nd_board_lput(addr  , val);
-    else                nd_board_lput(addr^4, val);
-}
-
-inline void i860_cpu_device::rddata(UINT32 addr, int size, UINT8* data) {
-    switch(size) {
-        case 4:
-            *((UINT32*)data) = rd32(addr);
-            break;
-        case 8:
-            ((UINT32*)data)[0] = rd32(addr+4);
-            ((UINT32*)data)[1] = rd32(addr+0);
-            break;
-        case 16:
-            ((UINT32*)data)[0] = rd32(addr+4);
-            ((UINT32*)data)[1] = rd32(addr+0);
-            ((UINT32*)data)[2] = rd32(addr+12);
-            ((UINT32*)data)[3] = rd32(addr+8);
-            break;
-    }
-}
-
-inline void i860_cpu_device::wrdata(UINT32 addr, int size, UINT8* data) {
-    switch(size) {
-        case 4:
-            wr32(addr, *((UINT32*)data));
-            break;
-        case 8:
-            wr32(addr+4, ((UINT32*)data)[0]);
-            wr32(addr+0, ((UINT32*)data)[1]);
-            break;
-        case 16:
-            wr32(addr+4,  ((UINT32*)data)[0]);
-            wr32(addr+0,  ((UINT32*)data)[1]);
-            wr32(addr+12, ((UINT32*)data)[2]);
-            wr32(addr+8,  ((UINT32*)data)[3]);
-            break;
-    }
 }
 
 inline UINT32 i860_cpu_device::get_iregval(int gr) {
@@ -162,8 +123,8 @@ inline UINT32 i860_cpu_device::get_iregval(int gr) {
 }
 
 inline void i860_cpu_device::set_iregval(int gr, UINT32 val) {
-    if(gr > 0)
-        m_iregs[gr] = val;
+    m_iregs[gr] = val;
+    m_iregs[0]  = 0; // make sure r0 is always 0
 }
 
 inline float i860_cpu_device::get_fregval_s (int fr) {
@@ -190,11 +151,9 @@ inline void i860_cpu_device::SET_PSR_CC(int val) {
 }
 
 void i860_cpu_device::send_msg(int msg) {
-    /* Get pending messages */
-    int pmsg = SDL_AtomicGet(&m_port);
-    /* If this message is not already pending, add it. */
-    if(!(pmsg & msg))
-        SDL_AtomicAdd(&m_port, msg);
+    SDL_AtomicLock(&m_port_lock);
+    m_port |= msg;
+    SDL_AtomicUnlock(&m_port_lock);
 }
 
 void i860_cpu_device::handle_trap(UINT32 savepc, bool dim) {
@@ -256,7 +215,7 @@ void i860_cpu_device::handle_trap(UINT32 savepc, bool dim) {
     m_pc = 0xffffff00;
 }
 
-void i860_cpu_device::run_cycle(int nHostCycles) {
+void i860_cpu_device::run_cycle() {
     m_dim_cc_valid = false;
     CLEAR_FLOW();
     bool   dim_insn = false;
@@ -268,7 +227,7 @@ void i860_cpu_device::run_cycle(int nHostCycles) {
         if(m_single_stepping) debugger(0,0);
         
         UINT32 insnLow = insn64;
-        if(insnLow == INSN_FNOP || insnLow == INSN_FNOP_DIM)
+        if(insnLow == INSN_FNOP_DIM)
             dim_insn = m_dim != DIM_NONE;
         else if((insnLow & INSN_MASK_DIM) == INSN_FP_DIM)
             dim_insn = true;
@@ -290,7 +249,7 @@ void i860_cpu_device::run_cycle(int nHostCycles) {
     if(m_pc & 4) {
         UINT32 savepc  = m_pc;
         
-        if(m_single_stepping) debugger(0,0);
+        if(m_single_stepping && !(m_dim)) debugger(0,0);
 
         UINT32 insnHigh= insn64 >> 32;
         decode_exec(insnHigh);
@@ -300,9 +259,10 @@ void i860_cpu_device::run_cycle(int nHostCycles) {
         // - not DIM (safety :-)
         // - when no other traps are pending
         if(!(m_dim) && !(PENDING_TRAP())) {
-            if(nd_process_interrupts(nHostCycles))
+            if(m_flow & EXT_INTR) {
+                m_flow &= ~EXT_INTR;
                 gen_interrupt();
-            else
+            } else
                 clr_interrupt();
         }
         
@@ -336,92 +296,104 @@ int i860_cpu_device::memtest(bool be) {
     
     m_cregs[CR_DIRBASE] = 0; // turn VM off
 
-    UINT8  uint8  = 0x01;
-    UINT16 uint16 = 0x0123;
-    UINT32 uint32 = 0x01234567;
-    UINT64 uint64 = 0x0123456789ABCDEFLL;
+    const UINT8  uint8  = 0x01;
+    const UINT16 uint16 = 0x0123;
+    const UINT32 uint32 = 0x01234567;
+    const UINT64 uint64 = 0x0123456789ABCDEFLL;
+    
+    UINT8  tmp8;
+    UINT16 tmp16;
+    UINT32 tmp32;
     
     int err = be ? 20000 : 30000;
     
     // intel manual example
     SET_EPSR_BE(0);
+    set_mem_access(false);
     
-    wr8(P_TEST_ADDR+0, 'A');
-    wr8(P_TEST_ADDR+1, 'B');
-    wr8(P_TEST_ADDR+2, 'C');
-    wr8(P_TEST_ADDR+3, 'D');
-    wr8(P_TEST_ADDR+4, 'E');
-    wr8(P_TEST_ADDR+5, 'F');
-    wr8(P_TEST_ADDR+6, 'G');
-    wr8(P_TEST_ADDR+7, 'H');
+    tmp8 = 'A'; wrmem[1](P_TEST_ADDR+0, (UINT32*)&tmp8);
+    tmp8 = 'B'; wrmem[1](P_TEST_ADDR+1, (UINT32*)&tmp8);
+    tmp8 = 'C'; wrmem[1](P_TEST_ADDR+2, (UINT32*)&tmp8);
+    tmp8 = 'D'; wrmem[1](P_TEST_ADDR+3, (UINT32*)&tmp8);
+    tmp8 = 'E'; wrmem[1](P_TEST_ADDR+4, (UINT32*)&tmp8);
+    tmp8 = 'F'; wrmem[1](P_TEST_ADDR+5, (UINT32*)&tmp8);
+    tmp8 = 'G'; wrmem[1](P_TEST_ADDR+6, (UINT32*)&tmp8);
+    tmp8 = 'H'; wrmem[1](P_TEST_ADDR+7, (UINT32*)&tmp8);
     
-    if(rd8(P_TEST_ADDR+0) != 'A') return err + 100;
-    if(rd8(P_TEST_ADDR+1) != 'B') return err + 101;
-    if(rd8(P_TEST_ADDR+2) != 'C') return err + 102;
-    if(rd8(P_TEST_ADDR+3) != 'D') return err + 103;
-    if(rd8(P_TEST_ADDR+4) != 'E') return err + 104;
-    if(rd8(P_TEST_ADDR+5) != 'F') return err + 105;
-    if(rd8(P_TEST_ADDR+6) != 'G') return err + 106;
-    if(rd8(P_TEST_ADDR+7) != 'H') return err + 107;
+    rdmem[1](P_TEST_ADDR+0, (UINT32*)&tmp8); if(tmp8 != 'A') return err + 100;
+    rdmem[1](P_TEST_ADDR+1, (UINT32*)&tmp8); if(tmp8 != 'B') return err + 101;
+    rdmem[1](P_TEST_ADDR+2, (UINT32*)&tmp8); if(tmp8 != 'C') return err + 102;
+    rdmem[1](P_TEST_ADDR+3, (UINT32*)&tmp8); if(tmp8 != 'D') return err + 103;
+    rdmem[1](P_TEST_ADDR+4, (UINT32*)&tmp8); if(tmp8 != 'E') return err + 104;
+    rdmem[1](P_TEST_ADDR+5, (UINT32*)&tmp8); if(tmp8 != 'F') return err + 105;
+    rdmem[1](P_TEST_ADDR+6, (UINT32*)&tmp8); if(tmp8 != 'G') return err + 106;
+    rdmem[1](P_TEST_ADDR+7, (UINT32*)&tmp8); if(tmp8 != 'H') return err + 107;
     
-    if(rd16(P_TEST_ADDR+0) != (('B'<<8)|('A'))) return err + 110;
-    if(rd16(P_TEST_ADDR+2) != (('D'<<8)|('C'))) return err + 111;
-    if(rd16(P_TEST_ADDR+4) != (('F'<<8)|('E'))) return err + 112;
-    if(rd16(P_TEST_ADDR+6) != (('H'<<8)|('G'))) return err + 113;
+    rdmem[2](P_TEST_ADDR+0, (UINT32*)&tmp16); if(tmp16 != (('B'<<8)|('A'))) return err + 110;
+    rdmem[2](P_TEST_ADDR+2, (UINT32*)&tmp16); if(tmp16 != (('D'<<8)|('C'))) return err + 111;
+    rdmem[2](P_TEST_ADDR+4, (UINT32*)&tmp16); if(tmp16 != (('F'<<8)|('E'))) return err + 112;
+    rdmem[2](P_TEST_ADDR+6, (UINT32*)&tmp16); if(tmp16 != (('H'<<8)|('G'))) return err + 113;
 
-    if(rd32(P_TEST_ADDR+0) != (('D'<<24)|('C'<<16)|('B'<<8)|('A'))) return err + 120;
-    if(rd32(P_TEST_ADDR+4) != (('H'<<24)|('G'<<16)|('F'<<8)|('E'))) return err + 121;
+    rdmem[4](P_TEST_ADDR+0, &tmp32); if(tmp32 != (('D'<<24)|('C'<<16)|('B'<<8)|('A'))) return err + 120;
+    rdmem[4](P_TEST_ADDR+4, &tmp32); if(tmp32 != (('H'<<24)|('G'<<16)|('F'<<8)|('E'))) return err + 121;
 
     SET_EPSR_BE(1);
+    set_mem_access(true);
 
-    if(rd8(P_TEST_ADDR+0) != 'H') return err + 200;
-    if(rd8(P_TEST_ADDR+1) != 'G') return err + 201;
-    if(rd8(P_TEST_ADDR+2) != 'F') return err + 202;
-    if(rd8(P_TEST_ADDR+3) != 'E') return err + 203;
-    if(rd8(P_TEST_ADDR+4) != 'D') return err + 204;
-    if(rd8(P_TEST_ADDR+5) != 'C') return err + 205;
-    if(rd8(P_TEST_ADDR+6) != 'B') return err + 206;
-    if(rd8(P_TEST_ADDR+7) != 'A') return err + 207;
+    rdmem[1](P_TEST_ADDR+0, (UINT32*)&tmp8); if(tmp8 != 'H') return err + 200;
+    rdmem[1](P_TEST_ADDR+1, (UINT32*)&tmp8); if(tmp8 != 'G') return err + 201;
+    rdmem[1](P_TEST_ADDR+2, (UINT32*)&tmp8); if(tmp8 != 'F') return err + 202;
+    rdmem[1](P_TEST_ADDR+3, (UINT32*)&tmp8); if(tmp8 != 'E') return err + 203;
+    rdmem[1](P_TEST_ADDR+4, (UINT32*)&tmp8); if(tmp8  != 'D') return err + 204;
+    rdmem[1](P_TEST_ADDR+5, (UINT32*)&tmp8); if(tmp8  != 'C') return err + 205;
+    rdmem[1](P_TEST_ADDR+6, (UINT32*)&tmp8); if(tmp8  != 'B') return err + 206;
+    rdmem[1](P_TEST_ADDR+7, (UINT32*)&tmp8); if(tmp8  != 'A') return err + 207;
     
-    if(rd16(P_TEST_ADDR+0) != (('H'<<8)|('G'))) return err + 210;
-    if(rd16(P_TEST_ADDR+2) != (('F'<<8)|('E'))) return err + 211;
-    if(rd16(P_TEST_ADDR+4) != (('D'<<8)|('C'))) return err + 212;
-    if(rd16(P_TEST_ADDR+6) != (('B'<<8)|('A'))) return err + 213;
+    rdmem[2](P_TEST_ADDR+0, (UINT32*)&tmp16); if(tmp16 != (('H'<<8)|('G'))) return err + 210;
+    rdmem[2](P_TEST_ADDR+2, (UINT32*)&tmp16); if(tmp16 != (('F'<<8)|('E'))) return err + 211;
+    rdmem[2](P_TEST_ADDR+4, (UINT32*)&tmp16); if(tmp16 != (('D'<<8)|('C'))) return err + 212;
+    rdmem[2](P_TEST_ADDR+6, (UINT32*)&tmp16); if(tmp16 != (('B'<<8)|('A'))) return err + 213;
     
-    if(rd32(P_TEST_ADDR+0) != (('H'<<24)|('G'<<16)|('F'<<8)|('E'))) return err + 220;
-    if(rd32(P_TEST_ADDR+4) != (('D'<<24)|('C'<<16)|('B'<<8)|('A'))) return err + 221;
+    rdmem[4](P_TEST_ADDR+0, &tmp32); if(tmp32 != (('H'<<24)|('G'<<16)|('F'<<8)|('E'))) return err + 220;
+    rdmem[4](P_TEST_ADDR+4, &tmp32); if(tmp32 != (('D'<<24)|('C'<<16)|('B'<<8)|('A'))) return err + 221;
     
     // some register and mem r/w tests
     
     SET_EPSR_BE(be);
+    set_mem_access(be);
+
+    wrmem[1](P_TEST_ADDR, (UINT32*)&uint8);
+    rdmem[1](P_TEST_ADDR, (UINT32*)&tmp8);
+    if(tmp8 != 0x01) return err;
     
-    wr8(P_TEST_ADDR, uint8);
-    if(rd8(P_TEST_ADDR) != 0x01) return err;
+    wrmem[2](P_TEST_ADDR, (UINT32*)&uint16);
+    rdmem[2](P_TEST_ADDR, (UINT32*)&tmp16);
+    if(tmp16 != 0x0123) return err+1;
     
-    wr16(P_TEST_ADDR, uint16);
-    if(rd16(P_TEST_ADDR) != 0x0123) return err+1;
+    wrmem[4](P_TEST_ADDR, &uint32);
+    rdmem[4](P_TEST_ADDR, &tmp32); if(tmp32 != 0x01234567) return err+2;
     
-    wr32(P_TEST_ADDR, uint32);
-    if(rd32(P_TEST_ADDR) != 0x01234567) return err+2;
+    readmem_emu(P_TEST_ADDR, 4, (UINT8*)&uint32);
+    if(uint32 != 0x01234567) return err+3;
     
-    fp_readmem_emu(P_TEST_ADDR, 4, (UINT8*)&uint32);
-    if(uint32 != 0x01234567) return 20003;
-    
-    fp_writemem_emu(P_TEST_ADDR, 4, (UINT8*)&uint32, 0xff);
-    if(rd32(P_TEST_ADDR) != 0x01234567) return err+3;
+    writemem_emu(P_TEST_ADDR, 4, (UINT8*)&uint32, 0xff);
+    rdmem[4](P_TEST_ADDR+0, &tmp32); if(tmp32 != 0x01234567) return err+4;
     
     UINT8* uint8p = (UINT8*)&uint64;
     set_fregval_d(2, *((double*)uint8p));
-    fp_writemem_emu(P_TEST_ADDR, 8, &m_fregs[8], 0xff);
-    fp_readmem_emu (P_TEST_ADDR, 8, &m_fregs[8]);
+    writemem_emu(P_TEST_ADDR, 8, &m_fregs[8], 0xff);
+    readmem_emu (P_TEST_ADDR, 8, &m_fregs[8]);
     *((double*)&uint64) = get_fregval_d(2);
-    if(uint64 != 0x0123456789ABCDEFLL) return err+4;
+    if(uint64 != 0x0123456789ABCDEFLL) return err+5;
+
+    UINT32 lo;
+    UINT32 hi;
+
+    rdmem[4](P_TEST_ADDR+0, &lo);
+    rdmem[4](P_TEST_ADDR+4, &hi);
     
-    UINT32 lo = rd32(P_TEST_ADDR+0);
-    UINT32 hi = rd32(P_TEST_ADDR+4);
-    
-    if(lo != 0x01234567) return err+5;
-    if(hi != 0x89ABCDEF) return err+6;
+    if(lo != 0x01234567) return err+6;
+    if(hi != 0x89ABCDEF) return err+7;
     
     return 0;
 }
@@ -440,6 +412,8 @@ void i860_cpu_device::init() {
     m_console_idx       = 0;
     m_break_on_next_msg = false;
     m_dim               = DIM_NONE;
+
+    set_mem_access(false);
 
     // some sanity checks for endianess
     int    err    = 0;
@@ -542,13 +516,19 @@ void i860_cpu_device::uninit() {
 #endif
 }
 
-/* Message disaptcher */
+/* Message disaptcher - executed on i860 thread, safe to call i860 methods */
 bool i860_cpu_device::handle_msgs() {
-    int msg = SDL_AtomicSet(&m_port, 0);
+    SDL_AtomicLock(&m_port_lock);
+    int msg = m_port;
+    m_port = 0;
+    SDL_AtomicUnlock(&m_port_lock);
+    
     if(msg & MSG_I860_KILL)
         return false;
     if(msg & MSG_I860_RESET)
         reset();
+    else if(msg & MSG_INTR)
+        intr();
     if(msg & MSG_DBG_BREAK)
         debugger('d', "BREAK at pc=%08X", m_pc);
     return true;
@@ -563,10 +543,49 @@ void i860_cpu_device::run() {
             continue;
         }
         
-        /* Run i860 */
-        run_cycle(2);
+        /* Run some i860 cycles before re-checking messages*/
+        for(int i = 10; --i >= 0;)
+            run_cycle();
     }
 }
+
+void i860_cpu_device::tick(bool intr) {
+    if(intr) send_msg(MSG_INTR);
+#if ENABLE_PERF_COUNTERS
+    UINT32 absTimeInMs = SDL_GetTicks();
+    m_time_delta_ms += absTimeInMs - m_abs_time_ms;
+    m_abs_time_ms = absTimeInMs;
+    if(m_time_delta_ms > 5000)
+        dump_reset_perfc();
+#endif
+}
+
+#if ENABLE_PERF_COUNTERS
+void i860_cpu_device::dump_reset_perfc() {
+    static bool dump = false;
+    if(dump) {
+        Log_Printf(LOG_WARN, "[i860] Stats: MIPS=%lld.%lld icache_hit=%lld%% tlb_hit=%lld%% icach_inval/s=%lld tlb_inval/s=%lld intr/s=%lld",
+                   (m_insn_decoded / (m_time_delta_ms * 100)) / 10, (m_insn_decoded / (m_time_delta_ms * 100)) % 10,
+                   m_icache_hit+m_icache_miss == 0 ? 0 : (100 * m_icache_hit) / (m_icache_hit+m_icache_miss) ,
+                   m_tlb_hit+m_tlb_miss       == 0 ? 0 : (100 * m_tlb_hit)    / (m_tlb_hit+m_tlb_miss),
+                   (1000*m_icache_inval)/m_time_delta_ms,
+                   (1000*m_tlb_inval)/m_time_delta_ms,
+                   (1000*m_intrs)/m_time_delta_ms
+                   );
+    }
+    
+    dump            = true;
+    m_insn_decoded  = 0;
+    m_icache_hit    = 0;
+    m_icache_miss   = 0;
+    m_icache_inval  = 0;
+    m_tlb_hit       = 0;
+    m_tlb_miss      = 0;
+    m_tlb_inval     = 0;
+    m_time_delta_ms = 0;
+    m_intrs         = 0;
+}
+#endif
 
 offs_t i860_cpu_device::disasm(char* buffer, offs_t pc) {
     return pc + i860_disassembler(pc, ifetch_notrap(pc), buffer);
