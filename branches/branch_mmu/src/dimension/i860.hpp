@@ -118,6 +118,8 @@ enum {
     FIR_GETS_TRAP      = 0x10000000,
     /* An external interrupt occured. */
     EXT_INTR           = 0x20000000,
+    /* A f-op with DIM bit set encountered. */
+    DIM_OP             = 0x40000000,
 };
 
 enum {
@@ -289,7 +291,7 @@ const UINT32 INSN_MASK_DIM = INSN_MASK | INSN_DIM;
 
 const size_t I860_ICACHE_SZ       = 9; // in powers of two lines (2^9 = 512; 512 x 2 words = 4 kbytes)
 const size_t I860_ICACHE_MASK     = (1<<I860_ICACHE_SZ)-1;
-const size_t I860_TLB_SZ          = 12; // in powers of two
+const size_t I860_TLB_SZ          = 11; // in powers of two
 const size_t I860_TLB_MASK        = (1<<I860_TLB_SZ)-1;
 const size_t I860_PAGE_SZ         = 12; // in powers of two
 const size_t I860_PAGE_OFF_MASK   = (1<<I860_PAGE_SZ)-1;
@@ -389,10 +391,12 @@ private:
 #endif
     
     /* Debugger stuff */
-    char m_lastcmd;
-    char m_console[512*1024];
-    int  m_console_idx;
-    bool m_break_on_next_msg;
+    char   m_lastcmd;
+    char   m_console[512*1024];
+    int    m_console_idx;
+    bool   m_break_on_next_msg;
+    UINT32 m_traceback[256];
+    int    m_traceback_idx;
     
     /* Program counter (1 x 32-bits).  Reset starts at pc=0xffffff00.  */
     UINT32 m_pc;
@@ -504,7 +508,7 @@ private:
 	UINT32 m_flow;
     
     /* Single stepping state - for internal use.  */
-    int m_single_stepping;
+    UINT32 m_single_stepping;
 
     /* memory access */
     mem_rd_func rdmem[17];
@@ -600,7 +604,7 @@ private:
     UINT64 ifetch64(UINT32 pc);
     UINT32 ifetch(UINT32 pc);
     UINT32 ifetch_notrap(UINT32 pc);
-    void   handle_trap(UINT32 savepc, bool dim);
+    void   handle_trap(UINT32 savepc);
     void   unrecog_opcode (UINT32 pc, UINT32 insn);
     
     void   decode_exec (UINT32 insn);
@@ -614,6 +618,7 @@ private:
 	float  get_fval_from_optype_s (UINT32 insn, int optype);
 	double get_fval_from_optype_d (UINT32 insn, int optype);
     int    memtest(bool be);
+    void   dbg_check_wr(UINT32 addr, int size, UINT8* data);
     
     /* This is theinterface for asserting an external interrupt to the i860.  */
     void gen_interrupt();
