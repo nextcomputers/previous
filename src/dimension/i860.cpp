@@ -156,7 +156,7 @@ void i860_cpu_device::send_msg(int msg) {
     SDL_AtomicUnlock(&m_port_lock);
 }
 
-void i860_cpu_device::handle_trap(UINT32 savepc, bool dim) {
+void i860_cpu_device::handle_trap(UINT32 savepc) {
     static char buffer[128];
     buffer[0] = 0;
     strcat(buffer, "TRAP");
@@ -173,11 +173,8 @@ void i860_cpu_device::handle_trap(UINT32 savepc, bool dim) {
         if(GET_PSR_IN())  strcat(buffer, " >Interrupt<");
     }
     
-    if(!((GET_PSR_IAT() || GET_PSR_DAT() || GET_PSR_IN()))) {
+    if(!(m_single_stepping) && !((GET_PSR_IAT() || GET_PSR_DAT() || GET_PSR_IN())))
         debugger('d', buffer);
-    } else {
-        //            Log_Printf(LOG_WARN, "[i860] %s", buffer);
-    }
     
     if(m_dim)
         Log_Printf(LOG_WARN, "[i860] Trap while DIM %s", buffer);
@@ -218,24 +215,27 @@ void i860_cpu_device::handle_trap(UINT32 savepc, bool dim) {
 void i860_cpu_device::run_cycle() {
     m_dim_cc_valid = false;
     CLEAR_FLOW();
-    bool   dim_insn = false;
+    m_flow &= ~DIM_OP;
     UINT64 insn64   = ifetch64(m_pc);
     
     if(!(m_pc & 4)) {
         UINT32 savepc  = m_pc;
         
+#if ENABLE_DEBUGGER
         if(m_single_stepping) debugger(0,0);
+#endif
         
         UINT32 insnLow = insn64;
-        if(insnLow == INSN_FNOP_DIM)
-            dim_insn = m_dim != DIM_NONE;
-        else if((insnLow & INSN_MASK_DIM) == INSN_FP_DIM)
-            dim_insn = true;
+        if(insnLow == INSN_FNOP_DIM) {
+            if(m_dim) m_flow |=  DIM_OP;
+            else      m_flow &= ~DIM_OP;
+        } else if((insnLow & INSN_MASK_DIM) == INSN_FP_DIM)
+            m_flow |= DIM_OP;
         
         decode_exec(insnLow);
         
         if (PENDING_TRAP()) {
-            handle_trap(savepc, dim_insn);
+            handle_trap(savepc);
             goto done;
         } else if(GET_PC_UPDATED()) {
             goto done;
@@ -249,7 +249,9 @@ void i860_cpu_device::run_cycle() {
     if(m_pc & 4) {
         UINT32 savepc  = m_pc;
         
+#if ENABLE_DEBUGGER
         if(m_single_stepping && !(m_dim)) debugger(0,0);
+#endif
 
         UINT32 insnHigh= insn64 >> 32;
         decode_exec(insnHigh);
@@ -267,7 +269,7 @@ void i860_cpu_device::run_cycle() {
         }
         
         if (PENDING_TRAP()) {
-            handle_trap(savepc, dim_insn);
+            handle_trap(savepc);
         } else if (GET_PC_UPDATED()) {
             goto done;
         } else {
@@ -278,14 +280,14 @@ void i860_cpu_device::run_cycle() {
 done:
     switch (m_dim) {
         case DIM_NONE:
-            if(dim_insn)
+            if(m_flow & DIM_OP)
                 m_dim = DIM_TEMP;
             break;
         case DIM_TEMP:
-            m_dim = dim_insn ? DIM_FULL : DIM_NONE;
+            m_dim = m_flow & DIM_OP ? DIM_FULL : DIM_NONE;
             break;
         case DIM_FULL:
-            if(!(dim_insn))
+            if(!(m_flow & DIM_OP))
                 m_dim = DIM_TEMP;
             break;
     }
@@ -412,6 +414,7 @@ void i860_cpu_device::init() {
     m_console_idx       = 0;
     m_break_on_next_msg = false;
     m_dim               = DIM_NONE;
+    m_traceback_idx     = 0;
 
     set_mem_access(false);
 
@@ -564,14 +567,17 @@ void i860_cpu_device::tick(bool intr) {
 void i860_cpu_device::dump_reset_perfc() {
     static bool dump = false;
     if(dump) {
-        Log_Printf(LOG_WARN, "[i860] Stats: MIPS=%lld.%lld icache_hit=%lld%% tlb_hit=%lld%% icach_inval/s=%lld tlb_inval/s=%lld intr/s=%lld",
-                   (m_insn_decoded / (m_time_delta_ms * 100)) / 10, (m_insn_decoded / (m_time_delta_ms * 100)) % 10,
-                   m_icache_hit+m_icache_miss == 0 ? 0 : (100 * m_icache_hit) / (m_icache_hit+m_icache_miss) ,
-                   m_tlb_hit+m_tlb_miss       == 0 ? 0 : (100 * m_tlb_hit)    / (m_tlb_hit+m_tlb_miss),
-                   (1000*m_icache_inval)/m_time_delta_ms,
-                   (1000*m_tlb_inval)/m_time_delta_ms,
-                   (1000*m_intrs)/m_time_delta_ms
-                   );
+        if(SDL_AtomicTryLock(&m_debugger_lock)) {
+            Log_Printf(LOG_WARN, "[i860] Stats: MIPS=%lld.%lld icache_hit=%lld%% tlb_hit=%lld%% icach_inval/s=%lld tlb_inval/s=%lld intr/s=%lld",
+                       (m_insn_decoded / (m_time_delta_ms * 100)) / 10, (m_insn_decoded / (m_time_delta_ms * 100)) % 10,
+                       m_icache_hit+m_icache_miss == 0 ? 0 : (100 * m_icache_hit) / (m_icache_hit+m_icache_miss) ,
+                       m_tlb_hit+m_tlb_miss       == 0 ? 0 : (100 * m_tlb_hit)    / (m_tlb_hit+m_tlb_miss),
+                       (1000*m_icache_inval)/m_time_delta_ms,
+                       (1000*m_tlb_inval)/m_time_delta_ms,
+                       (1000*m_intrs)/m_time_delta_ms
+                       );
+            SDL_AtomicUnlock(&m_debugger_lock);
+        }
     }
     
     dump            = true;

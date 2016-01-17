@@ -35,6 +35,9 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
     UINT32 curr_dumpdb = 0;
     int c = 0;
     
+    if(format)
+        m_single_stepping = 0;
+        
     if (m_single_stepping > 1 && m_single_stepping != m_pc)
         return;
     
@@ -132,7 +135,7 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
                 fputs(m_console, stderr);
                 fflush(stderr);
                 break;
-            case 't':
+            case 'b':
                 SET_PSR_IT (1);
                 m_flow |= TRAP_NORMAL;
                 m_single_stepping = 2;
@@ -143,6 +146,20 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
                 dbg_db (curr_dumpdb, 32);
                 curr_dumpdb += 32;
                 break;
+            case 't': {
+                int bufsz = sizeof(m_traceback) / sizeof(m_traceback[0]);
+                int count = bufsz;
+                if(buf[1])
+                    sscanf(buf + 1, "%d", &count);
+                if(count >= bufsz) count = bufsz;
+                fprintf (stderr, "Traceback of last %d instructions:\n", count);
+                int before       = m_traceback_idx;
+                m_traceback_idx += bufsz;
+                m_traceback_idx -= count;
+                while(count--)
+                    disasm(m_traceback[m_traceback_idx++ % bufsz], 1);
+                m_traceback_idx = before;
+                break;}
             case 'x':
                 if(buf[1] == '0') {
                     UINT32 v;
@@ -164,7 +181,8 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
                          "   k: print console buffer\n"
                          "   d: disassemble (u[0xaddress])\n"
                          "   p: dump pipelines (p{0-4} for all, add, mul, load, graphics)\n"
-                         "   t: trap on next instruction\n"
+                         "   b: break - set trap on next instruction\n"
+                         "   t: dump traceback buffer (t[count])\n"
                          "   x: give virt->phys translation (x{0xaddress})\n");
                 nd_dbg_cmd(0);
                 break;
@@ -176,10 +194,11 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
     }
     
     /* Less noise when single-stepping.  */
-    if (m_single_stepping != 1) {
+    if(m_single_stepping != 1) {
         fprintf (stderr, "Debugger done, continuing emulation.\n");
-        m_single_stepping = 0;
+        if(m_single_stepping == 2) m_single_stepping = 0;
     }
+    
     SDL_AtomicUnlock(&m_debugger_lock);
 }
 
@@ -347,5 +366,50 @@ void i860_cpu_device::halt(bool state) {
         Log_Printf(LOG_WARN, "[i860] **** RESTARTED ****");
         m_halt = false;
         Statusbar_SetNdLed(1);
+    }
+}
+
+void i860_cpu_device::dbg_check_wr(UINT32 addr, int size, UINT8* data) {
+    if(addr == 0xF83FE800 || addr == 0xF80FF800) {
+        switch(*((UINT32*)data)) {
+            case 0:
+            case 4: {
+                // catch ND console writes
+                UINT32 ptr   = addr + 4;
+                int    count; readmem_emu(ptr, 4, (UINT8*)&count);
+                int    col   = 0;
+                ptr += 4;
+                if(count < 1024) { // sanity check
+                    for(int i = 0; i < count; i++) {
+                        char ch; readmem_emu(ptr++, 1, (UINT8*)&ch);
+                        switch(ch) { // msg cleanup & tab expand for debugger console
+                            case '\r': continue;
+                            case '\t': while(col++ % 16) m_console[m_console_idx++] = ' '; continue;
+                            case '\n':
+                                col = -1;
+                                // fall-through
+                            default:
+                                m_console[m_console_idx++] = ch;
+                                col++;
+                                break;
+                        }
+                    }
+                    m_console[m_console_idx] = 0;
+                    if(strstr(m_console, "NeXTdimension Trap:"))
+                        m_break_on_next_msg = true;
+                    if(*((UINT32*)data) == 4) {
+                        char exit_code; readmem_emu(addr + 8, 1, (UINT8*)&exit_code);
+                        debugger('k', "NeXTdimension exit(%d)", exit_code);
+                    }
+                }
+                break;
+            }
+            case 5:
+                if(m_break_on_next_msg) {
+                    m_break_on_next_msg = false;
+                    debugger('k', "NeXTdimension Trap");
+                }
+                break;
+        }
     }
 }

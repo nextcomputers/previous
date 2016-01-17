@@ -56,7 +56,7 @@
     m_pc += 4; \
     UINT32 insn = ifetch(orig_pc+4);\
     decode_exec(insn); \
-    if(m_dim) {\
+    if(m_dim || (m_flow & DIM_OP)) {\
         if((insn & INSN_MASK_DIM) == INSN_FP_DIM || insn == INSN_FNOP_DIM) { \
             m_pc += 4; \
             decode_exec(ifetch(orig_pc+8)); \
@@ -187,20 +187,29 @@ UINT64 i860_cpu_device::ifetch64(UINT32 pc) {
    of traps should be taken.
 
    Page tables must always be in memory (not cached).  So the routine
-   here only accesses memory.  */
+   here only accesses memory.  
+ 
+ (SC) added TLB support. Read access updates even entries, Write access updates odd entries.
+ TLB lookup checks both entries. R/W separation is for DPS copy loops.
+ */
 UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, int is_write)
 {
     UINT32 voffset        = vaddr & I860_PAGE_OFF_MASK;
     UINT32 tlbidx         = ((vaddr << 1) | is_write) & I860_TLB_MASK;
     
-#if ENABLE_I860_TLB
     if(m_tlb_vaddr[tlbidx] == (vaddr & I860_PAGE_FRAME_MASK)) {
 #if ENABLE_PERF_COUNTERS
         m_tlb_hit++;
 #endif
         return (m_tlb_paddr[tlbidx] & I860_PAGE_FRAME_MASK) + voffset;
     }
+
+    if(m_tlb_vaddr[tlbidx ^ 1] == (vaddr & I860_PAGE_FRAME_MASK)) {
+#if ENABLE_PERF_COUNTERS
+        m_tlb_hit++;
 #endif
+        return (m_tlb_paddr[tlbidx ^ 1] & I860_PAGE_FRAME_MASK) + voffset;
+    }
 
 #if ENABLE_PERF_COUNTERS
     m_tlb_miss++;
@@ -347,48 +356,9 @@ void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data) {
 	Log_Printf(LOG_WARN, "[i860] wrmem (ATE=%d) addr = %08X, size = %d, data = %08X\n", GET_DIRBASE_ATE (), addr, size, data); fflush(0);
 #endif
 
-    if(addr == 0xF83FE800 || addr == 0xF80ff800) {
-        switch(*((UINT32*)data)) {
-            case 0:
-            case 4: {
-                // catch ND console writes
-                UINT32 ptr   = addr + 4;
-                int    count; readmem_emu(ptr, 4, (UINT8*)&count);
-                int    col   = 0;
-                ptr += 4;
-                if(count < 1024) { // sanity check
-                    for(int i = 0; i < count; i++) {
-                        char ch; readmem_emu(ptr++, 1, (UINT8*)&ch);
-                        switch(ch) { // msg cleanup & tab expand for debugger console
-                            case '\r': continue;
-                            case '\t': while(col++ % 16) m_console[m_console_idx++] = ' '; continue;
-                            case '\n':
-                                col = -1;
-                                // fall-through
-                            default:
-                                m_console[m_console_idx++] = ch;
-                                col++;
-                                break;
-                        }
-                    }
-                    m_console[m_console_idx] = 0;
-                    if(strstr(m_console, "NeXTdimension Trap:"))
-                        m_break_on_next_msg = true;
-                    if(*((UINT32*)data) == 4) {
-                        char exit_code; readmem_emu(addr + 8, 1, (UINT8*)&exit_code);
-                        debugger('k', "NeXTdimension exit(%d)", exit_code);
-                    }
-                }
-                break;
-                }
-            case 5:
-                if(m_break_on_next_msg) {
-                    m_break_on_next_msg = false;
-                    debugger('k', "NeXTdimension Trap");
-                }
-                break;
-        }
-    }
+#if ENABLE_DEBUGGER
+    dbg_check_wr(addr, size, data);
+#endif
 
 	/* If virtual mode, do translation.  */
 	if (GET_DIRBASE_ATE ())
@@ -470,8 +440,6 @@ void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data, UINT32 w
 	Log_Printf(LOG_WARN, "[i860] fp_wrmem (ATE=%d) addr = %08X, size = %d", GET_DIRBASE_ATE (), addr, size); fflush(0);
 #endif
 
-	assert (size == 4 || size == 8 || size == 16);
-
 	/* If virtual mode, do translation.  */
 	if (GET_DIRBASE_ATE ())
 	{
@@ -497,7 +465,7 @@ void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data, UINT32 w
 		return;
 	}
 #endif
-    
+        
     if(size == 8 && wmask != 0xff) {
         if (wmask & 0x80) wrmem[1](addr+0, (UINT32*)&data[0]);
         if (wmask & 0x40) wrmem[1](addr+1, (UINT32*)&data[1]);
@@ -3945,6 +3913,12 @@ void i860_cpu_device::decode_exec (UINT32 insn) {
     
 #if ENABLE_PERF_COUNTERS
     m_insn_decoded++;
+#endif
+    
+#if ENABLE_DEBUGGER
+    m_traceback[m_traceback_idx++] = m_pc;
+    if(m_traceback_idx >= (sizeof(m_traceback) / sizeof(m_traceback[0])))
+        m_traceback_idx = 0;
 #endif
     
 	int upper_6bits = (insn >> 26) & 0x3f;

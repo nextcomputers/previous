@@ -115,7 +115,7 @@ void   nd_board_rd128_be(Uint32 addr, Uint32* val) {
     addr   |= ND_BOARD_BITS;
     val[0]  = nd_longget(addr+4);
     val[1]  = nd_longget(addr+0);
-    val[2] = nd_longget(addr+12);
+    val[2]  = nd_longget(addr+12);
     val[3]  = nd_longget(addr+8);
 }
 

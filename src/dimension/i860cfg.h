@@ -28,9 +28,9 @@
 #define TRACE_UNALIGNED_MEM  1
 #define TRACE_EXT_INT        0
 #define ENABLE_I860_THREAD   1
-#define ENABLE_I860_TLB      1
 #define ENABLE_I860_DB_BREAK 0
 #define ENABLE_PERF_COUNTERS 1
+#define ENABLE_DEBUGGER      1
 
 #elif CONF_I860==CONF_I860_SPEED
 #define TRACE_RDWR_MEM       0
@@ -39,9 +39,9 @@
 #define TRACE_UNALIGNED_MEM  0
 #define TRACE_EXT_INT        0
 #define ENABLE_I860_THREAD   1
-#define ENABLE_I860_TLB      1
 #define ENABLE_I860_DB_BREAK 0
-#define ENABLE_PERF_COUNTERS 0
+#define ENABLE_PERF_COUNTERS 1
+#define ENABLE_DEBUGGER      0
 
 
 #elif CONF_I860==CONF_I860_NO_THREAD
@@ -51,9 +51,9 @@
 #define TRACE_UNALIGNED_MEM  0
 #define TRACE_EXT_INT        0
 #define ENABLE_I860_THREAD   0
-#define ENABLE_I860_TLB      1
 #define ENABLE_I860_DB_BREAK 0
 #define ENABLE_PERF_COUNTERS 0
+#define ENABLE_DEBUGGER      0
 
 #endif
 
