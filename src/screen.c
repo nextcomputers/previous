@@ -60,7 +60,7 @@ static bool bScrDoubleY;                /* true if double on Y */
 static int ScrUpdateFlag;               /* Bit mask of how to update screen */
 
 
-#define ENABLE_FAST_UPDATE 0
+#define ENABLE_FAST_UPDATE 1
 
 static bool Screen_DrawFrame(bool bForceFlip);
 
@@ -629,8 +629,6 @@ static void Screen_Blit(void)
 	pFrameBuffer->pNEXTScreen = pTmpScreen;
 }
 
-static Uint32 lastTime;
-
 /*-----------------------------------------------------------------------*/
 /**
  */
@@ -694,7 +692,6 @@ static bool Screen_DrawFrame(bool bForceFlip)
 }
 #endif
 
-/*
 //(SC) Use this code for Screen_DrawFrame relative time measurments
 #include <x86intrin.h>
 
@@ -703,7 +700,7 @@ static Uint64 total   = 0;
 static Uint64 count   = 0;
 static Uint64 min     = 100000;
 static Uint64 max     = 0;
-*/
+
  
 /*-----------------------------------------------------------------------*/
 /**
@@ -713,16 +710,13 @@ bool Screen_Draw(void)
 {
 	if (!bQuitProgram)
 	{
-        /*
          // (SC) Screen_DrawFrame time measurment
          Uint64 before = __rdtsc();
-        */
         
 		/* And draw (if screen contents changed) */
 		Screen_DrawFrame(false);
         
         
-        /*
          //(SC) Screen_DrawFrame time measurment
         elapsed += __rdtsc() - before;
 
@@ -734,8 +728,7 @@ bool Screen_Draw(void)
         
         if((count % 10) == 0)
             Log_Printf(LOG_WARN, "Screen_DrawFrame: %lld min=%lld avg=%lld max=%lld", elapsed, min, total / count, max);
-         */
-         
+        
 		return true;
 	}
 
