@@ -550,7 +550,7 @@ void nextbus_board_bput(Uint32 addr, Uint32 val) {
 /* Init function for NextBus */
 void nextbus_init(void) {
 #if ENABLE_DIMENSION
-    if (ConfigureParams.Dimension.bEnabled) {
+    if (ConfigureParams.Dimension.bEnabled && (ConfigureParams.System.nMachineType == NEXT_CUBE030 || ConfigureParams.System.nMachineType == NEXT_CUBE040)) {
         Log_Printf(LOG_WARN, "[NextBus/ND] board at slot %i",ND_SLOT);
         
         nextbus_board[ND_SLOT].lget = nd_board_lget;

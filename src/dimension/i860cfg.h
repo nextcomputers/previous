@@ -40,7 +40,7 @@
 #define TRACE_EXT_INT        0
 #define ENABLE_I860_THREAD   1
 #define ENABLE_I860_DB_BREAK 0
-#define ENABLE_PERF_COUNTERS 1
+#define ENABLE_PERF_COUNTERS 0
 #define ENABLE_DEBUGGER      0
 
 

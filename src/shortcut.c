@@ -170,12 +170,13 @@ static void ShortCut_Pause(void)
 static void ShortCut_Dimension(void)
 {
 #if ENABLE_DIMENSION
-    if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
-        ConfigureParams.Screen.nMonitorType=MONITOR_TYPE_CPU;
-    } else {
-        ConfigureParams.Screen.nMonitorType=MONITOR_TYPE_DIMENSION;
+    if(ConfigureParams.Screen.nMonitorType != MONITOR_TYPE_DUAL) {
+        if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
+            ConfigureParams.Screen.nMonitorType=MONITOR_TYPE_CPU;
+        } else {
+            ConfigureParams.Screen.nMonitorType=MONITOR_TYPE_DIMENSION;
+        }
     }
-
 	Statusbar_UpdateInfo();
     Screen_SetFullUpdate();
 #endif

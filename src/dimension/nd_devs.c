@@ -10,7 +10,7 @@
 #include "nd_devs.h"
 #include "nd_nbic.h"
 #include "i860cfg.h"
-#include "SDL.h"
+#include "nd_sdl.h"
 
 #if ENABLE_DIMENSION
 
@@ -105,12 +105,8 @@ static struct {
     uae_u32 iic_data;
 } nd_dp;
 
-/* Because of SDL time (in)accuracy timing is very approximative */
-const int DISPLAY_VBL_MS = 1000 / 68; // main display at 68Hz, actually this is 71.42 Hz because (int)1000/(int)68Hz=14ms
-const int VIDEO_VBL_MS   = 1000 / 60; // NTSC display at 60Hz, actually this is 62.5 Hz because (int)1000/(int)60Hz=16ms
-const int BLANK_MS       = 10;        // Give some blank time for both
-
-static Uint32 nd_display_vbl(Uint32 interval, void *param) {
+/* nd_display_vbl is called from SDL. See nd_sdl.c */
+Uint32 nd_display_vbl(Uint32 interval, void *param) {
     Uint32 csr0 = nd_mc.csr0;
     if(csr0 & CSR0_VBLANK) {
         csr0 &= ~CSR0_VBLANK;
@@ -124,7 +120,8 @@ static Uint32 nd_display_vbl(Uint32 interval, void *param) {
     return interval;
 }
 
-static Uint32 nd_video_vbl(Uint32 interval, void *param) {
+/* nd_video_vbl is called from SDL. See nd_sdl.c */
+Uint32 nd_video_vbl(Uint32 interval, void *param) {
     Uint32 csr0 = nd_mc.csr0;
     if(csr0 & CSR0_VIOBLANK) {
         csr0 &= ~CSR0_VIOBLANK;
@@ -139,17 +136,6 @@ static Uint32 nd_video_vbl(Uint32 interval, void *param) {
 }
 
 void nd_devs_init() {
-    static bool first = true;
-    static SDL_TimerID displayVBL;
-    static SDL_TimerID videoVBL;
-    if(first) {
-        first = false;
-        // main display at 68Hz
-        displayVBL = SDL_AddTimer(DISPLAY_VBL_MS,  nd_display_vbl, NULL);
-        // NTSC video at 60Hz
-        videoVBL   = SDL_AddTimer(VIDEO_VBL_MS, nd_video_vbl, NULL);
-    }
-    
     nd_set_speed_hack(0);
 
     nd_mc.csr0          = 0;

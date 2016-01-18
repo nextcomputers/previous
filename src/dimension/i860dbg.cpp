@@ -17,11 +17,6 @@
 
 extern int i860_disassembler(UINT32 pc, UINT32 insn, char* buffer);
 
-void i860_cpu_device::check_debug_lock() {
-    SDL_AtomicLock(&m_debugger_lock);
-    SDL_AtomicUnlock(&m_debugger_lock);
-}
-
 /* A simple internal debugger.  */
 void i860_cpu_device::debugger() {
     debugger(0, "");
@@ -41,7 +36,7 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
     if (m_single_stepping > 1 && m_single_stepping != m_pc)
         return;
     
-    SDL_AtomicLock(&m_debugger_lock);
+    lock(&m_debugger_lock);
     
     if(format) {
         va_list ap;
@@ -199,7 +194,7 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
         if(m_single_stepping == 2) m_single_stepping = 0;
     }
     
-    SDL_AtomicUnlock(&m_debugger_lock);
+    unlock(&m_debugger_lock);
 }
 
 /* Disassemble `len' instructions starting at `addr'.  */

@@ -209,9 +209,20 @@ static void Screen_SetResolution(void)
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
 
 		fprintf(stderr, "SDL screen request: %d x %d @ %d (%s)\n", Width, Height, BitCount, bInFullScreen?"fullscreen":"windowed");
-		sdlWindow = SDL_CreateWindow(PROG_NAME,
-		                             SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-		                             Width, Height, 0);
+        
+        int x = SDL_WINDOWPOS_UNDEFINED;
+        if(ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_DUAL) {
+            for(int i = 0; i < SDL_GetNumVideoDisplays(); i++) {
+                SDL_Rect r;
+                SDL_GetDisplayBounds(i, &r);
+                if(r.w >= Width * 2) {
+                    x = r.x + Width + ((r.w - Width * 2) / 2);
+                    break;
+                }
+                if(r.x >= 0) x = r.x;
+            }
+        }
+		sdlWindow = SDL_CreateWindow(PROG_NAME, x, SDL_WINDOWPOS_UNDEFINED, Width, Height, 0);
 		sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, SDL_RENDERER_ACCELERATED);
 		if (!sdlWindow || !sdlRenderer)
 		{
@@ -622,6 +633,9 @@ static void Screen_Blit(void)
 static bool Screen_DrawFrame(bool bForceFlip) {
     do_SDL_UpdateRects = false;
     
+    if(bInFullScreen)
+        SDL_RenderClear(sdlRenderer);
+    
     /* draw the NeXT framebuffer */
     ConvertHighRes_640x8Bit();
     
@@ -676,8 +690,7 @@ static bool Screen_DrawFrame(bool bForceFlip)
 #endif
 
 /*
-(SC) Use this code for Screen_DrawFrame relative time measurments
- 
+//(SC) Use this code for Screen_DrawFrame relative time measurments
 #include <x86intrin.h>
 
 static Uint64 elapsed = 0;
@@ -695,14 +708,17 @@ bool Screen_Draw(void)
 {
 	if (!bQuitProgram)
 	{
-        /* (SC) Screen_DrawFrame time measurment
+        /*
+         // (SC) Screen_DrawFrame time measurment
          Uint64 before = __rdtsc();
         */
         
 		/* And draw (if screen contents changed) */
 		Screen_DrawFrame(false);
         
-        /* (SC) Screen_DrawFrame time measurment
+        
+        /*
+         //(SC) Screen_DrawFrame time measurment
         elapsed += __rdtsc() - before;
 
         elapsed /= 1000000;
