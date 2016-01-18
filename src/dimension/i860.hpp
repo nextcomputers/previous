@@ -412,9 +412,12 @@ private:
 
     /* Dual instruction mode flags */
     int  m_dim;
-    int  m_save_dim;
     bool m_dim_cc;
     bool m_dim_cc_valid;
+    int  m_save_dim;
+    int  m_save_flow;
+    bool m_save_cc;
+    bool m_save_cc_valid;
     
 	/* Special registers (4 x 64-bits).  */
 	union
@@ -603,6 +606,7 @@ private:
     UINT32 ifetch(UINT32 pc);
     UINT32 ifetch_notrap(UINT32 pc);
     void   handle_trap(UINT32 savepc);
+    void   ret_from_trap();
     void   unrecog_opcode (UINT32 pc, UINT32 insn);
     
     void   decode_exec (UINT32 insn);
