@@ -403,6 +403,7 @@ extern void Configuration_SetSystemDefaults(void);
 extern void Configuration_Apply(bool bReset);
 extern int Configuration_CheckMemory(int *banksize);
 extern int Configuration_CheckDimensionMemory(int *banksize);
+extern void Configuration_CheckDimensionSettings(void);
 extern void Configuration_Load(const char *psFileName);
 extern void Configuration_Save(void);
 extern void Configuration_MemorySnapShot_Capture(bool bSave);

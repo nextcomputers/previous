@@ -202,7 +202,15 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
             return true;
         }
     }
-    
+	
+	/* Did we change monitor count? */
+	if (current->Screen.nMonitorType != changed->Screen.nMonitorType &&
+		(current->Screen.nMonitorType == MONITOR_TYPE_DUAL ||
+		 changed->Screen.nMonitorType == MONITOR_TYPE_DUAL)) {
+			printf("monitor reset\n");
+			return true;
+	}
+	
     /* Else no reset is required */
     printf("No Reset needed!\n");
     return false;
