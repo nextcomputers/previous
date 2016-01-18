@@ -43,9 +43,16 @@ extern "C" {
         nd_i860.send_msg(MSG_DBG_BREAK);
     }
 
+    static int checklock_cnt = 0;
     void i860_Run(int nHostCycles) {
 #if ENABLE_I860_THREAD
-        checklock(&nd_i860.m_debugger_lock);
+        if(checklock_cnt <= 0) {
+            checklock(&nd_i860.m_debugger_lock);
+            // optimzation: check the debugger lock only all 1000 cycles
+            checklock_cnt = 1000;
+        }
+        else
+            checklock_cnt -= nHostCycles;
 #else
         nd_i860.handle_msgs();
 
@@ -157,7 +164,7 @@ void i860_cpu_device::send_msg(int msg) {
 }
 
 void i860_cpu_device::handle_trap(UINT32 savepc) {
-    static char buffer[128];
+    static char buffer[256];
     buffer[0] = 0;
     strcat(buffer, "TRAP");
     if(m_flow & TRAP_NORMAL)        strcat(buffer, " [Normal]");
@@ -177,8 +184,7 @@ void i860_cpu_device::handle_trap(UINT32 savepc) {
         debugger('d', buffer);
     
     if(m_dim)
-        Log_Printf(LOG_WARN, "[i860] Trap while DIM %s", buffer);
-    
+        Log_Printf(LOG_WARN, "[i860] Trap while DIM %s pc=%08X m_flow=%08X", buffer, savepc, m_flow);
 
     /* If we need to trap, change PC to trap address.
      Also set supervisor mode, copy U and IM to their

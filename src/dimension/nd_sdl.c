@@ -65,8 +65,21 @@ void nd_sdl_init() {
 }
 
 void nd_sdl_uninit() {
-    if(displayVBL) SDL_RemoveTimer(displayVBL);    
-    if(videoVBL) SDL_RemoveTimer(videoVBL);
+    if(displayVBL) {
+        SDL_RemoveTimer(displayVBL);
+        displayVBL = NULL;
+    }
+    if(videoVBL) {
+        SDL_RemoveTimer(videoVBL);
+        videoVBL = NULL;
+    }
+}
+
+void nd_sdl_destroy() {
+    nd_sdl_uninit();
+    SDL_DestroyTexture(ndTexture);
+    SDL_DestroyRenderer(ndRenderer);
+    SDL_DestroyWindow(ndWindow);
 }
 
 void lock(lock_t* lock) {
