@@ -33,7 +33,7 @@ void print_nd_overview(void);
 void update_monitor_selection(void);
 void get_nd_default_values(void);
 
-#define ENABLE_DUAL_SCREEN  0
+#define ENABLE_DUAL_SCREEN  1
 
 
 static SGOBJ dimensiondlg[] =

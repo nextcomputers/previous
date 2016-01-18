@@ -45,7 +45,7 @@ extern "C" {
 
     void i860_Run(int nHostCycles) {
 #if ENABLE_I860_THREAD
-        nd_i860.check_debug_lock();
+        checklock(&nd_i860.m_debugger_lock);
 #else
         nd_i860.handle_msgs();
 
@@ -151,9 +151,9 @@ inline void i860_cpu_device::SET_PSR_CC(int val) {
 }
 
 void i860_cpu_device::send_msg(int msg) {
-    SDL_AtomicLock(&m_port_lock);
+    lock(&m_port_lock);
     m_port |= msg;
-    SDL_AtomicUnlock(&m_port_lock);
+    unlock(&m_port_lock);
 }
 
 void i860_cpu_device::handle_trap(UINT32 savepc) {
@@ -500,7 +500,7 @@ error:
 
     send_msg(MSG_I860_RESET);
 #if ENABLE_I860_THREAD
-    m_thread = SDL_CreateThread(i860_thread, "[ND] i860", this);
+    m_thread = thread_create(i860_thread, this);
 #endif
 }
 
@@ -510,9 +510,8 @@ void i860_cpu_device::uninit() {
 	halt(true);
     send_msg(MSG_I860_KILL);
 #if ENABLE_I860_THREAD
-    int status;
     if(m_thread) {
-        SDL_WaitThread(m_thread, &status);
+        thread_wait(m_thread);
         m_thread = NULL;
     }
     send_msg(MSG_NONE);
@@ -521,10 +520,10 @@ void i860_cpu_device::uninit() {
 
 /* Message disaptcher - executed on i860 thread, safe to call i860 methods */
 bool i860_cpu_device::handle_msgs() {
-    SDL_AtomicLock(&m_port_lock);
+    lock(&m_port_lock);
     int msg = m_port;
     m_port = 0;
-    SDL_AtomicUnlock(&m_port_lock);
+    unlock(&m_port_lock);
     
     if(msg & MSG_I860_KILL)
         return false;
@@ -541,8 +540,8 @@ void i860_cpu_device::run() {
     while(handle_msgs()) {
         
         /* Sleep a bit if halted */
-        if(m_halt) {
-            SDL_Delay(100);
+        if(is_halted()) {
+            sleep_ms(100);
             continue;
         }
         
@@ -555,7 +554,7 @@ void i860_cpu_device::run() {
 void i860_cpu_device::tick(bool intr) {
     if(intr) send_msg(MSG_INTR);
 #if ENABLE_PERF_COUNTERS
-    UINT32 absTimeInMs = SDL_GetTicks();
+    UINT32 absTimeInMs = time_ms();
     m_time_delta_ms += absTimeInMs - m_abs_time_ms;
     m_abs_time_ms = absTimeInMs;
     if(m_time_delta_ms > 5000)
@@ -567,7 +566,7 @@ void i860_cpu_device::tick(bool intr) {
 void i860_cpu_device::dump_reset_perfc() {
     static bool dump = false;
     if(dump) {
-        if(SDL_AtomicTryLock(&m_debugger_lock)) {
+        if(trylock(&m_debugger_lock)) {
             Log_Printf(LOG_WARN, "[i860] Stats: MIPS=%lld.%lld icache_hit=%lld%% tlb_hit=%lld%% icach_inval/s=%lld tlb_inval/s=%lld intr/s=%lld",
                        (m_insn_decoded / (m_time_delta_ms * 100)) / 10, (m_insn_decoded / (m_time_delta_ms * 100)) % 10,
                        m_icache_hit+m_icache_miss == 0 ? 0 : (100 * m_icache_hit) / (m_icache_hit+m_icache_miss) ,
@@ -576,7 +575,7 @@ void i860_cpu_device::dump_reset_perfc() {
                        (1000*m_tlb_inval)/m_time_delta_ms,
                        (1000*m_intrs)/m_time_delta_ms
                        );
-            SDL_AtomicUnlock(&m_debugger_lock);
+            unlock(&m_debugger_lock);
         }
     }
     

@@ -2,6 +2,8 @@
   Fast screen updates for NeXT systems by (SC) Simon Schubiger
 */
 
+#include "nd_sdl.h"
+
 static void InvalidateScreenBuffer(void) {}
 
 static Uint32 bwcolors[1024];

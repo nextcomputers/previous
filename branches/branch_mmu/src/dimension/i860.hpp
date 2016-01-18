@@ -25,10 +25,9 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <ctype.h>
-#include <SDL.h>
-#include <SDL_thread.h>
 
 #include "i860cfg.h"
+#include "nd_sdl.h"
 
 const int LOG_WARN = 3;
 extern "C" void Log_Printf(int nType, const char *psFormat, ...);
@@ -352,15 +351,15 @@ public:
     inline bool is_halted() {return m_halt;};
 
     /* Run one i860 cycle */
-    void run_cycle();
+    void    run_cycle();
     /* Run the i860 thread */
     void run();
     /* i860 thread message handler */
     bool   handle_msgs();
-    /* Lock & wait if i860 debugger is running */
-    void    check_debug_lock();
     /* External tick event for the i860 emulator to update real-time dependent state + interrupt flag */
     void   tick(bool intr);
+    /* Lock acquired by debugger to block other threads (e.g. m68k) */
+    lock_t m_debugger_lock;
 private:
     // debugger
     void debugger(char cmd, const char* format, ...);
@@ -368,12 +367,11 @@ private:
     
     /* Message port for host->i860 communication */
     volatile int m_port;
-    SDL_SpinLock m_port_lock;
+    lock_t       m_port_lock;
     
 #if ENABLE_I860_THREAD
-    SDL_Thread*  m_thread;
+    thread_t*   m_thread;
 #endif
-    SDL_SpinLock m_debugger_lock;
 
 #if ENABLE_PERF_COUNTERS
     UINT64 m_insn_decoded;

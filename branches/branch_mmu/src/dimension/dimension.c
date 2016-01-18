@@ -6,6 +6,7 @@
 #include "nd_mem.h"
 #include "nd_devs.h"
 #include "nd_nbic.h"
+#include "nd_sdl.h"
 
 #if ENABLE_DIMENSION
 
@@ -23,7 +24,6 @@
 
 /* NeXTdimension slot memory access */
 Uint32 nd_slot_lget(Uint32 addr) {
-    
     addr |= ND_SLOT_BITS;
     
     if (addr<ND_NBIC_SPACE) {
@@ -34,7 +34,6 @@ Uint32 nd_slot_lget(Uint32 addr) {
 }
 
 Uint16 nd_slot_wget(Uint32 addr) {
-    
     addr |= ND_SLOT_BITS;
     
     if (addr<ND_NBIC_SPACE) {
@@ -45,7 +44,6 @@ Uint16 nd_slot_wget(Uint32 addr) {
 }
 
 Uint8 nd_slot_bget(Uint32 addr) {
-    
     addr |= ND_SLOT_BITS;
 
     if (addr<ND_NBIC_SPACE) {
@@ -56,7 +54,6 @@ Uint8 nd_slot_bget(Uint32 addr) {
 }
 
 void nd_slot_lput(Uint32 addr, Uint32 l) {
-
     addr |= ND_SLOT_BITS;
 
     if (addr<ND_NBIC_SPACE) {
@@ -67,7 +64,6 @@ void nd_slot_lput(Uint32 addr, Uint32 l) {
 }
 
 void nd_slot_wput(Uint32 addr, Uint16 w) {
-
     addr |= ND_SLOT_BITS;
 
     if (addr<ND_NBIC_SPACE) {
@@ -78,7 +74,6 @@ void nd_slot_wput(Uint32 addr, Uint16 w) {
 }
 
 void nd_slot_bput(Uint32 addr, Uint8 b) {
-    
     addr |= ND_SLOT_BITS;
 
     if (addr<ND_NBIC_SPACE) {
@@ -265,10 +260,12 @@ void dimension_init(void) {
     nd_devs_init();
     nd_memory_init();
     nd_i860_init();
+    nd_sdl_init();
 }
 
 void dimension_uninit(void) {
 	nd_i860_uninit();
+    nd_sdl_uninit();
 }
 
 #endif

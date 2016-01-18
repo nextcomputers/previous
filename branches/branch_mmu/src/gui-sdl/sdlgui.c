@@ -135,7 +135,7 @@ int SDLGui_UnInit(void)
 int SDLGui_SetScreen(SDL_Surface *pScrn)
 {
 	pSdlGuiScrn = pScrn;
-
+    
 	/* Decide which font to use - small or big one: */
 	if (pSdlGuiScrn->w >= 640 && pSdlGuiScrn->h >= 400 && pBigFontGfx != NULL)
 	{
@@ -152,6 +152,9 @@ int SDLGui_SetScreen(SDL_Surface *pScrn)
 		return -1;
 	}
 
+    /* (SC) empty update to force NeXT framebuffer grab to use as background for SDL GUI*/
+    SDL_UpdateRects(pScrn, 0, NULL);
+    
 	/* Get the font width and height: */
 	sdlgui_fontwidth = pFontGfx->w/16;
     sdlgui_fontheight = pFontGfx->h/16;

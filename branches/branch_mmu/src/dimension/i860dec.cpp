@@ -51,12 +51,12 @@
 
 #pragma STDC FENV_ACCESS on
 
-#define DELAY_SLOT_PC() (m_dim ? 12 : 8)
+#define DELAY_SLOT_PC() ((m_dim == DIM_FULL) ? 12 : 8)
 #define DELAY_SLOT() do{\
     m_pc += 4; \
     UINT32 insn = ifetch(orig_pc+4);\
     decode_exec(insn); \
-    if(m_dim || (m_flow & DIM_OP)) {\
+    if((m_dim == DIM_FULL) || (m_flow & DIM_OP)) {\
         if((insn & INSN_MASK_DIM) == INSN_FP_DIM || insn == INSN_FNOP_DIM) { \
             m_pc += 4; \
             decode_exec(ifetch(orig_pc+8)); \
