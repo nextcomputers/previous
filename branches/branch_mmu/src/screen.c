@@ -60,7 +60,7 @@ static bool bScrDoubleY;                /* true if double on Y */
 static int ScrUpdateFlag;               /* Bit mask of how to update screen */
 
 
-#define ENABLE_FAST_UPDATE 1
+#define ENABLE_FAST_UPDATE 0
 
 static bool Screen_DrawFrame(bool bForceFlip);
 
@@ -211,7 +211,7 @@ static void Screen_SetResolution(void)
 		fprintf(stderr, "SDL screen request: %d x %d @ %d (%s)\n", Width, Height, BitCount, bInFullScreen?"fullscreen":"windowed");
         
         int x = SDL_WINDOWPOS_UNDEFINED;
-        if(ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_DUAL) {
+        if(ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_DUAL && (ConfigureParams.System.nMachineType == NEXT_CUBE030 || ConfigureParams.System.nMachineType == NEXT_CUBE040)) {
             for(int i = 0; i < SDL_GetNumVideoDisplays(); i++) {
                 SDL_Rect r;
                 SDL_GetDisplayBounds(i, &r);
@@ -328,6 +328,7 @@ void Screen_Init(void)
 	SDL_ShowCursor(SDL_DISABLE);
 }
 
+extern void nd_sdl_destroy();
 
 /*-----------------------------------------------------------------------*/
 /**
@@ -335,6 +336,8 @@ void Screen_Init(void)
  */
 void Screen_UnInit(void)
 {
+    nd_sdl_destroy();
+    
 	int i;
 
 	/* Free memory used for copies */
@@ -626,6 +629,8 @@ static void Screen_Blit(void)
 	pFrameBuffer->pNEXTScreen = pTmpScreen;
 }
 
+static Uint32 lastTime;
+
 /*-----------------------------------------------------------------------*/
 /**
  */
@@ -636,10 +641,10 @@ static bool Screen_DrawFrame(bool bForceFlip) {
     if(bInFullScreen)
         SDL_RenderClear(sdlRenderer);
     
-    /* draw the NeXT framebuffer */
+    // draw the NeXT framebuffer
     ConvertHighRes_640x8Bit();
     
-    /* draw statusbar or overlay led(s) */
+    // draw statusbar or overlay led(s)
     SDL_Rect statusBar;
     statusBar.x            = 0;
     statusBar.w            = sdlscrn->w;
@@ -650,10 +655,10 @@ static bool Screen_DrawFrame(bool bForceFlip) {
     Statusbar_Update(sdlscrn);
     SDL_UpdateTexture(sdlTexture, &statusBar, statusBarPixels, sdlscrn->pitch);
     
-    /* Copy texture to screen */
+    // Copy texture to screen
     SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
     SDL_RenderPresent(sdlRenderer);
-
+    
     do_SDL_UpdateRects  = true;
     grabNeXTframebuffer = true;
     

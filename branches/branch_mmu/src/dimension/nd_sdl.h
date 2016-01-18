@@ -24,6 +24,7 @@ extern "C" {
 
     void      nd_sdl_init();
     void      nd_sdl_uninit();
+    void      nd_sdl_destroy();
 
     void      lock(lock_t* lock);
     void      unlock(lock_t* lock);
