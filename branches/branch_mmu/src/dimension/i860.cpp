@@ -201,15 +201,27 @@ void i860_cpu_device::handle_trap(UINT32 savepc) {
     SET_PSR_PIM (GET_PSR_IM ());
     SET_PSR_U (0);
     SET_PSR_IM (0);
-    // (SC) we don't emulate DIM traps for now
-    //SET_PSR_DIM (m_dim != DIM_NONE);
-    //m_dim = false;
-    //SET_PSR_DS ((m_dim != DIM_NONE) != dim);
     SET_PSR_DIM (0);
-    m_save_dim = m_dim;
-    m_dim      = DIM_NONE;
     SET_PSR_DS (0);
+    
+    m_save_flow     = m_flow & DIM_OP;
+    m_save_dim      = m_dim;
+    m_save_cc       = m_dim_cc;
+    m_save_cc_valid = m_dim_cc_valid;
+    
+    m_dim           = DIM_NONE;
+    m_dim_cc        = false;
+    m_dim_cc_valid  = false;
+    
     m_pc = 0xffffff00;
+}
+
+void i860_cpu_device::ret_from_trap() {
+    m_flow          |= m_save_flow & ~DIM_OP;
+    m_dim            = m_save_dim;
+    m_flow          &= ~FIR_GETS_TRAP;
+    m_dim_cc         = m_save_cc;
+    m_dim_cc_valid   = m_save_cc_valid;
 }
 
 void i860_cpu_device::run_cycle() {

@@ -2056,14 +2056,7 @@ void i860_cpu_device::insn_bri (UINT32 insn)
 		SET_PSR_U (GET_PSR_PU ());
 		SET_PSR_IM (GET_PSR_PIM ());
 
-        // (SC) we don't emulate DIM traps for now
-        // m_dim = GET_PSR_DIM();
-        // if(m_dim) {
-        //    Log_Printf(LOG_WARN, "Return from DIM");
-        //}
-        //SET_PSR_DIM(0);
-        m_dim   = m_save_dim;
-        m_flow &= ~FIR_GETS_TRAP;
+        ret_from_trap();
 	}
 
 	/* Update PC.  */
