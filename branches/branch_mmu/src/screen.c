@@ -211,7 +211,7 @@ static void Screen_SetResolution(void)
 		fprintf(stderr, "SDL screen request: %d x %d @ %d (%s)\n", Width, Height, BitCount, bInFullScreen?"fullscreen":"windowed");
         
         int x = SDL_WINDOWPOS_UNDEFINED;
-        if(ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_DUAL && (ConfigureParams.System.nMachineType == NEXT_CUBE030 || ConfigureParams.System.nMachineType == NEXT_CUBE040)) {
+        if(ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_DUAL) {
             for(int i = 0; i < SDL_GetNumVideoDisplays(); i++) {
                 SDL_Rect r;
                 SDL_GetDisplayBounds(i, &r);

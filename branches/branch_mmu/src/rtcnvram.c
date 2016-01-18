@@ -846,13 +846,11 @@ void nvram_init(void) {
     }
 #if ENABLE_DIMENSION
 	/* Set prefered console slot */
-	if (ConfigureParams.Dimension.bEnabled && (ConfigureParams.System.nMachineType == NEXT_CUBE030 || ConfigureParams.System.nMachineType == NEXT_CUBE040)) {
+	if (ConfigureParams.Dimension.bEnabled) {
 		rtc.ram[17] |= USE_CONSOLE_SLOT;
 		if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
 			rtc.ram[17] |= (ND_SLOT>>1)<<3;
 		}
-    } else {
-        ConfigureParams.Screen.nMonitorType=MONITOR_TYPE_CPU;
     }
 #endif
     /* Re-calculate checksum */

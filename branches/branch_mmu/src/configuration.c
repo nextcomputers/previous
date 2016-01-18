@@ -615,7 +615,11 @@ void Configuration_Apply(bool bReset)
     
     /* Check memory size for each bank and change to supported values */
     Configuration_CheckMemory(ConfigureParams.Memory.nMemoryBankSize);
-    
+	
+ 	/* Check nextdimension memory size and screen options */
+	Configuration_CheckDimensionMemory(ConfigureParams.Dimension.nMemoryBankSize);
+	Configuration_CheckDimensionSettings();
+	
 	/* Clean file and directory names */    
     File_MakeAbsoluteName(ConfigureParams.Rom.szRom030FileName);
     File_MakeAbsoluteName(ConfigureParams.Rom.szRom040FileName);
@@ -812,6 +816,12 @@ int Configuration_CheckDimensionMemory(int *banksize) {
             banksize[i]=16;
     }
     return (banksize[0]+banksize[1]+banksize[2]+banksize[3]);
+}
+
+void Configuration_CheckDimensionSettings(void) {
+	if (ConfigureParams.System.nMachineType==NEXT_STATION) {
+		ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_CPU;
+	}
 }
 
 
