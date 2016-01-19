@@ -113,6 +113,7 @@ extern
  Dimension format is 8bit per pixel, big-endian: RRGGGBBBA
  */
 void blitDimension(SDL_Texture* tex) {
+#if ENABLE_DIMENSION
     Uint32* src = (Uint32*)&ND_vram[ND_vram_off];
     void*   pixels;
     int     d;
@@ -167,6 +168,7 @@ void blitDimension(SDL_Texture* tex) {
         }
     }
     SDL_UnlockTexture(tex);
+#endif
 }
 
 /*
