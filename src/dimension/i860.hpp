@@ -360,6 +360,11 @@ public:
     void   tick(bool intr);
     /* Lock acquired by debugger to block other threads (e.g. m68k) */
     lock_t m_debugger_lock;
+    
+#if ENABLE_PERF_COUNTERS
+    UINT64 m_m68k_cylces;
+#endif
+
 private:
     // debugger
     void debugger(char cmd, const char* format, ...);

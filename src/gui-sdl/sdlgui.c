@@ -76,7 +76,7 @@ static SDL_Surface *SDLGui_LoadXBM(int w, int h, const Uint8 *pXbmBits)
  */
 int SDLGui_Init(void)
 {
-	SDL_Color blackWhiteColors[2] = {{255, 255, 255, 0}, {0, 0, 0, 0}};
+	SDL_Color blackWhiteColors[2] = {{255, 255, 255, 255}, {0, 0, 0, 255}};
 
 	if (pSmallFontGfx && pBigFontGfx)
 	{
@@ -151,9 +151,6 @@ int SDLGui_SetScreen(SDL_Surface *pScrn)
 		fprintf(stderr, "Error: A problem with the font occured!\n");
 		return -1;
 	}
-
-    /* (SC) empty update to force NeXT framebuffer grab to use as background for SDL GUI*/
-    SDL_UpdateRects(pScrn, 0, NULL);
     
 	/* Get the font width and height: */
 	sdlgui_fontwidth = pFontGfx->w/16;

@@ -35,8 +35,8 @@ int nBorderPixelsLeft, nBorderPixelsRight;  /* Pixels in left and right border *
 int nBorderPixelsTop, nBorderPixelsBottom;  /* Lines in top and bottom border */
 
 /* extern for shortcuts and falcon/hostscreen.c */
-bool bGrabMouse = false;      /* Grab the mouse cursor in the window */
-bool bInFullScreen = false;   /* true if in full screen */
+volatile bool bGrabMouse = false;      /* Grab the mouse cursor in the window */
+volatile bool bInFullScreen = false;   /* true if in full screen */
 
 
 /* extern for video.c */
@@ -60,32 +60,16 @@ static bool bScrDoubleY;                /* true if double on Y */
 static int ScrUpdateFlag;               /* Bit mask of how to update screen */
 
 
-#define ENABLE_FAST_UPDATE 1
-
 static bool Screen_DrawFrame(bool bForceFlip);
-
-/* (SC) True for bulk rendering during Screen_DrawFrame() */
-static bool do_SDL_UpdateRects  = true;
-static bool grabNeXTframebuffer = false;
 
 #if 1 /* Translating to SDL2 */
 void SDL_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects)
 {
-    // fprintf(stderr,"rendering %i %i %i %i %i\n", numrects, rects->x, rects->y, rects->w, rects->h);
-
-    if(do_SDL_UpdateRects) {
-#if ENABLE_FAST_UPDATE
-        if(grabNeXTframebuffer) {
-            SDL_Rect r; r.x = 0; r.y = 0; r.w = 1120; r.h = 832;
-            SDL_RenderReadPixels(sdlRenderer, &r, SDL_BYTEORDER == SDL_BIG_ENDIAN ? SDL_PIXELFORMAT_RGBA8888 : SDL_PIXELFORMAT_ABGR8888, sdlscrn->pixels, sdlscrn->pitch);
-            grabNeXTframebuffer = false;
-        }
-#endif
-        SDL_RenderClear(sdlRenderer);
-        SDL_UpdateTexture(sdlTexture, NULL, screen->pixels, screen->pitch);
-        SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
-        SDL_RenderPresent(sdlRenderer);
-    }
+	//fprintf(stderr,"rendering %i %i %i %i %i\n", numrects, rects->x, rects->w, rects->w, rects->h);
+	SDL_UpdateTexture(sdlTexture, NULL, screen->pixels, screen->pitch);
+	SDL_RenderClear(sdlRenderer);
+	SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
+	SDL_RenderPresent(sdlRenderer);
 }
 
 void SDL_UpdateRect(SDL_Surface *screen, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
@@ -209,44 +193,23 @@ static void Screen_SetResolution(void)
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
 
 		fprintf(stderr, "SDL screen request: %d x %d @ %d (%s)\n", Width, Height, BitCount, bInFullScreen?"fullscreen":"windowed");
-        
-        int x = SDL_WINDOWPOS_UNDEFINED;
-        if(ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_DUAL) {
-            for(int i = 0; i < SDL_GetNumVideoDisplays(); i++) {
-                SDL_Rect r;
-                SDL_GetDisplayBounds(i, &r);
-                if(r.w >= Width * 2) {
-                    x = r.x + Width + ((r.w - Width * 2) / 2);
-                    break;
-                }
-                if(r.x >= 0) x = r.x;
-            }
-        }
-		sdlWindow = SDL_CreateWindow(PROG_NAME, x, SDL_WINDOWPOS_UNDEFINED, Width, Height, 0);
-		sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, SDL_RENDERER_ACCELERATED);
+		sdlWindow = SDL_CreateWindow(PROG_NAME,
+		                             SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+		                             Width, Height, 0);
+		sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);
 		if (!sdlWindow || !sdlRenderer)
 		{
 			fprintf(stderr,"Failed to create window or renderer!\n");
 			exit(-1);
 		}
 		SDL_RenderSetLogicalSize(sdlRenderer, Width, Height);
-#if ENABLE_FAST_UPDATE
-        if(SDL_BYTEORDER == SDL_BIG_ENDIAN) {
-            sdlscrn    = SDL_CreateRGBSurface(SDL_SWSURFACE, Width, Height, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x00000000);
-            sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, Width, Height);
-        } else {
-            sdlscrn    = SDL_CreateRGBSurface(SDL_SWSURFACE, Width, Height, 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0x00000000);
-            sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_TARGET, Width, Height);
-        }
-#else
-        sdlscrn = SDL_CreateRGBSurface(SDL_SWSURFACE, Width, Height, 32,
-                                       0x00FF0000, 0x0000FF00,
-                                       0x000000FF, 0x00000000);
-        sdlTexture = SDL_CreateTexture(sdlRenderer,
-                                       SDL_PIXELFORMAT_RGB888,
-                                       SDL_TEXTUREACCESS_STREAMING,
-                                       Width, Height);
-#endif
+		sdlscrn = SDL_CreateRGBSurface(SDL_SWSURFACE, Width, Height, 32,
+						0x00FF0000, 0x0000FF00,
+						0x000000FF, 0x00000000);
+		sdlTexture = SDL_CreateTexture(sdlRenderer,
+						SDL_PIXELFORMAT_RGB888,
+						SDL_TEXTUREACCESS_STREAMING,
+						Width, Height);
 		fprintf(stderr, "SDL screen granted: %d x %d @ %d\n", sdlscrn->w, sdlscrn->h, sdlscrn->format->BitsPerPixel);
 
 		/* Exit if we can not open a screen */
@@ -328,7 +291,6 @@ void Screen_Init(void)
 	SDL_ShowCursor(SDL_DISABLE);
 }
 
-extern void nd_sdl_destroy();
 
 /*-----------------------------------------------------------------------*/
 /**
@@ -336,8 +298,6 @@ extern void nd_sdl_destroy();
  */
 void Screen_UnInit(void)
 {
-    nd_sdl_destroy();
-    
 	int i;
 
 	/* Free memory used for copies */
@@ -629,80 +589,39 @@ static void Screen_Blit(void)
 	pFrameBuffer->pNEXTScreen = pTmpScreen;
 }
 
+
 /*-----------------------------------------------------------------------*/
 /**
  */
-#if ENABLE_FAST_UPDATE
-static bool Screen_DrawFrame(bool bForceFlip) {
-    do_SDL_UpdateRects = false;
-    
-    if(bInFullScreen)
-        SDL_RenderClear(sdlRenderer);
-    
-    // draw the NeXT framebuffer
-    ConvertHighRes_640x8Bit();
-    
-    // draw statusbar or overlay led(s)
-    SDL_Rect statusBar;
-    statusBar.x            = 0;
-    statusBar.w            = sdlscrn->w;
-    statusBar.h            = Statusbar_GetHeight();
-    statusBar.y            = sdlscrn->h - statusBar.h;
-    Uint8* statusBarPixels = &((Uint8*)sdlscrn->pixels)[statusBar.y*sdlscrn->pitch];
-    Statusbar_OverlayBackup(sdlscrn);
-    Statusbar_Update(sdlscrn);
-    SDL_UpdateTexture(sdlTexture, &statusBar, statusBarPixels, sdlscrn->pitch);
-    
-    // Copy texture to screen
-    SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
-    SDL_RenderPresent(sdlRenderer);
-    
-    do_SDL_UpdateRects  = true;
-    grabNeXTframebuffer = true;
-    
-    return bScreenContentsChanged;
-}
-#else
 static bool Screen_DrawFrame(bool bForceFlip)
 {
-    void (*pDrawFunction)(void);
-    
-    /* Lock screen ready for drawing */
-    if (Screen_Lock())
-    {
-        
-        pDrawFunction = ScreenDrawFunctionsNormal[ST_HIGH_RES];
-        
-        if (pDrawFunction)
-            CALL_VAR(pDrawFunction);
-        
-        /* Unlock screen */
-        Screen_UnLock();
-        
-        /* draw statusbar or overlay led(s) after unlock */
-        Statusbar_OverlayBackup(sdlscrn);
-        Statusbar_Update(sdlscrn);
-        
-        Screen_Blit();
-        
-        return bScreenContentsChanged;
-    }
-    
-    return false;
+	void (*pDrawFunction)(void);
+	
+	/* Lock screen ready for drawing */
+	if (Screen_Lock())
+	{
+		
+		pDrawFunction = ScreenDrawFunctionsNormal[ST_HIGH_RES];
+
+		if (pDrawFunction)
+			CALL_VAR(pDrawFunction);
+
+		/* Unlock screen */
+		Screen_UnLock();
+
+		/* draw statusbar or overlay led(s) after unlock */
+		Statusbar_OverlayBackup(sdlscrn);
+		Statusbar_Update(sdlscrn);
+
+		Screen_Blit();
+
+		return bScreenContentsChanged;
+	}
+
+	return false;
 }
-#endif
 
-/*
-//(SC) Use this code for Screen_DrawFrame relative time measurments
-#include <x86intrin.h>
 
-static Uint64 elapsed = 0;
-static Uint64 total   = 0;
-static Uint64 count   = 0;
-static Uint64 min     = 100000;
-static Uint64 max     = 0;
-*/
- 
 /*-----------------------------------------------------------------------*/
 /**
  * Draw ST screen to window/full-screen
@@ -711,28 +630,8 @@ bool Screen_Draw(void)
 {
 	if (!bQuitProgram)
 	{
-        /*
-         // (SC) Screen_DrawFrame time measurment
-         Uint64 before = __rdtsc();
-        */
-        
 		/* And draw (if screen contents changed) */
 		Screen_DrawFrame(false);
-        
-        /*
-         //(SC) Screen_DrawFrame time measurment
-        elapsed += __rdtsc() - before;
-
-        elapsed /= 1000000;
-        total += elapsed;
-        if(elapsed < min) min = elapsed;
-        if(elapsed > max) max = elapsed;
-        count++;
-        
-        if((count % 10) == 0)
-            Log_Printf(LOG_WARN, "Screen_DrawFrame: %lld min=%lld avg=%lld max=%lld", elapsed, min, total / count, max);
-        */
-        
 		return true;
 	}
 
@@ -764,8 +663,6 @@ static void Convert_StartFrame(void)
 #include "convert/macros.h"
 
 /* Conversion routines */
-#if ENABLE_FAST_UPDATE
-#include "convert/next.c"    /* HighRes To 640xH x 8-bit color */
-#else
+
 #include "convert/high640x8.c"    /* HighRes To 640xH x 8-bit color */
-#endif
+
