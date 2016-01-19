@@ -14,10 +14,6 @@ extern "C" {
     extern const int VIDEO_VBL_MS;
     extern const int BLANK_MS;
 
-    extern SDL_Texture*  ndTexture;
-    extern SDL_Renderer* ndRenderer;
-
-
     typedef SDL_SpinLock       lock_t;
     typedef SDL_Thread         thread_t;
     typedef SDL_ThreadFunction thread_func_t;

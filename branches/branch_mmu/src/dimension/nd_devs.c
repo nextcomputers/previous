@@ -105,19 +105,15 @@ static struct {
     uae_u32 iic_data;
 } nd_dp;
 
-/* nd_display_vbl is called from SDL. See nd_sdl.c */
-Uint32 nd_display_vbl(Uint32 interval, void *param) {
-    Uint32 csr0 = nd_mc.csr0;
-    if(csr0 & CSR0_VBLANK) {
-        csr0 &= ~CSR0_VBLANK;
-        interval = DISPLAY_VBL_MS-BLANK_MS;
-    } else {
-        csr0 |= CSR0_VBL_INT | CSR0_VBLANK;
-        i860_tick((nd_mc.csr0 & CSR0_VBL_IMASK) != 0);
-        interval = BLANK_MS;
-    }
-    nd_mc.csr0 = csr0;
-    return interval;
+/* nd_display_blank_start is called from SDL. See nd_sdl.c */
+void nd_display_blank_start() {
+    nd_mc.csr0 |= CSR0_VBL_INT | CSR0_VBLANK;
+    i860_tick((nd_mc.csr0 & CSR0_VBL_IMASK) != 0);
+}
+
+/* nd_display_blank_start is called from SDL. See nd_sdl.c */
+void nd_display_blank_end() {
+    nd_mc.csr0 &= ~CSR0_VBLANK;
 }
 
 /* nd_video_vbl is called from SDL. See nd_sdl.c */
