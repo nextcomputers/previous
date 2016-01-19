@@ -604,12 +604,11 @@ private:
     void   set_fregval_d (int fr, double d);
     void   SET_PSR_CC(int val);
     
-    bool   load_icache(UINT32 pc);
     void   invalidate_icache();
     void   invalidate_tlb();
-    UINT64 ifetch64(UINT32 pc);
-    UINT32 ifetch(UINT32 pc);
-    UINT32 ifetch_notrap(UINT32 pc);
+    UINT64 ifetch64(const UINT32 pc);
+    UINT32 ifetch(const UINT32 pc);
+    UINT32 ifetch_notrap(const UINT32 pc);
     void   handle_trap(UINT32 savepc);
     void   ret_from_trap();
     void   unrecog_opcode (UINT32 pc, UINT32 insn);

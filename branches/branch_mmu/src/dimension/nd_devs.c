@@ -94,6 +94,7 @@ static struct {
     uae_u8  iic_msg[4096];
     uae_u32 iic_msgsz;
     int     iic_busy;
+    uae_u32 doff; // (SC) wild guess - vram offset in pixels?
     uae_u32 csr;
     uae_u32 alpha;
     uae_u32 dma;
@@ -542,6 +543,11 @@ static void nd_dp_iicmsg() {
 
 inline uae_u32 nd_dp_lget(uaecptr addr) {
     switch(addr) {
+        case 0x300: case 0x304: case 0x308: case 0x30C:
+        case 0x310: case 0x314: case 0x318: case 0x31C:
+        case 0x320: case 0x324: case 0x328: case 0x32C:
+        case 0x330: case 0x334: case 0x338: case 0x33C:
+            return nd_dp.doff;
         case 0x340:
             return nd_dp.csr;
         case 0x344:
@@ -572,6 +578,13 @@ inline uae_u32 nd_dp_lget(uaecptr addr) {
 
 inline void nd_dp_lput(uaecptr addr, uae_u32 v) {
     switch(addr) {
+        case 0x300: case 0x304: case 0x308: case 0x30C:
+        case 0x310: case 0x314: case 0x318: case 0x31C:
+        case 0x320: case 0x324: case 0x328: case 0x32C:
+        case 0x330: case 0x334: case 0x338: case 0x33C:
+            ND_vram_off = v * 4;
+            nd_dp.doff  = v;
+            break;
         case 0x340:
             nd_dp.csr = v;
             break;

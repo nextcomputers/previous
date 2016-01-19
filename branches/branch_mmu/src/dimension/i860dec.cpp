@@ -57,12 +57,8 @@
     UINT32 insn = ifetch(orig_pc+4);\
     decode_exec(insn); \
     if((m_dim == DIM_FULL) || (m_flow & DIM_OP)) {\
-        if((insn & INSN_MASK_DIM) == INSN_FP_DIM || insn == INSN_FNOP_DIM) { \
-            m_pc += 4; \
-            decode_exec(ifetch(orig_pc+8)); \
-        } else {\
-            debugger('d',"[i860] Dual mode exit in delay slot orig_pc=%08X", orig_pc);\
-        }\
+        m_pc += 4; \
+        decode_exec(ifetch(orig_pc+8)); \
     } \
     m_pc = orig_pc;}while(0)
 
@@ -106,20 +102,47 @@ void i860_cpu_device::clr_interrupt() {
     SET_EPSR_INT (0);
 }
 
-bool i860_cpu_device::load_icache(UINT32 pc) {
-    UINT32           vaddr = pc & ~7;
-    UINT32           paddr;
-    int              cidx = (vaddr>>3) & I860_ICACHE_MASK;
+void i860_cpu_device::invalidate_icache() {
+    memset(m_icache_vaddr, 0xff, sizeof(UINT32) * (1<<I860_ICACHE_SZ));
+#if ENABLE_PERF_COUNTERS
+    m_icache_inval++;
+#endif
+}
+
+void i860_cpu_device::invalidate_tlb() {
+    memset(m_tlb_vaddr, 0xff, sizeof(UINT32) * (1<<I860_TLB_SZ));
+#if ENABLE_PERF_COUNTERS
+    m_tlb_inval++;
+#endif
+}
+
+UINT32 i860_cpu_device::ifetch_notrap(const UINT32 pc) {
+    UINT32 before     = m_flow;
+    m_flow &= ~TRAP_MASK;
+    UINT32 result  = ifetch(pc);
+    m_flow = before;
+    return result;
+}
+
+UINT32 i860_cpu_device::ifetch(const UINT32 pc) {
+    return pc & 4 ? ifetch64(pc) >> 32 : ifetch64(pc);
+}
+
+UINT64 i860_cpu_device::ifetch64(const UINT32 pc) {
+    const UINT32 vaddr = pc & ~7;
+    const int    cidx = (vaddr>>3) & I860_ICACHE_MASK;
     if(m_icache_vaddr[cidx] != vaddr) {
 #if ENABLE_PERF_COUNTERS
         m_icache_miss++;
 #endif
+        UINT32 paddr;
+        
         if (GET_DIRBASE_ATE ()) {
             paddr = get_address_translation (pc, 0  /* is_dataref */, 0 /* is_write */) & ~7;
             m_flow &= ~EXITING_IFETCH;
             if (PENDING_TRAP() && (GET_PSR_DAT () || GET_PSR_IAT ())) {
                 m_flow |= EXITING_IFETCH;
-                return false;
+                return 0xffeeffeeffeeffeeLL;
             }
         } else
             paddr = vaddr;
@@ -139,43 +162,14 @@ bool i860_cpu_device::load_icache(UINT32 pc) {
             nd_board_rd64_be(paddr, (UINT32*)&insn64);
         }
         m_icache[cidx] = insn64;
+        
+        return insn64;
+    } else {
+#if ENABLE_PERF_COUNTERS
+        m_icache_hit++;
+#endif
+        return m_icache[cidx];
     }
-#if ENABLE_PERF_COUNTERS
-    else m_icache_hit++;
-#endif
-    return true;
-}
-
-void i860_cpu_device::invalidate_icache() {
-    memset(m_icache_vaddr, 0xff, sizeof(UINT32) * (1<<I860_ICACHE_SZ));
-#if ENABLE_PERF_COUNTERS
-    m_icache_inval++;
-#endif
-}
-
-void i860_cpu_device::invalidate_tlb() {
-    memset(m_tlb_vaddr, 0xff, sizeof(UINT32) * (1<<I860_TLB_SZ));
-#if ENABLE_PERF_COUNTERS
-    m_tlb_inval++;
-#endif
-}
-
-UINT32 i860_cpu_device::ifetch_notrap(UINT32 pc) {
-    UINT32 before     = m_flow;
-    m_flow &= ~TRAP_MASK;
-    UINT32 result  = ifetch(pc);
-    m_flow = before;
-    return result;
-}
-
-UINT32 i860_cpu_device::ifetch(UINT32 pc) {
-    return pc & 4 ? ifetch64(pc) >> 32 : ifetch64(pc);
-}
-
-UINT64 i860_cpu_device::ifetch64(UINT32 pc) {
-    if(load_icache(pc))
-        return m_icache[(pc >> 3) & I860_ICACHE_MASK];
-    return 0xffeeffeeffeeffeeLL;
 }
 
 /* Given a virtual address, perform the i860 address translation and
@@ -3914,28 +3908,22 @@ void i860_cpu_device::decode_exec (UINT32 insn) {
         m_traceback_idx = 0;
 #endif
     
-	int upper_6bits = (insn >> 26) & 0x3f;
-	char flags = 0;
-	int unrecognized = 1;
-
-	flags = decode_tbl[upper_6bits].flags;
+    int unrecognized = 1;
+	const int  upper_6bits = (insn >> 26) & 0x3f;
+	const char flags = decode_tbl[upper_6bits].flags;
 	if (flags & DEC_DECODED) {
 		(this->*decode_tbl[upper_6bits].insn_exec)(insn);
 		unrecognized = 0;
-	}
-	else if (flags & DEC_MORE) {
+	} else if (flags & DEC_MORE) {
 		if (upper_6bits == 0x12) {
 			/* FP instruction format handled here.  */
-			char fp_flags = fp_decode_tbl[insn & 0x7f].flags;
-			if (fp_flags & DEC_DECODED) {
+			if (fp_decode_tbl[insn & 0x7f].flags & DEC_DECODED) {
 				(this->*fp_decode_tbl[insn & 0x7f].insn_exec)(insn);
 				unrecognized = 0;
 			}
-		}
-		else if (upper_6bits == 0x13) {
+		} else if (upper_6bits == 0x13) {
 			/* Core escape instruction format handled here.  */
-			char esc_flags = core_esc_decode_tbl[insn & 0x3].flags;
-			if (esc_flags & DEC_DECODED) {
+			if (core_esc_decode_tbl[insn & 0x3].flags & DEC_DECODED) {
 				(this->*core_esc_decode_tbl[insn & 0x3].insn_exec)(insn);
 				unrecognized = 0;
 			}

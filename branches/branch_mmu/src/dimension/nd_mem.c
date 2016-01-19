@@ -34,9 +34,10 @@ uae_u32 ND_RAM_bankmask1;
 uae_u32 ND_RAM_bankmask2;
 uae_u32 ND_RAM_bankmask3;
 
-Uint8 ND_ram[64*1024*1024];
-Uint8 ND_vram[4*1024*1024];
-Uint8 ND_rom[128*1024];
+Uint8  ND_ram[64*1024*1024];
+Uint32 ND_vram_off;
+Uint8  ND_vram[4*1024*1024];
+Uint8  ND_rom[128*1024];
 
 Uint8 ND_dmem[512];
 
@@ -566,7 +567,8 @@ void nd_memory_init(void) {
     
     write_log("[ND] Mapping video memory at $%08x: %iMB\n", ND_VRAM_START, ND_VRAM_SIZE/(1024*1024));
     nd_map_banks(&nd_vram_bank, ND_VRAM_START>>16, (4*ND_VRAM_SIZE)>>16);
-	
+    ND_vram_off = 0;
+    
 	write_log("[ND] Mapping ROM at $%08x: %ikB\n", ND_EEPROM_START, ND_EEPROM_SIZE/1024);
 	nd_map_banks(&nd_rom_bank, ND_EEPROM_START>>16, ND_EEPROM_SIZE>>16);
     nd_map_banks(&nd_rom_access_bank, ND_EEPROM2_STRT>>16, ND_EEPROM2_SIZE>>16);
@@ -580,17 +582,6 @@ void nd_memory_init(void) {
     
     write_log("[ND] Mapping RAMDAC registers at $%08x\n", ND_RAMDAC_START);
     nd_map_banks(&nd_ramdac_bank, ND_RAMDAC_START>>16, 1);
-    
-#if 0
-	/* While we have no real ROM */
-	ND_rom[0x1FFE0] = 0xA5; /* ROM signature */
-	ND_rom[0x1FFD8] = 0x04; /* Byte lane ID */
-	
-	ND_rom[0x1FFB8] = 0x0F;
-	ND_rom[0x1FFC0] = 0xFF;
-	ND_rom[0x1FFC8] = 0xFF;
-	ND_rom[0x1FFD0] = 0x00;
-#endif
 }
 
 #endif
