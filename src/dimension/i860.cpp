@@ -49,10 +49,15 @@ extern "C" {
         nd_i860.m_m68k_cylces += nHostCycles;
 #endif
 #if ENABLE_I860_THREAD
+        if(nd_speed_hack) {
+            // while spped-hack is on, slow down m68k a bit
+            for(int i = 10; --i >= 0;)
+                checklock(&nd_i860.m_debugger_lock);
+        }
         if(checklock_cnt <= 0) {
             checklock(&nd_i860.m_debugger_lock);
-            // optimzation: check the debugger lock only all 1000 cycles
-            checklock_cnt = 1000;
+            // optimzation: check the debugger lock only all 10000 cycles
+            checklock_cnt = 10000;
         }
         else
             checklock_cnt -= nHostCycles;
@@ -234,10 +239,10 @@ void i860_cpu_device::ret_from_trap() {
 }
 
 void i860_cpu_device::run_cycle() {
-    m_dim_cc_valid = false;
     CLEAR_FLOW();
-    m_flow &= ~DIM_OP;
-    UINT64 insn64   = ifetch64(m_pc);
+    m_dim_cc_valid = false;
+    m_flow        &= ~DIM_OP;
+    UINT64 insn64  = ifetch64(m_pc);
     
     if(!(m_pc & 4)) {
         UINT32 savepc  = m_pc;

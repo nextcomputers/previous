@@ -23,9 +23,10 @@ void   nd_board_wput(Uint32 addr, Uint16 w);
 void   nd_board_bput(Uint32 addr, Uint8 b);
 Uint8  nd_board_cs8get(Uint32 addr);
 
-extern Uint8 ND_ram[64*1024*1024];
-extern Uint8 ND_rom[128*1024];
-extern Uint8 ND_vram[4*1024*1024];
+extern Uint8  ND_ram[64*1024*1024];
+extern Uint8  ND_rom[128*1024];
+extern Uint32 ND_vram_off;
+extern Uint8  ND_vram[4*1024*1024];
 
 void dimension_init(void);
 void dimension_uninit(void);
