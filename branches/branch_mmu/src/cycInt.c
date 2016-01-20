@@ -63,6 +63,7 @@ const char CycInt_fileid[] = "Hatari cycInt.c : " __DATE__ " " __TIME__;
 #include "floppy.h"
 #include "snd.h"
 #include "printer.h"
+#include "kms.h"
 
 
 void (*PendingInterruptFunction)(void);
@@ -77,6 +78,7 @@ static void (* const pIntHandlerFunctions[MAX_INTERRUPTS])(void) =
 	NULL,
 	Video_InterruptHandler_VBL,
 	Hardclock_InterruptHandler,
+    Mouse_Handler,
     ESP_InterruptHandler,
     ESP_IO_Handler,
     M2RDMA_InterruptHandler,
