@@ -497,6 +497,12 @@ static void SDLGui_EditField(SGOBJ *dlg, int objnum)
 			{
 				switch (event.type)
 				{
+                case SDL_WINDOWEVENT:
+                        if(event.window.event == SDL_WINDOWEVENT_CLOSE) {
+                            bQuitProgram = true;
+                            bStopEditing = true;
+                        }
+                    break;
 				 case SDL_QUIT:                     /* User wants to quit */
 					bQuitProgram = true;
 					bStopEditing = true;

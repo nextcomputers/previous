@@ -85,6 +85,7 @@ struct {
     uae_u32 vram;
     uae_u32 dram;
 } nd_mc;
+static lock_t nd_mc_lock;
 
 #define DP_IIC_MORE 0x20000000
 #define DP_IIC_BUSY 0x80000000
@@ -108,27 +109,35 @@ static struct {
 
 /* nd_display_blank_start is called from SDL. See nd_sdl.c */
 void nd_display_blank_start() {
-    nd_mc.csr0 |= CSR0_VBL_INT | CSR0_VBLANK;
-    i860_tick((nd_mc.csr0 & CSR0_VBL_IMASK) != 0);
+    lock(&nd_mc_lock);
+    Uint32 csr0 = nd_mc.csr0;
+    csr0 |= CSR0_VBL_INT | CSR0_VBLANK;
+    nd_mc.csr0 = csr0;
+    unlock(&nd_mc_lock);
+    i860_tick((csr0 & CSR0_VBL_IMASK) != 0);
 }
 
 /* nd_display_blank_start is called from SDL. See nd_sdl.c */
 void nd_display_blank_end() {
+    lock(&nd_mc_lock);
     nd_mc.csr0 &= ~CSR0_VBLANK;
+    unlock(&nd_mc_lock);
 }
 
 /* nd_video_vbl is called from SDL. See nd_sdl.c */
 Uint32 nd_video_vbl(Uint32 interval, void *param) {
+    lock(&nd_mc_lock);
     Uint32 csr0 = nd_mc.csr0;
     if(csr0 & CSR0_VIOBLANK) {
         csr0 &= ~CSR0_VIOBLANK;
         interval = VIDEO_VBL_MS-BLANK_MS;
     } else {
-        nd_mc.csr0 |= CSR0_VIOVBL_INT | CSR0_VIOBLANK;
-        i860_tick((nd_mc.csr0 & CSR0_VIOVBL_IMASK) != 0);
+        csr0 |= CSR0_VIOVBL_INT | CSR0_VIOBLANK;
         interval = BLANK_MS;
     }
     nd_mc.csr0 = csr0;
+    unlock(&nd_mc_lock);
+    i860_tick((csr0 & CSR0_VIOVBL_IMASK) != 0);
     return interval;
 }
 
@@ -339,6 +348,7 @@ static const char* MC_WR_FORMAT   = "[ND] Memory controller %s write %08X at %08
 static const char* MC_WR_FORMAT_S = "[ND] Memory controller %s write (%s) at %08X";
 
 void nd_mc_write_register(uaecptr addr, uae_u32 val) {
+    lock(&nd_mc_lock);
     switch (addr&0x3FFF) {
         case 0x0000:
             Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT_S,"csr0", decodeBits(ND_CSR0_BITS, val), addr);
@@ -448,6 +458,7 @@ void nd_mc_write_register(uaecptr addr, uae_u32 val) {
             Log_Printf(LOG_WARN, "[ND] Memory controller UNKNOWN write at %08X",addr);
             break;
 	}
+    unlock(&nd_mc_lock);
 }
 
 /* NeXTdimension device space */
