@@ -16,9 +16,10 @@ const char DlgMain_fileid[] = "Hatari dlgMain.c : " __DATE__ " " __TIME__;
 #include "dimension.h"
 
 
-#define MAINDLG_ABOUT    2
-#define MAINDLG_SYSTEM   3
-#define MAINDLG_ROM      4
+#define MAINDLG_ABOUT    0
+#define MAINDLG_SYSTEM   2
+#define MAINDLG_ROM      3
+#define MAINDLG_GRAPH    4
 #define MAINDLG_ENET     5
 #define MAINDLG_BOOT     6
 #define MAINDLG_SCSI     7
@@ -42,13 +43,13 @@ static SGOBJ maindlg[] =
 {
 	{ SGBOX, 0, 0, 0,0, 50,19, NULL },
 	{ SGTEXT, 0, 0, 15,1, 20,1, "Previous - Main menu" },
+	{ SGBUTTON, 0, 0, 2,4, 13,1, "System" },
+	{ SGBUTTON, 0, 0, 2,6, 13,1, "ROM" },
 #if ENABLE_DIMENSION
-	{ SGBUTTON, 0, 0, 2,4, 13,1, "Graphics" },
+	{ SGBUTTON, 0, 0, 2,8, 13,1, "Graphics" },
 #else
-	{ SGBUTTON, 0, 0, 2,4, 13,1, "About" },
+	{ SGBUTTON, 0, 0, 2,8, 13,1, " " },
 #endif
-	{ SGBUTTON, 0, 0, 2,6, 13,1, "System" },
-	{ SGBUTTON, 0, 0, 2,8, 13,1, "ROM" },
 	{ SGBUTTON, 0, 0, 2,10, 13,1, "Ethernet" },
 	{ SGBUTTON, 0, 0, 17,4, 16,1, "Boot options" },
 	{ SGBUTTON, 0, 0, 17,6, 16,1, "SCSI disks" },
@@ -104,10 +105,11 @@ int Dialog_MainDlg(bool *bReset, bool *bLoadedSnapshot)
 		switch (retbut)
 		{
 		 case MAINDLG_ABOUT:
+			Dialog_AboutDlg();
+			break;
+		 case MAINDLG_GRAPH:
 #if ENABLE_DIMENSION
 			Dialog_DimensionDlg();
-#else
-			Dialog_AboutDlg();
 #endif
 			break;
 		 case MAINDLG_ENET:
