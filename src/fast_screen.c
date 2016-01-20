@@ -31,21 +31,24 @@ const char Screen_fileid[] = "Previous fast_screen.c : " __DATE__ " " __TIME__;
 #include "statusbar.h"
 #include "video.h"
 
-/* extern for several purposes */
-SDL_Thread*  repaintThread;
-SDL_sem*     initLatch;
 SDL_Window*  sdlWindow;
 SDL_Surface* sdlscrn = NULL;   /* The SDL screen surface */
 int nScreenZoomX, nScreenZoomY;/* Zooming factors, used for scaling mouse motions */
-SDL_atomic_t blitUI;           /* When value = 1, the repaint thread will blit the sldscrn surface to the screen on the next redraw */
-SDL_Rect     saveWindowBounds; /* Window bounds before going fullscreen. Used to restore window size & position. */
 
 /* extern for shortcuts and falcon/hostscreen.c */
 volatile bool bGrabMouse    = false;      /* Grab the mouse cursor in the window */
 volatile bool bInFullScreen = false;   /* true if in full screen */
 
-/* (SC) True for bulk rendering during Screen_DrawFrame() */
-static volatile bool doRepaint  = true;
+static SDL_Thread*   repaintThread;
+static SDL_sem*      initLatch;
+static SDL_atomic_t  blitUI;           /* When value = 1, the repaint thread will blit the sldscrn surface to the screen on the next redraw */
+static SDL_atomic_t  blitStatusBar;    /* When value = 1, the repaint thread will blit the sldscrn status bar on the next redraw */
+static bool          doUIblit;
+static SDL_Rect      saveWindowBounds; /* Window bounds before going fullscreen. Used to restore window size & position. */
+static void*         uiBuffer;         /* uiBuffer used for ui texture */
+static SDL_SpinLock  uiBufferLock;     /* Lock for concurrent access to UI buffer between main thread and repainter */
+static Uint32        mask;             /* green screen mask for transparent UI areas */
+static volatile bool doRepaint  = true; /* Repaint thread runs while true */
 
 static Uint32 BW2RGB[0x400];
 static Uint32 COL2RGB[0x10000];
@@ -194,33 +197,25 @@ static void blitScreen(SDL_Texture* tex) {
  shows it.
  */
 static int repainter(void* unused) {
-    /*
-    //(SC) Use this code for Screen_DrawFrame relative time measurments
-    double elapsed = 0;
-    double total   = 0;
-    Uint64 count   = 0;
-    double min     = 100000;
-    double max     = 0;
-*/
-    int Width;
-    int Height;
+    int width;
+    int height;
 
-    SDL_GetWindowSize(sdlWindow, &Width, &Height);
+    SDL_GetWindowSize(sdlWindow, &width, &height);
     
     SDL_Renderer* sdlRenderer;
     SDL_Texture*  uiTexture;
     SDL_Texture*  fbTexture;
+    SDL_Rect      statusBar = {0,832,width,height-832};
     
     Uint32 r, g, b, a;
-    Uint32 mask;
     
     sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    SDL_RenderSetLogicalSize(sdlRenderer, Width, Height);
-    
-    uiTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, Width, Height);
+    SDL_RenderSetLogicalSize(sdlRenderer, width, height);
+
+    uiTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, width, height);
     SDL_SetTextureBlendMode(uiTexture, SDL_BLENDMODE_BLEND);
     
-    fbTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, Width, Height);
+    fbTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, width, height);
     SDL_SetTextureBlendMode(fbTexture, SDL_BLENDMODE_NONE);
     
     Uint32 format;
@@ -228,7 +223,8 @@ static int repainter(void* unused) {
     SDL_QueryTexture(uiTexture, &format, &d, &d, &d);
     SDL_PixelFormatEnumToMasks(format, &d, &r, &g, &b, &a);
     mask = g | a;
-    sdlscrn = SDL_CreateRGBSurface(SDL_SWSURFACE, Width, Height, 32, r, g, b, a);
+    sdlscrn  = SDL_CreateRGBSurface(SDL_SWSURFACE, width, height, 32, r, g, b, a);
+    uiBuffer = malloc(sdlscrn->h * sdlscrn->pitch);
     // clear UI with mask
     SDL_FillRect(sdlscrn, NULL, mask);
     
@@ -241,7 +237,7 @@ static int repainter(void* unused) {
     
     if (!bInFullScreen) {
         /* re-embed the new SDL window */
-        Control_ReparentWindow(Width, Height, bInFullScreen);
+        Control_ReparentWindow(width, height, bInFullScreen);
     }
     
     Statusbar_Init(sdlscrn);
@@ -272,50 +268,27 @@ static int repainter(void* unused) {
     
     /* Enter repaint loop */
     while(doRepaint) {
-        /*
-        // (SC) Screen_DrawFrame time measurment
-        Uint64 before = SDL_GetPerformanceCounter();
-        */
-        
         SDL_RenderClear(sdlRenderer);
         
-        // draw the NeXT framebuffer
+        // Blit the NeXT framebuffer to textrue
         blitScreen(fbTexture);
-        
-        // draw statusbar or overlay led(s)
-        Statusbar_OverlayBackup(sdlscrn);
-        Statusbar_Update(sdlscrn);
-        
-        // Render NeXT framebuffer
+        // Render NeXT framebuffer texture
         SDL_RenderCopy(sdlRenderer, fbTexture, NULL, NULL);
-        // Copy UI to screen
+        
+        // Copy UI surface to texture
         if(SDL_AtomicSet(&blitUI, 0)) {
-            // poor man's green-screen - would be nice if SDL had more blending modes...
-            int     count = Width*Height;
-            void*   tmp   = malloc(count*4);
-            Uint32* dst   = (Uint32*)tmp;
-            Uint32* src   = (Uint32*)sdlscrn->pixels;
-            for(int i = Width*Height; --i >= 0; src++)
-                *dst++ = *src == mask ? 0 : *src;
-            // update UI texture and render it
-            SDL_UpdateTexture(uiTexture, NULL, tmp, sdlscrn->pitch);
-            SDL_RenderCopy(sdlRenderer, uiTexture, NULL, NULL);
-            free(tmp);
+            // update UI texture
+            SDL_AtomicLock(&uiBufferLock);
+            SDL_UpdateTexture(uiTexture, NULL, uiBuffer, sdlscrn->pitch);
+            SDL_AtomicUnlock(&uiBufferLock);
+        } else if(SDL_AtomicSet(&blitStatusBar, 0)) {
+            SDL_LockSurface(sdlscrn);
+            SDL_UpdateTexture(uiTexture, &statusBar, &((Uint8*)sdlscrn->pixels)[statusBar.y*sdlscrn->pitch], sdlscrn->pitch);
+            SDL_UnlockSurface(sdlscrn);
         }
+        // Render UI texture
+        SDL_RenderCopy(sdlRenderer, uiTexture, NULL, NULL);
         
-        /*
-        elapsed += SDL_GetPerformanceCounter() - before;
-        
-        elapsed /= (SDL_GetPerformanceFrequency() / 1000.0);
-        total += elapsed;
-        if(elapsed < min) min = elapsed;
-        if(elapsed > max) max = elapsed;
-        count++;
-        
-        if((count % 10) == 0)
-            Log_Printf(LOG_WARN, "Screen_DrawFrame (ms): %g min=%g avg=%g max=%g", elapsed, min, total / count, max);
-        */
-         
         // SDL_RenderPresent sleeps until next VSYNC because of SDL_RENDERER_PRESENTVSYNC in ScreenInit
         SDL_RenderPresent(sdlRenderer);
     }
@@ -324,7 +297,7 @@ static int repainter(void* unused) {
 
 /*-----------------------------------------------------------------------*/
 /**
- * Init Screen bitmap and buffers/tables needed for ST to PC screen conversion
+ * Init Screen, creates window and starts repatin thread
  */
 void Screen_Init(void) {
     /* Set initial window resolution */
@@ -332,38 +305,38 @@ void Screen_Init(void) {
     nScreenZoomX  = 1;
     nScreenZoomY  = 1;
 
-    int Width  = 1120;
-    int Height = 832;
-    int SBarHeight, BitCount, maxW, maxH;
+    int width  = 1120;
+    int height = 832;
+    int sBarHeight, bitCount, maxW, maxH;
     
     /* Statusbar height for doubled screen size */
-    SBarHeight = Statusbar_GetHeightForSize(1120, 832);
-    Resolution_GetLimits(&maxW, &maxH, &BitCount);
-    Height += Statusbar_SetHeight(Width, Height);
+    sBarHeight = Statusbar_GetHeightForSize(1120, 832);
+    Resolution_GetLimits(&maxW, &maxH, &bitCount);
+    height += Statusbar_SetHeight(width, height);
     
     if (bInFullScreen) {
         /* unhide the WM window for fullscreen */
-        Control_ReparentWindow(Width, Height, bInFullScreen);
+        Control_ReparentWindow(width, height, bInFullScreen);
     }
     
     /* Set new video mode */
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
     
-    fprintf(stderr, "SDL screen request: %d x %d @ %d (%s)\n", Width, Height, BitCount, bInFullScreen ? "fullscreen" : "windowed");
+    fprintf(stderr, "SDL screen request: %d x %d @ %d (%s)\n", width, height, bitCount, bInFullScreen ? "fullscreen" : "windowed");
     
     int x = SDL_WINDOWPOS_UNDEFINED;
     if(ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_DUAL) {
         for(int i = 0; i < SDL_GetNumVideoDisplays(); i++) {
             SDL_Rect r;
             SDL_GetDisplayBounds(i, &r);
-            if(r.w >= Width * 2) {
-                x = r.x + Width + ((r.w - Width * 2) / 2);
+            if(r.w >= width * 2) {
+                x = r.x + width + ((r.w - width * 2) / 2);
                 break;
             }
             if(r.x >= 0 && SDL_GetNumVideoDisplays() == 1) x = r.x + 8;
         }
     }
-    sdlWindow  = SDL_CreateWindow(PROG_NAME, x, SDL_WINDOWPOS_UNDEFINED, Width, Height, 0);
+    sdlWindow  = SDL_CreateWindow(PROG_NAME, x, SDL_WINDOWPOS_UNDEFINED, width, height, 0);
     if (!sdlWindow) {
         fprintf(stderr,"Failed to create window: %s!\n", SDL_GetError());
         exit(-1);
@@ -466,15 +439,46 @@ void Screen_ModeChanged(void) {
  * Draw screen to window/full-screen - (SC) empty. Screen re-draw is done in repaint thread.
  */
 bool Screen_Draw(void) {
+    
+    Statusbar_OverlayBackup(sdlscrn);
+    Statusbar_Update(sdlscrn);
+
     return !bQuitProgram;
 }
 
-void SDL_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects) {
+static void uiUpdate() {
+    SDL_LockSurface(sdlscrn);
+    int     count = sdlscrn->w * sdlscrn->h;
+    Uint32* dst   = (Uint32*)uiBuffer;
+    Uint32* src   = (Uint32*)sdlscrn->pixels;
+    SDL_AtomicLock(&uiBufferLock);
+    // poor man's green-screen - would be nice if SDL had more blending modes...
+    for(int i = count; --i >= 0; src++)
+        *dst++ = *src == mask ? 0 : *src;
+    SDL_AtomicUnlock(&uiBufferLock);
+    SDL_UnlockSurface(sdlscrn);
     SDL_AtomicSet(&blitUI, 1);
 }
 
+void SDL_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects) {
+    while(numrects--) {
+        if(rects->y < 832) {
+            uiUpdate();
+            doUIblit = true;
+        } else {
+            if(doUIblit) {
+                uiUpdate();
+                doUIblit = false;
+            } else {
+                SDL_AtomicSet(&blitStatusBar, 1);
+            }
+        }
+    }
+}
+
 void SDL_UpdateRect(SDL_Surface *screen, Sint32 x, Sint32 y, Sint32 w, Sint32 h) {
-    SDL_AtomicSet(&blitUI, 1);
+    SDL_Rect rect = { x, y, w, h };
+    SDL_UpdateRects(screen, 1, &rect);
 }
 
 /*-----------------------------------------------------------------------*/

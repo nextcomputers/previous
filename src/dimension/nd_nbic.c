@@ -20,8 +20,8 @@ volatile
 struct {
     Uint32 control;
     Uint32 id;
-    Uint8 intstatus;
-    Uint8 intmask;
+    Uint8  intstatus;
+    Uint8  intmask;
 } nd_nbic;
 
 
@@ -239,6 +239,8 @@ void nd_nbic_set_intstatus(bool set) {
 void nd_nbic_init(void) {
     nd_nbic.id = ND_NBIC_ID;
     /* Release any interrupt that may be pending */
+    nd_nbic.intmask   = 0;
+    nd_nbic.intstatus = 0;
     set_interrupt(INT_REMOTE, RELEASE_INT);
 }
 

@@ -7,7 +7,7 @@
 /* Because of SDL time (in)accuracy, timing is very approximative */
 const int DISPLAY_VBL_MS = 1000 / 68; // main display at 68Hz, actually this is 71.42 Hz because (int)1000/(int)68Hz=14ms
 const int VIDEO_VBL_MS   = 1000 / 60; // NTSC display at 60Hz, actually this is 62.5 Hz because (int)1000/(int)60Hz=16ms
-const int BLANK_MS       = 10;        // Give some blank time for both
+const int BLANK_MS       = 2;         // Give some blank time for both
 
 extern Uint32      nd_display_blank_start();
 extern Uint32      nd_display_blank_end();
@@ -29,7 +29,7 @@ static int repainter(void* unused) {
         fprintf(stderr,"[ND] Failed to create renderer!\n");
         exit(-1);
     }
-    SDL_Rect r; r.x = 0; r.y = 0; r.w = 1120; r.h = 832;
+    SDL_Rect r = {0,0,1120,832};
     SDL_RenderSetLogicalSize(ndRenderer, r.w, r.h);
     ndTexture = SDL_CreateTexture(ndRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, r.w, r.h);
     
@@ -38,14 +38,14 @@ static int repainter(void* unused) {
             blitDimension(ndTexture);
             SDL_RenderCopy(ndRenderer, ndTexture, NULL, NULL);
             SDL_RenderPresent(ndRenderer);
+        } else {
+            SDL_Delay(VIDEO_VBL_MS - BLANK_MS);
         }
-        // if this is a cube, then do ND blank emulation. Otherweise just sleep a bit.
+        // if this is a cube, then do ND blank emulation.
         if(ConfigureParams.System.nMachineType == NEXT_CUBE030 || ConfigureParams.System.nMachineType == NEXT_CUBE040) {
             nd_display_blank_start();
             SDL_Delay(BLANK_MS);
             nd_display_blank_end();
-        } else {
-            SDL_Delay(BLANK_MS);
         }
     }
 

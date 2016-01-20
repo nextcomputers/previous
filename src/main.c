@@ -454,7 +454,10 @@ void Main_EventHandler(void)
 		}
 		switch (event.type)
 		{
-
+         case SDL_WINDOWEVENT:
+                if(event.window.event == SDL_WINDOWEVENT_CLOSE)
+                    Main_RequestQuit();
+                break;
 		 case SDL_QUIT:
 			Main_RequestQuit();
 			break;
