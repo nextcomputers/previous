@@ -18,3 +18,5 @@ void kms_mouse_move(int x, bool left, int y, bool up);
 void kms_mouse_button(bool left, bool down);
 
 void kms_response(void);
+
+void Mouse_Handler(void);

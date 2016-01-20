@@ -18,6 +18,7 @@
 #include "dma.h"
 #include "rtcnvram.h"
 #include "snd.h"
+#include "video.h"
 
 #define LOG_KMS_LEVEL LOG_WARN
 #define IO_SEG_MASK	0x1FFFF
@@ -382,7 +383,7 @@ bool m_move_up = false;
 Uint8 m_move_x = 0;
 Uint8 m_move_y = 0;
 
-#define MOUSE_STEP_MAX	7
+Uint8 m_move_steps = 0;
 void kms_mouse_move_step(void);
 
 
@@ -391,10 +392,6 @@ void KMS_KM_Data_Read(void) {
     
     kms.status.km &= ~(KBD_RECEIVED|KBD_INT);
     set_interrupt(INT_KEYMOUSE, RELEASE_INT);
-    
-    if (m_move_x || m_move_y) {
-        kms_mouse_move_step();
-    }
 }
 
 void kms_interrupt(void) {
@@ -484,10 +481,10 @@ void kms_mouse_move(int x, bool left, int y, bool up) {
         abort();
     }
     
-    if (x>0x3F)
-        x=0x3F;
-    if (y>0x3F)
-        y=0x3F;
+    if (x>0x40)
+        x=0x40;
+    if (y>0x40)
+        y=0x40;
     
     m_move_left = left;
     m_move_up = up;
@@ -495,7 +492,9 @@ void kms_mouse_move(int x, bool left, int y, bool up) {
     m_move_x = x;
     m_move_y = y;
     
-    kms_mouse_move_step();
+    m_move_steps = 8;
+    
+    CycInt_AddRelativeInterrupt(CYCLES_PER_FRAME/10, INT_CPU_CYCLE, INTERRUPT_MOUSE);
 }
 
 void kms_mouse_move_step(void) {
@@ -503,23 +502,15 @@ void kms_mouse_move_step(void) {
     int y = 0;
     
     if (m_move_x>0) {
-        if (m_move_x>MOUSE_STEP_MAX) {
-            x = MOUSE_STEP_MAX;
-            m_move_x-=MOUSE_STEP_MAX;
-        } else {
-            x = m_move_x;
-            m_move_x = 0;
-        }
+        x = m_move_x/m_move_steps;
+        m_move_x -= x;
     }
     if (m_move_y>0) {
-        if (m_move_y>MOUSE_STEP_MAX) {
-            y = MOUSE_STEP_MAX;
-            m_move_y-=MOUSE_STEP_MAX;
-        } else {
-            y = m_move_y;
-            m_move_y = 0;
-        }
+        y = m_move_y/m_move_steps;
+        m_move_y -= y;
     }
+    
+    m_move_steps--;
     
     if (!m_move_left && x>0)  /* right */
         x=(0x40-x)|0x40;
@@ -545,4 +536,14 @@ void kms_response(void) {
     kms.km_data |= (NO_RESPONSE_ERR|DEVICE_INVALID); /* checked on real hardware */
     
     kms_interrupt();
+}
+
+void Mouse_Handler(void) {
+    CycInt_AcknowledgeInterrupt();
+    
+    if (m_move_steps>0 && (m_move_x>0 || m_move_y>0)) {
+        kms_mouse_move_step();
+        
+        CycInt_AddRelativeInterrupt(CYCLES_PER_FRAME/10, INT_CPU_CYCLE, INTERRUPT_MOUSE);
+    }
 }
