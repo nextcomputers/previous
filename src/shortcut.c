@@ -25,8 +25,7 @@ const char ShortCut_fileid[] = "Hatari shortcut.c : " __DATE__ " " __TIME__;
 #include "sdlgui.h"
 #include "video.h"
 #include "snd.h"
-#include "avi_record.h"
-#include "clocks_timings.h"
+#include "statusbar.h"
 
 static SHORTCUTKEYIDX ShortCutKey = SHORTCUT_NONE;  /* current shortcut key */
 
@@ -54,7 +53,6 @@ static void ShortCut_FullScreen(void)
  */
 static void ShortCut_MouseGrab(void)
 {
-
 	bGrabMouse = !bGrabMouse;        /* Toggle flag */
 
 	/* If we are in windowed mode, toggle the mouse cursor mode now: */
@@ -171,16 +169,15 @@ static void ShortCut_Pause(void)
 static void ShortCut_Dimension(void)
 {
 #if ENABLE_DIMENSION
-    enable_dimension_screen = !enable_dimension_screen;        /* Toggle flag */
-    
-    if (enable_dimension_screen)
-    {
-        Main_SetTitle("NeXTdimension - Press ctrl-alt-n to return.");
+    if(ConfigureParams.Screen.nMonitorType != MONITOR_TYPE_DUAL) {
+        if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
+            ConfigureParams.Screen.nMonitorType=MONITOR_TYPE_CPU;
+        } else {
+            ConfigureParams.Screen.nMonitorType=MONITOR_TYPE_DIMENSION;
+        }
     }
-    else
-    {
-        Main_SetTitle(NULL);
-    }
+	Statusbar_UpdateInfo();
+    Screen_SetFullUpdate();
 #endif
 }
 
@@ -239,6 +236,11 @@ void ShortCut_ActKey(void)
 #if 0
 	 case SHORTCUT_DEBUG:
 		ShortCut_Debug();              /* Invoke the Debug UI */
+		break;
+#endif
+#if ENABLE_DIMENSION
+	 case SHORTCUT_DEBUG:
+		nd_start_debugger();              /* Invoke the Debug UI */
 		break;
 #endif
 	 case SHORTCUT_PAUSE:

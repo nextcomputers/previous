@@ -13,6 +13,7 @@
 #include "ioMemTables.h"
 #include "m68000.h"
 #include "configuration.h"
+#include "dimension.h"
 #include "sysReg.h"
 #include "rtcnvram.h"
 
@@ -391,7 +392,7 @@ void my_set_rtc_time(int which,int val) {
 	
 	if (tmp2!=0) {
 		time_offset=tmp-tmp2;
-		Log_Printf(LOG_WARN,"Offset is %d",time_offset);
+		Log_Printf(LOG_WARN,"Offset is %ld",time_offset);
 	}     
 }
 
@@ -843,7 +844,15 @@ void nvram_init(void) {
         case MC68HC68T1: rtc.ram[17] &= ~NEW_CLOCK_CHIP; break;
         default: break;
     }
-    
+#if ENABLE_DIMENSION
+	/* Set prefered console slot */
+	if (ConfigureParams.Dimension.bEnabled) {
+		rtc.ram[17] |= USE_CONSOLE_SLOT;
+		if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
+			rtc.ram[17] |= (ND_SLOT>>1)<<3;
+		}
+    }
+#endif
     /* Re-calculate checksum */
     nvram_checksum(1);
 }

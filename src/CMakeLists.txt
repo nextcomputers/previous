@@ -1,9 +1,9 @@
 set(SOURCES
-	adb.c audio.c bmap.c cfgopts.c clocks_timings.c configuration.c options.c change.c
-	control.c cycInt.c cycles.c dialog.c dma.c esp.c enet_slirp.c ethernet.c
+	adb.c audio.c bmap.c cfgopts.c configuration.c options.c change.c
+	control.c cycInt.c dialog.c dma.c esp.c enet_slirp.c ethernet.c
 	file.c floppy.c ioMem.c ioMemTabNEXT.c ioMemTabTurbo.c memorySnapShot.c 
 	keymap.c kms.c m68000.c main.c mo.c nbic.c nextMemory.c paths.c printer.c queue.c 
-	ramdac.c resolution.c reset.c rs.c rtcnvram.c scandir.c scc.c screen.c 
+	ramdac.c resolution.c reset.c rs.c rtcnvram.c scandir.c scc.c fast_screen.c host.c
 	screenSnapShot.c scsi.c shortcut.c snd.c statusbar.c str.c sysReg.c tmc.c unzip.c 
 	utils.c video.c zip.c)
 
@@ -28,7 +28,7 @@ endif(WIN32)
 
 	set(CPUDIR cpu)
 
-include_directories(${CMAKE_BINARY_DIR} includes debug ${CPUDIR} dsp slirp
+include_directories(${CMAKE_BINARY_DIR} includes debug ${CPUDIR} dsp dimension slirp
 		    ${SDL2_INCLUDE_DIR})
 
 if(ZLIB_FOUND)
@@ -44,12 +44,13 @@ if(X11_FOUND)
 endif(X11_FOUND)
 
 
-link_directories(${CMAKE_CURRENT_BINARY_DIR}/debug ${CMAKE_CURRENT_BINARY_DIR}/gui-sdl ${CMAKE_CURRENT_BINARY_DIR}/${CPUDIR} ${CMAKE_CURRENT_BINARY_DIR}/dsp ${CMAKE_CURRENT_BINARY_DIR}/slirp) 
+link_directories(${CMAKE_CURRENT_BINARY_DIR}/debug ${CMAKE_CURRENT_BINARY_DIR}/gui-sdl ${CMAKE_CURRENT_BINARY_DIR}/${CPUDIR} ${CMAKE_CURRENT_BINARY_DIR}/dsp ${CMAKE_CURRENT_BINARY_DIR}/dimension ${CMAKE_CURRENT_BINARY_DIR}/slirp) 
 
 add_subdirectory(debug)
 add_subdirectory(gui-sdl)
 add_subdirectory(${CPUDIR})
 add_subdirectory(dsp)
+add_subdirectory(dimension)
 add_subdirectory(slirp)
 
 # When building for OSX, add specific sources
@@ -87,7 +88,7 @@ else()
 	add_executable(Previous ${SOURCES})
 endif(ENABLE_OSX_BUNDLE)
 
-target_link_libraries(Previous Debug GuiSdl UaeCpu DSP Slirp ${SDL2_LIBRARY})
+target_link_libraries(Previous Debug GuiSdl UaeCpu DSP Dimension Slirp ${SDL2_LIBRARY})
 
 if(MATH_FOUND AND NOT APPLE)
 	target_link_libraries(Previous ${MATH_LIBRARY})

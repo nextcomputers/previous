@@ -237,10 +237,9 @@ typedef struct {
 
 typedef enum
 {
-  MONITOR_TYPE_MONO,
-  MONITOR_TYPE_RGB,
-  MONITOR_TYPE_VGA,
-  MONITOR_TYPE_TV
+  MONITOR_TYPE_DUAL,
+  MONITOR_TYPE_CPU,
+  MONITOR_TYPE_DIMENSION,
 } MONITORTYPE;
 
 /* Screen configuration */
@@ -331,7 +330,7 @@ typedef struct
 {
   bool bColor;
   bool bTurbo;
-  bool bADB;
+  bool bNBIC;
   SCSICHIP nSCSI;
   RTCCHIP nRTC;
   int nCpuLevel;
@@ -350,6 +349,13 @@ typedef struct
   bool bCompatibleFPU;            /* More compatible FPU */
   bool bMMU;                      /* TRUE if MMU is enabled */
 } CNF_SYSTEM;
+
+typedef struct
+{
+    bool bEnabled;
+    int nMemoryBankSize[4];
+    char szRomFileName[FILENAME_MAX];
+} CNF_ND;
 
 typedef struct
 {
@@ -384,6 +390,7 @@ typedef struct
   CNF_PRINTER Printer;
   CNF_MIDI Midi;
   CNF_SYSTEM System;
+  CNF_ND Dimension;
   CNF_VIDEO Video;
 } CNF_PARAMS;
 
@@ -395,6 +402,8 @@ extern void Configuration_SetDefault(void);
 extern void Configuration_SetSystemDefaults(void);
 extern void Configuration_Apply(bool bReset);
 extern int Configuration_CheckMemory(int *banksize);
+extern int Configuration_CheckDimensionMemory(int *banksize);
+extern void Configuration_CheckDimensionSettings(void);
 extern void Configuration_Load(const char *psFileName);
 extern void Configuration_Save(void);
 extern void Configuration_MemorySnapShot_Capture(bool bSave);

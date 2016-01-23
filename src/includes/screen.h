@@ -69,18 +69,10 @@ enum
   OVERSCANMODE_BOTTOM    /* 0x02 (Top+Bottom) 0x03 */
 };
 
-extern bool bGrabMouse;
-extern bool bInFullScreen;
-extern int nScreenZoomX, nScreenZoomY;
-extern int nBorderPixelsLeft, nBorderPixelsRight;
-extern int NEXTScreenStartHorizLine;
-extern int NEXTScreenLeftSkipBytes;
-extern FRAMEBUFFER *pFrameBuffer;
-extern Uint8 pNEXTScreen[(1120*832)*2];
+extern volatile bool bGrabMouse;
+extern volatile bool bInFullScreen;
 extern struct SDL_Window *sdlWindow;
 extern SDL_Surface *sdlscrn;
-extern Uint32 STRGBPalette[16];
-extern Uint32 ST2RGB[4096];
 
 extern void Screen_Init(void);
 extern void Screen_UnInit(void);

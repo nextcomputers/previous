@@ -40,7 +40,7 @@ const char Statusbar_fileid[] = "Hatari statusbar.c : " __DATE__ " " __TIME__;
 #include "statusbar.h"
 #include "screen.h"
 #include "video.h"
-#include "avi_record.h"
+#include "dimension.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -78,12 +78,20 @@ static bool bOldSystemLed;
 static SDL_Rect DspLedRect;
 static bool bOldDspLed;
 
+#if ENABLE_DIMENSION
+static SDL_Rect NdLedRect;
+static int nOldNdLed;
+#endif
+
 /* led colors */
 static Uint32 LedColorOn, LedColorOff, SysColorOn, SysColorOff, DspColorOn, DspColorOff;
+#if ENABLE_DIMENSION
+static Uint32 NdColorOn, NdColorCS8, NdColorOff;
+#endif
 static Uint32 GrayBg, LedColorBg;
 
 
-#define MAX_MESSAGE_LEN 72 /* changed for Previous, was 50 */
+#define MAX_MESSAGE_LEN 66 /* changed for Previous, was 50 */
 typedef struct msg_item {
 	struct msg_item *next;
 	char msg[MAX_MESSAGE_LEN+1];
@@ -165,8 +173,8 @@ void Statusbar_BlinkLed(drive_index_t drive)
 
 /*-----------------------------------------------------------------------*/
 /**
- * Set system and dsp led state, anything enabling led with this
- * needs also to take care of disabling it.
+ * Set system, dsp and nextdimension led state, anything enabling led with 
+ * this needs also to take care of disabling it.
  */
 void Statusbar_SetSystemLed(bool state)
 {
@@ -178,6 +186,12 @@ void Statusbar_SetDspLed(bool state)
 	bOldDspLed = state;
 }
 
+#if ENABLE_DIMENSION
+void Statusbar_SetNdLed(int state)
+{
+    nOldNdLed = state;
+}
+#endif
 
 /*-----------------------------------------------------------------------*/
 /**
@@ -227,6 +241,11 @@ void Statusbar_Init(SDL_Surface *surf)
 	SysColorOn  = SDL_MapRGB(surf->format, 0xe0, 0x00, 0x00);
 	DspColorOff = SDL_MapRGB(surf->format, 0x00, 0x00, 0x40);
 	DspColorOn  = SDL_MapRGB(surf->format, 0x00, 0x00, 0xe0);
+#if ENABLE_DIMENSION
+    NdColorOff  = SDL_MapRGB(surf->format, 0x00, 0x00, 0x40);
+    NdColorCS8  = SDL_MapRGB(surf->format, 0xe0, 0x00, 0x00);
+    NdColorOn   = SDL_MapRGB(surf->format, 0x00, 0x00, 0xe0);
+#endif
 	GrayBg      = SDL_MapRGB(surf->format, 0xb5, 0xb7, 0xaa);
 
 	/* disable leds */
@@ -320,7 +339,18 @@ void Statusbar_Init(SDL_Surface *surf)
 	for (item = MessageList; item; item = item->next) {
 		item->shown = false;
 	}
-	
+
+#if ENABLE_DIMENSION
+    /* draw i860 led box */
+    NdLedRect = LedRect;
+    NdLedRect.x = surf->w - 15*fontw - NdLedRect.w;
+    ledbox.x = NdLedRect.x - 1;
+    SDLGui_Text(ledbox.x - 3*fontw - fontw/2, MessageRect.y, "ND:");
+    SDL_FillRect(surf, &ledbox, LedColorBg);
+    SDL_FillRect(surf, &NdLedRect, NdColorOff);
+    nOldNdLed = 0;
+#endif
+
 	/* draw dsp led box */
 	DspLedRect = LedRect;
 	DspLedRect.x = surf->w - 8*fontw - DspLedRect.w;
@@ -328,7 +358,7 @@ void Statusbar_Init(SDL_Surface *surf)
 	SDLGui_Text(ledbox.x - 4*fontw - fontw/2, MessageRect.y, "DSP:");
 	SDL_FillRect(surf, &ledbox, LedColorBg);
 	SDL_FillRect(surf, &DspLedRect, DspColorOff);
-	bOldSystemLed = false;
+	bOldDspLed = false;
 
 	/* draw system led box */
 	SystemLedRect = LedRect;
@@ -395,7 +425,23 @@ static char *Statusbar_AddString(char *buffer, const char *more)
 void Statusbar_UpdateInfo(void)
 {
 	char *end = DefaultMessage.msg;
-
+	char memsize[8];
+	
+#if ENABLE_DIMENSION
+	/* Message for NeXTdimension */
+	if (ConfigureParams.Dimension.bEnabled &&
+		ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
+		end = Statusbar_AddString(end, "33MHz/i860XR/");
+		sprintf(memsize, "%iMB/",Configuration_CheckDimensionMemory(ConfigureParams.Dimension.nMemoryBankSize));
+		end = Statusbar_AddString(end, memsize);
+		end = Statusbar_AddString(end, "NeXTdimension");
+		*end = '\0';
+		assert(end - DefaultMessage.msg < MAX_MESSAGE_LEN);
+		DefaultMessage.shown = false;
+		return;
+	}
+#endif
+	
 	/* CPU MHz */
 	if (ConfigureParams.System.nCpuFreq > 9) {
 		*end++ = '0' + ConfigureParams.System.nCpuFreq / 10;
@@ -422,7 +468,6 @@ void Statusbar_UpdateInfo(void)
 	}
 
 	/* amount of memory */
-    char memsize[8];
     sprintf(memsize, "%iMB/", Configuration_CheckMemory(ConfigureParams.Memory.nMemoryBankSize));
     end = Statusbar_AddString(end, memsize);
 
@@ -678,4 +723,17 @@ void Statusbar_Update(SDL_Surface *surf)
     SDL_FillRect(surf, &SystemLedRect, color);
     SDL_UpdateRects(surf, 1, &SystemLedRect);
     DEBUGPRINT(("SCR2 LED = ON\n"));
+    
+#if ENABLE_DIMENSION
+    /* Draw NeXTdimension LED */
+    switch(nOldNdLed) {
+        case 0: color = NdColorOff; break;
+        case 1: color = NdColorCS8;  break;
+        case 2: color = NdColorOn;  break;
+		default: color = NdColorOff; break;
+    }
+    SDL_FillRect(surf, &NdLedRect, color);
+    SDL_UpdateRects(surf, 1, &NdLedRect);
+    DEBUGPRINT(("ND LED = ON\n"));
+#endif
 }

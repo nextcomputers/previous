@@ -2,6 +2,7 @@
 #include "ethernet.h"
 #include "enet_slirp.h"
 #include "queue.h"
+#include "host.h"
 
 #include <SDL.h>
 #ifndef _WIN32
@@ -90,7 +91,7 @@ static int tick_func(void *arg)
 {
     while(slirp_inited)
     {
-        SDL_Delay(10);
+        host_sleep_ms(10);
         slirp_tick();
     }
     return 0;
@@ -144,7 +145,7 @@ void enet_slirp_start(void) {
         slirp_init();
         slirpq = QueueCreate();
         slirp_inited=1;
-        //SDL_Delay(500);
+        //host_sleep_ms(500);
         slirp_mutex=SDL_CreateMutex();
         tick_func_handle=SDL_CreateThread(tick_func,"SLiRPTickThread", (void *)NULL);
         inet_aton("10.0.2.15", &guest_addr);

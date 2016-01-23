@@ -5,13 +5,12 @@
   your option any later version. Read the file gpl.txt for details.
 
 */
-const char Video_fileid[] = "Hatari video.c : " __DATE__ " " __TIME__;
+const char Video_fileid[] = "Previous video.c : " __DATE__ " " __TIME__;
 
 #include <SDL_endian.h>
 
 #include "main.h"
 #include "configuration.h"
-#include "cycles.h"
 #include "cycInt.h"
 #include "ioMem.h"
 #include "m68000.h"
@@ -103,16 +102,14 @@ Screen_Draw();
 }
 
 
+#define NEXT_VBL_FREQ 68
 
 /**
  * Add some video interrupts to handle the first HBL and the first Timer B
  */
 void Video_StartInterrupts ( int PendingCyclesOver )
 {
-	int CyclesPerVBL;
-	
-        CyclesPerVBL = CYCLES_PER_FRAME;
-        CycInt_AddRelativeInterrupt(CyclesPerVBL, INT_CPU_CYCLE, INTERRUPT_VIDEO_VBL);
+    CycInt_AddRelativeInterruptUs((1000*1000)/NEXT_VBL_FREQ, false, INTERRUPT_VIDEO_VBL);
 }
 
 
@@ -142,7 +139,7 @@ void Video_InterruptHandler_VBL ( void )
 	Video_DrawScreen();
     Main_EventHandler();
     Video_InterruptHandler();
-    CycInt_AddRelativeInterrupt(CYCLES_PER_FRAME, INT_CPU_CYCLE, INTERRUPT_VIDEO_VBL);
+    CycInt_AddRelativeInterruptUs((1000*1000)/NEXT_VBL_FREQ, true, INTERRUPT_VIDEO_VBL);
 }
 
 

@@ -24,8 +24,6 @@ const char M68000_fileid[] = "Hatari m68000.c : " __DATE__ " " __TIME__;
 Uint32 BusErrorAddress;         /* Stores the offending address for bus-/address errors */
 Uint32 BusErrorPC;              /* Value of the PC when bus error occurs */
 bool bBusErrorReadWrite;        /* 0 for write error, 1 for read error */
-int nCpuFreqShift;              /* Used to emulate higher CPU frequencies: 0=8MHz, 1=16MHz, 2=32Mhz */
-int nCpuFreqDivider;            /* Used to emulate higher CPU frequencies: 1=8MHz, 2=16MHz, 4=32Mhz */
 int nWaitStateCycles;           /* Used to emulate the wait state cycles of certain IO registers */
 int BusMode = BUS_MODE_CPU;	/* Used to tell which part is owning the bus (cpu, blitter, ...) */
 
@@ -202,52 +200,28 @@ void M68000_Start(void)
  */
 void M68000_CheckCpuSettings(void)
 {
-#if USE_FREQ_DIVIDER
     if (ConfigureParams.System.nCpuFreq < 20)
     {
         ConfigureParams.System.nCpuFreq = 16;
-        nCpuFreqDivider = 2;
     }
     else if (ConfigureParams.System.nCpuFreq < 24)
     {
         ConfigureParams.System.nCpuFreq = 20;
-        nCpuFreqDivider = 3;
     }
     else if (ConfigureParams.System.nCpuFreq < 32)
     {
         ConfigureParams.System.nCpuFreq = 25;
-        nCpuFreqDivider = 3;
     }
     else if (ConfigureParams.System.nCpuFreq < 40)
     {
         ConfigureParams.System.nCpuFreq = 33;
-        nCpuFreqDivider = 4;
     } else {
         if (ConfigureParams.System.bTurbo) {
             ConfigureParams.System.nCpuFreq = 40;
-            nCpuFreqDivider = 5;
         } else {
             ConfigureParams.System.nCpuFreq = 33;
-            nCpuFreqDivider = 4;
         }
     }
-#else
-	if (ConfigureParams.System.nCpuFreq < 12)
-	{
-		ConfigureParams.System.nCpuFreq = 8;
-		nCpuFreqShift = 0;
-	}
-	else if (ConfigureParams.System.nCpuFreq > 26)
-	{
-		ConfigureParams.System.nCpuFreq = 32;
-		nCpuFreqShift = 2;
-	}
-	else
-	{
-		ConfigureParams.System.nCpuFreq = 16;
-		nCpuFreqShift = 1;
-	}
-#endif
 	changed_prefs.cpu_level = ConfigureParams.System.nCpuLevel;
 	changed_prefs.cpu_compatible = ConfigureParams.System.bCompatibleCpu;
 

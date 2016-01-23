@@ -19,13 +19,13 @@
 #ifndef HATARI_M68000_H
 #define HATARI_M68000_H
 
-#include "cycles.h"     /* for nCyclesMainCounter */
 #include "sysdeps.h"
 #include "memory.h"
 #include "newcpu.h"     /* for regs */
 #include "cycInt.h"
 #include "log.h"
-
+#include "host.h"
+#include "configuration.h"
 
 /* 68000 Register defines */
 enum {
@@ -148,7 +148,6 @@ extern int	Pairing;
 extern char	PairingArray[ MAX_OPCODE_FAMILY ][ MAX_OPCODE_FAMILY ];
 extern const char *OpcodeName[];
 
-
 /*-----------------------------------------------------------------------*/
 /**
  * Add CPU cycles.
@@ -157,17 +156,23 @@ extern const char *OpcodeName[];
 static inline void M68000_AddCycles(int cycles)
 {
 	cycles = (cycles + 3) & ~3;
-#if USE_FREQ_DIVIDER
-    cycles = cycles / nCpuFreqDivider;
-#else
-    cycles = cycles >> nCpuFreqShift;
-#endif
-
-	PendingInterruptCount -= INT_CONVERT_TO_INTERNAL(cycles, INT_CPU_CYCLE);
+    switch(PendingInterrupt.type) {
+        case CYC_INT_CPU:
+            PendingInterrupt.time -= cycles;
+            break;
+        case CYC_INT_US:
+            timeCheckCycles -= cycles;
+            if(timeCheckCycles < 0) {
+                timeCheckCycles = TIME_CHECK_INTERVAL * ConfigureParams.System.nCpuFreq;
+                if(host_time_us() >= PendingInterrupt.time)
+                    PendingInterrupt.time = -1;
+            }
+            break;
+    }
 	nCyclesMainCounter += cycles;
 }
 
-
+#if 0 // (SC) unused
 /*-----------------------------------------------------------------------*/
 /**
  * Add CPU cycles, take cycles pairing into account. Pairing will make
@@ -262,7 +267,7 @@ static inline void M68000_AddCyclesWithPairing(int cycles)
 	nCyclesMainCounter += cycles;
 	BusCyclePenalty = 0;
 }
-
+#endif
 
 extern void M68000_Init(void);
 extern void M68000_Reset(bool bCold);

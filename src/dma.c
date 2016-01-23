@@ -23,8 +23,7 @@
 #include "snd.h"
 #include "dsp.h"
 #include "mmu_common.h"
-
-
+#include "kms.h"
 
 #define LOG_DMA_LEVEL LOG_DEBUG
 
@@ -726,6 +725,7 @@ void dma_mo_read_memory(void) {
 /* Channel Sound Out (FIXME: is this channel buffered?) */
 void dma_sndout_read_memory(void) {
     if (dma[CHANNEL_SOUNDOUT].csr&DMA_ENABLE) {
+        
         Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel Sound Out: Read from memory at $%08x, %i bytes",
                    dma[CHANNEL_SOUNDOUT].next,dma[CHANNEL_SOUNDOUT].limit-dma[CHANNEL_SOUNDOUT].next);
         
@@ -736,7 +736,7 @@ void dma_sndout_read_memory(void) {
         }
         
         TRY(prb) {
-            while (dma[CHANNEL_SOUNDOUT].next<dma[CHANNEL_SOUNDOUT].limit && snd_buffer.size<snd_buffer.limit) {
+            while (dma[CHANNEL_SOUNDOUT].next<dma[CHANNEL_SOUNDOUT].limit && snd_buffer.size<SND_BUFFER_LIMIT) {
                 snd_buffer.data[snd_buffer.size]=NEXTMemory_ReadByte(dma[CHANNEL_SOUNDOUT].next);
                 snd_buffer.size++;
                 dma[CHANNEL_SOUNDOUT].next++;
@@ -747,7 +747,14 @@ void dma_sndout_read_memory(void) {
             dma[CHANNEL_SOUNDOUT].csr |= (DMA_COMPLETE|DMA_BUSEXC);
         } ENDTRY
         
+        if(snd_buffer.size == 0) {
+            kms_snd_dma_or(SNDOUT_DMA_UNDERRUN);
+            set_interrupt(INT_SOUND_OVRUN, SET_INT);
+        }
         dma_interrupt(CHANNEL_SOUNDOUT);
+    } else {
+        kms_snd_dma_or(SNDOUT_DMA_UNDERRUN);
+        set_interrupt(INT_SOUND_OVRUN, SET_INT);
     }
 }
 
@@ -913,7 +920,7 @@ void dma_m2m_write_memory(void) {
             } ENDTRY
             
             if ((dma[CHANNEL_M2R].next==dma[CHANNEL_M2R].limit)||(dma[CHANNEL_M2R].csr&DMA_BUSEXC)) {
-                CycInt_AddRelativeInterrupt(time/4, INT_CPU_CYCLE, INTERRUPT_M2R);
+                CycInt_AddRelativeInterrupt(time/4, INTERRUPT_M2R);
             }
         }
         
@@ -929,7 +936,7 @@ void dma_m2m_write_memory(void) {
             dma[CHANNEL_R2M].csr |= (DMA_COMPLETE|DMA_BUSEXC);
         } ENDTRY
     }
-    CycInt_AddRelativeInterrupt(time/4, INT_CPU_CYCLE, INTERRUPT_R2M);
+    CycInt_AddRelativeInterrupt(time/4, INTERRUPT_R2M);
 }
 
 

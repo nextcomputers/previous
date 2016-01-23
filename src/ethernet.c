@@ -611,7 +611,7 @@ void ENET_IO_Handler(void) {
 		enet_io();
 	}
 	
-	CycInt_AddRelativeInterrupt(receiver_state==RECV_STATE_WAITING?ENET_IO_DELAY:ENET_IO_SHORT, INT_CPU_CYCLE, INTERRUPT_ENET_IO);
+	CycInt_AddRelativeInterrupt(receiver_state==RECV_STATE_WAITING?ENET_IO_DELAY:ENET_IO_SHORT, INTERRUPT_ENET_IO);
 }
 
 void enet_reset(void) {
@@ -620,7 +620,7 @@ void enet_reset(void) {
     } else if (enet_stopped==true) {
         Log_Printf(LOG_WARN, "Starting Ethernet Transmitter/Receiver");
         enet_stopped=false;
-        CycInt_AddRelativeInterrupt(ENET_IO_DELAY, INT_CPU_CYCLE, INTERRUPT_ENET_IO);
+        CycInt_AddRelativeInterrupt(ENET_IO_DELAY, INTERRUPT_ENET_IO);
         /* Start SLIRP */
         if (ConfigureParams.Ethernet.bEthernetConnected) {
             enet_slirp_start();

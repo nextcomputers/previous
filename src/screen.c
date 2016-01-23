@@ -35,8 +35,8 @@ int nBorderPixelsLeft, nBorderPixelsRight;  /* Pixels in left and right border *
 int nBorderPixelsTop, nBorderPixelsBottom;  /* Lines in top and bottom border */
 
 /* extern for shortcuts and falcon/hostscreen.c */
-bool bGrabMouse = false;      /* Grab the mouse cursor in the window */
-bool bInFullScreen = false;   /* true if in full screen */
+volatile bool bGrabMouse = false;      /* Grab the mouse cursor in the window */
+volatile bool bInFullScreen = false;   /* true if in full screen */
 
 
 /* extern for video.c */
@@ -332,6 +332,8 @@ void Screen_SetFullUpdate(void)
 	/* Update frame buffers */
 	for (i = 0; i < NUM_FRAMEBUFFERS; i++)
 		FrameBuffers[i].bFullUpdate = true;
+    
+    InvalidateScreenBuffer();
 }
 
 

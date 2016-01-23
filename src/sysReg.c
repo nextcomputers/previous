@@ -12,7 +12,7 @@
 #include "sysReg.h"
 #include "rtcnvram.h"
 #include "statusbar.h"
-
+#include "host.h"
 
 #define LOG_HARDCLOCK_LEVEL LOG_DEBUG
 #define LOG_SOFTINT_LEVEL   LOG_DEBUG
@@ -425,19 +425,18 @@ void IntRegMaskWrite(void) {
 #define HARDCLOCK_LATCH  0x40
 #define HARDCLOCK_ZERO   0x3F
 
-Uint8 hardclock_csr=0;
-Uint8 hardclock1=0;
-Uint8 hardclock0=0;
-int hardclock_delay=0;
-int latch_hardclock=0;
+static Uint8 hardclock_csr=0;
+static Uint8 hardclock1=0;
+static Uint8 hardclock0=0;
+static int latch_hardclock=0;
 
 void Hardclock_InterruptHandler ( void )
 {
 	CycInt_AcknowledgeInterrupt();
 	if ((hardclock_csr&HARDCLOCK_ENABLE) && (latch_hardclock>0)) {
-		// Log_Printf(LOG_WARN,"[INT] throwing hardclock");
+//		Log_Printf(LOG_WARN,"[INT] throwing hardclock %lld", host_time_us());
         set_interrupt(INT_TIMER,SET_INT);
-        CycInt_AddRelativeInterrupt(hardclock_delay, INT_CPU_CYCLE, INTERRUPT_HARDCLOCK);
+        CycInt_AddRelativeInterruptUs(latch_hardclock, true, INTERRUPT_HARDCLOCK);
 	}
 }
 
@@ -466,16 +465,16 @@ void HardclockWriteCSR(void) {
 	if (hardclock_csr&HARDCLOCK_LATCH) {
         hardclock_csr&= ~HARDCLOCK_LATCH;
 		latch_hardclock=(hardclock0<<8)|hardclock1;
-		hardclock_delay=latch_hardclock*11;
 	}
 	if ((hardclock_csr&HARDCLOCK_ENABLE) && (latch_hardclock>0)) {
         Log_Printf(LOG_HARDCLOCK_LEVEL,"[hardclock] enable periodic interrupt (%i microseconds).", latch_hardclock);
-        CycInt_AddRelativeInterrupt(hardclock_delay, INT_CPU_CYCLE, INTERRUPT_HARDCLOCK);
+        CycInt_AddRelativeInterruptUs(latch_hardclock, false, INTERRUPT_HARDCLOCK);
 	} else {
         Log_Printf(LOG_HARDCLOCK_LEVEL,"[hardclock] disable periodic interrupt.");
     }
     set_interrupt(INT_TIMER,RELEASE_INT);
 }
+
 void HardclockReadCSR(void) {
 	IoMem[IoAccessCurrentAddress & 0x1FFFF]=hardclock_csr;
 	// Log_Printf(LOG_WARN,"[hardclock] read at $%08x val=%02x PC=$%08x", IoAccessCurrentAddress,IoMem[IoAccessCurrentAddress & 0x1FFFF],m68k_getpc());
@@ -484,51 +483,10 @@ void HardclockReadCSR(void) {
 
 
 /* Event counter register */
-#define EVENTC_DEBUG 0
-Uint32 lasteventc; /* debugging code */
 
-Uint32 eventcounter;
-
-#if USE_FREQ_DIVIDER
-void System_Timer_Read(void) { /* tuned for power-on test */
-#if EVENTC_DEBUG
-    lasteventc = eventcounter; /* for debugging */
-#endif
-    if (ConfigureParams.System.nCpuLevel == 3) {
-        if (NEXTRom[0xFFAB]==0x04) { // HACK for ROM version 0.8.31 power-on test, WARNING: this causes slowdown of emulation
-            eventcounter = (nCyclesMainCounter/(240/nCpuFreqDivider))&0xFFFFF;
-        } else {
-            eventcounter = (nCyclesMainCounter/(48/nCpuFreqDivider))&0xFFFFF;
-        }
-    } else { // System has 68040 CPU
-        eventcounter = (nCyclesMainCounter/(72/nCpuFreqDivider))&0xFFFFF;
-    }
-    IoMem_WriteLong(IoAccessCurrentAddress&IO_SEG_MASK, eventcounter);
-    
-#if EVENTC_DEBUG
-    Log_Printf(LOG_WARN, "[Eventcounter] Difference = %i (Frequency = %i, Divider = %i)",
-               eventcounter-lasteventc,ConfigureParams.System.nCpuFreq,nCpuFreqDivider);
-#endif
+void System_Timer_Read(void) {
+    IoMem_WriteLong(IoAccessCurrentAddress&IO_SEG_MASK, host_time_us());
 }
-#else
-void System_Timer_Read(void) { // tuned for power-on test
-//  lasteventc = eventcounter; // debugging code
-    if (ConfigureParams.System.nCpuLevel == 3) {
-        if (NEXTRom[0xFFAB]==0x04) { // HACK for ROM version 0.8.31 power-on test, WARNING: this causes slowdown of emulation
-//          eventcounter = (nCyclesMainCounter/((1280/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF; // debugging code
-            IoMem_WriteLong(IoAccessCurrentAddress&0x1FFFF, (nCyclesMainCounter/((1280/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF);
-        } else {
-//          eventcounter = (nCyclesMainCounter/((128/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF; // debugging code
-            IoMem_WriteLong(IoAccessCurrentAddress&0x1FFFF, (nCyclesMainCounter/((128/ConfigureParams.System.nCpuFreq)*3))&0xFFFFF);
-        }
-    } else { // System has 68040 CPU
-//      eventcounter = (nCyclesMainCounter/((64/ConfigureParams.System.nCpuFreq)*9))&0xFFFFF; // debugging code
-        IoMem_WriteLong(IoAccessCurrentAddress&0x1FFFF, (nCyclesMainCounter/((64/ConfigureParams.System.nCpuFreq)*9))&0xFFFFF);
-    }
-//  printf("DIFFERENCE = %i PC = %08X\n",eventcounter-lasteventc,m68k_getpc());
-}
-#endif
-
 
 /* Color Video Interrupt Register */
 

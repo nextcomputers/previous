@@ -6,6 +6,7 @@
 #include "audio.h"
 #include "dma.h"
 #include "snd.h"
+#include "host.h"
 
 #include <SDL.h>
 
@@ -14,29 +15,31 @@
 SDL_AudioDeviceID Audio_Input_Device;
 SDL_AudioDeviceID Audio_Output_Device;
 
-int nAudioFrequency = 44100;            /* Sound playback frequency */
 bool bSoundOutputWorking = false;       /* Is sound output OK */
 bool bSoundInputWorking = false;        /* Is sound input OK */
 volatile bool bPlayingBuffer = false;   /* Is playing buffer? */
 volatile bool bRecordingBuffer = false; /* Is recording buffer? */
 
+void Audio_Output_Queue(Uint8* data, int len) {
+    SDL_QueueAudio(Audio_Output_Device, data, len);
+}
 
 /*-----------------------------------------------------------------------*/
 /**
  * SDL audio callback functions - move sound between emulation and audio system.
  * Note: These functions will run in a separate thread.
  */
-static void Audio_Output_CallBack(void *userdata, Uint8 *stream, int len)
-{
-    //printf("AUDIO CALLBACK, size = %i\n",len);
-    sndout_queue_poll(stream, len);
-}
 
 static void Audio_Input_CallBack(void *userdata, Uint8 *stream, int len)
 {
     /* FIXME: send data to emulator */
 }
 
+static bool check_audio(int requested, int granted, const char* attribute) {
+    if(requested != granted)
+        Log_Printf(LOG_WARN, "[Audio] %s mismatch. Requested:%d, granted:%d", attribute, requested, granted);
+    return requested == granted;
+}
 
 /*-----------------------------------------------------------------------*/
 /**
@@ -52,7 +55,7 @@ void Audio_Output_Init(void)
     {
         if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0)
         {
-            Log_Printf(LOG_WARN, "Could not init audio output: %s\n", SDL_GetError());
+            Log_Printf(LOG_WARN, "[Audio] Could not init audio output: %s\n", SDL_GetError());
             DlgAlert_Notice("Error: Can't open SDL audio subsystem.");
             bSoundOutputWorking = false;
             return;
@@ -60,24 +63,30 @@ void Audio_Output_Init(void)
     }
     
     /* Set up SDL audio: */
-    request.freq = 44100;           /* 44,1 kHz */
-    request.format = AUDIO_S16MSB;	/* 16-Bit signed, big endian */
+    request.freq     = AUDIO_FREQUENCY;    /* 44,1 kHz */
+    request.format   = AUDIO_S16MSB;	/* 16-Bit signed, big endian */
     request.channels = 2;			/* stereo */
-    request.callback = Audio_Output_CallBack;
+    request.callback = NULL;
     request.userdata = NULL;
-    request.samples = 1024;	/* buffer size in samples (4096 byte) */
+    request.samples  = 512;	/* buffer size in samples */
 
     Audio_Output_Device = SDL_OpenAudioDevice(NULL, 0, &request, &granted, 0);
     if (Audio_Output_Device==0)	/* Open audio device */
     {
-        Log_Printf(LOG_WARN, "Can't use audio: %s\n", SDL_GetError());
+        Log_Printf(LOG_WARN, "[Audio] Can't use audio: %s\n", SDL_GetError());
         DlgAlert_Notice("Error: Can't open audio output device. No sound output.");
         bSoundOutputWorking = false;
         return;
     }
-
-    /* All OK */
     bSoundOutputWorking = true;
+    bSoundOutputWorking &= check_audio(request.freq,     granted.freq,     "freq");
+    bSoundOutputWorking &= check_audio(request.format,   granted.format,   "format");
+    bSoundOutputWorking &= check_audio(request.channels, granted.channels, "channels");
+    bSoundOutputWorking &= check_audio(request.samples,  granted.samples,  "samples");
+
+    if(!(bSoundOutputWorking)) {
+        DlgAlert_Notice("Error: Can't open audio output device. No sound output.");
+    }
 }
 
 void Audio_Input_Init(void)
@@ -178,31 +187,6 @@ void Audio_Input_Unlock(void)
 {
     SDL_UnlockAudioDevice(Audio_Input_Device);
 }
-
-
-/*-----------------------------------------------------------------------*/
-/**
- * Set audio playback frequency variable, pass as PLAYBACK_xxxx
- */
-void Audio_Output_SetFreq(int nNewFrequency)
-{
-    /* Do not reset sound system if nothing has changed! */
-    if (nNewFrequency != nAudioFrequency)
-    {
-        Log_Printf(LOG_WARN, "[SDL Audio] Changing frequency from %i Hz to %i Hz",
-                   nAudioFrequency,nNewFrequency);
-        /* Set new frequency */
-        nAudioFrequency = nNewFrequency;
-        
-        /* Re-open SDL audio interface if necessary: */
-        if (bSoundOutputWorking)
-        {
-            Audio_Output_UnInit();
-            Audio_Output_Init();
-        }
-    }
-}
-
 
 /*-----------------------------------------------------------------------*/
 /**

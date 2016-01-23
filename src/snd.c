@@ -1,3 +1,4 @@
+
 #include "main.h"
 #include "configuration.h"
 #include "m68000.h"
@@ -6,32 +7,19 @@
 #include "audio.h"
 #include "dma.h"
 #include "snd.h"
-#include "queue.h"
 
 #define LOG_SND_LEVEL   LOG_DEBUG
 #define LOG_VOL_LEVEL   LOG_DEBUG
-
-/* Note: Buffer limit must not be greather than queue packet size and
- * must match requested.samples * samplesize (4) from audio.c
- */
-#define SND_BUFFER_LIMIT 4096
-
-
-/* queue prototypes */
-queueADT	sndout_q;
-
 
 /* Initialize the audio system */
 bool sndout_inited;
 bool sound_output_active = false;
 
 void sound_init(void) {
-    snd_buffer.limit=SND_BUFFER_LIMIT;
     snd_buffer.size=0;
     if (!sndout_inited && ConfigureParams.Sound.bEnableSound) {
         Log_Printf(LOG_WARN, "[Audio] Initializing audio device.");
         Audio_Output_Init();
-        sndout_q = QueueCreate();
         sndout_inited=true;
     }
 }
@@ -41,7 +29,6 @@ void sound_uninit(void) {
         Log_Printf(LOG_WARN, "[Audio] Uninitializing audio device.");
         sndout_inited=false;
         Audio_Output_UnInit();
-        QueueDestroy(sndout_q);
     }
 }
 
@@ -52,7 +39,6 @@ void Sound_Reset(void) {
         Audio_Output_Enable(true);
     }
 }
-
 
 /* Start and stop sound output */
 struct {
@@ -71,7 +57,7 @@ struct {
 #define SND_MODE_DBL_ZF 0x30
 
 /* Function prototypes */
-void snd_send_samples(void);
+int snd_send_samples(int len);
 void snd_make_normal_samples(Uint8 *buf, int len);
 void snd_make_double_samples(Uint8 *buf, int len, bool repeat);
 void snd_adjust_volume_and_lowpass(Uint8 *buf, int len);
@@ -89,10 +75,10 @@ void snd_start_output(Uint8 mode) {
     if (!sound_output_active) {
         Log_Printf(LOG_SND_LEVEL, "[Sound] Starting loop.");
         sound_output_active = true;
-        CycInt_AddRelativeInterrupt(100, INT_CPU_CYCLE, INTERRUPT_SND_IO);
+        CycInt_AddRelativeInterrupt(100, INTERRUPT_SND_IO);
     } else { /* Even re-enable loop if we are already active. This lowers the delay. */
         Log_Printf(LOG_WARN, "[Sound] Restarting loop.");
-        CycInt_AddRelativeInterrupt(100, INT_CPU_CYCLE, INTERRUPT_SND_IO);
+        CycInt_AddRelativeInterrupt(100, INTERRUPT_SND_IO);
     }
 }
 
@@ -104,140 +90,87 @@ void snd_stop_output(void) {
 
 
 /* Sound IO loop (reads via DMA from memory to queue) */
-#define SND_DELAY   100000
-int old_size;
-int queue_size;
 
 void SND_IO_Handler(void) {
     CycInt_AcknowledgeInterrupt();
     
-    old_size = snd_buffer.size;
+    Sint64 usDelay = 0;
     dma_sndout_read_memory();
     
     if (!sndout_inited || sndout_state.mute) {
-        snd_buffer.limit = SND_BUFFER_LIMIT;
         snd_buffer.size = 0;
         if (!sound_output_active)
             return;
     } else {
-        Audio_Output_Lock();
-        queue_size = QueuePeek(sndout_q);
-        Audio_Output_Unlock();
-        if (queue_size<4) {
-            if (snd_buffer.size==SND_BUFFER_LIMIT || snd_buffer.size==old_size) {
-                Log_Printf(LOG_SND_LEVEL, "[Sound] %i samples ready.",snd_buffer.size/4);
-                snd_buffer.limit = snd_buffer.size;
-                snd_send_samples();
-                snd_buffer.limit = SND_BUFFER_LIMIT;
-                snd_buffer.size = 0; /* Must be 0 */
-            }
-            
-            if (!sound_output_active)
-                return;
-        }
-    } /* if queuepeek<4 */
-    CycInt_AddRelativeInterrupt(SND_DELAY, INT_CPU_CYCLE, INTERRUPT_SND_IO);
+        Log_Printf(LOG_SND_LEVEL, "[Sound] %i samples ready.",snd_buffer.size/4);
+        usDelay = snd_send_samples(snd_buffer.size) / 4;
+        usDelay *= 1000*1000;
+        usDelay /= AUDIO_FREQUENCY;
+        snd_buffer.size = 0; /* Must be 0 */
+        
+        if (!sound_output_active)
+            return;
+    }
+    if(usDelay > 0)
+        CycInt_AddRelativeInterruptUs(usDelay, true, INTERRUPT_SND_IO);
 }
 
 
 /* These functions put samples to a buffer for further processing */
 void snd_make_double_samples(Uint8 *buf, int len, bool repeat) {
-    int i;
-    for (i=0; i<(len*2); i++) {
-        if (snd_buffer.size>0) {
-            buf[i] = snd_buffer.data[snd_buffer.limit-snd_buffer.size];
-            buf[i+4] = repeat ? buf[i] : 0; /* repeat or zero-fill */
-            snd_buffer.size--;
-        } else { /* Fill the rest with silence */
-            buf[i] = buf[i+4] = 0;
-        }
-        if ((i&3)==3) i+=4;
+    for (int i=0; i<len; i += 4) {
+        *buf++ =          snd_buffer.data[i+0];
+        *buf++ =          snd_buffer.data[i+1];
+        *buf++ =          snd_buffer.data[i+2];
+        *buf++ =          snd_buffer.data[i+3];
+        *buf++ = repeat ? snd_buffer.data[i+0] : 0; /* repeat or zero-fill */
+        *buf++ = repeat ? snd_buffer.data[i+1] : 0; /* repeat or zero-fill */
+        *buf++ = repeat ? snd_buffer.data[i+2] : 0; /* repeat or zero-fill */
+        *buf++ = repeat ? snd_buffer.data[i+3] : 0; /* repeat or zero-fill */
     }
 }
 
 void snd_make_normal_samples(Uint8 *buf, int len) {
-    int i;
-    for (i=0; i<len; i++) {
-        if (snd_buffer.size>0) {
-            buf[i] = snd_buffer.data[snd_buffer.limit-snd_buffer.size];
-            snd_buffer.size--;
-        } else { /* Fill the rest with silence */
-            buf[i] = 0;
-        }
-    }
+    for(int i=0; i<len; i++)
+        *buf++ = snd_buffer.data[i];
 }
 
 
 /* This function processes and sends out our samples */
-void snd_send_samples(void) {
+int snd_send_samples(int len) {
     static Uint8 sndout_buffer[2*SND_BUFFER_LIMIT];
 
     switch (sndout_state.mode) {
         case SND_MODE_NORMAL:
-            snd_make_normal_samples(sndout_buffer, SND_BUFFER_LIMIT);
-            snd_adjust_volume_and_lowpass(sndout_buffer, SND_BUFFER_LIMIT);
-            sndout_queue_put(sndout_buffer, SND_BUFFER_LIMIT);
-            break;
+            snd_make_normal_samples(sndout_buffer, len);
+            snd_adjust_volume_and_lowpass(sndout_buffer, len);
+            sndout_queue_put(sndout_buffer, len);
+            return len;
         case SND_MODE_DBL_RP:
-            snd_make_double_samples(sndout_buffer, SND_BUFFER_LIMIT, true);
-            snd_adjust_volume_and_lowpass(sndout_buffer, 2*SND_BUFFER_LIMIT);
-            sndout_queue_put(sndout_buffer, SND_BUFFER_LIMIT);
-            sndout_queue_put(sndout_buffer+SND_BUFFER_LIMIT, SND_BUFFER_LIMIT);
-            break;
+            snd_make_double_samples(sndout_buffer, len, true);
+            snd_adjust_volume_and_lowpass(sndout_buffer, 2*len);
+            sndout_queue_put(sndout_buffer, len);
+            sndout_queue_put(sndout_buffer+len, len);
+            return 2*len;
         case SND_MODE_DBL_ZF:
-            snd_make_double_samples(sndout_buffer, SND_BUFFER_LIMIT, false);
-            snd_adjust_volume_and_lowpass(sndout_buffer, 2*SND_BUFFER_LIMIT);
-            sndout_queue_put(sndout_buffer, SND_BUFFER_LIMIT);
-            sndout_queue_put(sndout_buffer+SND_BUFFER_LIMIT, SND_BUFFER_LIMIT);
-            break;
-
+            snd_make_double_samples(sndout_buffer, len, false);
+            snd_adjust_volume_and_lowpass(sndout_buffer, 2*len);
+            sndout_queue_put(sndout_buffer, len);
+            sndout_queue_put(sndout_buffer+len, len);
+            return 2*len;
         default:
             Log_Printf(LOG_WARN, "[Sound] Error: Unknown sound output mode!");
-            break;
+            return 0;
     }
 }
 
 
 /* This function puts data to a queue for the audio system */
 void sndout_queue_put(Uint8 *buf, int len) {
-    struct queuepacket *p;
-    p=(struct queuepacket *)malloc(sizeof(struct queuepacket));
-    Audio_Output_Lock();
-    p->len=len;
-    memcpy(p->data, buf, p->len);
-    QueueEnter(sndout_q,p);
-    Audio_Output_Unlock();
-    Log_Printf(LOG_SND_LEVEL, "[Sound] Output 1024 samples to queue");
+    Audio_Output_Queue(buf, len);
+    Log_Printf(LOG_SND_LEVEL, "[Sound] Output %d samples to queue", len/4);
 }
 
-
-/* This function is called from the audio system to poll data */
-bool audio_flushed=false;
-
-void sndout_queue_poll(Uint8 *buf, int len) {
-    if (QueuePeek(sndout_q)>0) {
-        struct queuepacket *qp;
-        audio_flushed = false;
-        qp=QueueDelete(sndout_q);
-        Log_Printf(LOG_SND_LEVEL, "[Audio] Reading 1024 samples from queue.");
-        memcpy(buf,qp->data,len);
-        free(qp);
-    } else if (!sound_output_active) {
-        /* Last packet received, stop */
-        if (audio_flushed) {
-            Log_Printf(LOG_SND_LEVEL, "[Audio] Done. Stopping.");
-            audio_flushed = false;
-            Audio_Output_Enable(false);
-        } else { /* Flush residual audio from device (required for SDL) */
-            Log_Printf(LOG_SND_LEVEL, "[Audio] Done. Flushing.");
-            audio_flushed = true;
-            memset(buf, 0, len);
-        }
-    } else {
-        Log_Printf(LOG_WARN, "[Audio] Not ready. No data on queue.");
-        memset(buf, 0, len);
-    }
-}
 
 #if 1 /* FIXME: Is this correct? */
 /* This is a simple lowpass filter */

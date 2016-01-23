@@ -22,7 +22,6 @@
 #include "video.h"
 #include "avi_record.h"
 #include "../debug/debugui.h"
-#include "clocks_timings.h"
 
 // for Hatari
 

@@ -19,8 +19,8 @@
 
 #define IO_SEG_MASK	0x1FFFF
 
-#define LOG_SCC_LEVEL		LOG_WARN
-#define LOG_SCC_REG_LEVEL	LOG_DEBUG
+#define LOG_SCC_LEVEL		LOG_NONE
+#define LOG_SCC_REG_LEVEL	LOG_NONE
 
 
 /* Registers */

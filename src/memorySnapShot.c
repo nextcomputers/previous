@@ -26,7 +26,6 @@ const char MemorySnapShot_fileid[] = "Hatari memorySnapShot.c : " __DATE__ " " _
 #include "debugui.h"
 #include "file.h"
 #include "cycInt.h"
-#include "cycles.h"
 #include "ioMem.h"
 #include "log.h"
 #include "m68000.h"
@@ -228,7 +227,6 @@ void MemorySnapShot_Capture(const char *pszFileName, bool bConfirm)
 		Configuration_MemorySnapShot_Capture(true);
 //		STMemory_MemorySnapShot_Capture(true);
 		CycInt_MemorySnapShot_Capture(true);
-		Cycles_MemorySnapShot_Capture(true);
 		M68000_MemorySnapShot_Capture(true);
 		Video_MemorySnapShot_Capture(true);
 		DebugUI_MemorySnapShot_Capture(pszFileName, true);
@@ -267,7 +265,6 @@ void MemorySnapShot_Restore(const char *pszFileName, bool bConfirm)
 		/* Capture each files details */
 //		STMemory_MemorySnapShot_Capture(false);
 		CycInt_MemorySnapShot_Capture(false);
-		Cycles_MemorySnapShot_Capture(false);
 		M68000_MemorySnapShot_Capture(false);
 		Video_MemorySnapShot_Capture(false);
 		DebugUI_MemorySnapShot_Capture(pszFileName, false);

@@ -10,7 +10,6 @@
 
 #include "sysdeps.h"
 #include "options_cpu.h"
-#include "cycles.h"
 
 extern int pendingInterrupts;
 

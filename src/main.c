@@ -35,9 +35,9 @@ const char Main_fileid[] = "Hatari main.c : " __DATE__ " " __TIME__;
 #include "audio.h"
 #include "avi_record.h"
 #include "debugui.h"
-#include "clocks_timings.h"
 #include "file.h"
 #include "dsp.h"
+#include "host.h"
 
 #include "hatari-glue.h"
 
@@ -57,91 +57,6 @@ static bool bEmulationActive = true;      /* Run emulation when started */
 static bool bAccurateDelays;              /* Host system has an accurate SDL_Delay()? */
 static bool bIgnoreNextMouseMotion = false;  /* Next mouse motion will be ignored (needed after SDL_WarpMouse) */
 
-
-/*-----------------------------------------------------------------------*/
-/**
- * Return current time as millisecond for performance measurements.
- * 
- * (On Unix only time spent by Hatari itself is counted, on other
- * platforms less accurate SDL "wall clock".)
- */
-#if HAVE_SYS_TIMES_H
-#include <unistd.h>
-#include <sys/times.h>
-static Uint32 Main_GetTicks(void)
-{
-	static unsigned int ticks_to_msec = 0;
-	struct tms fields;
-	if (!ticks_to_msec)
-	{
-		ticks_to_msec = sysconf(_SC_CLK_TCK);
-		printf("OS clock ticks / second: %d\n", ticks_to_msec);
-		/* Linux has 100Hz virtual clock so no accuracy loss there */
-		ticks_to_msec = 1000UL / ticks_to_msec;
-	}
-	/* return milliseconds (clock ticks) spent in this process
-	 */
-	times(&fields);
-	return ticks_to_msec * fields.tms_utime;
-}
-#else
-# warning "times() function missing, using inaccurate SDL_GetTicks() instead."
-# define Main_GetTicks SDL_GetTicks
-#endif
-
-
-//#undef HAVE_GETTIMEOFDAY
-//#undef HAVE_NANOSLEEP
-
-/*-----------------------------------------------------------------------*/
-/**
- * Return a time counter in micro seconds.
- * If gettimeofday is available, we use it directly, else we convert the
- * return of SDL_GetTicks in micro sec.
- */
-
-static Sint64	Time_GetTicks ( void )
-{
-        Sint64		ticks_micro;
-
-#if HAVE_GETTIMEOFDAY
-        struct timeval	now;
-        gettimeofday ( &now , NULL );
-        ticks_micro = (Sint64)now.tv_sec * 1000000 + now.tv_usec;
-#else
-	ticks_micro = (Sint64)SDL_GetTicks() * 1000;		/* milli sec -> micro sec */
-#endif
-
-	return ticks_micro;
-}
-
-
-/*-----------------------------------------------------------------------*/
-/**
- * Sleep for a given number of micro seconds.
- * If nanosleep is available, we use it directly, else we use SDL_Delay
- * (which is portable, but less accurate as is uses milli-seconds)
- */
-
-static void	Time_Delay ( Sint64 ticks_micro )
-{
-#if HAVE_NANOSLEEP
-	struct timespec	ts;
-	int		ret;
-	ts.tv_sec = ticks_micro / 1000000;
-	ts.tv_nsec = (ticks_micro % 1000000) * 1000;	/* micro sec -> nano sec */
-	/* wait until all the delay is elapsed, including possible interruptions by signals */
-	do
-	{
-                errno = 0;
-                ret = nanosleep(&ts, &ts);
-	} while ( ret && ( errno == EINTR ) );		/* keep on sleeping if we were interrupted */
-#else
-	SDL_Delay ( (Uint32)(ticks_micro / 1000) ) ;	/* micro sec -> milli sec */
-#endif
-}
-
-
 /*-----------------------------------------------------------------------*/
 /**
  * Pause emulation, stop sound.  'visualize' should be set true,
@@ -160,7 +75,7 @@ bool Main_PauseEmulation(bool visualize)
 	{
 		if (nFirstMilliTick)
 		{
-			int interval = Main_GetTicks() - nFirstMilliTick;
+			int interval = host_time_ms() - nFirstMilliTick;
 			static float previous;
 			float current;
 
@@ -249,102 +164,6 @@ void Main_SetRunVBLs(Uint32 vbls)
 	nRunVBLs = vbls;
 	nVBLCount = 0;
 }
-
-/*-----------------------------------------------------------------------*/
-/**
- * This function waits on each emulated VBL to synchronize the real time
- * with the emulated ST.
- * Unfortunately SDL_Delay and other sleep functions like usleep or nanosleep
- * are very inaccurate on some systems like Linux 2.4 or Mac OS X (they can only
- * wait for a multiple of 10ms due to the scheduler on these systems), so we have
- * to "busy wait" there to get an accurate timing.
- * All times are expressed as micro seconds, to avoid too much rounding error.
- */
-void Main_WaitOnVbl(void)
-{
-	Sint64 CurrentTicks;
-	static Sint64 DestTicks = 0;
-	Sint64 FrameDuration_micro;
-	Sint64 nDelay;
-
-	nVBLCount++;
-	if (nRunVBLs &&	nVBLCount >= nRunVBLs)
-	{
-		/* show VBLs/s */
-		Main_PauseEmulation(true);
-		exit(0);
-	}
-
-//	FrameDuration_micro = (Sint64) ( 1000000.0 / nScreenRefreshRate + 0.5 );	/* round to closest integer */
-	FrameDuration_micro = ClocksTimings_GetVBLDuration_micro ( ConfigureParams.System.nMachineType , 68 );
-//      FrameDuration_micro = 1000000/50;
-	CurrentTicks = Time_GetTicks();
-
-	if ( DestTicks == 0 )					/* first call, init DestTicks */
-    {
-		DestTicks = CurrentTicks + FrameDuration_micro;
-    }
-
-	nDelay = DestTicks - CurrentTicks;
-
-	/* Do not wait if we are in fast forward mode or if we are totally out of sync */
-	if (ConfigureParams.System.bFastForward == true
-	        || nDelay < -4*FrameDuration_micro || nDelay > 50*FrameDuration_micro)
-	{
-		if (ConfigureParams.System.bFastForward == true)
-		{
-			if (!nFirstMilliTick)
-				nFirstMilliTick = Main_GetTicks();
-		}
-		if (nFrameSkips < ConfigureParams.Screen.nFrameSkips)
-		{
-			nFrameSkips += 1;
-			Log_Printf(LOG_DEBUG, "Increased frameskip to %d\n", nFrameSkips);
-		}
-		/* Only update DestTicks for next VBL */
-		DestTicks = CurrentTicks + FrameDuration_micro;
-		return;
-	}
-	/* If automatic frameskip is enabled and delay's more than twice
-	 * the effect of single frameskip, decrease frameskip
-	 */
-	if (nFrameSkips > 0
-	    && ConfigureParams.Screen.nFrameSkips >= AUTO_FRAMESKIP_LIMIT
-	    && 2*nDelay > FrameDuration_micro/nFrameSkips)
-	{
-		nFrameSkips -= 1;
-		Log_Printf(LOG_DEBUG, "Decreased frameskip to %d\n", nFrameSkips);
-	}
-
-	if (bAccurateDelays)
-	{
-		/* Accurate sleeping is possible -> use SDL_Delay to free the CPU */
-		if (nDelay > 1000)
-			Time_Delay(nDelay - 1000);
-	}
-	else
-	{
-		/* No accurate SDL_Delay -> only wait if more than 5ms to go... */
-		if (nDelay > 5000)
-			Time_Delay(nDelay<10000 ? nDelay-1000 : 9000);
-	}
-
-	/* Now busy-wait for the right tick: */
-	while (nDelay > 0)
-	{
-		CurrentTicks = Time_GetTicks();
-		nDelay = DestTicks - CurrentTicks;
-        /* If the delay is still bigger than one frame, somebody
-         * played tricks with the system clock and we have to abort */
-        if (nDelay > FrameDuration_micro)
-            break;
-	}
-
-//printf ( "tick %lld\n" , CurrentTicks );
-	/* Update DestTicks for next VBL */
-	DestTicks += FrameDuration_micro;
-}
-
 
 /*-----------------------------------------------------------------------*/
 /**
@@ -454,7 +273,10 @@ void Main_EventHandler(void)
 		}
 		switch (event.type)
 		{
-
+         case SDL_WINDOWEVENT:
+                if(event.window.event == SDL_WINDOWEVENT_CLOSE)
+                    Main_RequestQuit();
+                break;
 		 case SDL_QUIT:
 			Main_RequestQuit();
 			break;
@@ -560,7 +382,6 @@ static void Main_Init(void)
 		fprintf(stderr, "Could not initialize the SDL library:\n %s\n", SDL_GetError() );
 		exit(-1);
 	}
-	ClocksTimings_InitMachine ( ConfigureParams.System.nMachineType );
 	Resolution_Init();
 	SDLGui_Init();
 	Screen_Init();
