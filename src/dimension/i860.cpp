@@ -90,6 +90,20 @@ i860_cpu_device::i860_cpu_device() {
     dump_reset_perfc();
 #endif
     m_halt = true;
+    
+    for(int i = 0; i < 8192; i++) {
+        int upper6 = i >> 7;
+        switch (upper6) {
+            case 0x12:
+                decoder_tbl[i] = fp_decode_tbl[i & 0x7f];
+                break;
+            case 0x13:
+                decoder_tbl[i] = core_esc_decode_tbl[i&3];
+                break;
+            default:
+                decoder_tbl[i] = decode_tbl[upper6];
+        }
+    }
 }
 
 void i860_cpu_device::set_mem_access(bool be) {

@@ -19,7 +19,7 @@
 
 #define ND_NBIC_SPACE   0xFFFFFFE8
 
-/* NeXTdimension board memory access */
+/* NeXTdimension board memory access (i860) */
 
 void   nd_board_rd8_be(Uint32 addr, Uint32* val) {
     addr  |= ND_BOARD_BITS;
@@ -137,7 +137,7 @@ void   nd_board_wr128_le(Uint32 addr, const Uint32* val) {
     nd_longput(addr+12, val[3]);
 }
 
-//------
+/* NeXTdimension board memory access (m68k) */
 
 inline Uint32 nd_board_lget(Uint32 addr) {
     addr |= ND_BOARD_BITS;

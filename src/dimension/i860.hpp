@@ -601,7 +601,9 @@ private:
 	void insn_form (UINT32 insn);
 	void insn_faddp (UINT32 insn);
 	void insn_faddz (UINT32 insn);
-    
+
+    void dec_unrecog (UINT32 insn);
+
     /* register access */
     UINT32 get_iregval(int gr);
     void   set_iregval(int gr, UINT32 val);
@@ -644,16 +646,10 @@ private:
     void intr();
 
 	typedef void (i860_cpu_device::*insn_func)(UINT32);
-	struct decode_tbl_t
-	{
-		/* Execute function for this opcode.  */
-		insn_func insn_exec;
-		/* Flags for this opcode.  */
-		char flags;
-	};
-	static const decode_tbl_t decode_tbl[64];
-	static const decode_tbl_t core_esc_decode_tbl[8];
-	static const decode_tbl_t fp_decode_tbl[128];
+	static const insn_func decode_tbl[64];
+	static const insn_func core_esc_decode_tbl[8];
+	static const insn_func fp_decode_tbl[128];
+    static       insn_func decoder_tbl[8192];
 };
 
 /* disassembler */
