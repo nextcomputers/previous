@@ -83,7 +83,7 @@ void nd_sdl_init() {
 void nd_sdl_uninit() {
     if(videoVBL) {
         SDL_RemoveTimer(videoVBL);
-        videoVBL = NULL;
+        videoVBL = 0;
     }
     SDL_HideWindow(ndWindow);
 }

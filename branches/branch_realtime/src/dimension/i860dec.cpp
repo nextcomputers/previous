@@ -3668,235 +3668,229 @@ void i860_cpu_device::insn_faddz (UINT32 insn)
 	}
 }
 
-
-/* Flags for the decode table.  */
-enum {
-	DEC_MORE    = 1,    /* More decoding necessary.  */
-	DEC_DECODED = 2     /* Fully decoded, go.  */
-};
-
-
 /* First-level decode table (i.e., for the 6 primary opcode bits).  */
-const i860_cpu_device::decode_tbl_t i860_cpu_device::decode_tbl[64] = {
+const i860_cpu_device::insn_func i860_cpu_device::decode_tbl[64] = {
 	/* A slight bit of decoding for loads and stores is done in the
 	   execution routines (operand size and addressing mode), which
 	   is why their respective entries are identical.  */
-	{ &i860_cpu_device::insn_ldx,         DEC_DECODED}, /* ld.b isrc1(isrc2),idest.  */
-	{ &i860_cpu_device::insn_ldx,         DEC_DECODED}, /* ld.b #const(isrc2),idest.  */
-	{ &i860_cpu_device::insn_ixfr,        DEC_DECODED}, /* ixfr isrc1ni,fdest.  */
-	{ &i860_cpu_device::insn_stx,         DEC_DECODED}, /* st.b isrc1ni,#const(isrc2).  */
-	{ &i860_cpu_device::insn_ldx,         DEC_DECODED}, /* ld.{s,l} isrc1(isrc2),idest.  */
-	{ &i860_cpu_device::insn_ldx,         DEC_DECODED}, /* ld.{s,l} #const(isrc2),idest.  */
-	{ 0,                0},
-	{ &i860_cpu_device::insn_stx,         DEC_DECODED}, /* st.{s,l} isrc1ni,#const(isrc2),idest.*/
-	{ &i860_cpu_device::insn_fldy,        DEC_DECODED}, /* fld.{l,d,q} isrc1(isrc2)[++],fdest. */
-	{ &i860_cpu_device::insn_fldy,        DEC_DECODED}, /* fld.{l,d,q} #const(isrc2)[++],fdest. */
-	{ &i860_cpu_device::insn_fsty,        DEC_DECODED}, /* fst.{l,d,q} fdest,isrc1(isrc2)[++] */
-	{ &i860_cpu_device::insn_fsty,        DEC_DECODED}, /* fst.{l,d,q} fdest,#const(isrc2)[++] */
-	{ &i860_cpu_device::insn_ld_ctrl,     DEC_DECODED}, /* ld.c csrc2,idest.  */
-	{ &i860_cpu_device::insn_flush,       DEC_DECODED}, /* flush #const(isrc2) (or autoinc).  */
-	{ &i860_cpu_device::insn_st_ctrl,     DEC_DECODED}, /* st.c isrc1,csrc2.  */
-	{ &i860_cpu_device::insn_pstd,        DEC_DECODED}, /* pst.d fdest,#const(isrc2)[++].  */
-	{ &i860_cpu_device::insn_bri,         DEC_DECODED}, /* bri isrc1ni.  */
-	{ &i860_cpu_device::insn_trap,        DEC_DECODED}, /* trap isrc1ni,isrc2,idest.   */
-	{ 0,                DEC_MORE}, /* FP ESCAPE FORMAT, more decode.  */
-	{ 0,                DEC_MORE}, /* CORE ESCAPE FORMAT, more decode.  */
-	{ &i860_cpu_device::insn_btne,        DEC_DECODED}, /* btne isrc1,isrc2,sbroff.  */
-	{ &i860_cpu_device::insn_btne_imm,    DEC_DECODED}, /* btne #const,isrc2,sbroff.  */
-	{ &i860_cpu_device::insn_bte,         DEC_DECODED}, /* bte isrc1,isrc2,sbroff.  */
-	{ &i860_cpu_device::insn_bte_imm,     DEC_DECODED}, /* bte #const5,isrc2,idest.  */
-	{ &i860_cpu_device::insn_fldy,        DEC_DECODED}, /* pfld.{l,d,q} isrc1(isrc2)[++],fdest.*/
-	{ &i860_cpu_device::insn_fldy,        DEC_DECODED}, /* pfld.{l,d,q} #const(isrc2)[++],fdest.*/
-	{ &i860_cpu_device::insn_br,          DEC_DECODED}, /* br lbroff.  */
-	{ &i860_cpu_device::insn_call,        DEC_DECODED}, /* call lbroff .  */
-	{ &i860_cpu_device::insn_bc,          DEC_DECODED}, /* bc lbroff.  */
-	{ &i860_cpu_device::insn_bct,         DEC_DECODED}, /* bc.t lbroff.  */
-	{ &i860_cpu_device::insn_bnc,         DEC_DECODED}, /* bnc lbroff.  */
-	{ &i860_cpu_device::insn_bnct,        DEC_DECODED}, /* bnc.t lbroff.  */
-	{ &i860_cpu_device::insn_addu,        DEC_DECODED}, /* addu isrc1,isrc2,idest.  */
-	{ &i860_cpu_device::insn_addu_imm,    DEC_DECODED}, /* addu #const,isrc2,idest.  */
-	{ &i860_cpu_device::insn_subu,        DEC_DECODED}, /* subu isrc1,isrc2,idest.  */
-	{ &i860_cpu_device::insn_subu_imm,    DEC_DECODED}, /* subu #const,isrc2,idest.  */
-	{ &i860_cpu_device::insn_adds,        DEC_DECODED}, /* adds isrc1,isrc2,idest.  */
-	{ &i860_cpu_device::insn_adds_imm,    DEC_DECODED}, /* adds #const,isrc2,idest.  */
-	{ &i860_cpu_device::insn_subs,        DEC_DECODED}, /* subs isrc1,isrc2,idest.  */
-	{ &i860_cpu_device::insn_subs_imm,    DEC_DECODED}, /* subs #const,isrc2,idest.  */
-	{ &i860_cpu_device::insn_shl,         DEC_DECODED}, /* shl isrc1,isrc2,idest.  */
-	{ &i860_cpu_device::insn_shl_imm,     DEC_DECODED}, /* shl #const,isrc2,idest.  */
-	{ &i860_cpu_device::insn_shr,         DEC_DECODED}, /* shr isrc1,isrc2,idest.  */
-	{ &i860_cpu_device::insn_shr_imm,     DEC_DECODED}, /* shr #const,isrc2,idest.  */
-	{ &i860_cpu_device::insn_shrd,        DEC_DECODED}, /* shrd isrc1ni,isrc2,idest.  */
-	{ &i860_cpu_device::insn_bla,         DEC_DECODED}, /* bla isrc1ni,isrc2,sbroff.  */
-	{ &i860_cpu_device::insn_shra,        DEC_DECODED}, /* shra isrc1,isrc2,idest.  */
-	{ &i860_cpu_device::insn_shra_imm,    DEC_DECODED}, /* shra #const,isrc2,idest.  */
-	{ &i860_cpu_device::insn_and,         DEC_DECODED}, /* and isrc1,isrc2,idest.  */
-	{ &i860_cpu_device::insn_and_imm,     DEC_DECODED}, /* and #const,isrc2,idest.  */
-	{ 0,                0},
-	{ &i860_cpu_device::insn_andh_imm,    DEC_DECODED}, /* andh #const,isrc2,idest.  */
-	{ &i860_cpu_device::insn_andnot,      DEC_DECODED}, /* andnot isrc1,isrc2,idest.  */
-	{ &i860_cpu_device::insn_andnot_imm,  DEC_DECODED}, /* andnot #const,isrc2,idest.  */
-	{ 0,                0},
-	{ &i860_cpu_device::insn_andnoth_imm, DEC_DECODED}, /* andnoth #const,isrc2,idest.  */
-	{ &i860_cpu_device::insn_or,          DEC_DECODED}, /* or isrc1,isrc2,idest.  */
-	{ &i860_cpu_device::insn_or_imm,      DEC_DECODED}, /* or #const,isrc2,idest.  */
-	{ 0,                0},
-	{ &i860_cpu_device::insn_orh_imm,     DEC_DECODED}, /* orh #const,isrc2,idest.  */
-	{ &i860_cpu_device::insn_xor,         DEC_DECODED}, /* xor isrc1,isrc2,idest.  */
-	{ &i860_cpu_device::insn_xor_imm,     DEC_DECODED}, /* xor #const,isrc2,idest.  */
-	{ 0,                0},
-	{ &i860_cpu_device::insn_xorh_imm,    DEC_DECODED}, /* xorh #const,isrc2,idest.  */
+	&i860_cpu_device::insn_ldx,          /* ld.b isrc1(isrc2),idest.  */
+	&i860_cpu_device::insn_ldx,          /* ld.b #const(isrc2),idest.  */
+	&i860_cpu_device::insn_ixfr,         /* ixfr isrc1ni,fdest.  */
+	&i860_cpu_device::insn_stx,          /* st.b isrc1ni,#const(isrc2).  */
+	&i860_cpu_device::insn_ldx,          /* ld.{s,l} isrc1(isrc2),idest.  */
+	&i860_cpu_device::insn_ldx,          /* ld.{s,l} #const(isrc2),idest.  */
+	&i860_cpu_device::dec_unrecog,
+	&i860_cpu_device::insn_stx,          /* st.{s,l} isrc1ni,#const(isrc2),idest.*/
+	&i860_cpu_device::insn_fldy,         /* fld.{l,d,q} isrc1(isrc2)[++],fdest. */
+	&i860_cpu_device::insn_fldy,         /* fld.{l,d,q} #const(isrc2)[++],fdest. */
+	&i860_cpu_device::insn_fsty,         /* fst.{l,d,q} fdest,isrc1(isrc2)[++] */
+	&i860_cpu_device::insn_fsty,         /* fst.{l,d,q} fdest,#const(isrc2)[++] */
+	&i860_cpu_device::insn_ld_ctrl,      /* ld.c csrc2,idest.  */
+	&i860_cpu_device::insn_flush,        /* flush #const(isrc2) (or autoinc).  */
+	&i860_cpu_device::insn_st_ctrl,      /* st.c isrc1,csrc2.  */
+	&i860_cpu_device::insn_pstd,         /* pst.d fdest,#const(isrc2)[++].  */
+	&i860_cpu_device::insn_bri,          /* bri isrc1ni.  */
+	&i860_cpu_device::insn_trap,         /* trap isrc1ni,isrc2,idest.   */
+	&i860_cpu_device::dec_unrecog,       /* FP ESCAPE FORMAT, more decode.  */
+	&i860_cpu_device::dec_unrecog,       /* CORE ESCAPE FORMAT, more decode.  */
+	&i860_cpu_device::insn_btne,         /* btne isrc1,isrc2,sbroff.  */
+	&i860_cpu_device::insn_btne_imm,     /* btne #const,isrc2,sbroff.  */
+	&i860_cpu_device::insn_bte,          /* bte isrc1,isrc2,sbroff.  */
+	&i860_cpu_device::insn_bte_imm,      /* bte #const5,isrc2,idest.  */
+	&i860_cpu_device::insn_fldy,         /* pfld.{l,d,q} isrc1(isrc2)[++],fdest.*/
+	&i860_cpu_device::insn_fldy,         /* pfld.{l,d,q} #const(isrc2)[++],fdest.*/
+	&i860_cpu_device::insn_br,           /* br lbroff.  */
+	&i860_cpu_device::insn_call,         /* call lbroff .  */
+	&i860_cpu_device::insn_bc,           /* bc lbroff.  */
+	&i860_cpu_device::insn_bct,          /* bc.t lbroff.  */
+	&i860_cpu_device::insn_bnc,          /* bnc lbroff.  */
+	&i860_cpu_device::insn_bnct,         /* bnc.t lbroff.  */
+	&i860_cpu_device::insn_addu,         /* addu isrc1,isrc2,idest.  */
+	&i860_cpu_device::insn_addu_imm,     /* addu #const,isrc2,idest.  */
+	&i860_cpu_device::insn_subu,         /* subu isrc1,isrc2,idest.  */
+	&i860_cpu_device::insn_subu_imm,     /* subu #const,isrc2,idest.  */
+	&i860_cpu_device::insn_adds,         /* adds isrc1,isrc2,idest.  */
+	&i860_cpu_device::insn_adds_imm,     /* adds #const,isrc2,idest.  */
+	&i860_cpu_device::insn_subs,         /* subs isrc1,isrc2,idest.  */
+	&i860_cpu_device::insn_subs_imm,     /* subs #const,isrc2,idest.  */
+	&i860_cpu_device::insn_shl,          /* shl isrc1,isrc2,idest.  */
+	&i860_cpu_device::insn_shl_imm,      /* shl #const,isrc2,idest.  */
+	&i860_cpu_device::insn_shr,          /* shr isrc1,isrc2,idest.  */
+	&i860_cpu_device::insn_shr_imm,      /* shr #const,isrc2,idest.  */
+	&i860_cpu_device::insn_shrd,         /* shrd isrc1ni,isrc2,idest.  */
+	&i860_cpu_device::insn_bla,          /* bla isrc1ni,isrc2,sbroff.  */
+	&i860_cpu_device::insn_shra,         /* shra isrc1,isrc2,idest.  */
+	&i860_cpu_device::insn_shra_imm,     /* shra #const,isrc2,idest.  */
+	&i860_cpu_device::insn_and,          /* and isrc1,isrc2,idest.  */
+	&i860_cpu_device::insn_and_imm,      /* and #const,isrc2,idest.  */
+	&i860_cpu_device::dec_unrecog,
+	&i860_cpu_device::insn_andh_imm,     /* andh #const,isrc2,idest.  */
+	&i860_cpu_device::insn_andnot,       /* andnot isrc1,isrc2,idest.  */
+	&i860_cpu_device::insn_andnot_imm,   /* andnot #const,isrc2,idest.  */
+	&i860_cpu_device::dec_unrecog,
+	&i860_cpu_device::insn_andnoth_imm,  /* andnoth #const,isrc2,idest.  */
+	&i860_cpu_device::insn_or,           /* or isrc1,isrc2,idest.  */
+	&i860_cpu_device::insn_or_imm,       /* or #const,isrc2,idest.  */
+	&i860_cpu_device::dec_unrecog,
+	&i860_cpu_device::insn_orh_imm,      /* orh #const,isrc2,idest.  */
+	&i860_cpu_device::insn_xor,          /* xor isrc1,isrc2,idest.  */
+	&i860_cpu_device::insn_xor_imm,      /* xor #const,isrc2,idest.  */
+	&i860_cpu_device::dec_unrecog,
+	&i860_cpu_device::insn_xorh_imm,     /* xorh #const,isrc2,idest.  */
 };
 
 
 /* Second-level decode table (i.e., for the 3 core escape opcode bits).  */
-const i860_cpu_device::decode_tbl_t i860_cpu_device::core_esc_decode_tbl[8] = {
-	{ 0,                0},
-	{ 0,                0}, /* lock  (FIXME: unimplemented).  */
-	{ &i860_cpu_device::insn_calli,       DEC_DECODED}, /* calli isrc1ni.                 */
-	{ 0,                0},
-	{ &i860_cpu_device::insn_intovr,      DEC_DECODED}, /* intovr.                        */
-	{ 0,                0},
-	{ 0,                0},
-	{ 0,                0}, /* unlock (FIXME: unimplemented). */
+const i860_cpu_device::insn_func i860_cpu_device::core_esc_decode_tbl[8] = {
+	&i860_cpu_device::dec_unrecog,
+	&i860_cpu_device::dec_unrecog, /* lock  (FIXME: unimplemented).  */
+	&i860_cpu_device::insn_calli,        /* calli isrc1ni.                 */
+	&i860_cpu_device::dec_unrecog,
+	&i860_cpu_device::insn_intovr,       /* intovr.                        */
+	&i860_cpu_device::dec_unrecog,
+	&i860_cpu_device::dec_unrecog,
+	&i860_cpu_device::dec_unrecog, /* unlock (FIXME: unimplemented). */
 };
 
 
 /* Second-level decode table (i.e., for the 7 FP extended opcode bits).  */
-const i860_cpu_device::decode_tbl_t i860_cpu_device::fp_decode_tbl[128] = {
+const i860_cpu_device::insn_func i860_cpu_device::fp_decode_tbl[128] = {
 	/* Floating point instructions.  The least significant 7 bits are
 	   the (extended) opcode and bits 10:7 are P,D,S,R respectively
 	   ([p]ipelined, [d]ual, [s]ource prec., [r]esult prec.).
 	   For some operations, I defer decoding the P,S,R bits to the
 	   emulation routine for them.  */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x00 pf[m]am */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x01 pf[m]am */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x02 pf[m]am */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x03 pf[m]am */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x04 pf[m]am */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x05 pf[m]am */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x06 pf[m]am */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x07 pf[m]am */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x08 pf[m]am */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x09 pf[m]am */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x0A pf[m]am */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x0B pf[m]am */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x0C pf[m]am */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x0D pf[m]am */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x0E pf[m]am */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x0F pf[m]am */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x10 pf[m]sm */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x11 pf[m]sm */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x12 pf[m]sm */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x13 pf[m]sm */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x14 pf[m]sm */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x15 pf[m]sm */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x16 pf[m]sm */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x17 pf[m]sm */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x18 pf[m]sm */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x19 pf[m]sm */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x1A pf[m]sm */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x1B pf[m]sm */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x1C pf[m]sm */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x1D pf[m]sm */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x1E pf[m]sm */
-	{ &i860_cpu_device::insn_dualop,      DEC_DECODED}, /* 0x1F pf[m]sm */
-	{ &i860_cpu_device::insn_fmul,        DEC_DECODED}, /* 0x20 [p]fmul */
-	{ &i860_cpu_device::insn_fmlow,       DEC_DECODED}, /* 0x21 fmlow.dd */
-	{ &i860_cpu_device::insn_frcp,        DEC_DECODED}, /* 0x22 frcp.{ss,sd,dd} */
-	{ &i860_cpu_device::insn_frsqr,       DEC_DECODED}, /* 0x23 frsqr.{ss,sd,dd} */
-	{ &i860_cpu_device::insn_fmul,        DEC_DECODED}, /* 0x24 pfmul3.dd */
-	{ 0,                0}, /* 0x25 */
-	{ 0,                0}, /* 0x26 */
-	{ 0,                0}, /* 0x27 */
-	{ 0,                0}, /* 0x28 */
-	{ 0,                0}, /* 0x29 */
-	{ 0,                0}, /* 0x2A */
-	{ 0,                0}, /* 0x2B */
-	{ 0,                0}, /* 0x2C */
-	{ 0,                0}, /* 0x2D */
-	{ 0,                0}, /* 0x2E */
-	{ 0,                0}, /* 0x2F */
-	{ &i860_cpu_device::insn_fadd_sub,    DEC_DECODED}, /* 0x30, [p]fadd.{ss,sd,dd} */
-	{ &i860_cpu_device::insn_fadd_sub,    DEC_DECODED}, /* 0x31, [p]fsub.{ss,sd,dd} */
-	{ &i860_cpu_device::insn_fix,         DEC_DECODED}, /* 0x32, [p]fix.{ss,sd,dd} */
-	{ &i860_cpu_device::insn_famov,       DEC_DECODED}, /* 0x33, [p]famov.{ss,sd,ds,dd} */
-	{ &i860_cpu_device::insn_fcmp,        DEC_DECODED}, /* 0x34, pf{gt,le}.{ss,dd} */
-	{ &i860_cpu_device::insn_fcmp,        DEC_DECODED}, /* 0x35, pfeq.{ss,dd} */
-	{ 0,                0}, /* 0x36 */
-	{ 0,                0}, /* 0x37 */
-	{ 0,                0}, /* 0x38 */
-	{ 0,                0}, /* 0x39 */
-	{ &i860_cpu_device::insn_ftrunc,      DEC_DECODED}, /* 0x3A, [p]ftrunc.{ss,sd,dd} */
-	{ 0,                0}, /* 0x3B */
-	{ 0,                0}, /* 0x3C */
-	{ 0,                0}, /* 0x3D */
-	{ 0,                0}, /* 0x3E */
-	{ 0,                0}, /* 0x3F */
-	{ &i860_cpu_device::insn_fxfr,        DEC_DECODED}, /* 0x40, fxfr */
-	{ 0,                0}, /* 0x41 */
-	{ 0,                0}, /* 0x42 */
-	{ 0,                0}, /* 0x43 */
-	{ 0,                0}, /* 0x44 */
-	{ 0,                0}, /* 0x45 */
-	{ 0,                0}, /* 0x46 */
-	{ 0,                0}, /* 0x47 */
-	{ 0,                0}, /* 0x48 */
-	{ &i860_cpu_device::insn_fiadd_sub,   DEC_DECODED}, /* 0x49, [p]fiadd.{ss,dd} */
-	{ 0,                0}, /* 0x4A */
-	{ 0,                0}, /* 0x4B */
-	{ 0,                0}, /* 0x4C */
-	{ &i860_cpu_device::insn_fiadd_sub,   DEC_DECODED}, /* 0x4D, [p]fisub.{ss,dd} */
-	{ 0,                0}, /* 0x4E */
-	{ 0,                0}, /* 0x4F */
-	{ &i860_cpu_device::insn_faddp,       DEC_DECODED}, /* 0x50, [p]faddp */
-	{ &i860_cpu_device::insn_faddz,       DEC_DECODED}, /* 0x51, [p]faddz */
-	{ 0,                0}, /* 0x52 */
-	{ 0,                0}, /* 0x53 */
-	{ 0,                0}, /* 0x54 */
-	{ 0,                0}, /* 0x55 */
-	{ 0,                0}, /* 0x56 */
-	{ &i860_cpu_device::insn_fzchk,       DEC_DECODED}, /* 0x57, [p]fzchkl */
-	{ 0,                0}, /* 0x58 */
-	{ 0,                0}, /* 0x59 */
-	{ &i860_cpu_device::insn_form,        DEC_DECODED}, /* 0x5A, [p]form.dd */
-	{ 0,                0}, /* 0x5B */
-	{ 0,                0}, /* 0x5C */
-	{ 0,                0}, /* 0x5D */
-	{ 0,                0}, /* 0x5E */
-	{ &i860_cpu_device::insn_fzchk,       DEC_DECODED}, /* 0x5F, [p]fzchks */
-	{ 0,                0}, /* 0x60 */
-	{ 0,                0}, /* 0x61 */
-	{ 0,                0}, /* 0x62 */
-	{ 0,                0}, /* 0x63 */
-	{ 0,                0}, /* 0x64 */
-	{ 0,                0}, /* 0x65 */
-	{ 0,                0}, /* 0x66 */
-	{ 0,                0}, /* 0x67 */
-	{ 0,                0}, /* 0x68 */
-	{ 0,                0}, /* 0x69 */
-	{ 0,                0}, /* 0x6A */
-	{ 0,                0}, /* 0x6B */
-	{ 0,                0}, /* 0x6C */
-	{ 0,                0}, /* 0x6D */
-	{ 0,                0}, /* 0x6E */
-	{ 0,                0}, /* 0x6F */
-	{ 0,                0}, /* 0x70 */
-	{ 0,                0}, /* 0x71 */
-	{ 0,                0}, /* 0x72 */
-	{ 0,                0}, /* 0x73 */
-	{ 0,                0}, /* 0x74 */
-	{ 0,                0}, /* 0x75 */
-	{ 0,                0}, /* 0x76 */
-	{ 0,                0}, /* 0x77 */
-	{ 0,                0}, /* 0x78 */
-	{ 0,                0}, /* 0x79 */
-	{ 0,                0}, /* 0x7A */
-	{ 0,                0}, /* 0x7B */
-	{ 0,                0}, /* 0x7C */
-	{ 0,                0}, /* 0x7D */
-	{ 0,                0}, /* 0x7E */
-	{ 0,                0}, /* 0x7F */
+	&i860_cpu_device::insn_dualop,       /* 0x00 pf[m]am */
+	&i860_cpu_device::insn_dualop,       /* 0x01 pf[m]am */
+	&i860_cpu_device::insn_dualop,       /* 0x02 pf[m]am */
+	&i860_cpu_device::insn_dualop,       /* 0x03 pf[m]am */
+	&i860_cpu_device::insn_dualop,       /* 0x04 pf[m]am */
+	&i860_cpu_device::insn_dualop,       /* 0x05 pf[m]am */
+	&i860_cpu_device::insn_dualop,       /* 0x06 pf[m]am */
+	&i860_cpu_device::insn_dualop,       /* 0x07 pf[m]am */
+	&i860_cpu_device::insn_dualop,       /* 0x08 pf[m]am */
+	&i860_cpu_device::insn_dualop,       /* 0x09 pf[m]am */
+	&i860_cpu_device::insn_dualop,       /* 0x0A pf[m]am */
+	&i860_cpu_device::insn_dualop,       /* 0x0B pf[m]am */
+	&i860_cpu_device::insn_dualop,       /* 0x0C pf[m]am */
+	&i860_cpu_device::insn_dualop,       /* 0x0D pf[m]am */
+	&i860_cpu_device::insn_dualop,       /* 0x0E pf[m]am */
+	&i860_cpu_device::insn_dualop,       /* 0x0F pf[m]am */
+	&i860_cpu_device::insn_dualop,       /* 0x10 pf[m]sm */
+	&i860_cpu_device::insn_dualop,       /* 0x11 pf[m]sm */
+	&i860_cpu_device::insn_dualop,       /* 0x12 pf[m]sm */
+	&i860_cpu_device::insn_dualop,       /* 0x13 pf[m]sm */
+	&i860_cpu_device::insn_dualop,       /* 0x14 pf[m]sm */
+	&i860_cpu_device::insn_dualop,       /* 0x15 pf[m]sm */
+	&i860_cpu_device::insn_dualop,       /* 0x16 pf[m]sm */
+	&i860_cpu_device::insn_dualop,       /* 0x17 pf[m]sm */
+	&i860_cpu_device::insn_dualop,       /* 0x18 pf[m]sm */
+	&i860_cpu_device::insn_dualop,       /* 0x19 pf[m]sm */
+	&i860_cpu_device::insn_dualop,       /* 0x1A pf[m]sm */
+	&i860_cpu_device::insn_dualop,       /* 0x1B pf[m]sm */
+	&i860_cpu_device::insn_dualop,       /* 0x1C pf[m]sm */
+	&i860_cpu_device::insn_dualop,       /* 0x1D pf[m]sm */
+	&i860_cpu_device::insn_dualop,       /* 0x1E pf[m]sm */
+	&i860_cpu_device::insn_dualop,       /* 0x1F pf[m]sm */
+	&i860_cpu_device::insn_fmul,         /* 0x20 [p]fmul */
+	&i860_cpu_device::insn_fmlow,        /* 0x21 fmlow.dd */
+	&i860_cpu_device::insn_frcp,         /* 0x22 frcp.{ss,sd,dd} */
+	&i860_cpu_device::insn_frsqr,        /* 0x23 frsqr.{ss,sd,dd} */
+	&i860_cpu_device::insn_fmul,         /* 0x24 pfmul3.dd */
+	&i860_cpu_device::dec_unrecog, /* 0x25 */
+	&i860_cpu_device::dec_unrecog, /* 0x26 */
+	&i860_cpu_device::dec_unrecog, /* 0x27 */
+	&i860_cpu_device::dec_unrecog, /* 0x28 */
+	&i860_cpu_device::dec_unrecog, /* 0x29 */
+	&i860_cpu_device::dec_unrecog, /* 0x2A */
+	&i860_cpu_device::dec_unrecog, /* 0x2B */
+	&i860_cpu_device::dec_unrecog, /* 0x2C */
+	&i860_cpu_device::dec_unrecog, /* 0x2D */
+	&i860_cpu_device::dec_unrecog, /* 0x2E */
+	&i860_cpu_device::dec_unrecog, /* 0x2F */
+	&i860_cpu_device::insn_fadd_sub,     /* 0x30, [p]fadd.{ss,sd,dd} */
+	&i860_cpu_device::insn_fadd_sub,     /* 0x31, [p]fsub.{ss,sd,dd} */
+	&i860_cpu_device::insn_fix,          /* 0x32, [p]fix.{ss,sd,dd} */
+	&i860_cpu_device::insn_famov,        /* 0x33, [p]famov.{ss,sd,ds,dd} */
+	&i860_cpu_device::insn_fcmp,         /* 0x34, pf{gt,le}.{ss,dd} */
+	&i860_cpu_device::insn_fcmp,         /* 0x35, pfeq.{ss,dd} */
+	&i860_cpu_device::dec_unrecog, /* 0x36 */
+	&i860_cpu_device::dec_unrecog, /* 0x37 */
+	&i860_cpu_device::dec_unrecog, /* 0x38 */
+	&i860_cpu_device::dec_unrecog, /* 0x39 */
+	&i860_cpu_device::insn_ftrunc,       /* 0x3A, [p]ftrunc.{ss,sd,dd} */
+	&i860_cpu_device::dec_unrecog, /* 0x3B */
+	&i860_cpu_device::dec_unrecog, /* 0x3C */
+	&i860_cpu_device::dec_unrecog, /* 0x3D */
+	&i860_cpu_device::dec_unrecog, /* 0x3E */
+	&i860_cpu_device::dec_unrecog, /* 0x3F */
+	&i860_cpu_device::insn_fxfr,         /* 0x40, fxfr */
+	&i860_cpu_device::dec_unrecog, /* 0x41 */
+	&i860_cpu_device::dec_unrecog, /* 0x42 */
+	&i860_cpu_device::dec_unrecog, /* 0x43 */
+	&i860_cpu_device::dec_unrecog, /* 0x44 */
+	&i860_cpu_device::dec_unrecog, /* 0x45 */
+	&i860_cpu_device::dec_unrecog, /* 0x46 */
+	&i860_cpu_device::dec_unrecog, /* 0x47 */
+	&i860_cpu_device::dec_unrecog, /* 0x48 */
+	&i860_cpu_device::insn_fiadd_sub,    /* 0x49, [p]fiadd.{ss,dd} */
+	&i860_cpu_device::dec_unrecog, /* 0x4A */
+	&i860_cpu_device::dec_unrecog, /* 0x4B */
+	&i860_cpu_device::dec_unrecog, /* 0x4C */
+	&i860_cpu_device::insn_fiadd_sub,    /* 0x4D, [p]fisub.{ss,dd} */
+	&i860_cpu_device::dec_unrecog, /* 0x4E */
+	&i860_cpu_device::dec_unrecog, /* 0x4F */
+	&i860_cpu_device::insn_faddp,        /* 0x50, [p]faddp */
+	&i860_cpu_device::insn_faddz,        /* 0x51, [p]faddz */
+	&i860_cpu_device::dec_unrecog, /* 0x52 */
+	&i860_cpu_device::dec_unrecog, /* 0x53 */
+	&i860_cpu_device::dec_unrecog, /* 0x54 */
+	&i860_cpu_device::dec_unrecog, /* 0x55 */
+	&i860_cpu_device::dec_unrecog, /* 0x56 */
+	&i860_cpu_device::insn_fzchk,        /* 0x57, [p]fzchkl */
+	&i860_cpu_device::dec_unrecog, /* 0x58 */
+	&i860_cpu_device::dec_unrecog, /* 0x59 */
+	&i860_cpu_device::insn_form,         /* 0x5A, [p]form.dd */
+	&i860_cpu_device::dec_unrecog, /* 0x5B */
+	&i860_cpu_device::dec_unrecog, /* 0x5C */
+	&i860_cpu_device::dec_unrecog, /* 0x5D */
+	&i860_cpu_device::dec_unrecog, /* 0x5E */
+	&i860_cpu_device::insn_fzchk,        /* 0x5F, [p]fzchks */
+	&i860_cpu_device::dec_unrecog, /* 0x60 */
+	&i860_cpu_device::dec_unrecog, /* 0x61 */
+	&i860_cpu_device::dec_unrecog, /* 0x62 */
+	&i860_cpu_device::dec_unrecog, /* 0x63 */
+	&i860_cpu_device::dec_unrecog, /* 0x64 */
+	&i860_cpu_device::dec_unrecog, /* 0x65 */
+	&i860_cpu_device::dec_unrecog, /* 0x66 */
+	&i860_cpu_device::dec_unrecog, /* 0x67 */
+	&i860_cpu_device::dec_unrecog, /* 0x68 */
+	&i860_cpu_device::dec_unrecog, /* 0x69 */
+	&i860_cpu_device::dec_unrecog, /* 0x6A */
+	&i860_cpu_device::dec_unrecog, /* 0x6B */
+	&i860_cpu_device::dec_unrecog, /* 0x6C */
+	&i860_cpu_device::dec_unrecog, /* 0x6D */
+	&i860_cpu_device::dec_unrecog, /* 0x6E */
+	&i860_cpu_device::dec_unrecog, /* 0x6F */
+	&i860_cpu_device::dec_unrecog, /* 0x70 */
+	&i860_cpu_device::dec_unrecog, /* 0x71 */
+	&i860_cpu_device::dec_unrecog, /* 0x72 */
+	&i860_cpu_device::dec_unrecog, /* 0x73 */
+	&i860_cpu_device::dec_unrecog, /* 0x74 */
+	&i860_cpu_device::dec_unrecog, /* 0x75 */
+	&i860_cpu_device::dec_unrecog, /* 0x76 */
+	&i860_cpu_device::dec_unrecog, /* 0x77 */
+	&i860_cpu_device::dec_unrecog, /* 0x78 */
+	&i860_cpu_device::dec_unrecog, /* 0x79 */
+	&i860_cpu_device::dec_unrecog, /* 0x7A */
+	&i860_cpu_device::dec_unrecog, /* 0x7B */
+	&i860_cpu_device::dec_unrecog, /* 0x7C */
+	&i860_cpu_device::dec_unrecog, /* 0x7D */
+	&i860_cpu_device::dec_unrecog, /* 0x7E */
+	&i860_cpu_device::dec_unrecog, /* 0x7F */
 };
+
+i860_cpu_device::insn_func i860_cpu_device::decoder_tbl[8192];
 
 /*
  * Main decoder driver.
@@ -3914,34 +3908,14 @@ void i860_cpu_device::decode_exec (UINT32 insn) {
     m_traceback[m_traceback_idx++] = m_pc;
     if(m_traceback_idx >= (sizeof(m_traceback) / sizeof(m_traceback[0])))
         m_traceback_idx = 0;
-#endif
-    
-    int unrecognized = 1;
-	const int  upper_6bits = (insn >> 26) & 0x3f;
-	const char flags = decode_tbl[upper_6bits].flags;
-	if (flags & DEC_DECODED) {
-		(this->*decode_tbl[upper_6bits].insn_exec)(insn);
-		unrecognized = 0;
-	} else if (flags & DEC_MORE) {
-		if (upper_6bits == 0x12) {
-			/* FP instruction format handled here.  */
-			if (fp_decode_tbl[insn & 0x7f].flags & DEC_DECODED) {
-				(this->*fp_decode_tbl[insn & 0x7f].insn_exec)(insn);
-				unrecognized = 0;
-			}
-		} else if (upper_6bits == 0x13) {
-			/* Core escape instruction format handled here.  */
-			if (core_esc_decode_tbl[insn & 0x3].flags & DEC_DECODED) {
-				(this->*core_esc_decode_tbl[insn & 0x3].insn_exec)(insn);
-				unrecognized = 0;
-			}
-		}
-	}
-    
-	if (unrecognized)
-		unrecog_opcode (m_pc, insn);
+#endif    
+//    (this->*decode_tbl[(insn >> 26) & 0x3f])(insn);
+    (this->*decoder_tbl[((insn >> 19) & 0x1F80) | (insn & 0x7F)])(insn);
 }
 
+void i860_cpu_device::dec_unrecog(UINT32 insn) {
+    unrecog_opcode(m_pc, insn);
+}
 
 /* Set-up all the default power-on/reset values.  */
 void i860_cpu_device::reset() {
