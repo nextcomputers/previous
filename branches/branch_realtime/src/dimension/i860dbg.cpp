@@ -36,7 +36,7 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
     if (m_single_stepping > 1 && m_single_stepping != m_pc)
         return;
     
-    lock(&m_debugger_lock);
+    host_lock(&m_debugger_lock);
     
     if(format) {
         va_list ap;
@@ -194,7 +194,7 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
         if(m_single_stepping == 2) m_single_stepping = 0;
     }
     
-    unlock(&m_debugger_lock);
+    host_unlock(&m_debugger_lock);
 }
 
 /* Disassemble `len' instructions starting at `addr'.  */

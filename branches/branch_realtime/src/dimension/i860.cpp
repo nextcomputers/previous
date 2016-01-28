@@ -45,7 +45,7 @@ extern "C" {
 #endif
 #if ENABLE_I860_THREAD
         if(checklock_cnt <= 0) {
-            checklock(&nd_i860.m_debugger_lock);
+            host_checklock(&nd_i860.m_debugger_lock);
             // optimzation: check the debugger lock only all 10000 cycles
             checklock_cnt = 10000;
         } else
@@ -157,9 +157,9 @@ inline void i860_cpu_device::SET_PSR_CC(int val) {
 }
 
 void i860_cpu_device::send_msg(int msg) {
-    lock(&m_port_lock);
+    host_lock(&m_port_lock);
     m_port |= msg;
-    unlock(&m_port_lock);
+    host_unlock(&m_port_lock);
 }
 
 void i860_cpu_device::handle_trap(UINT32 savepc) {
@@ -517,7 +517,7 @@ error:
 
     send_msg(MSG_I860_RESET);
 #if ENABLE_I860_THREAD
-    m_thread = thread_create(i860_thread, this);
+    m_thread = host_thread_create(i860_thread, this);
 #endif
 }
 
@@ -528,7 +528,7 @@ void i860_cpu_device::uninit() {
     send_msg(MSG_I860_KILL);
 #if ENABLE_I860_THREAD
     if(m_thread) {
-        thread_wait(m_thread);
+        host_thread_wait(m_thread);
         m_thread = NULL;
     }
     send_msg(MSG_NONE);
@@ -537,10 +537,10 @@ void i860_cpu_device::uninit() {
 
 /* Message disaptcher - executed on i860 thread, safe to call i860 methods */
 bool i860_cpu_device::handle_msgs() {
-    lock(&m_port_lock);
+    host_lock(&m_port_lock);
     int msg = m_port;
     m_port = 0;
-    unlock(&m_port_lock);
+    host_unlock(&m_port_lock);
     
 #if ENABLE_I860_THREAD
     if(msg & MSG_I860_KILL)
@@ -564,7 +564,7 @@ void i860_cpu_device::run() {
         
         /* Sleep a bit if halted */
         if(is_halted()) {
-            sleep_ms(100);
+            host_sleep_ms(100);
             continue;
         }
         
@@ -591,7 +591,7 @@ void i860_cpu_device::dump_reset_perfc() {
     if(dump) {
         UINT32 dt = m_time_delta_ms;
         if(dt) {
-            if(trylock(&m_debugger_lock)) {
+            if(host_trylock(&m_debugger_lock)) {
                 Log_Printf(LOG_WARN, "[i860] Stats: MIPS=%lld.%lld icache_hit=%lld%% tlb_hit=%lld%% icach_inval/s=%lld tlb_inval/s=%lld intr/s=%lld",
                            (m_insn_decoded / (dt * 100)) / 10, (m_insn_decoded / (dt * 100)) % 10,
                            m_icache_hit+m_icache_miss == 0 ? 0 : (100 * m_icache_hit) / (m_icache_hit+m_icache_miss) ,
@@ -616,7 +616,7 @@ void i860_cpu_device::dump_reset_perfc() {
                 m_time_delta_ms = 0;
                 m_intrs         = 0;
 
-                unlock(&m_debugger_lock);
+                host_unlock(&m_debugger_lock);
             }
         }
     }
