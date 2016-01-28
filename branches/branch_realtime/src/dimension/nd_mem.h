@@ -15,6 +15,7 @@ typedef struct {
 #define nd_call_mem_put_func(func, addr, v) ((*func)(addr, v))
 
 extern nd_addrbank *nd_mem_banks[65536];
+
 #define nd_get_mem_bank(addr) (*nd_mem_banks[bankindex(addr)])
 #define nd_put_mem_bank(addr, b) (nd_mem_banks[bankindex(addr)] = (b))
 

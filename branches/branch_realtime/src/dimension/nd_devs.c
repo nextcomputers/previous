@@ -14,8 +14,6 @@
 #include "ramdac.h"
 #include "host.h"
 
-#if ENABLE_DIMENSION
-
 /* --------- NEXTDIMENSION DEVICES ---------- */
 
 /* Device registers */
@@ -108,24 +106,8 @@ static struct {
     uae_u32 iic_data;
 } nd_dp;
 
-void nd_set_blank_state(int src, bool state) {
-    switch (src) {
-        case ND_DISPLAY:
-            if(state)   nd_mc.csr0 |= CSR0_VBL_INT | CSR0_VBLANK;
-            else        nd_mc.csr0 &= ~CSR0_VBLANK;
-            break;
-        case ND_VIDEO:
-            if(state)   nd_mc.csr0 |= CSR0_VIOVBL_INT | CSR0_VIOBLANK;
-            else        nd_mc.csr0 &= ~CSR0_VIOBLANK;
-            break;
-    }
-    i860_tick((nd_mc.csr0 & (CSR0_VBL_IMASK | CSR0_VIOVBL_IMASK)) != 0);
-}
-
 void nd_devs_init() {
-    nd_set_speed_hack(0);
-
-    nd_mc.csr0          = 0;
+    nd_mc.csr0          = CSR0_i860PIN_CS8;
     nd_mc.csr1          = 0;
     nd_mc.csr2          = 0;
     nd_mc.sid           = ND_SLOT;
@@ -342,7 +324,6 @@ void nd_mc_write_register(uaecptr addr, uae_u32 val) {
             if((nd_mc.csr0 & CSR0_BE_INT) && (nd_mc.csr0 & CSR0_BE_IMASK))
                 i860_tick(true);
             
-			nd_set_speed_hack((val & 0x00008000) ? 0 : 1);
             nd_mc.csr0 = val;
             break;
         case 0x0010:
@@ -567,6 +548,20 @@ inline void nd_dp_lput(uaecptr addr, uae_u32 v) {
     }
 }
 
+void nd_set_blank_state(int src, bool state) {
+    switch (src) {
+        case ND_DISPLAY:
+            if(state)   nd_mc.csr0 |= CSR0_VBL_INT | CSR0_VBLANK;
+            else        nd_mc.csr0 &= ~CSR0_VBLANK;
+            break;
+        case ND_VIDEO:
+            if(state)   nd_mc.csr0 |= CSR0_VIOVBL_INT | CSR0_VIOBLANK;
+            else        nd_mc.csr0 &= ~CSR0_VIOBLANK;
+            break;
+    }
+    i860_tick((nd_mc.csr0 & (CSR0_VBL_IMASK | CSR0_VIOVBL_IMASK)) != 0);
+}
+
 static const char* nd_dump_path = "nd_memory.bin";
 
 /* debugger stuff */
@@ -623,4 +618,3 @@ bool nd_dbg_cmd(const char* buf) {
     }
 }
 
-#endif

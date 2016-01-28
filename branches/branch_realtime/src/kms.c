@@ -20,7 +20,7 @@
 #include "snd.h"
 #include "video.h"
 
-#define LOG_KMS_LEVEL LOG_WARN
+#define LOG_KMS_LEVEL LOG_DEBUG
 #define IO_SEG_MASK	0x1FFFF
 
 
@@ -249,6 +249,10 @@ void KMS_command(Uint8 command, Uint32 data) {
 
 void kms_snd_dma_or(Uint8 val) {
     kms.status.snd_dma |= val;
+}
+
+void kms_snd_dma_and(Uint8 val) {
+    kms.status.snd_dma &= val;
 }
 
 void KMS_Ctrl_Snd_Write(void) {

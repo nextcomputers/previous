@@ -549,7 +549,6 @@ void nextbus_board_bput(Uint32 addr, Uint32 val) {
 
 /* Init function for NextBus */
 void nextbus_init(void) {
-#if ENABLE_DIMENSION
     if (ConfigureParams.Dimension.bEnabled) {
         Log_Printf(LOG_WARN, "[NextBus/ND] board at slot %i",ND_SLOT);
         
@@ -583,5 +582,4 @@ void nextbus_init(void) {
 		
 		dimension_uninit();
 	}
-#endif
 }

@@ -7,8 +7,6 @@
 #include "nd_mem.h"
 #include "nd_rom.h"
 
-#if ENABLE_DIMENSION
-
 /* --------- NEXTDIMENSION EEPROM --------- *
  *                                          *
  *  Intel 28F010 (1024k CMOS Flash Memory)  *
@@ -98,5 +96,3 @@ void nd_rom_load(void) {
     
     File_Close(romfile);
 }
-
-#endif

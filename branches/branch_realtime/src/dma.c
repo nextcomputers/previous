@@ -223,6 +223,10 @@ void DMA_CSR_Write(void) {
 
     if (writecsr&DMA_RESET) {
         dma[channel].csr &= ~(DMA_COMPLETE | DMA_SUPDATE | DMA_ENABLE);
+        if(channel==CHANNEL_SOUNDOUT)
+            kms_snd_dma_and(~SNDOUT_DMA_ENABLE);
+        if(channel==CHANNEL_SOUNDIN)
+            kms_snd_dma_and(~SNDIN_DMA_ENABLE);
     }
     if (writecsr&DMA_INITBUF) {
         dma_initialize_buffer(channel, 0);

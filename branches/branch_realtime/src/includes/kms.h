@@ -29,3 +29,4 @@ void Mouse_Handler(void);
 #define SNDIN_DMA_OVERRUN   0x02
 
 void kms_snd_dma_or(Uint8 val);
+void kms_snd_dma_and(Uint8 val);

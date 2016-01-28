@@ -612,7 +612,8 @@ private:
     
     void   invalidate_icache();
     void   invalidate_tlb();
-    UINT64 ifetch64(const UINT32 pc);
+    inline UINT64 ifetch64(const UINT32 pc);
+    UINT64 ifetch64(const UINT32 pc, const UINT32 vaddr, int const cidx);
     UINT32 ifetch(const UINT32 pc);
     UINT32 ifetch_notrap(const UINT32 pc);
     void   handle_trap(UINT32 savepc);
@@ -626,7 +627,8 @@ private:
     offs_t disasm(char* buffer, offs_t pc);
 	void   dbg_memdump (UINT32 addr, int len);
 	int    delay_slots(UINT32 insn);
-	UINT32 get_address_translation (UINT32 vaddr, int is_dataref, int is_write);
+	UINT32 get_address_translation(UINT32 vaddr, int is_dataref, int is_write);
+    inline UINT32 get_address_translation(UINT32 vaddr, UINT32 voffset, UINT32 tlbidx, int is_dataref, int is_write);
 	float  get_fval_from_optype_s (UINT32 insn, int optype);
 	double get_fval_from_optype_d (UINT32 insn, int optype);
     int    memtest(bool be);

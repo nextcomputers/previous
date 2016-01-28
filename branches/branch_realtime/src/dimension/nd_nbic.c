@@ -7,8 +7,6 @@
 #include "nd_nbic.h"
 #include "i860cfg.h"
 
-#if ENABLE_DIMENSION
-
 /* NeXTdimention NBIC */
 #define ND_NBIC_ID		0xC0000001
 #define ND_NBIC_INTR    0x80
@@ -216,15 +214,6 @@ void nd_nbic_bput(Uint32 addr, Uint8 b) {
     nd_nbic_write[addr&0x1F](addr,b);
 }
 
-/* Interrupt functions */
-void nd_nbic_interrupt(void) {
-	if (nd_nbic.intmask&nd_nbic.intstatus&ND_NBIC_INTR) {
-		set_interrupt(INT_REMOTE, SET_INT);
-	} else {
-		set_interrupt(INT_REMOTE, RELEASE_INT);
-	}
-}
-
 void nd_nbic_set_intstatus(bool set) {
 	if (set) {
         nd_nbic.intstatus |= ND_NBIC_INTR;
@@ -244,4 +233,11 @@ void nd_nbic_init(void) {
     set_interrupt(INT_REMOTE, RELEASE_INT);
 }
 
-#endif
+/* Interrupt functions */
+void nd_nbic_interrupt(void) {
+    if (nd_nbic.intmask&nd_nbic.intstatus&ND_NBIC_INTR) {
+        set_interrupt(INT_REMOTE, SET_INT);
+    } else {
+        set_interrupt(INT_REMOTE, RELEASE_INT);
+    }
+}

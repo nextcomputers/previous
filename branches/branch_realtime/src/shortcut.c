@@ -168,7 +168,6 @@ static void ShortCut_Pause(void)
  */
 static void ShortCut_Dimension(void)
 {
-#if ENABLE_DIMENSION
     if(ConfigureParams.Screen.nMonitorType != MONITOR_TYPE_DUAL) {
         if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
             ConfigureParams.Screen.nMonitorType=MONITOR_TYPE_CPU;
@@ -178,7 +177,6 @@ static void ShortCut_Dimension(void)
     }
 	Statusbar_UpdateInfo();
     Screen_SetFullUpdate();
-#endif
 }
 
 
@@ -238,11 +236,9 @@ void ShortCut_ActKey(void)
 		ShortCut_Debug();              /* Invoke the Debug UI */
 		break;
 #endif
-#if ENABLE_DIMENSION
 	 case SHORTCUT_DEBUG:
 		nd_start_debugger();              /* Invoke the Debug UI */
 		break;
-#endif
 	 case SHORTCUT_PAUSE:
 		ShortCut_Pause();              /* Invoke Pause */
 		break;

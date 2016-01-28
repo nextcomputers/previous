@@ -8,8 +8,6 @@
 #include "nd_nbic.h"
 #include "nd_sdl.h"
 
-#if ENABLE_DIMENSION
-
 /* NeXTdimension board and slot memory */
 #define ND_BOARD_SIZE	0x10000000
 #define ND_BOARD_MASK	0x0FFFFFFF
@@ -20,68 +18,6 @@
 #define ND_SLOT_BITS    0x0F000000
 
 #define ND_NBIC_SPACE   0xFFFFFFE8
-
-
-/* NeXTdimension slot memory access */
-Uint32 nd_slot_lget(Uint32 addr) {
-    addr |= ND_SLOT_BITS;
-    
-    if (addr<ND_NBIC_SPACE) {
-        return nd_longget(addr);
-    } else {
-        return nd_nbic_lget(addr);
-    }
-}
-
-Uint16 nd_slot_wget(Uint32 addr) {
-    addr |= ND_SLOT_BITS;
-    
-    if (addr<ND_NBIC_SPACE) {
-        return nd_wordget(addr);
-    } else {
-        return nd_nbic_wget(addr);
-    }
-}
-
-Uint8 nd_slot_bget(Uint32 addr) {
-    addr |= ND_SLOT_BITS;
-
-    if (addr<ND_NBIC_SPACE) {
-        return nd_byteget(addr);
-    } else {
-        return nd_nbic_bget(addr);
-    }
-}
-
-void nd_slot_lput(Uint32 addr, Uint32 l) {
-    addr |= ND_SLOT_BITS;
-
-    if (addr<ND_NBIC_SPACE) {
-        nd_longput(addr, l);
-    } else {
-        nd_nbic_lput(addr, l);
-    }
-}
-
-void nd_slot_wput(Uint32 addr, Uint16 w) {
-    addr |= ND_SLOT_BITS;
-
-    if (addr<ND_NBIC_SPACE) {
-        nd_wordput(addr, w);
-    } else {
-        nd_nbic_wput(addr, w);
-    }
-}
-
-void nd_slot_bput(Uint32 addr, Uint8 b) {
-    addr |= ND_SLOT_BITS;
-
-    if (addr<ND_NBIC_SPACE) {
-        nd_byteput(addr, b);
-    } else {
-        nd_nbic_bput(addr, b);
-    }
-}
 
 /* NeXTdimension board memory access */
 
@@ -205,7 +141,11 @@ void   nd_board_wr128_le(Uint32 addr, const Uint32* val) {
 
 inline Uint32 nd_board_lget(Uint32 addr) {
     addr |= ND_BOARD_BITS;
-    return nd_longget(addr);
+    Uint32 result = nd_longget(addr);
+    // (SC) delay m68k read on csr0 while in ROM (CS8=1)to give ND some time to start up.
+    if(addr == 0xFF800000 && (result & 0x02))
+        host_sleep_us(100);
+    return result;
 }
 
 inline Uint16 nd_board_wget(Uint32 addr) {
@@ -252,6 +192,67 @@ inline Uint8 nd_board_cs8get(Uint32 addr) {
     return nd_cs8get(addr);
 }
 
+/* NeXTdimension slot memory access */
+Uint32 nd_slot_lget(Uint32 addr) {
+    addr |= ND_SLOT_BITS;
+    
+    if (addr<ND_NBIC_SPACE) {
+        return nd_longget(addr);
+    } else {
+        return nd_nbic_lget(addr);
+    }
+}
+
+Uint16 nd_slot_wget(Uint32 addr) {
+    addr |= ND_SLOT_BITS;
+    
+    if (addr<ND_NBIC_SPACE) {
+        return nd_wordget(addr);
+    } else {
+        return nd_nbic_wget(addr);
+    }
+}
+
+Uint8 nd_slot_bget(Uint32 addr) {
+    addr |= ND_SLOT_BITS;
+    
+    if (addr<ND_NBIC_SPACE) {
+        return nd_byteget(addr);
+    } else {
+        return nd_nbic_bget(addr);
+    }
+}
+
+void nd_slot_lput(Uint32 addr, Uint32 l) {
+    addr |= ND_SLOT_BITS;
+    
+    if (addr<ND_NBIC_SPACE) {
+        nd_longput(addr, l);
+    } else {
+        nd_nbic_lput(addr, l);
+    }
+}
+
+void nd_slot_wput(Uint32 addr, Uint16 w) {
+    addr |= ND_SLOT_BITS;
+    
+    if (addr<ND_NBIC_SPACE) {
+        nd_wordput(addr, w);
+    } else {
+        nd_nbic_wput(addr, w);
+    }
+}
+
+void nd_slot_bput(Uint32 addr, Uint8 b) {
+    addr |= ND_SLOT_BITS;
+    
+    if (addr<ND_NBIC_SPACE) {
+        nd_byteput(addr, b);
+    } else {
+        nd_nbic_bput(addr, b);
+    }
+}
+
 /* Reset function */
 
 void dimension_init(void) {
@@ -267,5 +268,3 @@ void dimension_uninit(void) {
 	nd_i860_uninit();
     nd_sdl_uninit();
 }
-
-#endif

@@ -18,7 +18,7 @@
 
 
 #define BLOCKSIZE 512
-#define ENABLE_WRITE 0
+#define ENABLE_WRITE 1
 
 #define LUN_DISK 0 // for now only LUN 0 is valid for our phys drives
 

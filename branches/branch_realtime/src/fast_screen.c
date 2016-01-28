@@ -117,7 +117,6 @@ extern
  Dimension format is 8bit per pixel, big-endian: RRGGBBAA
  */
 void blitDimension(SDL_Texture* tex) {
-#if ENABLE_DIMENSION
     Uint32* src = (Uint32*)&ND_vram[ND_vram_off];
     void*   pixels;
     int     d;
@@ -172,19 +171,16 @@ void blitDimension(SDL_Texture* tex) {
         }
     }
     SDL_UnlockTexture(tex);
-#endif
 }
 
 /*
  Blit NeXT framebuffer to texture.
  */
 static void blitScreen(SDL_Texture* tex) {
-#if ENABLE_DIMENSION
     if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
         blitDimension(tex);
         return;
     }
-#endif
     if(ConfigureParams.System.bColor) {
         blitColor(tex);
     } else {
