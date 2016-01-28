@@ -27,6 +27,7 @@
 #include <ctype.h>
 
 #include "i860cfg.h"
+#include "host.h"
 #include "nd_sdl.h"
 
 const int LOG_WARN = 3;

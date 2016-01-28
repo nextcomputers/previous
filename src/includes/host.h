@@ -19,17 +19,11 @@ extern "C" {
         ND_DISPLAY,
         ND_VIDEO,
     };
-
-    typedef struct {
-        const char* label;
-        Uint64      total_count;
-        double      time_mark;
-        double      start_time;
-        int         limit;
-        int         count;
-        int         frequency;
-    } throttle_t;
     
+    typedef SDL_SpinLock       lock_t;
+    typedef SDL_Thread         thread_t;
+    typedef SDL_ThreadFunction thread_func_t;
+
     void        host_reset();
     void        host_realtime(bool state);
     bool        host_is_realtime();
@@ -42,10 +36,14 @@ extern "C" {
     void        host_sleep_ms(Uint32 ms);
     void        host_sleep_us(Uint64 us);
     void        host_print_stat();
-    throttle_t* host_create_throttle(const char* label, int frequencyHz, int eventLimit);
-    void        host_throttle_add(throttle_t* throttle, int numEvents);
-    void        host_destroy_throttle(throttle_t* throttle);
     
+    void        host_lock(lock_t* lock);
+    void        host_unlock(lock_t* lock);
+    void        host_checklock(lock_t* lock);
+    int         host_trylock(lock_t* lock);
+    thread_t*   host_thread_create(thread_func_t, void* data);
+    int         host_thread_wait(thread_t* thread);
+
 #ifdef __cplusplus
 }
 #endif

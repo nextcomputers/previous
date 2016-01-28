@@ -11,12 +11,6 @@
 #include <SDL_endian.h>
 #include <SDL_blendmode.h>
 
-/* (SC) set this to 1 in order to use old screen redraw code */
-#if 0
-void blitDimension(SDL_Texture* tex) {}
-#include "screen.c"
-#else
-
 const char Screen_fileid[] = "Previous fast_screen.c : " __DATE__ " " __TIME__;
 
 #include "main.h"
@@ -27,7 +21,6 @@ const char Screen_fileid[] = "Previous fast_screen.c : " __DATE__ " " __TIME__;
 #include "paths.h"
 #include "screen.h"
 #include "control.h"
-#include "convert/routines.h"
 #include "resolution.h"
 #include "statusbar.h"
 #include "video.h"
@@ -495,5 +488,3 @@ void Screen_Reset(void) {}
  * next time around - (SC) unused
  */
 void Screen_SetFullUpdate(void) {}
-
-#endif

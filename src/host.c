@@ -38,6 +38,7 @@ static bool   oldIsRealtime;
 static double cycleDivisor;
 static double realTimeAcc;
 static double cycleTimeAcc;
+static lock_t timeLock;
 
 extern Uint8 NEXTRom[0x20000];
 
@@ -71,6 +72,8 @@ bool host_is_realtime() {
 }
 
 double host_time_sec() {
+    
+    host_lock(&timeLock);
     double rt, t;
     rt  = (SDL_GetPerformanceCounter() - perfCounterStart);
     rt /= SDL_GetPerformanceFrequency();
@@ -92,8 +95,10 @@ double host_time_sec() {
         cycleCounterStart = nCyclesMainCounter;
         oldIsRealtime     = isRealtime;
         secsStart        += t;
-        return secsStart;
+        t                 = 0;
     }
+    host_unlock(&timeLock);
+
     return t + secsStart;
 }
 
@@ -142,55 +147,35 @@ void host_sleep_sec(double sec) {
     host_sleep_us((Uint64)sec);
 }
 
-// --- throttle implementation
-
-/*
-  Create a realt-time dependent throttle.
-  name: Name of the throttle for debugging
-  frequencyHz: The maximum event frequncy, the throttle will nano-sleep if this frequncy is exceeded
-  eventLimit: Number of events to accumulate before the throttle checks the frequncy. For performance.
-*/
-throttle_t* host_create_throttle(const char* label, int frequencyHz, int eventLimit) {
-    throttle_t* result = malloc(sizeof(throttle_t));
-    result->label      = label;
-    // check & sleep roughly every millisecond, always if (limit=1) or after eventLimit if eventLimit != 0
-    result->limit      = eventLimit <= 0 ? frequencyHz / 1000 : eventLimit;
-    if(result->limit == 0) result->limit = 1;
-    result->count      = 0;
-    result->frequency  = frequencyHz;
-    result->start_time = host_time_sec();
-    result->time_mark  = 0;
-    return result;
+void host_lock(lock_t* lock) {
+  SDL_AtomicLock(lock);
 }
 
-void host_throttle_add(throttle_t* throttle, int numEvents) {
-    throttle->count += numEvents;
-    if(throttle->count >= throttle->limit) {
-        throttle->total_count += throttle->count;
-        double now = host_time_sec();
-        if(now < throttle->time_mark)
-            host_sleep_sec(throttle->time_mark - now);
-        else {
-            throttle->start_time  = now;
-            throttle->total_count = 0;
-        }
-        
-        double nextTimeMark = throttle->total_count;
-        nextTimeMark += throttle->limit;
-        nextTimeMark /= throttle->frequency;
-        nextTimeMark += throttle->start_time;
-        throttle->time_mark = nextTimeMark;
-        
-        throttle->count -= throttle->limit;
-    }
+int host_trylock(lock_t* lock) {
+  return SDL_AtomicTryLock(lock);
 }
 
-void host_destroy_throttle(throttle_t* throttle) {
-    free(throttle);
+void host_unlock(lock_t* lock) {
+  SDL_AtomicUnlock(lock);
 }
 
+void host_checklock(lock_t* lock) {
+  SDL_AtomicLock(lock);
+  SDL_AtomicUnlock(lock);
+}
+
+thread_t* host_thread_create(thread_func_t func, void* data) {
+  return SDL_CreateThread(func, "[ND] Thread", data);
+}
+
+int host_thread_wait(thread_t* thread) {
+  int status;
+  SDL_WaitThread(thread, &status);
+  return status;
+}
                   
 // --- utilities
+                  
 void host_print_stat() {
     double t = host_time_sec();
     fprintf(stderr, "[host_time] time:%g cycleTime:%g realTime:%g\n", t, cycleTimeAcc, realTimeAcc);

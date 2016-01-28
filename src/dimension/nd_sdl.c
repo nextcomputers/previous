@@ -95,39 +95,3 @@ void nd_sdl_destroy() {
     nd_sdl_uninit();
 }
 
-//----- SDL abstractions for ND implementation
-
-void lock(lock_t* lock) {
-    SDL_AtomicLock(lock);
-}
-
-int trylock(lock_t* lock) {
-    return SDL_AtomicTryLock(lock);
-}
-
-void unlock(lock_t* lock) {
-    SDL_AtomicUnlock(lock);
-}
-
-void checklock(lock_t* lock) {
-    SDL_AtomicLock(lock);
-    SDL_AtomicUnlock(lock);
-}
-
-Uint32 time_ms() {
-    return SDL_GetTicks();
-}
-
-void sleep_ms(Uint32 ms) {
-    SDL_Delay(ms);
-}
-
-thread_t* thread_create(thread_func_t func, void* data) {
-    return SDL_CreateThread(func, "[ND] Thread", data);
-}
-
-int thread_wait(thread_t* thread) {
-    int status;
-    SDL_WaitThread(thread, &status);
-    return status;
-}
