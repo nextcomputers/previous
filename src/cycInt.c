@@ -86,7 +86,8 @@ void CycInt_Reset(void) {
     PendingInterrupt.time = 0;
 	ActiveInterrupt       = 0;
 	nCyclesOver           = 0;
-
+    nCyclesMainCounter    = 0;
+    
 	/* Reset interrupt table */
 	for (i=0; i<MAX_INTERRUPTS; i++) {
 		InterruptHandlers[i].type      = CYC_INT_NONE;

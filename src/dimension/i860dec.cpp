@@ -128,42 +128,46 @@ UINT32 i860_cpu_device::ifetch(const UINT32 pc) {
     return pc & 4 ? ifetch64(pc) >> 32 : ifetch64(pc);
 }
 
-UINT64 i860_cpu_device::ifetch64(const UINT32 pc) {
+UINT64 i860_cpu_device::ifetch64(const UINT32 pc, const UINT32 vaddr, int const cidx) {
+#if ENABLE_PERF_COUNTERS
+    m_icache_miss++;
+#endif
+    UINT32 paddr;
+    
+    if (GET_DIRBASE_ATE ()) {
+        paddr = get_address_translation (pc, 0  /* is_dataref */, 0 /* is_write */) & ~7;
+        m_flow &= ~EXITING_IFETCH;
+        if (PENDING_TRAP() && (GET_PSR_DAT () || GET_PSR_IAT ())) {
+            m_flow |= EXITING_IFETCH;
+            return 0xffeeffeeffeeffeeLL;
+        }
+    } else
+        paddr = vaddr;
+    
+    m_icache_vaddr[cidx] = vaddr;
+    UINT64 insn64;
+    if (GET_DIRBASE_CS8()) {
+        insn64  = rdcs8(paddr+7); insn64 <<= 8;
+        insn64 |= rdcs8(paddr+6); insn64 <<= 8;
+        insn64 |= rdcs8(paddr+5); insn64 <<= 8;
+        insn64 |= rdcs8(paddr+4); insn64 <<= 8;
+        insn64 |= rdcs8(paddr+3); insn64 <<= 8;
+        insn64 |= rdcs8(paddr+2); insn64 <<= 8;
+        insn64 |= rdcs8(paddr+1); insn64 <<= 8;
+        insn64 |= rdcs8(paddr+0);
+    } else {
+        nd_board_rd64_be(paddr, (UINT32*)&insn64);
+    }
+    m_icache[cidx] = insn64;
+    
+    return insn64;
+}
+
+inline UINT64 i860_cpu_device::ifetch64(const UINT32 pc) {
     const UINT32 vaddr = pc & ~7;
     const int    cidx = (vaddr>>3) & I860_ICACHE_MASK;
     if(m_icache_vaddr[cidx] != vaddr) {
-#if ENABLE_PERF_COUNTERS
-        m_icache_miss++;
-#endif
-        UINT32 paddr;
-        
-        if (GET_DIRBASE_ATE ()) {
-            paddr = get_address_translation (pc, 0  /* is_dataref */, 0 /* is_write */) & ~7;
-            m_flow &= ~EXITING_IFETCH;
-            if (PENDING_TRAP() && (GET_PSR_DAT () || GET_PSR_IAT ())) {
-                m_flow |= EXITING_IFETCH;
-                return 0xffeeffeeffeeffeeLL;
-            }
-        } else
-            paddr = vaddr;
-        
-        m_icache_vaddr[cidx] = vaddr;
-        UINT64 insn64;
-        if (GET_DIRBASE_CS8()) {
-            insn64  = rdcs8(paddr+7); insn64 <<= 8;
-            insn64 |= rdcs8(paddr+6); insn64 <<= 8;
-            insn64 |= rdcs8(paddr+5); insn64 <<= 8;
-            insn64 |= rdcs8(paddr+4); insn64 <<= 8;
-            insn64 |= rdcs8(paddr+3); insn64 <<= 8;
-            insn64 |= rdcs8(paddr+2); insn64 <<= 8;
-            insn64 |= rdcs8(paddr+1); insn64 <<= 8;
-            insn64 |= rdcs8(paddr+0);
-        } else {
-            nd_board_rd64_be(paddr, (UINT32*)&insn64);
-        }
-        m_icache[cidx] = insn64;
-        
-        return insn64;
+        return ifetch64(pc, vaddr, cidx);
     } else {
 #if ENABLE_PERF_COUNTERS
         m_icache_hit++;
@@ -186,7 +190,7 @@ UINT64 i860_cpu_device::ifetch64(const UINT32 pc) {
  (SC) added TLB support. Read access updates even entries, Write access updates odd entries.
  TLB lookup checks both entries. R/W separation is for DPS copy loops.
  */
-UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, int is_write)
+inline UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, int is_write)
 {
     UINT32 voffset        = vaddr & I860_PAGE_OFF_MASK;
     UINT32 tlbidx         = ((vaddr << 1) | is_write) & I860_TLB_MASK;
@@ -204,7 +208,11 @@ UINT32 i860_cpu_device::get_address_translation (UINT32 vaddr, int is_dataref, i
 #endif
         return (m_tlb_paddr[tlbidx ^ 1] & I860_PAGE_FRAME_MASK) + voffset;
     }
+    
+    return get_address_translation(vaddr, voffset, tlbidx, is_dataref, is_write);
+}
 
+UINT32 i860_cpu_device::get_address_translation(UINT32 vaddr, UINT32 voffset, UINT32 tlbidx, int is_dataref, int is_write) {
 #if ENABLE_PERF_COUNTERS
     m_tlb_miss++;
 #endif

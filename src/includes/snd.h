@@ -1,5 +1,5 @@
 #define AUDIO_FREQUENCY  44100;            /* Sound playback frequency */
-#define SND_BUFFER_LIMIT 1024
+#define SND_BUFFER_LIMIT 4096
 
 void SND_IO_Handler(void);
 void Sound_Reset(void);

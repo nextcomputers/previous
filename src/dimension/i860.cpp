@@ -33,13 +33,7 @@ extern "C" {
 	void nd_i860_uninit() {
         nd_i860.uninit();
 	}
-	
-	int nd_speed_hack;
-	
-	void nd_set_speed_hack(int state) {
-		nd_speed_hack = state;
-	}
-    
+	    
     void nd_start_debugger(void) {
         nd_i860.send_msg(MSG_DBG_BREAK);
     }
@@ -50,11 +44,7 @@ extern "C" {
         nd_i860.m_m68k_cylces += nHostCycles;
 #endif
 #if ENABLE_I860_THREAD
-        if(nd_speed_hack) {
-            // while spped-hack is on, slow down m68k a bit
-            for(int i = 10; --i >= 0;)
-                checklock(&nd_i860.m_debugger_lock);
-        } if(checklock_cnt <= 0) {
+        if(checklock_cnt <= 0) {
             checklock(&nd_i860.m_debugger_lock);
             // optimzation: check the debugger lock only all 10000 cycles
             checklock_cnt = 10000;
@@ -65,13 +55,7 @@ extern "C" {
 
         if(nd_i860.is_halted()) return;
 
-        if (nd_speed_hack) {
-            while(nHostCycles) {
-                nd_i860.run_cycle();
-                nHostCycles -= 2;
-            }
-        } else
-            nd_i860.run_cycle();
+        nd_i860.run_cycle();
 #endif
         nd_nbic_interrupt();
 	}

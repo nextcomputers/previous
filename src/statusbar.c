@@ -78,16 +78,12 @@ static bool bOldSystemLed;
 static SDL_Rect DspLedRect;
 static bool bOldDspLed;
 
-#if ENABLE_DIMENSION
 static SDL_Rect NdLedRect;
 static int nOldNdLed;
-#endif
 
 /* led colors */
 static Uint32 LedColorOn, LedColorOff, SysColorOn, SysColorOff, DspColorOn, DspColorOff;
-#if ENABLE_DIMENSION
 static Uint32 NdColorOn, NdColorCS8, NdColorOff;
-#endif
 static Uint32 GrayBg, LedColorBg;
 
 
@@ -186,12 +182,10 @@ void Statusbar_SetDspLed(bool state)
 	bOldDspLed = state;
 }
 
-#if ENABLE_DIMENSION
 void Statusbar_SetNdLed(int state)
 {
     nOldNdLed = state;
 }
-#endif
 
 /*-----------------------------------------------------------------------*/
 /**
@@ -241,11 +235,9 @@ void Statusbar_Init(SDL_Surface *surf)
 	SysColorOn  = SDL_MapRGB(surf->format, 0xe0, 0x00, 0x00);
 	DspColorOff = SDL_MapRGB(surf->format, 0x00, 0x00, 0x40);
 	DspColorOn  = SDL_MapRGB(surf->format, 0x00, 0x00, 0xe0);
-#if ENABLE_DIMENSION
     NdColorOff  = SDL_MapRGB(surf->format, 0x00, 0x00, 0x40);
     NdColorCS8  = SDL_MapRGB(surf->format, 0xe0, 0x00, 0x00);
     NdColorOn   = SDL_MapRGB(surf->format, 0x00, 0x00, 0xe0);
-#endif
 	GrayBg      = SDL_MapRGB(surf->format, 0xb5, 0xb7, 0xaa);
 
 	/* disable leds */
@@ -340,7 +332,6 @@ void Statusbar_Init(SDL_Surface *surf)
 		item->shown = false;
 	}
 
-#if ENABLE_DIMENSION
     /* draw i860 led box */
     NdLedRect = LedRect;
     NdLedRect.x = surf->w - 15*fontw - NdLedRect.w;
@@ -349,7 +340,6 @@ void Statusbar_Init(SDL_Surface *surf)
     SDL_FillRect(surf, &ledbox, LedColorBg);
     SDL_FillRect(surf, &NdLedRect, NdColorOff);
     nOldNdLed = 0;
-#endif
 
 	/* draw dsp led box */
 	DspLedRect = LedRect;
@@ -427,7 +417,6 @@ void Statusbar_UpdateInfo(void)
 	char *end = DefaultMessage.msg;
 	char memsize[8];
 	
-#if ENABLE_DIMENSION
 	/* Message for NeXTdimension */
 	if (ConfigureParams.Dimension.bEnabled &&
 		ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
@@ -440,7 +429,6 @@ void Statusbar_UpdateInfo(void)
 		DefaultMessage.shown = false;
 		return;
 	}
-#endif
 	
 	/* CPU MHz */
 	if (ConfigureParams.System.nCpuFreq > 9) {
@@ -724,7 +712,6 @@ void Statusbar_Update(SDL_Surface *surf)
     SDL_UpdateRects(surf, 1, &SystemLedRect);
     DEBUGPRINT(("SCR2 LED = ON\n"));
     
-#if ENABLE_DIMENSION
     /* Draw NeXTdimension LED */
     switch(nOldNdLed) {
         case 0: color = NdColorOff; break;
@@ -735,5 +722,4 @@ void Statusbar_Update(SDL_Surface *surf)
     SDL_FillRect(surf, &NdLedRect, color);
     SDL_UpdateRects(surf, 1, &NdLedRect);
     DEBUGPRINT(("ND LED = ON\n"));
-#endif
 }

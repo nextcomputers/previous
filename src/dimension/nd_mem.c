@@ -7,8 +7,6 @@
 #include "nd_devs.h"
 #include "nd_rom.h"
 
-#if ENABLE_DIMENSION
-
 #define write_log printf
 
 /* --------- NEXTDIMENSION MEMORY ---------- */
@@ -523,6 +521,9 @@ void nd_memory_init(void) {
     /* Initialize banks with error memory */
     nd_init_mem_banks();
     
+    /* Clear first 4k of memory for m68k ROM polling code */
+    memset(ND_ram, 0, 4096 * sizeof(Uint8));
+    
     /* Map main memory */
     if (ConfigureParams.Dimension.nMemoryBankSize[0]) {
         ND_RAM_bankmask0 = ND_RAM_BANKMASK|((ConfigureParams.Dimension.nMemoryBankSize[0]<<20)-1);
@@ -583,5 +584,3 @@ void nd_memory_init(void) {
     write_log("[ND] Mapping RAMDAC registers at $%08x\n", ND_RAMDAC_START);
     nd_map_banks(&nd_ramdac_bank, ND_RAMDAC_START>>16, 1);
 }
-
-#endif

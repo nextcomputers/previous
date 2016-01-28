@@ -45,11 +45,7 @@ static SGOBJ maindlg[] =
 	{ SGTEXT, 0, 0, 15,1, 20,1, "Previous - Main menu" },
 	{ SGBUTTON, 0, 0, 2,4, 13,1, "System" },
 	{ SGBUTTON, 0, 0, 2,6, 13,1, "ROM" },
-#if ENABLE_DIMENSION
 	{ SGBUTTON, 0, 0, 2,8, 13,1, "Graphics" },
-#else
-	{ SGBUTTON, 0, 0, 2,8, 13,1, " " },
-#endif
 	{ SGBUTTON, 0, 0, 2,10, 13,1, "Ethernet" },
 	{ SGBUTTON, 0, 0, 17,4, 16,1, "Boot options" },
 	{ SGBUTTON, 0, 0, 17,6, 16,1, "SCSI disks" },
@@ -108,9 +104,7 @@ int Dialog_MainDlg(bool *bReset, bool *bLoadedSnapshot)
 			Dialog_AboutDlg();
 			break;
 		 case MAINDLG_GRAPH:
-#if ENABLE_DIMENSION
 			Dialog_DimensionDlg();
-#endif
 			break;
 		 case MAINDLG_ENET:
 			DlgEthernet_Main();

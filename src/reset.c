@@ -45,6 +45,8 @@ static const char* Reset_ST(bool bCold)
 			return error_str;
 		}
 	}
+    host_reset();
+    
 	CycInt_Reset();               /* Reset interrupts */
 	Video_Reset();                /* Reset video */
 	TMC_Reset();				  /* Reset TMC Registers */
@@ -61,7 +63,7 @@ static const char* Reset_ST(bool bCold)
 	DSP_Reset();                  /* Reset DSP */
 	M68000_Reset(bCold);          /* Reset CPU */
 	DebugCpu_SetDebugging();      /* Re-set debugging flag if needed */
-
+    
 	return NULL;
 }
 
