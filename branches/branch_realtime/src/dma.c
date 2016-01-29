@@ -726,8 +726,10 @@ void dma_mo_read_memory(void) {
 }
 
 
-/* Channel Sound Out (FIXME: is this channel buffered?) */
-void dma_sndout_read_memory(void) {
+Uint8* dma_sndout_read_memory(int* len) {
+    Uint8* result = NULL;
+    *len          = 0;
+    
     if (dma[CHANNEL_SOUNDOUT].csr&DMA_ENABLE) {
         
         Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel Sound Out: Read from memory at $%08x, %i bytes",
@@ -740,28 +742,31 @@ void dma_sndout_read_memory(void) {
         }
         
         TRY(prb) {
-            while (dma[CHANNEL_SOUNDOUT].next<dma[CHANNEL_SOUNDOUT].limit && snd_buffer.size<SND_BUFFER_LIMIT) {
-                snd_buffer.data[snd_buffer.size]=NEXTMemory_ReadByte(dma[CHANNEL_SOUNDOUT].next);
-                snd_buffer.size++;
-                dma[CHANNEL_SOUNDOUT].next++;
-            }
+            *len = dma[CHANNEL_SOUNDOUT].limit - dma[CHANNEL_SOUNDOUT].next;
+            result = malloc(*len * 2);
+            for(int i = 0; dma[CHANNEL_SOUNDOUT].next<dma[CHANNEL_SOUNDOUT].limit; dma[CHANNEL_SOUNDOUT].next++, i++)
+                result[i] = NEXTMemory_ReadByte(dma[CHANNEL_SOUNDOUT].next);
         } CATCH(prb) {
             Log_Printf(LOG_WARN, "[DMA] Channel Sound Out: Bus error reading from %08x",dma[CHANNEL_SOUNDOUT].next);
             dma[CHANNEL_SOUNDOUT].csr &= ~DMA_ENABLE;
             dma[CHANNEL_SOUNDOUT].csr |= (DMA_COMPLETE|DMA_BUSEXC);
         } ENDTRY
         
-        if(snd_buffer.size == 0) {
+        if(*len ==  0) {
             kms_snd_dma_or(SNDOUT_DMA_UNDERRUN);
             set_interrupt(INT_SOUND_OVRUN, SET_INT);
         }
-        dma_interrupt(CHANNEL_SOUNDOUT);
     } else {
-        kms_snd_dma_or(SNDOUT_DMA_UNDERRUN);
-        set_interrupt(INT_SOUND_OVRUN, SET_INT);
+//        kms_snd_dma_or(SNDOUT_DMA_UNDERRUN);
+//        set_interrupt(INT_SOUND_OVRUN, SET_INT);
     }
+    
+    return result;
 }
 
+void dma_sndout_intr() {
+    dma_interrupt(CHANNEL_SOUNDOUT);
+}
 
 /* Channel Printer */
 void dma_printer_read_memory(void) {
