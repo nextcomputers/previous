@@ -25,7 +25,6 @@
 #include "options_cpu.h"
 #include "memory.h"
 #include "custom.h"
-#include "events.h"
 #include "newcpu.h"
 #include "md-fpp.h"
 #include "savestate.h"
@@ -43,11 +42,6 @@
 
 #define DEBUG_FPP 0
 #define EXCEPTION_FPP 0
-
-STATIC_INLINE int isinrom (void)
-{
-	return (munge24 (m68k_getpc ()) & 0xFFF80000) == 0xF80000 && !currprefs.mmu_model;
-}
 
 static uae_u32 xhex_pi[]    ={0x2168c235, 0xc90fdaa2, 0x4000};
 uae_u32 xhex_exp_1[] ={0xa2bb4a9a, 0xadf85458, 0x4000};
@@ -2566,7 +2560,6 @@ void fpu_reset (void)
 	regs.fpu_exp_state = 0;
 	fpset (&regs.fp_result, 1);
 	native_set_fpucw (regs.fpcr);
-	fpux_restore (NULL);
 }
 
 uae_u8 *restore_fpu (uae_u8 *src)

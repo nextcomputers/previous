@@ -16,14 +16,12 @@
 #include "m68k.h"
 #include "compat.h"
 #include "maccess.h"
-#include "events.h"
 #include "memory.h"
 #include "custom.h"
 
 /* Possible exceptions sources for M68000_Exception() and Exception() */
 #define M68000_EXC_SRC_CPU	    1  /* Direct CPU exception */
 #define M68000_EXC_SRC_AUTOVEC  2  /* Auto-vector exception (e.g. VBL) */
-#define M68000_EXC_SRC_INT_MFP	3  /* MFP interrupt exception */
 #define M68000_EXC_SRC_INT_DSP  4  /* DSP interrupt exception */
 
 
@@ -251,7 +249,6 @@ extern int cpucycleunit;
 STATIC_INLINE void set_special (uae_u32 x)
 {
 	regs.spcflags |= x;
-	cycles_do_special ();
 }
 
 STATIC_INLINE void unset_special (uae_u32 x)
@@ -467,8 +464,6 @@ extern void fpuop_save(uae_u32);
 extern void fpuop_restore(uae_u32);
 extern uae_u32 fpp_get_fpsr (void);
 extern void fpu_reset (void);
-extern void fpux_save (int*);
-extern void fpux_restore (int*);
 
 extern void exception3 (uae_u32 opcode, uaecptr addr);
 extern void exception3i (uae_u32 opcode, uaecptr addr);

@@ -47,6 +47,7 @@ int    timeCheckCycles = 0;
 
 static Sint64 nCyclesOver;
 Sint64 nCyclesMainCounter;				/* Main cycles counter */
+int    nCyclesDivisor;                  /* CPU type dependent divisor */
 
 /* List of possible interrupt handlers to be store in 'PendingInterruptTable',
  * used for 'MemorySnapShot' */
@@ -75,6 +76,8 @@ static int ActiveInterrupt=0;
 
 static void CycInt_SetNewInterrupt(void);
 
+extern Uint8 NEXTRom[0x20000];
+
 /*-----------------------------------------------------------------------*/
 /**
  * Reset interrupts, handlers
@@ -88,6 +91,13 @@ void CycInt_Reset(void) {
 	nCyclesOver           = 0;
     nCyclesMainCounter    = 0;
     
+    nCyclesDivisor = 1;
+    if(ConfigureParams.System.nCpuLevel == 3) {
+        if(NEXTRom[0xFFAB] != 0x04) //  HACK for ROM version 0.8.31 power-on test
+            nCyclesDivisor = 2;
+    } else
+        nCyclesDivisor = 3;
+
 	/* Reset interrupt table */
 	for (i=0; i<MAX_INTERRUPTS; i++) {
 		InterruptHandlers[i].type      = CYC_INT_NONE;
@@ -190,7 +200,7 @@ void CycInt_MemorySnapShot_Capture(bool bSave)
 static void CycInt_SetNewInterrupt(void) {
 	Sint64       LowestCycleCount = INT64_MAX;
 	interrupt_id LowestInterrupt  = INTERRUPT_NULL, i;
-    Sint64       CPUFreq          = ConfigureParams.System.nCpuFreq;
+    Sint64       MCyclePerSec     = ConfigureParams.System.nCpuFreq;
     Sint64       now              = 0;
     
 	/* Find next interrupt to go off */
@@ -205,9 +215,9 @@ static void CycInt_SetNewInterrupt(void) {
                 break;
             case CYC_INT_US:
                 if(!(now)) now = host_time_us();
-                Sint64 dt = (InterruptHandlers[i].time - now) * CPUFreq;
+                Sint64 dt = (InterruptHandlers[i].time - now) * MCyclePerSec;
                 if(dt < LowestCycleCount) {
-                    LowestCycleCount = dt * CPUFreq;
+                    LowestCycleCount = dt;
                     LowestInterrupt  = i;
                 }
                 break;

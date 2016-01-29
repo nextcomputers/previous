@@ -2541,7 +2541,6 @@ static void resetvars (void)
 			dstw = "x_put_word";
 			srcb = "x_get_byte";
 			dstb = "x_put_byte";
-			do_cycles = "do_cycles_ce000";
 		} else if (using_ce020 == 1) {
 			/* x_ not used if it redirects to
 			 * get_word_ce020_prefetch()
@@ -2558,7 +2557,6 @@ static void resetvars (void)
 			dstw = "x_put_word";
 			srcb = "x_get_byte";
 			dstb = "x_put_byte";
-			do_cycles = "do_cycles_ce020";
 			nextw = "next_iword_020ce";
 			nextl = "next_ilong_020ce";
 		} else if (using_ce020 == 2) {
@@ -2575,7 +2573,6 @@ static void resetvars (void)
 			dstw = "x_put_word";
 			srcb = "x_get_byte";
 			dstb = "x_put_byte";
-			do_cycles = "do_cycles_ce020";
 			nextw = "next_iword_030ce";
 			nextl = "next_ilong_030ce";
 		} else if (using_prefetch_020) {
@@ -2715,7 +2712,6 @@ static void resetvars (void)
 		dstw = "put_word_ce000";
 		srcb = "get_byte_ce000";
 		dstb = "put_byte_ce000";
-		do_cycles = "do_cycles_ce000";
 	} else if (using_prefetch) {
 		// 68000 prefetch
 		prefetch_word = "get_word_prefetch";
@@ -5045,7 +5041,6 @@ static void generate_includes (FILE * f, int id)
 	fprintf (f, "#include \"options_cpu.h\"\n");
 	fprintf (f, "#include \"memory.h\"\n");
 	fprintf (f, "#include \"custom.h\"\n");
-	fprintf (f, "#include \"events.h\"\n");
 	fprintf (f, "#include \"newcpu.h\"\n");
 	fprintf (f, "#include \"cpu_prefetch.h\"\n");
 	fprintf (f, "#include \"cputbl.h\"\n");

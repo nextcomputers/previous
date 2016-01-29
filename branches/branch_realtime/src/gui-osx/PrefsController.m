@@ -608,7 +608,7 @@ static const int nSoundFreqs[] =
 	
 	// Import all the preferences into their controls
 //	IMPORT_SWITCH(autoInsertB, ConfigureParams.DiskImage.bAutoInsertDiskB);
-    IMPORT_SWITCH(blitter, ConfigureParams.System.bBlitter);
+    IMPORT_SWITCH(realtime, ConfigureParams.System.bRealtime);
 //	IMPORT_SWITCH(bootFromHD, ConfigureParams.SCSI.bBootFromHardDisk);
 //    IMPORT_SWITCH(captureOnChange, ConfigureParams.Screen.bCrop);
 //    IMPORT_TEXTFIELD(cartridgeImage, ConfigureParams.Rom.szCartridgeImageFileName);
@@ -819,7 +819,7 @@ static const int nSoundFreqs[] =
 {
 	// Export the preference controls into their vars
 //	EXPORT_SWITCH(autoInsertB, ConfigureParams.DiskImage.bAutoInsertDiskB);
-    EXPORT_SWITCH(blitter, ConfigureParams.System.bBlitter);
+    EXPORT_SWITCH(realtime, ConfigureParams.System.bRealtime);
 //	EXPORT_SWITCH(bootFromHD, ConfigureParams.SCSI.bBootFromHardDisk);
 //    EXPORT_SWITCH(captureOnChange, ConfigureParams.Screen.bCrop);
 //    EXPORT_TEXTFIELD(cartridgeImage, ConfigureParams.Rom.szCartridgeImageFileName);

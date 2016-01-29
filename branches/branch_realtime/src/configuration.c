@@ -315,7 +315,7 @@ static const struct Config_Tag configs_System[] =
 	{ "nCpuLevel", Int_Tag, &ConfigureParams.System.nCpuLevel },
 	{ "nCpuFreq", Int_Tag, &ConfigureParams.System.nCpuFreq },
 	{ "bCompatibleCpu", Bool_Tag, &ConfigureParams.System.bCompatibleCpu },
-	{ "bBlitter", Bool_Tag, &ConfigureParams.System.bBlitter },
+	{ "bRealtime", Bool_Tag, &ConfigureParams.System.bRealtime },
 	{ "nDSPType", Int_Tag, &ConfigureParams.System.nDSPType },
 	{ "bDSPMemoryExpansion", Bool_Tag, &ConfigureParams.System.bDSPMemoryExpansion },
 	{ "bRealTimeClock", Bool_Tag, &ConfigureParams.System.bRealTimeClock },
@@ -525,7 +525,7 @@ void Configuration_SetDefault(void)
 	ConfigureParams.System.nCpuLevel = 3;
 	ConfigureParams.System.nCpuFreq = 25;
 	ConfigureParams.System.bCompatibleCpu = true;
-	ConfigureParams.System.bBlitter = false;
+	ConfigureParams.System.bRealtime = false;
 	ConfigureParams.System.nDSPType = DSP_TYPE_EMU;
 	ConfigureParams.System.bDSPMemoryExpansion = false;
 	ConfigureParams.System.bPatchTimerD = true;
@@ -655,6 +655,7 @@ void Configuration_Apply(bool bReset)
  * Set defaults depending on selected machine type.
  */
 void Configuration_SetSystemDefaults(void) {
+    ConfigureParams.System.bRealtime = false;
     switch (ConfigureParams.System.nMachineType) {
         case NEXT_CUBE030:
             ConfigureParams.System.bTurbo = false;
@@ -1000,7 +1001,7 @@ void Configuration_MemorySnapShot_Capture(bool bSave)
     MemorySnapShot_Store(&ConfigureParams.System.nSCSI, sizeof(ConfigureParams.System.nSCSI));
     MemorySnapShot_Store(&ConfigureParams.System.nRTC, sizeof(ConfigureParams.System.nRTC));
     
-	MemorySnapShot_Store(&ConfigureParams.System.bBlitter, sizeof(ConfigureParams.System.bBlitter));
+	MemorySnapShot_Store(&ConfigureParams.System.bRealtime, sizeof(ConfigureParams.System.bRealtime));
 	MemorySnapShot_Store(&ConfigureParams.System.nDSPType, sizeof(ConfigureParams.System.nDSPType));
 	MemorySnapShot_Store(&ConfigureParams.System.bDSPMemoryExpansion, sizeof(ConfigureParams.System.bDSPMemoryExpansion));
 	MemorySnapShot_Store(&ConfigureParams.System.bRealTimeClock, sizeof(ConfigureParams.System.bRealTimeClock));

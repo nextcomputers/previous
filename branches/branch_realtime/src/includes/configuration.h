@@ -337,7 +337,7 @@ typedef struct
   int nCpuFreq;
   bool bCompatibleCpu;            /* Prefetch mode */
   MACHINETYPE nMachineType;
-  bool bBlitter;                  /* TRUE if Blitter is enabled */
+  bool bRealtime;                 /* TRUE if realtime sources shoud be used */
   DSPTYPE nDSPType;               /* how to "emulate" DSP */
   bool bDSPMemoryExpansion;
   bool bRealTimeClock;

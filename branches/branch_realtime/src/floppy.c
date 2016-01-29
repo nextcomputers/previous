@@ -207,7 +207,7 @@ void FLP_Select_Write(void) {
 
 void set_floppy_select(Uint8 sel, bool osp) {
     if (sel) {
-        Log_Printf(LOG_WARN,"[%s] Selecting floppy controller",osp?"OSP":"Floppy");
+        Log_Printf(LOG_DEBUG,"[%s] Selecting floppy controller",osp?"OSP":"Floppy");
         floppy_select = 1;
     } else {
         Log_Printf(LOG_FLP_REG_LEVEL,"[%s] Selecting SCSI controller",osp?"OSP":"Floppy");
