@@ -106,7 +106,6 @@ void SND_IO_Handler(void) {
         usDelay = snd_send_samples(snd_buffer.size) / 4;
         usDelay *= 1000*1000;
         usDelay /= AUDIO_FREQUENCY;
-        if(usDelay > 2000) usDelay -= 2000; // give 2ms extra time
         snd_buffer.size = 0;
         
         if (!sound_output_active)
