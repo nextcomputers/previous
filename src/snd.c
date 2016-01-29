@@ -12,11 +12,14 @@
 #define LOG_VOL_LEVEL   LOG_DEBUG
 
 /* Initialize the audio system */
-bool sndout_inited;
-bool sound_output_active = false;
+static bool   sndout_inited;
+static bool   sound_output_active = false;
+static Uint8* snd_buffer = NULL;
 
 void sound_init(void) {
-    snd_buffer.size=0;
+    if(snd_buffer)
+        free(snd_buffer);
+    snd_buffer = NULL;
     if (!sndout_inited && ConfigureParams.Sound.bEnableSound) {
         Log_Printf(LOG_WARN, "[Audio] Initializing audio device.");
         Audio_Output_Init();
@@ -25,6 +28,9 @@ void sound_init(void) {
 }
 
 void sound_uninit(void) {
+    if(snd_buffer)
+        free(snd_buffer);
+    snd_buffer = NULL;
     if(sndout_inited) {
         Log_Printf(LOG_WARN, "[Audio] Uninitializing audio device.");
         sndout_inited=false;
@@ -57,7 +63,7 @@ struct {
 #define SND_MODE_DBL_ZF 0x30
 
 /* Function prototypes */
-int snd_send_samples(int len);
+int  snd_send_samples(Uint8* bufffer, int len);
 void snd_make_normal_samples(Uint8 *buf, int len);
 void snd_make_double_samples(Uint8 *buf, int len, bool repeat);
 void snd_adjust_volume_and_lowpass(Uint8 *buf, int len);
@@ -91,79 +97,86 @@ void snd_stop_output(void) {
 
 /* Sound IO loop (reads via DMA from memory to queue) */
 
+static double snd_start;
+static int    snd_samples;
+
 void SND_IO_Handler(void) {
     CycInt_AcknowledgeInterrupt();
     
-    Sint64 usDelay = 0;
-    dma_sndout_read_memory();
+    if(snd_buffer) {
+        dma_sndout_intr();
+        free(snd_buffer);
+        snd_buffer = NULL;
+    }
+    
+    int    len;
+    snd_buffer = dma_sndout_read_memory(&len);
     
     if (!sndout_inited || sndout_state.mute) {
-        snd_buffer.size = 0;
         if (!sound_output_active)
             return;
-    } else {
-        Log_Printf(LOG_SND_LEVEL, "[Sound] %i samples ready.",snd_buffer.size/4);
-        usDelay = snd_send_samples(snd_buffer.size) / 4;
+    } else if(len) {
+        len = snd_send_samples(snd_buffer, len) / 4;
+
+        Log_Printf(LOG_SND_LEVEL, "[Sound] %i samples ready.", len);
+
+        snd_start = host_time_sec();
+        snd_samples = len;
+        
+        Sint64 usDelay = len - 32; // assume 32 samples DMA buffer
         usDelay *= 1000*1000;
         usDelay /= AUDIO_FREQUENCY;
-        snd_buffer.size = 0;
-        
-        if (!sound_output_active)
-            return;
-    }
-    if(usDelay > 0)
+
         CycInt_AddRelativeInterruptUs(usDelay, true, INTERRUPT_SND_IO);
+    }
 }
 
 
 /* These functions put samples to a buffer for further processing */
-void snd_make_double_samples(Uint8 *buf, int len, bool repeat) {
-    for (int i=0; i<len; i += 4) {
-        *buf++ =          snd_buffer.data[i+0];
-        *buf++ =          snd_buffer.data[i+1];
-        *buf++ =          snd_buffer.data[i+2];
-        *buf++ =          snd_buffer.data[i+3];
-        *buf++ = repeat ? snd_buffer.data[i+0] : 0; /* repeat or zero-fill */
-        *buf++ = repeat ? snd_buffer.data[i+1] : 0; /* repeat or zero-fill */
-        *buf++ = repeat ? snd_buffer.data[i+2] : 0; /* repeat or zero-fill */
-        *buf++ = repeat ? snd_buffer.data[i+3] : 0; /* repeat or zero-fill */
+void snd_make_double_samples(Uint8 *buffer, int len, bool repeat) {
+    for (int i=len - 4; i >= 0; i -= 4) {
+        buffer[i*2+7] = repeat ? buffer[i+3] : 0; /* repeat or zero-fill */
+        buffer[i*2+6] = repeat ? buffer[i+2] : 0; /* repeat or zero-fill */
+        buffer[i*2+5] = repeat ? buffer[i+1] : 0; /* repeat or zero-fill */
+        buffer[i*2+4] = repeat ? buffer[i+0] : 0; /* repeat or zero-fill */
+        buffer[i*2+3] =          buffer[i+3];
+        buffer[i*2+2] =          buffer[i+2];
+        buffer[i*2+1] =          buffer[i+1];
+        buffer[i*2+0] =          buffer[i+0];
     }
 }
 
-void snd_make_normal_samples(Uint8 *buf, int len) {
-    for(int i=0; i<len; i++)
-        *buf++ = snd_buffer.data[i];
+
+void snd_make_normal_samples(Uint8 *buffer, int len) {
+    // do nothing
 }
 
 
 /* This function processes and sends out our samples */
-int snd_send_samples(int len) {
-    static Uint8 sndout_buffer[2*SND_BUFFER_LIMIT];
-
+int snd_send_samples(Uint8* buffer, int len) {
     switch (sndout_state.mode) {
         case SND_MODE_NORMAL:
-            snd_make_normal_samples(sndout_buffer, len);
-            snd_adjust_volume_and_lowpass(sndout_buffer, len);
-            sndout_queue_put(sndout_buffer, len);
+            snd_make_normal_samples(buffer, len);
+            snd_adjust_volume_and_lowpass(buffer, len);
+            sndout_queue_put(buffer, len);
             return len;
         case SND_MODE_DBL_RP:
-            snd_make_double_samples(sndout_buffer, len, true);
-            snd_adjust_volume_and_lowpass(sndout_buffer, 2*len);
-            sndout_queue_put(sndout_buffer, len);
-            sndout_queue_put(sndout_buffer+len, len);
+            snd_make_double_samples(buffer, len, true);
+            snd_adjust_volume_and_lowpass(buffer, 2*len);
+            sndout_queue_put(buffer, len);
+            sndout_queue_put(buffer+len, len);
             return 2*len;
         case SND_MODE_DBL_ZF:
-            snd_make_double_samples(sndout_buffer, len, false);
-            snd_adjust_volume_and_lowpass(sndout_buffer, 2*len);
-            sndout_queue_put(sndout_buffer, len);
-            sndout_queue_put(sndout_buffer+len, len);
+            snd_make_double_samples(buffer, len, false);
+            snd_adjust_volume_and_lowpass(buffer, 2*len);
+            sndout_queue_put(buffer, len);
+            sndout_queue_put(buffer+len, len);
             return 2*len;
         default:
             Log_Printf(LOG_WARN, "[Sound] Error: Unknown sound output mode!");
             return 0;
     }
 }
-
 
 /* This function puts data to a queue for the audio system */
 void sndout_queue_put(Uint8 *buf, int len) {
