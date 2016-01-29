@@ -565,9 +565,9 @@ bool i860_cpu_device::handle_msgs() {
     else if(msg & MSG_INTR)
         intr();
     if(msg & MSG_DISPLAY_BLANK)
-        nd_set_blank_state(ND_DISPLAY, host_nd_blank_state(ND_SLOT, ND_DISPLAY));
+        nd_set_blank_state(ND_DISPLAY, host_blank_state(ND_SLOT, ND_DISPLAY));
     if(msg & MSG_VIDEO_BLANK)
-        nd_set_blank_state(ND_VIDEO, host_nd_blank_state(ND_SLOT, ND_VIDEO));
+        nd_set_blank_state(ND_VIDEO, host_blank_state(ND_SLOT, ND_VIDEO));
     if(msg & MSG_DBG_BREAK)
         debugger('d', "BREAK at pc=%08X", m_pc);
     return true;

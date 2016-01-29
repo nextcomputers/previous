@@ -64,12 +64,7 @@ typedef struct {
 	int flags;
 } addrbank;
 
-#define CE_MEMBANK_FAST 0
-#define CE_MEMBANK_CHIP 1
-#define CE_MEMBANK_CIA 2
-#define CE_MEMBANK_FAST16BIT 3
-extern uae_u8 ce_banktype[65536], ce_cachable[65536];
-
+extern uae_u8 ce_cachable[65536];
 
 #define bankindex(addr) (((uaecptr)(addr)) >> 16)
 

@@ -513,9 +513,7 @@ extern void log_close (FILE *f);
    stuff more precisely.
    512 is the official value from now on - it can't change, unless we want
    _another_ config option "finegrain2_m68k_speed".
-
-   We define this value here rather than in events.h so that gencpu.c sees
-   it.  */
+*/
 #define CYCLE_UNIT 512
 
 /* This one is used by cfgfile.c.  We could reduce the CYCLE_UNIT back to 1,

@@ -16,6 +16,7 @@
 extern "C" {
 #endif
     enum {
+        MAIN_DISPLAY,
         ND_DISPLAY,
         ND_VIDEO,
     };
@@ -27,8 +28,8 @@ extern "C" {
     void        host_reset();
     void        host_realtime(bool state);
     bool        host_is_realtime();
-    void        host_nd_blank(int slot, int src, bool state);
-    bool        host_nd_blank_state(int slot, int src);
+    void        host_blank(int slot, int src, bool state);
+    bool        host_blank_state(int slot, int src);
     Uint64      host_time_us();
     Uint32      host_time_ms();
     double      host_time_sec();

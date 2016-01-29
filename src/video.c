@@ -68,17 +68,6 @@ void Video_Reset_Glue(void)
 {
 }
 
-
-
-
-
-void	Video_GetPosition ( int *pFrameCycles , int *pHBL , int *pLineCycles )
-{
-}
-
-
-
-
 /*-----------------------------------------------------------------------*/
 /**
  * Clear raster line table to store changes in palette/resolution on a line
@@ -87,9 +76,6 @@ void	Video_GetPosition ( int *pFrameCycles , int *pHBL , int *pLineCycles )
 void Video_SetScreenRasters(void)
 {
 }
-
-
-
 
 /*-----------------------------------------------------------------------*/
 /**
@@ -105,7 +91,7 @@ Screen_Draw();
 #define NEXT_VBL_FREQ 68
 
 /**
- * Add some video interrupts to handle the first HBL and the first Timer B
+ * Start VBL interrupt
  */
 void Video_StartInterrupts ( int PendingCyclesOver )
 {
@@ -136,6 +122,7 @@ void Video_InterruptHandler(void)
 void Video_InterruptHandler_VBL ( void )
 {
 	CycInt_AcknowledgeInterrupt();
+    host_blank(0, MAIN_DISPLAY, true);
 	Video_DrawScreen();
     Main_EventHandler();
     Video_InterruptHandler();

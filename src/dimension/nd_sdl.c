@@ -40,9 +40,9 @@ static int repainter(void* unused) {
         }
         // if this is a cube, then do ND blank emulation.
         if(ConfigureParams.System.nMachineType == NEXT_CUBE030 || ConfigureParams.System.nMachineType == NEXT_CUBE040) {
-            host_nd_blank(ND_SLOT, ND_DISPLAY, true);
+            host_blank(ND_SLOT, ND_DISPLAY, true);
             SDL_Delay(BLANK_MS);
-            host_nd_blank(ND_SLOT, ND_DISPLAY, false);
+            host_blank(ND_SLOT, ND_DISPLAY, false);
         }
     }
 
@@ -56,7 +56,7 @@ static int repainter(void* unused) {
 bool nd_video_toggle;
 
 Uint32 nd_video_vbl(Uint32 interval, void *param) {
-    host_nd_blank(ND_SLOT, ND_VIDEO, nd_video_toggle);
+    host_blank(ND_SLOT, ND_VIDEO, nd_video_toggle);
     nd_video_toggle = !nd_video_toggle;
     return interval;
 }

@@ -303,10 +303,8 @@ static Uint32 DebugInfo_FileArgs(int argc, char *argv[])
  */
 static void DebugInfo_Default(Uint32 dummy)
 {
-	int hbl, fcycles, lcycles;
-	Video_GetPosition(&fcycles, &hbl, &lcycles);
-	fprintf(stderr, "\nCPU=$%x, VBL=%d, FrameCycles=%d, HBL=%d, LineCycles=%d, DSP=",
-		M68000_GetPC(), 0, fcycles, hbl, lcycles);
+	fprintf(stderr, "\nCPU=$%x, DSP=",
+		M68000_GetPC());
 		fprintf(stderr, "N/A\n");
 }
 

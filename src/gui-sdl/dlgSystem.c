@@ -107,7 +107,7 @@ void print_system_overview(void) {
         default: break;
     }
     
-    sprintf(cpu_clock, "%i MHz", ConfigureParams.System.nCpuFreq);
+    sprintf(cpu_clock, "%i MHz %s", ConfigureParams.System.nCpuFreq, ConfigureParams.System.bRealtime ? "(RT)" : "");
     
     sprintf(main_memory, "%i MB", Configuration_CheckMemory(ConfigureParams.Memory.nMemoryBankSize));
     
@@ -323,7 +323,6 @@ void Dialog_SystemDlg(void)
   
     /* Obsolete */
  	ConfigureParams.System.bCompatibleCpu = 1;
- 	ConfigureParams.System.bBlitter = 0;
  	ConfigureParams.System.bRealTimeClock = 0;
  	ConfigureParams.System.bPatchTimerD = 0;
  	ConfigureParams.System.bAddressSpace24 = 0;

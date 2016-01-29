@@ -25,25 +25,17 @@
 #define WRITE_LOG_BUF_SIZE 4096
 
 extern struct regstruct mmu_backup_regs;
-static uae_u32 mmu_struct, mmu_callback, mmu_regs;
+static uae_u32 mmu_callback, mmu_regs;
 static uae_u32 mmu_fault_bank_addr, mmu_fault_addr;
 static int mmu_fault_size, mmu_fault_rw;
-static int mmu_slots;
 static struct regstruct mmur;
-static int userdtsc = 0;
 int qpcdivisor = 0;
-volatile frame_time_t vsyncmintime;
-
-void do_cycles_ce (long cycles);
 
 unsigned long int event_cycles, nextevent, is_lastline, currcycle;
 uae_u32 wait_cpu_cycle_read (uaecptr addr, int mode);
 void wait_cpu_cycle_write (uaecptr addr, int mode, uae_u32 v);
 void wait_cpu_cycle_write_ce020 (uaecptr addr, int mode, uae_u32 v);
 uae_u32 wait_cpu_cycle_read_ce020 (uaecptr addr, int mode);
-frame_time_t read_processor_time_qpf (void);
-frame_time_t read_processor_time_rdtsc (void);
-
 
 typedef struct _LARGE_INTEGER
 {
@@ -58,53 +50,8 @@ typedef struct _LARGE_INTEGER
      };
 } LARGE_INTEGER, *PLARGE_INTEGER;
 
-uae_u16 dmacon;
-uae_u8 cycle_line[256];
-
-struct ev eventtab[ev_max];
-
-void do_cycles_ce (long cycles)
-{
-	static int extra_cycle;
-
-	cycles += extra_cycle;
-/*
-	while (cycles >= CYCLE_UNIT) {
-		int hpos = current_hpos () + 1;
-		sync_copper (hpos);
-		decide_line (hpos);
-		decide_fetch_ce (hpos);
-		if (bltstate != BLT_done)
-			decide_blitter (hpos);
-		do_cycles (1 * CYCLE_UNIT);
-		cycles -= CYCLE_UNIT;
-	}
-*/
-	extra_cycle = cycles;
-}
-
 void wait_cpu_cycle_write_ce020 (uaecptr addr, int mode, uae_u32 v)
 {
-	int hpos;
-
-/*
-	hpos = dma_cycle ();
-	do_cycles_ce (CYCLE_UNIT);
-*/
-#ifdef DEBUGGER
-	if (debug_dma) {
-		int reg = 0x1100;
-		if (mode < 0)
-			reg |= 4;
-		else if (mode > 0)
-			reg |= 2;
-		else
-			reg |= 1;
-		record_dma (reg, v, addr, hpos, vpos, DMARECORD_CPU);
-		checknasty (hpos, vpos);
-	}
-#endif
-
 	if (mode < 0)
 		put_long (addr, v);
 	else if (mode > 0)
@@ -118,38 +65,13 @@ void wait_cpu_cycle_write_ce020 (uaecptr addr, int mode, uae_u32 v)
 uae_u32 wait_cpu_cycle_read_ce020 (uaecptr addr, int mode)
 {
 	uae_u32 v = 0;
-	int hpos;
-	struct dma_rec *dr;
 
-/*
-	hpos = dma_cycle ();
-	do_cycles_ce (CYCLE_UNIT);
-*/
-
-#ifdef DEBUGGER
-	if (debug_dma) {
-		int reg = 0x1000;
-		if (mode < 0)
-			reg |= 4;
-		else if (mode > 0)
-			reg |= 2;
-		else
-			reg |= 1;
-		dr = record_dma (reg, v, addr, hpos, vpos, DMARECORD_CPU);
-		checknasty (hpos, vpos);
-	}
-#endif
 	if (mode < 0)
 		v = get_long (addr);
 	else if (mode > 0)
 		v = get_word (addr);
 	else if (mode == 0)
 		v = get_byte (addr);
-
-#ifdef DEBUGGER
-	if (debug_dma)
-		dr->dat = v;
-#endif
 
 	regs.ce020memcycles -= CYCLE_UNIT;
 	return v;
@@ -158,27 +80,7 @@ uae_u32 wait_cpu_cycle_read_ce020 (uaecptr addr, int mode)
 uae_u32 wait_cpu_cycle_read (uaecptr addr, int mode)
 {
 	uae_u32 v = 0;
-	int hpos;
-	struct dma_rec *dr;
 
-/*
-	hpos = dma_cycle ();
-	do_cycles_ce (CYCLE_UNIT);
-*/
-
-#ifdef DEBUGGER
-	if (debug_dma) {
-		int reg = 0x1000;
-		if (mode < 0)
-			reg |= 4;
-		else if (mode > 0)
-			reg |= 2;
-		else
-			reg |= 1;
-		dr = record_dma (reg, v, addr, hpos, vpos, DMARECORD_CPU);
-		checknasty (hpos, vpos);
-	}
-#endif
 	if (mode < 0)
 		v = get_long (addr);
 	else if (mode > 0)
@@ -186,70 +88,17 @@ uae_u32 wait_cpu_cycle_read (uaecptr addr, int mode)
 	else if (mode == 0)
 		v = get_byte (addr);
 
-#ifdef DEBUGGER
-	if (debug_dma)
-		dr->dat = v;
-#endif
-
-	do_cycles_ce (CYCLE_UNIT);
 	return v;
 }
 
 void wait_cpu_cycle_write (uaecptr addr, int mode, uae_u32 v)
 {
-	int hpos;
-
-/*
-	hpos = dma_cycle ();
-	do_cycles_ce (CYCLE_UNIT);
-*/
-
-#ifdef DEBUGGER
-	if (debug_dma) {
-		int reg = 0x1100;
-		if (mode < 0)
-			reg |= 4;
-		else if (mode > 0)
-			reg |= 2;
-		else
-			reg |= 1;
-		record_dma (reg, v, addr, hpos, vpos, DMARECORD_CPU);
-		checknasty (hpos, vpos);
-	}
-#endif
-
 	if (mode < 0)
 		put_long (addr, v);
 	else if (mode > 0)
 		put_word (addr, v);
 	else if (mode == 0)
 		put_byte (addr, v);
-	do_cycles_ce (CYCLE_UNIT);
-
-}
-
-int is_cycle_ce (void)
-{
-	int hpos = current_hpos ();
-	return cycle_line[hpos];
-}
-
-void reset_frame_rate_hack (void)
-{
-/*	Laurent : should it be adapted or removed ?
-	if (currprefs.m68k_speed != -1)
-		return;
-
-	if (! rpt_available) {
-		currprefs.m68k_speed = 0;
-		return;
-	}
-
-	rpt_did_reset = 1;
-	is_lastline = 0;
-	vsyncmintime = read_processor_time () + vsynctime;
-	write_log ("Resetting frame rate hack\n");
-*/
 }
 
 /* Code taken from main.cpp */
@@ -356,99 +205,4 @@ void mmu_do_hit (void)
 #ifdef JIT
 	set_special(SPCFLAG_END_COMPILE);
 #endif
-}
-
-/* Code taken from win32.cpp*/
-void fpux_restore (int *v)
-{
-/*#ifndef _WIN64
-	if (v)
-		_controlfp (*v, _MCW_IC | _MCW_RC | _MCW_PC);
-	else
-		_controlfp (fpucontrol, _MCW_IC | _MCW_RC | _MCW_PC);
-#endif
-*/
-}
-
-/* Code taken from win32.cpp*/
-frame_time_t read_processor_time (void)
-{
-#if 0
-	static int cnt;
-
-	cnt++;
-	if (cnt > 1000000) {
-		write_log(L"**************\n");
-		cnt = 0;
-	}
-#endif
-	if (userdtsc)
-		return read_processor_time_rdtsc ();
-	else
-		return read_processor_time_qpf ();
-}
-
-/* Code taken from win32.cpp*/
-frame_time_t read_processor_time_qpf (void)
-{
-/* Laurent : may be coded later
-	LARGE_INTEGER counter;
-	QueryPerformanceCounter (&counter);
-	if (qpcdivisor == 0)
-		return (frame_time_t)(counter.LowPart);
-	return (frame_time_t)(counter.QuadPart >> qpcdivisor);
-*/
-}
-
-/* Code taken from win32.cpp*/
-frame_time_t read_processor_time_rdtsc (void)
-{
-	frame_time_t foo = 0;
-#if defined(X86_MSVC_ASSEMBLY)
-	frame_time_t bar;
-	__asm
-	{
-		rdtsc
-			mov foo, eax
-			mov bar, edx
-	}
-	/* very high speed CPU's RDTSC might overflow without this.. */
-	foo >>= 6;
-	foo |= bar << 26;
-#endif
-	return foo;
-}
-
-/* Code taken from win32.cpp*/
-void sleep_millis (int ms)
-{
-/* Laurent : may be coded later (DSL-Delay ?)
-	unsigned int TimerEvent;
-	int start;
-	int cnt;
-
-	start = read_processor_time ();
-	EnterCriticalSection (&cs_time);
-	cnt = timehandlecounter++;
-	if (timehandlecounter >= MAX_TIMEHANDLES)
-		timehandlecounter = 0;
-	LeaveCriticalSection (&cs_time);
-	TimerEvent = timeSetEvent (ms, 0, (LPTIMECALLBACK)timehandle[cnt], 0, TIME_ONESHOT | TIME_CALLBACK_EVENT_SET);
-	WaitForSingleObject (timehandle[cnt], ms);
-	ResetEvent (timehandle[cnt]);
-	timeKillEvent (TimerEvent);
-	idletime += read_processor_time () - start;
-*/
-}
-
-
-/* Code just here to let newcpu.c link (original function is in inprec.cpp) */
-int inprec_open(char *fname, int record)
-{
-	return 0;
-}
-
-int current_hpos (void)
-{
-    return (get_cycles () - eventtab[ev_hsync].oldcycles) / CYCLE_UNIT;
 }

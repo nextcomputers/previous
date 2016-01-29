@@ -83,7 +83,13 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
         printf("cpu type reset\n");
         return true;
     }
-    
+
+    /* Did we change the realtime flag? */
+    if(current->System.bRealtime != changed->System.bRealtime) {
+        printf("realtime flaf reset\n");
+        return true;
+    }
+
     /* Did we change FPU type? */
     if (current->System.n_FPUType != changed->System.n_FPUType) {
         printf("fpu type reset\n");

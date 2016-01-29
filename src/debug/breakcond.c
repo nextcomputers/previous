@@ -402,20 +402,6 @@ typedef struct {
 	const char *constraints;
 } var_addr_t;
 
-/* Accessor functions for calculated Hatari values */
-static Uint32 GetLineCycles(void)
-{
-	int dummy1, dummy2, lcycles;
-	Video_GetPosition(&dummy1, &dummy2 , &lcycles);
-	return lcycles;
-}
-static Uint32 GetFrameCycles(void)
-{
-	int dummy1, dummy2, fcycles;
-	Video_GetPosition(&fcycles, &dummy1, &dummy2);
-	return fcycles;
-}
-
 /* helpers for TOS OS call opcode accessor functions */
 #define INVALID_OPCODE 0xFFFFu
 
@@ -458,70 +444,14 @@ static Uint32 GetLineFOpcode(void)
 {
     return getLineOpcode(0xF);
 }
-static Uint32 GetGemdosOpcode(void)
-{
-    if (isTrap(1)) {
-        return getStackOpcode();
-    }
-    return INVALID_OPCODE;
-}
-static Uint32 GetBiosOpcode(void)
-{
-    if (isTrap(13)) {
-        return getStackOpcode();
-    }
-    return INVALID_OPCODE;
-}
-static Uint32 GetXbiosOpcode(void)
-{
-    if (isTrap(14)) {
-        return getStackOpcode();
-    }
-    return INVALID_OPCODE;
-}
-static Uint32 GetAesOpcode(void)
-{
-    if (isTrap(2)) {
-        Uint16 d0 = Regs[REG_D0];
-        if (d0 == 0xC8) {
-            return getControlOpcode();
-        } else if (d0 == 0xC9) {
-            /* same as appl_yield() */
-            return 0x11;
-        }
-    }
-    return INVALID_OPCODE;
-}
-static Uint32 GetVdiOpcode(void)
-{
-    if (isTrap(2)) {
-        Uint16 d0 = Regs[REG_D0];
-        if (d0 == 0x73) {
-            return getControlOpcode();
-        } else if (d0 == 0xFFFE) {
-            /* -2 = vq_[v]gdos() */
-            return 0xFFFE;
-        }
-    }
-    return INVALID_OPCODE;
-}
 
 /* sorted by variable name so that this can be bisected */
 static const var_addr_t hatari_vars[] = {
-    { "AesOpcode", (Uint32*)GetAesOpcode, VALUE_TYPE_FUNCTION32, 16, "by default FFFF" },
-    { "BiosOpcode", (Uint32*)GetBiosOpcode, VALUE_TYPE_FUNCTION32, 16, "by default FFFF" },
     { "BSS", (Uint32*)DebugInfo_GetBSS, VALUE_TYPE_FUNCTION32, 0, "invalid before Desktop is up" },
     { "DATA", (Uint32*)DebugInfo_GetDATA, VALUE_TYPE_FUNCTION32, 0, "invalid before Desktop is up" },
-	{ "FrameCycles", (Uint32*)GetFrameCycles, VALUE_TYPE_FUNCTION32, 0, NULL },
-    { "GemdosOpcode", (Uint32*)GetGemdosOpcode, VALUE_TYPE_FUNCTION32, 16, "by default FFFF" },
     { "LineAOpcode", (Uint32*)GetLineAOpcode, VALUE_TYPE_FUNCTION32, 16, "by default FFFF" },
-	{ "LineCycles", (Uint32*)GetLineCycles, VALUE_TYPE_FUNCTION32, 0, "is always divisable by 4" },
     { "LineFOpcode", (Uint32*)GetLineFOpcode, VALUE_TYPE_FUNCTION32, 16, "by default FFFF" },
     { "TEXT", (Uint32*)DebugInfo_GetTEXT, VALUE_TYPE_FUNCTION32, 0, "invalid before Desktop is up" },
-//    { "VBL", (Uint32*)&nVBLs, VALUE_TYPE_VAR32, sizeof(nVBLs)*8, NULL },
-    { "VdiOpcode", (Uint32*)GetVdiOpcode, VALUE_TYPE_FUNCTION32, 16, "by default FFFF" },
-    { "XbiosOpcode", (Uint32*)GetXbiosOpcode, VALUE_TYPE_FUNCTION32, 16, "by default FFFF" }
-
 };
 
 

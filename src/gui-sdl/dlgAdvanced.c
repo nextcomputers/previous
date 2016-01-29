@@ -18,33 +18,34 @@ const char DlgAdvanced_fileid[] = "Hatari dlgAdvanced.c : " __DATE__ " " __TIME_
 #define DLGADV_25MHZ      6
 #define DLGADV_33MHZ      7
 #define DLGADV_40MHZ      8
+#define DLGADV_REALTIME   9
 
-#define DLGADV_8MB        11
-#define DLGADV_16MB       12
-#define DLGADV_32MB       13
-#define DLGADV_CUSTOM     14
-#define DLGADV_64MB       15
-#define DLGADV_128MB      16
+#define DLGADV_8MB        12
+#define DLGADV_16MB       13
+#define DLGADV_32MB       14
+#define DLGADV_CUSTOM     15
+#define DLGADV_64MB       16
+#define DLGADV_128MB      17
 
-#define DLGADV_120NS      19
-#define DLGADV_100NS      20
-#define DLGADV_80NS       21
-#define DLGADV_60NS       22
+#define DLGADV_120NS      20
+#define DLGADV_100NS      21
+#define DLGADV_80NS       22
+#define DLGADV_60NS       23
 
-#define DLGADV_DSPNONE    25
-#define DLGADV_DSP56001   26
+#define DLGADV_DSPNONE    26
+#define DLGADV_DSP56001   27
 #define DLGADV_DSPMEM24   28
-#define DLGADV_DSPMEM96   29
+#define DLGADV_DSPMEM96   30
 
-#define DLGADV_NBIC       32
+#define DLGADV_NBIC       33
 
-#define DLGADV_SCSI_OLD   35
-#define DLGADV_SCSI_NEW   36
+#define DLGADV_SCSI_OLD   36
+#define DLGADV_SCSI_NEW   37
 
-#define DLGADV_RTC_OLD    39
-#define DLGADV_RTC_NEW    40
+#define DLGADV_RTC_OLD    40
+#define DLGADV_RTC_NEW    41
 
-#define DLGADV_EXIT       41
+#define DLGADV_EXIT       42
 
 char custom_memory[16] = "Customize";
 
@@ -60,6 +61,7 @@ static SGOBJ advanceddlg[] =
     { SGRADIOBUT, 0, 0, 4,10, 8,1, "25 MHz" },
     { SGRADIOBUT, 0, 0, 4,12, 8,1, "33 MHz" },
     { SGRADIOBUT, 0, 0, 4,14, 8,1, "40 MHz" },
+    { SGCHECKBOX, 0, 0, 4,16, 8,1, "Realtime" },
 
     { SGBOX, 0, 0, 17,3, 14,15, NULL },
     { SGTEXT, 0, 0, 18,4, 12,1, "Memory size" },
@@ -241,6 +243,8 @@ void Dialog_AdvancedDlg(void) {
         default:
             break;
 	}
+    if(ConfigureParams.System.bRealtime)
+        advanceddlg[DLGADV_REALTIME].state |= SG_SELECTED;
     
     /* Remove 40 MHz option if system is non-Turbo */
     if (ConfigureParams.System.bTurbo) {
@@ -417,6 +421,8 @@ void Dialog_AdvancedDlg(void) {
         ConfigureParams.System.nCpuFreq = 33;
     else
         ConfigureParams.System.nCpuFreq = 40;
+
+    ConfigureParams.System.bRealtime = (advanceddlg[DLGADV_REALTIME].state & SG_SELECTED) != 0;
     
     if (advanceddlg[DLGADV_120NS].state & SG_SELECTED)
         ConfigureParams.Memory.nMemorySpeed = MEMORY_120NS;

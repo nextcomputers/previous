@@ -353,7 +353,7 @@ UINT32 i860_cpu_device::get_address_translation(UINT32 vaddr, UINT32 voffset, UI
      addr = address to write.
      size = size of write in bytes.
      data = data to write.  */
-void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data) {
+inline void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data) {
 #if TRACE_RDWR_MEM
 	Log_Printf(LOG_WARN, "[i860] wrmem (ATE=%d) addr = %08X, size = %d, data = %08X\n", GET_DIRBASE_ATE (), addr, size, data); fflush(0);
 #endif
@@ -396,7 +396,7 @@ void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data) {
      addr = address to read.
      size = size of read in bytes.
      dest = memory to put read data.  */
-void i860_cpu_device::readmem_emu (UINT32 addr, int size, UINT8 *dest)
+inline void i860_cpu_device::readmem_emu (UINT32 addr, int size, UINT8 *dest)
 {
 #if TRACE_RDWR_MEM
 	Log_Printf(LOG_WARN, "[i860] fp_rdmem (ATE=%d) addr = %08X, size = %d\n", GET_DIRBASE_ATE (), addr, size); fflush(0);
@@ -436,7 +436,7 @@ void i860_cpu_device::readmem_emu (UINT32 addr, int size, UINT8 *dest)
      size = size of write in bytes.
      data = pointer to the data.
      wmask = bit mask of bytes to write (only for pst.d).  */
-void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data, UINT32 wmask)
+inline void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data, UINT32 wmask)
 {
 #if TRACE_RDWR_MEM
 	Log_Printf(LOG_WARN, "[i860] fp_wrmem (ATE=%d) addr = %08X, size = %d", GET_DIRBASE_ATE (), addr, size); fflush(0);
@@ -631,18 +631,15 @@ void i860_cpu_device::insn_ldx (UINT32 insn)
 	UINT32 idest = get_idest (insn);
 	UINT32 eff = 0;
 	/* Operand size, in bytes.  */
-	int sizes[4] = { 1, 1, 2, 4};
+	const int sizes[4] = { 1, 1, 2, 4};
 	int size = 0;
-	int form_disp_reg = 0;
 
 	/* Bits 28 and 0 determine the operand size.  */
 	size = sizes[((insn >> 27) & 2) | (insn & 1)];
 
-	/* Bit 26 determines the addressing mode (reg+reg or disp+reg).  */
-	form_disp_reg = (insn & 0x04000000);
-
+    /* Bit 26 determines the addressing mode (reg+reg or disp+reg).  */
 	/* Get effective address depending on disp+reg or reg+reg form.  */
-	if (form_disp_reg)
+	if (insn & 0x04000000)
 	{
 		/* Chop off lower bits of displacement.  */
 		immsrc1 &= ~(size - 1);
@@ -670,18 +667,15 @@ void i860_cpu_device::insn_ldx (UINT32 insn)
         UINT32 readval = 0; readmem_emu(eff, size, (UINT8*)&readval);
         readval = sign_ext (readval, size * 8);
 		/* Do not update register on page fault.  */
-		if (GET_EXITING_MEMRW())
-		{
+		if (GET_EXITING_MEMRW()) {
 			return;
 		}
 		set_iregval (idest, readval);
 	}
-	else
-	{
+	else {
         UINT32 readval; readmem_emu(eff, size, (UINT8*)&readval);
 		/* Do not update register on page fault.  */
-		if (GET_EXITING_MEMRW())
-		{
+		if (GET_EXITING_MEMRW()) {
 			return;
 		}
 		set_iregval (idest, readval);
@@ -699,7 +693,7 @@ void i860_cpu_device::insn_stx (UINT32 insn)
 	UINT32 isrc2 = get_isrc2 (insn);
 	UINT32 eff = 0;
 	/* Operand size, in bytes.  */
-	int sizes[4] = { 1, 1, 2, 4};
+	const int sizes[4] = { 1, 1, 2, 4};
 	int size = 0;
 
 	/* Bits 28 and 0 determine the operand size.  */
@@ -730,7 +724,7 @@ void i860_cpu_device::insn_fsty (UINT32 insn)
 	UINT32 fdest = get_fdest (insn);
 	UINT32 eff = 0;
 	/* Operand size, in bytes.  */
-	int sizes[4] = { 8, 4, 16, 4};
+	const int sizes[4] = { 8, 4, 16, 4};
 	int size = 0;
 	int form_disp_reg = 0;
 	int auto_inc = (insn & 1);
@@ -795,7 +789,7 @@ void i860_cpu_device::insn_fldy (UINT32 insn)
 	UINT32 fdest = get_fdest (insn);
 	UINT32 eff = 0;
 	/* Operand size, in bytes.  */
-	int sizes[4] = { 8, 4, 16, 4};
+	const int sizes[4] = { 8, 4, 16, 4};
 	int size = 0;
 	int form_disp_reg = 0;
 	int auto_inc = (insn & 1);

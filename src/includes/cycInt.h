@@ -50,6 +50,7 @@ typedef struct
 INTERRUPTHANDLER PendingInterrupt;
 
 extern int64_t nCyclesMainCounter;
+extern int     nCyclesDivisor;
 
 #define TIME_CHECK_INTERVAL 100 // we don't actully run at microsecond resolution but check less frequently for performance reasons
 extern int timeCheckCycles;

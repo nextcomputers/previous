@@ -529,9 +529,9 @@ private:
     
     void   set_mem_access(bool be);
     UINT8  rdcs8(UINT32 addr);
-	void   writemem_emu(UINT32 addr, int size, UINT8 *data);
-	void   writemem_emu(UINT32 addr, int size, UINT8 *data, UINT32 wmask);
-    void   readmem_emu (UINT32 addr, int size, UINT8 *data);
+	inline void   writemem_emu(UINT32 addr, int size, UINT8 *data);
+	inline void   writemem_emu(UINT32 addr, int size, UINT8 *data, UINT32 wmask);
+    inline void   readmem_emu (UINT32 addr, int size, UINT8 *data);
 
     /* instructions */
 	void insn_ld_ctrl (UINT32 insn);

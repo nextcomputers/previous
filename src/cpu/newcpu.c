@@ -15,7 +15,6 @@
 #include "sysdeps.h"
 #include "hatari-glue.h"
 #include "options_cpu.h"
-#include "events.h"
 #include "custom.h"
 #include "maccess.h"
 #include "memory.h"
@@ -428,11 +427,11 @@ void build_cpufunctbl (void)
 	write_log ("Building CPU, %d opcodes (%d %d %d)\n",
 		opcnt, lvl,
 		currprefs.cpu_cycle_exact ? -1 : currprefs.cpu_compatible ? 1 : 0, currprefs.address_space_24);
-	write_log ("CPU=%d, MMU=%d, FPU=%d ($%02x), JIT%s=%d.\n",
+	write_log ("CPU=%d, MMU=%d, FPU=%d ($%02x), JIT%s=%d, realtime=%d\n",
                currprefs.cpu_model, currprefs.mmu_model,
                currprefs.fpu_model, currprefs.fpu_revision,
 		currprefs.cachesize ? (currprefs.compfpu ? "=CPU/FPU" : "=CPU") : "",
-		currprefs.cachesize);
+		currprefs.cachesize, ConfigureParams.System.bRealtime);
 #ifdef JIT
 	build_comp ();
 #endif
@@ -527,7 +526,6 @@ void check_prefs_changed_cpu (void)
 		|| currprefs.cpu_clock_multiplier != changed_prefs.cpu_clock_multiplier
 		|| currprefs.cpu_frequency != changed_prefs.cpu_frequency) {
 			currprefs.m68k_speed = changed_prefs.m68k_speed;
-			reset_frame_rate_hack ();
 			update_68k_cycles ();
 			changed = 1;
 	}
@@ -968,7 +966,6 @@ void REGPARAM2 MakeFromSR (void)
 	int olds = regs.s;
 
 	if (currprefs.cpu_cycle_exact && currprefs.cpu_model >= 68020) {
-		do_cycles_ce (6 * CYCLE_UNIT);
 		regs.ce020memcycles = 0;
 	}
 
@@ -1060,176 +1057,6 @@ static void exception_debug (int nr)
 	abort();
 #endif
 }
-
-#ifdef CPUEMU_12
-
-/* cycle-exact exception handler, 68000 only */
-
-/*
-
-Address/Bus Error:
-
-- 6 idle cycles
-- write PC low word
-- write SR
-- write PC high word
-- write instruction word
-- write fault address low word
-- write status code
-- write fault address high word
-- 2 idle cycles
-- read exception address high word
-- read exception address low word
-- prefetch
-- 2 idle cycles
-- prefetch
-
-Division by Zero:
-
-- 6 idle cycles
-- write PC low word
-- write SR
-- write PC high word
-- read exception address high word
-- read exception address low word
-- prefetch
-- 2 idle cycles
-- prefetch
-
-Traps:
-
-- 2 idle cycles
-- write PC low word
-- write SR
-- write PC high word
-- read exception address high word
-- read exception address low word
-- prefetch
-- 2 idle cycles
-- prefetch
-
-TrapV:
-
-- write PC low word
-- write SR
-- write PC high word
-- read exception address high word
-- read exception address low word
-- prefetch
-- 2 idle cycles
-- prefetch
-
-CHK:
-
-- 6 idle cycles
-- write PC low word
-- write SR
-- write PC high word
-- read exception address high word
-- read exception address low word
-- prefetch
-- 2 idle cycles
-- prefetch
-
-Illegal Instruction:
-
-- 2 idle cycles
-- write PC low word
-- write SR
-- write PC high word
-- read exception address high word
-- read exception address low word
-- prefetch
-- 2 idle cycles
-- prefetch
-
-Interrupt cycle diagram:
-
-- 6 idle cycles
-- write PC low word
-- read exception number byte from (0xfffff1 | (interrupt number << 1))
-- 4 idle cycles
-- write SR
-- write PC high word
-- read exception address high word
-- read exception address low word
-- prefetch
-- 2 idle cycles
-- prefetch
-
-*/
-
-static void Exception_ce000 (int nr, uaecptr oldpc)
-{
-	uae_u32 currpc = m68k_getpc (), newpc;
-	int sv = regs.s;
-	int start, interrupt;
-
-	start = 6;
-	if (nr == 7) // TRAPV
-		start = 0;
-	else if (nr >= 32 && nr < 32 + 16) // TRAP #x
-		start = 2;
-	else if (nr == 4 || nr == 8) // ILLG & PRIVIL VIOL
-		start = 2;
-	interrupt = nr >= 24 && nr < 24 + 8;
-
-	if (start)
-		do_cycles_ce000 (start);
-
-	exception_debug (nr);
-	MakeSR ();
-
-	if (!regs.s) {
-		regs.usp = m68k_areg (regs, 7);
-		m68k_areg (regs, 7) = regs.isp;
-		regs.s = 1;
-	}
-	if (nr == 2 || nr == 3) { /* 2=bus error, 3=address error */
-		uae_u16 mode = (sv ? 4 : 0) | (last_instructionaccess_for_exception_3 ? 2 : 1);
-		mode |= last_writeaccess_for_exception_3 ? 0 : 16;
-		m68k_areg (regs, 7) -= 14;
-		/* fixme: bit3=I/N */
-		put_word_ce (m68k_areg (regs, 7) + 12, last_addr_for_exception_3);
-		put_word_ce (m68k_areg (regs, 7) + 8, regs.sr);
-		put_word_ce (m68k_areg (regs, 7) + 10, last_addr_for_exception_3 >> 16);
-		put_word_ce (m68k_areg (regs, 7) + 6, last_op_for_exception_3);
-		put_word_ce (m68k_areg (regs, 7) + 4, last_fault_for_exception_3);
-		put_word_ce (m68k_areg (regs, 7) + 0, mode);
-		put_word_ce (m68k_areg (regs, 7) + 2, last_fault_for_exception_3 >> 16);
-		do_cycles_ce000 (2);
-		write_log ("Exception %d (%x) at %x -> %x!\n", nr, oldpc, currpc, get_long (4 * nr));
-		goto kludge_me_do;
-	}
-	m68k_areg (regs, 7) -= 6;
-	put_word_ce (m68k_areg (regs, 7) + 4, currpc); // write low address
-	if (interrupt) {
-		// fetch interrupt vector number
-		nr = get_byte_ce (0x00fffff1 | ((nr - 24) << 1));
-		do_cycles_ce000 (4);
-	}
-	put_word_ce (m68k_areg (regs, 7) + 0, regs.sr); // write SR
-	put_word_ce (m68k_areg (regs, 7) + 2, currpc >> 16); // write high address
-kludge_me_do:
-	newpc = get_word_ce (4 * nr) << 16; // read high address
-	newpc |= get_word_ce (4 * nr + 2); // read low address
-	if (newpc & 1) {
-		if (nr == 2 || nr == 3)
-			Reset_Cold(); /* there is nothing else we can do.. */
-		else
-			exception3 (regs.ir, newpc);
-		return;
-	}
-	m68k_setpc (newpc);
-	regs.ir = get_word_ce (m68k_getpc ()); // prefetch 1
-	do_cycles_ce000 (2);
-	regs.irc = get_word_ce (m68k_getpc () + 2); // prefetch 2
-#ifdef JIT
-	set_special (SPCFLAG_END_COMPILE);
-#endif
-	exception_trace (nr);
-}
-#endif
 
 void cpu_halt (int e)
 {
@@ -1713,12 +1540,7 @@ kludge_me_do:
 	fill_prefetch_slow ();
 	exception_trace (nr);
 	
-    /* Handle exception cycles (special case for MFP) */
-    if (ExceptionSource == M68000_EXC_SRC_INT_MFP)
-    {
-      M68000_AddCycles(44+12);			/* MFP interrupt, 'nr' can be in a different range depending on $fffa17 */
-    }
-    else if (nr >= 24 && nr <= 31)
+    if (nr >= 24 && nr <= 31)
     {
       if ( nr == 26 )				/* HBL */
       {
@@ -2081,11 +1903,6 @@ STATIC_INLINE int do_specialties (int cycles)
 	if (regs.spcflags & SPCFLAG_DOTRACE)
 		Exception (9);
 
-	if (regs.spcflags & SPCFLAG_TRAP) {
-		unset_special (SPCFLAG_TRAP);
-		Exception (3);
-	}
-
     /* Handle the STOP instruction */
     if ( regs.spcflags & SPCFLAG_STOP ) {
         /* We first test if there's a pending interrupt that would */
@@ -2101,8 +1918,7 @@ STATIC_INLINE int do_specialties (int cycles)
 	    if (regs.spcflags & SPCFLAG_BRK)
 			return 1;
 	
-		do_cycles (currprefs.cpu_cycle_exact ? 2 * CYCLE_UNIT : 4 * CYCLE_UNIT);
-		M68000_AddCycles(cpu_cycles * 2 / CYCLE_UNIT);
+		M68000_AddCycles(cpu_cycles / CYCLE_UNIT);
 
 	    /* It is possible one or more ints happen at the same time */
 	    /* We must process them during the same cpu cycle until the special INT flag is set */
@@ -2160,7 +1976,7 @@ STATIC_INLINE int do_specialties (int cycles)
 					lvpos = vpos;
 					if (sleepcnt < 0) {
 							/*sleepcnt = IDLETIME / 2; */  /* Laurent : badly removed for now */
-						sleep_millis (1);
+						host_sleep_ms(1);
 					}
 				}
 			}
@@ -2207,112 +2023,11 @@ STATIC_INLINE int do_specialties (int cycles)
 	return 0;
 }
 
-
-
-#ifndef CPUEMU_11
-
-static void m68k_run_1 (void)
-{
-}
-
-#else
-
-/* It's really sad to have two almost identical functions for this, but we
-do it all for performance... :(
-This version emulates 68000's prefetch "cache" */
-static void m68k_run_1 (void)
-{
-	struct regstruct *r = &regs;
-
-	for (;;) {
-		uae_u32 opcode = r->ir;
-
-		count_instr (opcode);
-
-	/*m68k_dumpstate(stderr, NULL);*/
-	if (LOG_TRACE_LEVEL(TRACE_CPU_DISASM))
-	{
-	    int FrameCycles, HblCounterVideo, LineCycles;
-
-	    Video_GetPosition ( &FrameCycles , &HblCounterVideo , &LineCycles );
-
-	    LOG_TRACE_PRINT ( "cpu video_cyc=%6d %3d@%3d : " , FrameCycles, LineCycles, HblCounterVideo );
-	    m68k_disasm(stderr, m68k_getpc (), NULL, 1);
-	}
-
-
-		do_cycles (cpu_cycles);
-		cpu_cycles = (*cpufunctbl[opcode])(opcode);
-		cpu_cycles &= cycles_mask;
-		cpu_cycles |= cycles_val;
-		
-		/* We can have several interrupts at the same time before the next CPU instruction */
-		/* We must check for pending interrupt and call do_specialties_interrupt() only */
-		/* if the cpu is not in the STOP state. Else, the int could be acknowledged now */
-		/* and prevent exiting the STOP state when calling do_specialties() after. */
-		/* For performance, we first test PendingInterruptCount, then regs.spcflags */
-		while ( ( PendingInterrupt.time <= 0 ) && ( PendingInterrupt.pFunction ) && ( ( regs.spcflags & SPCFLAG_STOP ) == 0 ) ) {
-			CALL_VAR(PendingInterrupt.pFunction);		/* call the interrupt handler */
-			do_specialties_interrupt(false);		/* test if there's an mfp/video interrupt and add non pending jitter */
-		}
-		
-		if (r->spcflags) {
-			if (do_specialties (cpu_cycles))
-				return;
-		}
-		regs.ipl = regs.ipl_pin;
-		if (!currprefs.cpu_compatible || (currprefs.cpu_cycle_exact && currprefs.cpu_model == 68000))
-			return;
-	}
-}
-
-#endif /* CPUEMU_11 */
-
-#ifndef CPUEMU_12
-
-static void m68k_run_1_ce (void)
-{
-}
-
-#else
-
-/* cycle-exact m68k_run () */
-
-static void m68k_run_1_ce (void)
-{
-	struct regstruct *r = &regs;
-
-	ipl_fetch ();
-	for (;;) {
-		uae_u32 opcode = r->ir;
-
-		/*m68k_dumpstate(stderr, NULL);*/
-		if (LOG_TRACE_LEVEL(TRACE_CPU_DISASM))
-		{
-			int FrameCycles, HblCounterVideo, LineCycles;
-			Video_GetPosition ( &FrameCycles , &HblCounterVideo , &LineCycles );
-			LOG_TRACE_PRINT ( "cpu video_cyc=%6d %3d@%3d : " , FrameCycles, LineCycles, HblCounterVideo );
-			m68k_disasm(stderr, m68k_getpc (), NULL, 1);
-		}
-
-
-		(*cpufunctbl[opcode])(opcode);
-		if (r->spcflags) {
-			if (do_specialties (0))
-				return;
-		}
-		if (!currprefs.cpu_cycle_exact || currprefs.cpu_model > 68000)
-			return;
-	}
-}
-#endif
-
 #ifdef JIT  /* Completely different run_2 replacement */
 
 void do_nothing (void)
 {
 	/* What did you expect this to do? */
-	do_cycles (0);
 	/* I bet you didn't expect *that* ;-) */
 }
 
@@ -2328,8 +2043,6 @@ void exec_nostats (void)
 
 		cpu_cycles &= cycles_mask;
 		cpu_cycles |= cycles_val;
-
-		do_cycles (cpu_cycles);
 
 		if (end_block (opcode) || r->spcflags || uae_int_requested)
 			return; /* We will deal with the spcflags in the caller */
@@ -2363,7 +2076,6 @@ void execute_normal (void)
 
 		cpu_cycles &= cycles_mask;
 		cpu_cycles |= cycles_val;
-		do_cycles (cpu_cycles);
 		total_cycles += cpu_cycles;
 		pc_hist[blocklen].specmem = special_mem;
 		blocklen++;
@@ -2385,9 +2097,6 @@ static void m68k_run_jit (void)
 		/*m68k_dumpstate(stderr, NULL);*/
 		if (LOG_TRACE_LEVEL(TRACE_CPU_DISASM))
 		{
-			int FrameCycles, HblCounterVideo, LineCycles;
-			Video_GetPosition ( &FrameCycles , &HblCounterVideo , &LineCycles );
-			LOG_TRACE_PRINT ( "cpu video_cyc=%6d %3d@%3d : " , FrameCycles, LineCycles, HblCounterVideo );
 			m68k_disasm(stderr, m68k_getpc (), NULL, 1);
 		}
 
@@ -2480,9 +2189,8 @@ insretry:
 				opcode = mmu030_opcode;
 				mmu030_idx = 0;
 				count_instr (opcode);
-				do_cycles (cpu_cycles);
 				mmu030_retry = false;
-				cpu_cycles = (*cpufunctbl[opcode])(opcode);
+				cpu_cycles = (2 * (*cpufunctbl[opcode])(opcode)) / nCyclesDivisor;
 				cnt--; // so that we don't get in infinite loop if things go horribly wrong
 				if (!mmu030_retry)
 					break;
@@ -2496,10 +2204,10 @@ insretry:
 
 			mmu030_opcode = -1;
             
-			DSP_Run(cpu_cycles * 2 / CYCLE_UNIT);
-            i860_Run(cpu_cycles * 2 / CYCLE_UNIT);
+			DSP_Run(cpu_cycles / CYCLE_UNIT);
+            i860_Run(cpu_cycles / CYCLE_UNIT);
 
-			M68000_AddCycles(cpu_cycles * 2 / CYCLE_UNIT);
+			M68000_AddCycles(cpu_cycles / CYCLE_UNIT);
 
 			if (regs.spcflags & SPCFLAG_EXTRA_CYCLES) {
 				/* Add some extra cycles to simulate a wait state */
@@ -2530,7 +2238,7 @@ insretry:
             lastintr = intr;
 
 			if (regs.spcflags) {
-				if (do_specialties (cpu_cycles* 2 / CYCLE_UNIT))
+				if (do_specialties (cpu_cycles / CYCLE_UNIT))
 					return;
 			}
 		}
@@ -2579,17 +2287,15 @@ static void m68k_run_mmu040 (void)
 			mmu_restart = true;
 			pc = regs.instruction_pc = m68k_getpc ();
             
-			do_cycles (cpu_cycles);
-
 			mmu_opcode = -1;
 			mmu_opcode = opcode = x_prefetch (0);
 			count_instr (opcode);
-			cpu_cycles = (*cpufunctbl[opcode])(opcode);
+			cpu_cycles = (2 * (*cpufunctbl[opcode])(opcode)) / nCyclesDivisor; ;
+            
+			DSP_Run(cpu_cycles / CYCLE_UNIT);
+            i860_Run(cpu_cycles / CYCLE_UNIT);
 
-			DSP_Run(cpu_cycles * 2 / CYCLE_UNIT);
-            i860_Run(cpu_cycles * 2 / CYCLE_UNIT);
-
-			M68000_AddCycles(cpu_cycles * 2 / CYCLE_UNIT);
+			M68000_AddCycles(cpu_cycles / CYCLE_UNIT);
 
 			if (regs.spcflags & SPCFLAG_EXTRA_CYCLES) {
 				/* Add some extra cycles to simulate a wait state */
@@ -2621,7 +2327,7 @@ static void m68k_run_mmu040 (void)
             
             
 			if (regs.spcflags) {
-				if (do_specialties (cpu_cycles* 2 / CYCLE_UNIT))
+				if (do_specialties (cpu_cycles / CYCLE_UNIT))
 					return;
 			}
 		} // end of for(;;)
@@ -2651,172 +2357,6 @@ static void m68k_run_mmu040 (void)
 	}
 }
 
-/* "cycle exact" 68020/030  */
-#define MAX68020CYCLES 4
-static void m68k_run_2ce (void)
-{
-	struct regstruct *r = &regs;
-	int tmpcycles = MAX68020CYCLES;
-
-	ipl_fetch ();
-	for (;;) {
-		uae_u32 opcode = 0;		// 25/12/2013 - Strict C (pre 1999) does not allow variables to be declared after the start of a scoping brace
-		/*m68k_dumpstate(stderr, NULL);*/
-		if (LOG_TRACE_LEVEL(TRACE_CPU_DISASM))
-		{
-			int FrameCycles, HblCounterVideo, LineCycles;
-			Video_GetPosition ( &FrameCycles , &HblCounterVideo , &LineCycles );
-			LOG_TRACE_PRINT ( "cpu video_cyc=%6d %3d@%3d : " , FrameCycles, LineCycles, HblCounterVideo );
-			m68k_disasm(stderr, m68k_getpc (), NULL, 1);
-		}
-		opcode = x_prefetch (0);
-		(*cpufunctbl[opcode])(opcode);
-		if (r->ce020memcycles > 0) {
-			tmpcycles = CYCLE_UNIT * MAX68020CYCLES;
-			do_cycles_ce (r->ce020memcycles);
-			r->ce020memcycles = 0;
-		}
-		if (r->spcflags) {
-			if (do_specialties (0))
-				return;
-		}
-		tmpcycles -= cpucycleunit;
-		if (tmpcycles <= 0) {
-			do_cycles_ce (1 * CYCLE_UNIT);
-			tmpcycles = CYCLE_UNIT * MAX68020CYCLES;;
-		}
-		regs.ipl = regs.ipl_pin;
-	}
-}
-
-/* emulate simple prefetch  */
-static void m68k_run_2p (void)
-{
-	uae_u32 prefetch, prefetch_pc;
-	struct regstruct *r = &regs;
-
-	prefetch_pc = m68k_getpc ();
-	prefetch = get_longi (prefetch_pc);
-	for (;;) {
-		uae_u32 opcode;
-		uae_u32 pc = m68k_getpc ();
-
-		/*m68k_dumpstate(stderr, NULL);*/
-		if (LOG_TRACE_LEVEL(TRACE_CPU_DISASM))
-		{
-			int FrameCycles, HblCounterVideo, LineCycles;
-			Video_GetPosition ( &FrameCycles , &HblCounterVideo , &LineCycles );
-			LOG_TRACE_PRINT ( "cpu video_cyc=%6d %3d@%3d : " , FrameCycles, LineCycles, HblCounterVideo );
-			m68k_disasm(stderr, m68k_getpc (), NULL, 1);
-		}
-
-#if DEBUG_CD32CDTVIO
-		out_cd32io (m68k_getpc ());
-#endif
-
-		do_cycles (cpu_cycles);
-
-		if (pc == prefetch_pc)
-			opcode = prefetch >> 16;
-		else if (pc == prefetch_pc + 2)
-			opcode = prefetch & 0xffff;
-		else
-			opcode = get_wordi (pc);
-
-		count_instr (opcode);
-
-		prefetch_pc = m68k_getpc () + 2;
-		prefetch = get_longi (prefetch_pc);
-		cpu_cycles = (*cpufunctbl[opcode])(opcode);
-		cpu_cycles &= cycles_mask;
-		cpu_cycles |= cycles_val;
-
-		M68000_AddCycles(cpu_cycles * 2 / CYCLE_UNIT);
-
-		if (regs.spcflags & SPCFLAG_EXTRA_CYCLES) {
-			/* Add some extra cycles to simulate a wait state */
-			unset_special(SPCFLAG_EXTRA_CYCLES);
-			M68000_AddCycles(nWaitStateCycles);
-			nWaitStateCycles = 0;
-		}
-		
-		/* We can have several interrupts at the same time before the next CPU instruction */
-		/* We must check for pending interrupt and call do_specialties_interrupt() only */
-		/* if the cpu is not in the STOP state. Else, the int could be acknowledged now */
-		/* and prevent exiting the STOP state when calling do_specialties() after. */
-		/* For performance, we first test PendingInterruptCount, then regs.spcflags */
-		while ( ( PendingInterrupt.time <= 0 ) && ( PendingInterrupt.pFunction ) && ( ( regs.spcflags & SPCFLAG_STOP ) == 0 ) ) {
-			CALL_VAR(PendingInterrupt.pFunction);		/* call the interrupt handler */
-			do_specialties_interrupt(false);		/* test if there's an mfp/video interrupt and add non pending jitter */
-		}
-		
-		if (r->spcflags) {
-			if (do_specialties (cpu_cycles* 2 / CYCLE_UNIT))
-				return;
-		}
-	}
-}
-
-
-//static int used[65536];
-
-/* Same thing, but don't use prefetch to get opcode.  */
-static void m68k_run_2 (void)
-{
-	struct regstruct *r = &regs;
-
-	for (;;) {
-		uae_u32 opcode = get_iword (0);
-		count_instr (opcode);
-
-		/*m68k_dumpstate(stderr, NULL);*/
-		if (LOG_TRACE_LEVEL(TRACE_CPU_DISASM))
-		{
-			int FrameCycles, HblCounterVideo, LineCycles;
-			Video_GetPosition ( &FrameCycles , &HblCounterVideo , &LineCycles );
-			LOG_TRACE_PRINT ( "cpu video_cyc=%6d %3d@%3d : " , FrameCycles, LineCycles, HblCounterVideo );
-			m68k_disasm(stderr, m68k_getpc (), NULL, 1);
-		}
-
-#if 0
-		if (!used[opcode]) {
-			write_log ("%04X ", opcode);
-			used[opcode] = 1;
-		}
-#endif	
-		do_cycles (cpu_cycles);
-		cpu_cycles = (*cpufunctbl[opcode])(opcode);
-		cpu_cycles &= cycles_mask;
-		cpu_cycles |= cycles_val;
-
-		M68000_AddCycles(cpu_cycles * 2 / CYCLE_UNIT);
-
-		if (regs.spcflags & SPCFLAG_EXTRA_CYCLES) {
-			/* Add some extra cycles to simulate a wait state */
-			unset_special(SPCFLAG_EXTRA_CYCLES);
-			M68000_AddCycles(nWaitStateCycles);
-			nWaitStateCycles = 0;
-		}
-
-		/* We can have several interrupts at the same time before the next CPU instruction */
-		/* We must check for pending interrupt and call do_specialties_interrupt() only */
-		/* if the cpu is not in the STOP state. Else, the int could be acknowledged now */
-		/* and prevent exiting the STOP state when calling do_specialties() after. */
-		/* For performance, we first test PendingInterruptCount, then regs.spcflags */
-		while ( ( PendingInterrupt.time <= 0 ) && ( PendingInterrupt.pFunction ) && ( ( regs.spcflags & SPCFLAG_STOP ) == 0 ) ) {
-			CALL_VAR(PendingInterrupt.pFunction);		/* call the interrupt handler */
-			do_specialties_interrupt(false);		/* test if there's an mfp/video interrupt and add non pending jitter */
-		}
-		
-		
-		if (r->spcflags) {
-			if (do_specialties (cpu_cycles* 2 / CYCLE_UNIT))
-				return;
-		}
-	}
-}
-
-
 /* fake MMU 68k  */
 static void m68k_run_mmu (void)
 {
@@ -2825,13 +2365,9 @@ static void m68k_run_mmu (void)
 		/*m68k_dumpstate(stderr, NULL);*/
 		if (LOG_TRACE_LEVEL(TRACE_CPU_DISASM))
 		{
-			int FrameCycles, HblCounterVideo, LineCycles;
-			Video_GetPosition ( &FrameCycles , &HblCounterVideo , &LineCycles );
-			LOG_TRACE_PRINT ( "cpu video_cyc=%6d %3d@%3d : " , FrameCycles, LineCycles, HblCounterVideo );
 			m68k_disasm(stderr, m68k_getpc (), NULL, 1);
 		}
 		opcode = get_iword (0);
-		do_cycles (cpu_cycles);
 		mmu_backup_regs = regs;
 		cpu_cycles = (*cpufunctbl[opcode])(opcode);
 		cpu_cycles &= cycles_mask;
@@ -2867,7 +2403,6 @@ void m68k_go (int may_quit)
 		abort ();
 	}
 
-	reset_frame_rate_hack ();
 	update_68k_cycles ();
 
 	in_m68k_go++;
@@ -3641,10 +3176,6 @@ void m68k_resumestopped (void)
 	if (!regs.stopped)
 		return;
 	regs.stopped = 0;
-	if (currprefs.cpu_cycle_exact) {
-		if (currprefs.cpu_model == 68000)
-			do_cycles_ce000 (6);
-	}
 	fill_prefetch_slow ();
 	unset_special (SPCFLAG_STOP);
 }
@@ -3998,19 +3529,3 @@ void flush_dcache (uaecptr addr, int size)
 		}
 	}
 }
-
-void do_cycles_ce020 (int clocks)
-{
-	do_cycles_ce (clocks * cpucycleunit);
-}
-void do_cycles_ce020_mem (int clocks)
-{
-	regs.ce020memcycles -= clocks * cpucycleunit;
-	do_cycles_ce (clocks * cpucycleunit);
-}
-
-void do_cycles_ce000 (int clocks)
-{
-	do_cycles_ce (clocks * cpucycleunit);
-}
-

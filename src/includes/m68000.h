@@ -151,11 +151,8 @@ extern const char *OpcodeName[];
 /*-----------------------------------------------------------------------*/
 /**
  * Add CPU cycles.
- * NOTE: All times are rounded up to nearest 4 cycles.
  */
-static inline void M68000_AddCycles(int cycles)
-{
-	cycles = (cycles + 3) & ~3;
+static inline void M68000_AddCycles(int cycles) {
     switch(PendingInterrupt.type) {
         case CYC_INT_CPU:
             PendingInterrupt.time -= cycles;

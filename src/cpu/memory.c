@@ -208,7 +208,6 @@ __inline__ void byteput (uaecptr addr, uae_u32 b)
 /* Some prototypes: */
 extern void SDL_Quit(void);
 
-uae_u8 ce_banktype[65536];
 uae_u8 ce_cachable[65536];
 
 
