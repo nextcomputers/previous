@@ -1918,7 +1918,7 @@ STATIC_INLINE int do_specialties (int cycles)
 	    if (regs.spcflags & SPCFLAG_BRK)
 			return 1;
 	
-		M68000_AddCycles(cpu_cycles / CYCLE_UNIT);
+		M68000_AddCycles(cpu_cycles);
 
 	    /* It is possible one or more ints happen at the same time */
 	    /* We must process them during the same cpu cycle until the special INT flag is set */
@@ -2190,7 +2190,7 @@ insretry:
 				mmu030_idx = 0;
 				count_instr (opcode);
 				mmu030_retry = false;
-				cpu_cycles = (2 * (*cpufunctbl[opcode])(opcode)) / nCyclesDivisor;
+				cpu_cycles = (*cpufunctbl[opcode])(opcode) / nCyclesDivisor;
 				cnt--; // so that we don't get in infinite loop if things go horribly wrong
 				if (!mmu030_retry)
 					break;
@@ -2204,10 +2204,10 @@ insretry:
 
 			mmu030_opcode = -1;
             
-			DSP_Run(cpu_cycles / CYCLE_UNIT);
-            i860_Run(cpu_cycles / CYCLE_UNIT);
+			DSP_Run(cpu_cycles);
+            i860_Run(cpu_cycles);
 
-			M68000_AddCycles(cpu_cycles / CYCLE_UNIT);
+			M68000_AddCycles(cpu_cycles);
 
 			if (regs.spcflags & SPCFLAG_EXTRA_CYCLES) {
 				/* Add some extra cycles to simulate a wait state */
@@ -2238,7 +2238,7 @@ insretry:
             lastintr = intr;
 
 			if (regs.spcflags) {
-				if (do_specialties (cpu_cycles / CYCLE_UNIT))
+				if (do_specialties (cpu_cycles))
 					return;
 			}
 		}
@@ -2290,12 +2290,12 @@ static void m68k_run_mmu040 (void)
 			mmu_opcode = -1;
 			mmu_opcode = opcode = x_prefetch (0);
 			count_instr (opcode);
-			cpu_cycles = (2 * (*cpufunctbl[opcode])(opcode)) / nCyclesDivisor; ;
+			cpu_cycles = (*cpufunctbl[opcode])(opcode) / nCyclesDivisor; ;
             
-			DSP_Run(cpu_cycles / CYCLE_UNIT);
-            i860_Run(cpu_cycles / CYCLE_UNIT);
+			DSP_Run(cpu_cycles);
+            i860_Run(cpu_cycles);
 
-			M68000_AddCycles(cpu_cycles / CYCLE_UNIT);
+			M68000_AddCycles(cpu_cycles);
 
 			if (regs.spcflags & SPCFLAG_EXTRA_CYCLES) {
 				/* Add some extra cycles to simulate a wait state */
@@ -2327,7 +2327,7 @@ static void m68k_run_mmu040 (void)
             
             
 			if (regs.spcflags) {
-				if (do_specialties (cpu_cycles / CYCLE_UNIT))
+				if (do_specialties (cpu_cycles))
 					return;
 			}
 		} // end of for(;;)

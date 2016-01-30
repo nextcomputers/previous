@@ -97,7 +97,8 @@ void CycInt_Reset(void) {
             nCyclesDivisor = 2;
     } else
         nCyclesDivisor = 3;
-
+    nCyclesDivisor *= (CYCLE_UNIT / 2);
+    
 	/* Reset interrupt table */
 	for (i=0; i<MAX_INTERRUPTS; i++) {
 		InterruptHandlers[i].type      = CYC_INT_NONE;
