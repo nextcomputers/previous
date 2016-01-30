@@ -93,7 +93,7 @@ double host_time_sec() {
         t  = nCyclesMainCounter - cycleCounterStart;
         t /= cycleDivisor;
         rt -= t;
-        if(enableRealtime && rt < 0) {
+        if(rt < -0.001) {
             rt *= -1000 * 1000;
             host_sleep_us(rt);
         }
