@@ -26,7 +26,39 @@
 static i860_cpu_device nd_i860;
 
 extern "C" {
+#include "configuration.h"
+
+    static void i860_run_nop(int nHostCycles) {}
+    
+    i860_run_func i860_Run = i860_run_nop;
+
+    static void i860_run_thread(int nHostCycles) {
+#if ENABLE_PERF_COUNTERS
+        nd_i860.m_m68k_cylces += nHostCycles;
+#endif
+        nd_nbic_interrupt();
+    }
+
+    static void i860_run(int nHostCycles) {
+#if ENABLE_PERF_COUNTERS
+        nd_i860.m_m68k_cylces += nHostCycles;
+#endif
+        nd_i860.handle_msgs();
+        
+        if(nd_i860.is_halted()) return;
+        
+        nHostCycles *= 33; // i860 @ 33MHz
+        nHostCycles /= ConfigureParams.System.nCpuFreq;
+        while (nHostCycles > 0) {
+            nd_i860.run_cycle();
+            nHostCycles -= 2;
+        }
+        
+        nd_nbic_interrupt();
+    }
+    
     void nd_i860_init() {
+        i860_Run = nd_i860.use_threads() ? i860_run_thread : i860_run;
         nd_i860.init();
     }
 	
@@ -37,30 +69,9 @@ extern "C" {
     void nd_start_debugger(void) {
         nd_i860.send_msg(MSG_DBG_BREAK);
     }
-
-    static int checklock_cnt = 0;
-    void i860_Run(int nHostCycles) {
-#if ENABLE_PERF_COUNTERS
-        nd_i860.m_m68k_cylces += nHostCycles;
-#endif
-#if ENABLE_I860_THREAD
-        if(checklock_cnt <= 0) {
-            host_checklock(&nd_i860.m_debugger_lock);
-            // optimzation: check the debugger lock only all 10000 cycles
-            checklock_cnt = 10000;
-        } else
-            checklock_cnt -= nHostCycles;
-#else
-        nd_i860.handle_msgs();
-
-        if(nd_i860.is_halted()) return;
-
-        nd_i860.run_cycle();
-#endif
-        nd_nbic_interrupt();
-	}
     
     int i860_thread(void* data) {
+        SDL_SetThreadPriority(SDL_THREAD_PRIORITY_LOW);
         ((i860_cpu_device*)data)->run();
         return 0;
     }
@@ -83,9 +94,7 @@ extern "C" {
 }
 
 i860_cpu_device::i860_cpu_device() {
-#if ENABLE_I860_THREAD
     m_thread = NULL;
-#endif
 #if ENABLE_PERF_COUNTERS
     dump_reset_perfc();
 #endif
@@ -438,7 +447,7 @@ void i860_cpu_device::init() {
     CFGS[CONF_I860_SPEED]     = CONF_STR(CONF_I860_SPEED);
     CFGS[CONF_I860_DEV]       = CONF_STR(CONF_I860_DEV);
     CFGS[CONF_I860_NO_THREAD] = CONF_STR(CONF_I860_NO_THREAD);
-    Log_Printf(LOG_WARN, "[i860] Emulator configured for %s", CFGS[CONF_I860]);
+    Log_Printf(LOG_WARN, "[i860] Emulator configured for %s, %d logical cores detected, %s", CFGS[CONF_I860], host_num_cpus(), use_threads() ? "using seperate thread for i860" : "i860 running on m68k thread. WARNING: expect slow emulation");
     
     m_single_stepping   = 0;
     m_lastcmd           = 0;
@@ -446,7 +455,7 @@ void i860_cpu_device::init() {
     m_break_on_next_msg = false;
     m_dim               = DIM_NONE;
     m_traceback_idx     = 0;
-
+    
     set_mem_access(false);
 
     // some sanity checks for endianess
@@ -530,9 +539,8 @@ error:
     }
 
     send_msg(MSG_I860_RESET);
-#if ENABLE_I860_THREAD
-    m_thread = host_thread_create(i860_thread, this);
-#endif
+    if(use_threads())
+        m_thread = host_thread_create(i860_thread, this);
 }
 
 void i860_cpu_device::uninit() {
@@ -540,13 +548,13 @@ void i860_cpu_device::uninit() {
     
 	halt(true);
     send_msg(MSG_I860_KILL);
-#if ENABLE_I860_THREAD
-    if(m_thread) {
-        host_thread_wait(m_thread);
-        m_thread = NULL;
+    if(use_threads()) {
+        if(m_thread) {
+            host_thread_wait(m_thread);
+            m_thread = NULL;
+        }
+        send_msg(MSG_NONE);
     }
-    send_msg(MSG_NONE);
-#endif
 }
 
 /* Message disaptcher - executed on i860 thread, safe to call i860 methods */
@@ -556,10 +564,9 @@ bool i860_cpu_device::handle_msgs() {
     m_port = 0;
     host_unlock(&m_port_lock);
     
-#if ENABLE_I860_THREAD
-    if(msg & MSG_I860_KILL)
+    if(use_threads() && msg & MSG_I860_KILL)
         return false;
-#endif
+    
     if(msg & MSG_I860_RESET)
         reset();
     else if(msg & MSG_INTR)
@@ -599,13 +606,15 @@ void i860_cpu_device::tick(bool intr) {
 #endif
 }
 
+extern volatile int mainPauseEmulation;
+
 #if ENABLE_PERF_COUNTERS
 void i860_cpu_device::dump_reset_perfc() {
     static bool dump = false;
     if(dump) {
         UINT32 dt = m_time_delta_ms;
         if(dt) {
-            if(host_trylock(&m_debugger_lock)) {
+            if(!(mainPauseEmulation)) {
                 Log_Printf(LOG_WARN, "[i860] Stats: MIPS=%lld.%lld icache_hit=%lld%% tlb_hit=%lld%% icach_inval/s=%lld tlb_inval/s=%lld intr/s=%lld",
                            (m_insn_decoded / (dt * 100)) / 10, (m_insn_decoded / (dt * 100)) % 10,
                            m_icache_hit+m_icache_miss == 0 ? 0 : (100 * m_icache_hit) / (m_icache_hit+m_icache_miss) ,
@@ -629,8 +638,6 @@ void i860_cpu_device::dump_reset_perfc() {
                 m_tlb_inval     = 0;
                 m_time_delta_ms = 0;
                 m_intrs         = 0;
-
-                host_unlock(&m_debugger_lock);
             }
         }
     }

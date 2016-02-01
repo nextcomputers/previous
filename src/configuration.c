@@ -525,7 +525,7 @@ void Configuration_SetDefault(void)
 	ConfigureParams.System.nCpuLevel = 3;
 	ConfigureParams.System.nCpuFreq = 25;
 	ConfigureParams.System.bCompatibleCpu = true;
-	ConfigureParams.System.bRealtime = false;
+	ConfigureParams.System.bRealtime = true;
 	ConfigureParams.System.nDSPType = DSP_TYPE_EMU;
 	ConfigureParams.System.bDSPMemoryExpansion = false;
 	ConfigureParams.System.bPatchTimerD = true;
@@ -655,7 +655,7 @@ void Configuration_Apply(bool bReset)
  * Set defaults depending on selected machine type.
  */
 void Configuration_SetSystemDefaults(void) {
-    ConfigureParams.System.bRealtime = false;
+    ConfigureParams.System.bRealtime = true;
     switch (ConfigureParams.System.nMachineType) {
         case NEXT_CUBE030:
             ConfigureParams.System.bTurbo = false;

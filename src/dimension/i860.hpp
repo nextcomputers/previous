@@ -88,10 +88,13 @@ extern "C" {
     void   Statusbar_SetNdLed(int state);
     
     void   nd_set_blank_state(int src, bool state);
+
+    typedef void (*mem_rd_func)(UINT32, UINT32*);
+    typedef void (*mem_wr_func)(UINT32, const UINT32*);
+    typedef void (*i860_run_func)(int);
 }
 
-typedef void (*mem_rd_func)(UINT32, UINT32*);
-typedef void (*mem_wr_func)(UINT32, const UINT32*);
+
 
 /***************************************************************************
     REGISTER ENUMERATION
@@ -365,9 +368,9 @@ public:
     bool   handle_msgs();
     /* External tick event for the i860 emulator to update real-time dependent state + interrupt flag */
     void   tick(bool intr);
-    /* Lock acquired by debugger to block other threads (e.g. m68k) */
-    lock_t m_debugger_lock;
     
+    bool   use_threads() {return host_num_cpus() > 4;}
+
 #if ENABLE_PERF_COUNTERS
     UINT64 m_m68k_cylces;
 #endif
@@ -380,10 +383,7 @@ private:
     /* Message port for host->i860 communication */
     volatile int m_port;
     lock_t       m_port_lock;
-    
-#if ENABLE_I860_THREAD
-    thread_t*   m_thread;
-#endif
+    thread_t*    m_thread;
 
 #if ENABLE_PERF_COUNTERS
     UINT64 m_insn_decoded;

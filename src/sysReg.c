@@ -430,16 +430,20 @@ static Uint8 hardclock1=0;
 static Uint8 hardclock0=0;
 static int latch_hardclock=0;
 
+static Uint64 hardClockLastLatch;
+
 void Hardclock_InterruptHandler ( void )
 {
 	CycInt_AcknowledgeInterrupt();
 	if ((hardclock_csr&HARDCLOCK_ENABLE) && (latch_hardclock>0)) {
 //		Log_Printf(LOG_WARN,"[INT] throwing hardclock %lld", host_time_us());
         set_interrupt(INT_TIMER,SET_INT);
+        Uint64 now = host_time_us();
+        host_hardclock(latch_hardclock, now - hardClockLastLatch);
+        hardClockLastLatch = now;
         CycInt_AddRelativeInterruptUs(latch_hardclock, true, INTERRUPT_HARDCLOCK);
 	}
 }
-
 
 void HardclockRead0(void){
 	IoMem[IoAccessCurrentAddress & 0x1FFFF]=(latch_hardclock>>8);
@@ -465,6 +469,7 @@ void HardclockWriteCSR(void) {
 	if (hardclock_csr&HARDCLOCK_LATCH) {
         hardclock_csr&= ~HARDCLOCK_LATCH;
 		latch_hardclock=(hardclock0<<8)|hardclock1;
+        hardClockLastLatch = host_time_us();
 	}
 	if ((hardclock_csr&HARDCLOCK_ENABLE) && (latch_hardclock>0)) {
         Log_Printf(LOG_HARDCLOCK_LEVEL,"[hardclock] enable periodic interrupt (%i microseconds).", latch_hardclock);

@@ -105,7 +105,6 @@ enum {
 	OPT_LOGFILE,
 	OPT_LOGLEVEL,
 	OPT_ALERTLEVEL,
-	OPT_RUNVBLS,
 	OPT_ERROR,
 	OPT_CONTINUE
 };
@@ -264,8 +263,6 @@ static const opt_t HatariOptions[] = {
 	  "<x>", "Log output level (x=debug/todo/info/warn/error/fatal)" },
 	{ OPT_ALERTLEVEL, NULL, "--alert-level",
 	  "<x>", "Show dialog for log messages above given level" },
-	{ OPT_RUNVBLS, NULL, "--run-vbls",
-	  "<x>", "Exit after x VBLs" },
 
 	{ OPT_ERROR, NULL, NULL, NULL, NULL }
 };
@@ -1316,10 +1313,6 @@ bool Opt_ParseParameters(int argc, const char * const argv[])
 			{
 				return Opt_ShowError(OPT_ALERTLEVEL, argv[i], "Unknown alert level!");
 			}
-			break;
-
-		case OPT_RUNVBLS:
-			Main_SetRunVBLs(atol(argv[++i]));
 			break;
 		       
 		case OPT_ERROR:

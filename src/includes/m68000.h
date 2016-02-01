@@ -153,118 +153,17 @@ extern const char *OpcodeName[];
  * Add CPU cycles.
  */
 static inline void M68000_AddCycles(int cycles) {
-    switch(PendingInterrupt.type) {
-        case CYC_INT_CPU:
-            PendingInterrupt.time -= cycles;
-            break;
-        case CYC_INT_US:
-            timeCheckCycles -= cycles;
-            if(timeCheckCycles < 0) {
-                timeCheckCycles = TIME_CHECK_INTERVAL * ConfigureParams.System.nCpuFreq;
-                if(host_time_us() >= PendingInterrupt.time)
-                    PendingInterrupt.time = -1;
-            }
-            break;
-    }
-	nCyclesMainCounter += cycles;
+    if(PendingInterrupt.type == CYC_INT_CPU)
+        PendingInterrupt.time -= cycles;
+
+    if(usCheckCycles < 0) {
+        if(!(CycInt_SetNewInterruptUs())) {
+            usCheckCycles = 100 * ConfigureParams.System.nCpuFreq;
+        }
+    } else
+        usCheckCycles -= cycles;
+    nCyclesMainCounter += cycles;
 }
-
-#if 0 // (SC) unused
-/*-----------------------------------------------------------------------*/
-/**
- * Add CPU cycles, take cycles pairing into account. Pairing will make
- * some specific instructions take 4 cycles less when run one after the other.
- * Pairing happens when the 2 instructions are "aligned" on different bus accesses.
- * Candidates are :
- *  - 2 instructions taking 4n+2 cycles
- *  - 1 instruction taking 4n+2 cycles, followed by 1 instruction using d8(an,ix)
- *
- * Not all the candidate instructions can pair, only the opcodes listed in PairingArray.
- * On ST, when using d8(an,ix), we get an extra 2 cycle penalty for misaligned bus access.
- * The only instruction that can generate BusCyclePenalty=4 is move d8(an,ix),d8(an,ix)
- * and although it takes 4n cycles (24 for .b/.w or 32 for .l) it can pair with
- * a previous 4n+2 instruction (but it will still have 1 misaligned bus access in the end).
- *
- * Verified pairing on an STF :
- *  - lsl.w #4,d1 + move.w 0(a4,d2.w),d1		motorola=14+14=28  stf=28
- *  - lsl.w #4,d1 + move.w 0(a4,d2.w),(a4)		motorola=14+18=32  stf=32
- *  - lsl.w #4,d1 + move.w 0(a4,d2.w),0(a4,d2.w)	motorola=14+24=38  stf=40
- *  - add.l (a5,d1.w),d0 + move.b 7(a5,d1.w),d5)	motorola=20+14=34  stf=36
- *
- * d8(an,ix) timings without pairing (2 cycles penalty) :
- *  - add.l   0(a4,d2.w),a1				motorola=20  stf=24
- *  - move.w  0(a4,d2.w),d1				motorola=14  stf=16
- *  - move.w  0(a4,d2.w),(a4)				motorola=18  stf=20
- *  - move.w  0(a4,d2.w),0(a4,d2.w)			motorola=24  stf=28
- *
- * NOTE: All times are rounded up to nearest 4 cycles.
- */
-static inline void M68000_AddCyclesWithPairing(int cycles)
-{
-	Pairing = 0;
-	/* Check if number of cycles for current instr and for */
-	/* the previous one is of the form 4+2n */
-	/* If so, a pairing could be possible depending on the opcode */
-	/* A pairing is also possible if current instr is 4n but with BusCyclePenalty > 0 */
-	if ( ( PairingArray[ LastOpcodeFamily ][ OpcodeFamily ] == 1 )
-	    && ( ( LastInstrCycles & 3 ) == 2 )
-	    && ( ( ( cycles & 3 ) == 2 ) || ( BusCyclePenalty > 0 ) ) )
-	{
-		Pairing = 1;
-		LOG_TRACE(TRACE_CPU_PAIRING,
-		          "cpu pairing detected pc=%x family %s/%s cycles %d/%d\n",
-		          m68k_getpc(), OpcodeName[LastOpcodeFamily],
-		          OpcodeName[OpcodeFamily], LastInstrCycles, cycles);
-	}
-
-	/* [NP] This part is only needed to track possible pairing instructions, */
-	/* we can keep it disabled most of the time */
-#if 0
-	if ( (LastOpcodeFamily!=OpcodeFamily) && ( Pairing == 0 )
-		&& ( ( cycles & 3 ) == 2 ) && ( ( LastInstrCycles & 3 ) == 2 ) )
-	{
-		LOG_TRACE(TRACE_CPU_PAIRING,
-		          "cpu could pair pc=%x family %s/%s cycles %d/%d\n",
-		          m68k_getpc(), OpcodeName[LastOpcodeFamily],
-		          OpcodeName[OpcodeFamily], LastInstrCycles, cycles);
-	}
-#endif
-
-	/* Store current instr (not rounded) to check next time */
-	LastInstrCycles = cycles + BusCyclePenalty;
-	LastOpcodeFamily = OpcodeFamily;
-
-	/* If pairing is true, we need to substract 2 cycles for the	*/
-	/* previous instr which was rounded to 4 cycles while it wasn't */
-	/* needed (and we don't round the current one)			*/
-	/* -> both instr will take 4 cycles less on the ST than if ran	*/
-	/* separately.							*/
-	if (Pairing == 1)
-	{
-		if ( ( cycles & 3 ) == 2 )		/* pairing between 4n+2 and 4n+2 instructions */
-			cycles -= 2;			/* if we have a pairing, we should not count the misaligned bus access */
-
-		else					/* this is the case of move d8(an,ix),d8(an,ix) where BusCyclePenalty=4 */
-			/*do nothing */;		/* we gain 2 cycles for the pairing with 1st d8(an,ix) */
-							/* and we have 1 remaining misaligned access for the 2nd d8(an,ix). So in the end, we keep */
-							/* cycles unmodified as 4n cycles (eg lsl.w #4,d1 + move.w 0(a4,d2.w),0(a4,d2.w) takes 40 cycles) */
-	}
-	else
-	{
-		cycles += BusCyclePenalty;		/* >0 if d8(an,ix) was used */
-		cycles = (cycles + 3) & ~3;		/* no pairing, round current instr to 4 cycles */
-	}
-#if USE_FREQ_DIVIDER
-    cycles = cycles / nCpuFreqDivider;
-#else
-	cycles = cycles >> nCpuFreqShift;
-#endif
-	PendingInterruptCount -= INT_CONVERT_TO_INTERNAL ( cycles , INT_CPU_CYCLE );
-
-	nCyclesMainCounter += cycles;
-	BusCyclePenalty = 0;
-}
-#endif
 
 extern void M68000_Init(void);
 extern void M68000_Reset(bool bCold);

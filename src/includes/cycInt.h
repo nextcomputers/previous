@@ -52,8 +52,7 @@ INTERRUPTHANDLER PendingInterrupt;
 extern int64_t nCyclesMainCounter;
 extern int     nCyclesDivisor;
 
-#define TIME_CHECK_INTERVAL 100 // we don't actully run at microsecond resolution but check less frequently for performance reasons
-extern int timeCheckCycles;
+extern int usCheckCycles;
 
 extern void CycInt_Reset(void);
 extern void CycInt_MemorySnapShot_Capture(bool bSave);
@@ -62,5 +61,6 @@ extern void CycInt_AddRelativeInterrupt(int64_t CycleTime, interrupt_id Handler)
 extern void CycInt_AddRelativeInterruptUs(int64_t CycleTime, bool repeat, interrupt_id Handler);
 extern void CycInt_RemovePendingInterrupt(interrupt_id Handler);
 extern bool CycInt_InterruptActive(interrupt_id Handler);
+extern bool CycInt_SetNewInterruptUs(void);
 
 #endif /* ifndef HATARI_CYCINT_H */

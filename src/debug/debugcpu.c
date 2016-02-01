@@ -197,14 +197,12 @@ int DebugCpu_DisAsm(int nArgc, char *psArgs[])
 	}
 
 	/* limit is topmost address or instruction count */
-	if (disasm_upper)
-	{
+	if (disasm_upper) {
 		max_insts = INT_MAX;
-	}
-	else
-	{
+	} else {
 //		max_insts = ConfigureParams.Debugger.nDisasmLines;
-		max_insts=5;
+		max_insts    = 5;
+        disasm_upper = 0xFFFFFFFF;
 	}
 
 	/* output a range */

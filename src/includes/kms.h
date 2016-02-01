@@ -19,14 +19,7 @@ void kms_mouse_button(bool left, bool down);
 
 void kms_response(void);
 
+void kms_sndout_underrun();
+
 void Mouse_Handler(void);
 
-#define SNDOUT_DMA_ENABLE   0x80
-#define SNDOUT_DMA_REQUEST  0x40
-#define SNDOUT_DMA_UNDERRUN 0x20
-#define SNDIN_DMA_ENABLE    0x08
-#define SNDIN_DMA_REQUEST   0x04
-#define SNDIN_DMA_OVERRUN   0x02
-
-void kms_snd_dma_or(Uint8 val);
-void kms_snd_dma_and(Uint8 val);

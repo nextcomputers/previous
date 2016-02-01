@@ -14,18 +14,15 @@ static SDL_TimerID   videoVBL      = 0;
 static volatile bool doRepaint     = true;
 static SDL_Thread*   repaintThread = NULL;
 static SDL_Window*   ndWindow      = NULL;
+static SDL_Renderer* ndRenderer    = NULL;
 
 extern void blitDimension(SDL_Texture* tex);
 
 static int repainter(void* unused) {
-    SDL_Texture*  ndTexture  = NULL;
-    SDL_Renderer* ndRenderer = NULL;
+    SDL_SetThreadPriority(SDL_THREAD_PRIORITY_NORMAL);
     
-    ndRenderer = SDL_CreateRenderer(ndWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if (!ndWindow || !ndRenderer) {
-        fprintf(stderr,"[ND] Failed to create renderer!\n");
-        exit(-1);
-    }
+    SDL_Texture*  ndTexture  = NULL;
+    
     SDL_Rect r = {0,0,1120,832};
     SDL_RenderSetLogicalSize(ndRenderer, r.w, r.h);
     ndTexture = SDL_CreateTexture(ndRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, r.w, r.h);
@@ -66,7 +63,14 @@ void nd_sdl_init() {
         int x, y, w, h;
         SDL_GetWindowPosition(sdlWindow, &x, &y);
         SDL_GetWindowSize(sdlWindow, &w, &h);
-        ndWindow      = SDL_CreateWindow("NeXT Dimension",(x-w)+1, y, 1120, 832, SDL_WINDOW_HIDDEN);
+        ndWindow   = SDL_CreateWindow("NeXT Dimension",(x-w)+1, y, 1120, 832, SDL_WINDOW_HIDDEN);
+        ndRenderer = SDL_CreateRenderer(ndWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+        
+        if (!ndWindow || !ndRenderer) {
+            fprintf(stderr,"[ND] Failed to create renderer!\n");
+            exit(-1);
+        }
+        
         repaintThread = SDL_CreateThread(repainter, "[ND] repainter", NULL);
     }
     if(videoVBL) SDL_RemoveTimer(videoVBL);
