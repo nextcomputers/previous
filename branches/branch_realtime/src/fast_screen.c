@@ -25,15 +25,16 @@ const char Screen_fileid[] = "Previous fast_screen.c : " __DATE__ " " __TIME__;
 #include "statusbar.h"
 #include "video.h"
 
-SDL_Window*  sdlWindow;
-SDL_Surface* sdlscrn = NULL;   /* The SDL screen surface */
-int nScreenZoomX, nScreenZoomY;/* Zooming factors, used for scaling mouse motions */
+SDL_Window*   sdlWindow;
+SDL_Surface*  sdlscrn = NULL;   /* The SDL screen surface */
+int nScreenZoomX, nScreenZoomY; /* Zooming factors, used for scaling mouse motions */
 
 /* extern for shortcuts */
 volatile bool bGrabMouse    = false; /* Grab the mouse cursor in the window */
 volatile bool bInFullScreen = false; /* true if in full screen */
 
 static SDL_Thread*   repaintThread;
+static SDL_Renderer* sdlRenderer;
 static SDL_sem*      initLatch;
 static SDL_atomic_t  blitUI;           /* When value == 1, the repaint thread will blit the sldscrn surface to the screen on the next redraw */
 static SDL_atomic_t  blitStatusBar;    /* When value == 1, the repaint thread will blit the sldscrn status bar on the next redraw */
@@ -190,18 +191,15 @@ static int repainter(void* unused) {
     int width;
     int height;
 
+    SDL_SetThreadPriority(SDL_THREAD_PRIORITY_NORMAL);
     SDL_GetWindowSize(sdlWindow, &width, &height);
     
-    SDL_Renderer* sdlRenderer;
     SDL_Texture*  uiTexture;
     SDL_Texture*  fbTexture;
     SDL_Rect      statusBar = {0,832,width,height-832};
     
     Uint32 r, g, b, a;
     
-    sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    SDL_RenderSetLogicalSize(sdlRenderer, width, height);
-
     uiTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, width, height);
     SDL_SetTextureBlendMode(uiTexture, SDL_BLENDMODE_BLEND);
     
@@ -332,6 +330,9 @@ void Screen_Init(void) {
         fprintf(stderr,"Failed to create window: %s!\n", SDL_GetError());
         exit(-1);
     }
+
+    sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    SDL_RenderSetLogicalSize(sdlRenderer, width, height);
 
     initLatch     = SDL_CreateSemaphore(0);
     repaintThread = SDL_CreateThread(repainter, "[Previous] screen repaint", NULL);

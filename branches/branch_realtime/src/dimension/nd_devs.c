@@ -58,11 +58,7 @@
 
 #define CSRDRAM_4MBIT       0x00000001
 
-static
-#if ENABLE_I860_THREAD
-volatile
-#endif
-struct {
+static volatile struct {
     uae_u32 csr0;
     uae_u32 csr1;
     uae_u32 csr2;

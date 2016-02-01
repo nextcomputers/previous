@@ -24,12 +24,12 @@ extern Uint8  ND_ram[64*1024*1024];
 extern Uint8  ND_rom[128*1024];
 extern Uint32 ND_vram_off;
 extern Uint8  ND_vram[4*1024*1024];
+extern void (*i860_Run)(int);
 
 void dimension_init(void);
 void dimension_uninit(void);
 void nd_i860_init();
 void nd_i860_uninit();
-void i860_Run(int nHostCycles);
 void i860_reset();
 void i860_tick(bool intr);
 void nd_start_debugger(void);

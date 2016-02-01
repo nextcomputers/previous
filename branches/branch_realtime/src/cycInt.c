@@ -43,7 +43,7 @@ const char CycInt_fileid[] = "Previous cycInt.c : " __DATE__ " " __TIME__;
 
 void (*PendingInterruptFunction)(void);
 Sint64 PendingInterruptCounter;
-int    timeCheckCycles = 0;
+int    usCheckCycles;
 
 static Sint64 nCyclesOver;
 Sint64 nCyclesMainCounter;				/* Main cycles counter */
@@ -90,6 +90,7 @@ void CycInt_Reset(void) {
 	ActiveInterrupt       = 0;
 	nCyclesOver           = 0;
     nCyclesMainCounter    = 0;
+    usCheckCycles         = 0;
     
     nCyclesDivisor = 1;
     if(ConfigureParams.System.nCpuLevel == 3) {
@@ -188,40 +189,22 @@ void CycInt_MemorySnapShot_Capture(bool bSave)
 		CycInt_SetNewInterrupt();	/* when restoring snapshot, compute current state after */
 }
 
-
 /*-----------------------------------------------------------------------*/
 /**
  * Find next interrupt to occur, and store to global variables for decrement
  * in instruction decode loop.
- * (SC) We assume here that the emulated CPU runs at least as fast as the 
- * real CPU. Thus we simply convert microseconds to clock cycles for
- * finding the next interrupt. We deal with the possible difference later
- * when we check for pending interrupts in the decode loop.
+ * (SC) Microseconf interrupts are skipped here and handled in the decode loop.
  */
 static void CycInt_SetNewInterrupt(void) {
 	Sint64       LowestCycleCount = INT64_MAX;
-	interrupt_id LowestInterrupt  = INTERRUPT_NULL, i;
-    Sint64       MCyclePerSec     = ConfigureParams.System.nCpuFreq;
-    Sint64       now              = 0;
+	interrupt_id LowestInterrupt  = INTERRUPT_NULL;
     
 	/* Find next interrupt to go off */
-	for (i = INTERRUPT_NULL+1; i < MAX_INTERRUPTS; i++) {
+	for(int i = INTERRUPT_NULL+1; i < MAX_INTERRUPTS; i++) {
         /* Is interrupt pending? */
-        switch (InterruptHandlers[i].type) {
-            case CYC_INT_CPU:
-                if(InterruptHandlers[i].time < LowestCycleCount) {
-                    LowestCycleCount = InterruptHandlers[i].time;
-                    LowestInterrupt  = i;
-                }
-                break;
-            case CYC_INT_US:
-                if(!(now)) now = host_time_us();
-                Sint64 dt = (InterruptHandlers[i].time - now) * MCyclePerSec;
-                if(dt < LowestCycleCount) {
-                    LowestCycleCount = dt;
-                    LowestInterrupt  = i;
-                }
-                break;
+        if(InterruptHandlers[i].type == CYC_INT_CPU && InterruptHandlers[i].time < LowestCycleCount) {
+            LowestCycleCount = InterruptHandlers[i].time;
+            LowestInterrupt  = i;
         }
 	}
 
@@ -229,7 +212,6 @@ static void CycInt_SetNewInterrupt(void) {
     PendingInterrupt = InterruptHandlers[LowestInterrupt];
 	ActiveInterrupt  = LowestInterrupt;
 }
-
 
 /*-----------------------------------------------------------------------*/
 /**
@@ -252,6 +234,22 @@ static void CycInt_UpdateInterrupt(void)
 	}
 }
 
+/*-----------------------------------------------------------------------*/
+/**
+ * Check all microsecond interrupt timings
+ */
+bool CycInt_SetNewInterruptUs(void) {
+    Uint64 now = host_time_us();
+    for(int i = 0; i < MAX_INTERRUPTS; i++) {
+        if (InterruptHandlers[i].type == CYC_INT_US && now > InterruptHandlers[i].time) {
+            PendingInterrupt = InterruptHandlers[i];
+            PendingInterrupt.time = -1;
+            ActiveInterrupt       = i;
+            return true;
+        }
+    }
+    return false;
+}
 
 /*-----------------------------------------------------------------------*/
 /**

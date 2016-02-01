@@ -19,6 +19,21 @@ static const char* BLANKS[] = {
 
 static volatile Uint32 blank[NUM_BLANKS];
 static Uint32 vblCounter[NUM_BLANKS];
+static Uint64 perfCounterStart;
+static Sint64 cycleCounterStart;
+static double secsStart;
+static bool   isRealtime;
+static bool   oldIsRealtime;
+static double cycleDivisor;
+static double realTimeAcc;
+static double cycleTimeAcc;
+static lock_t timeLock;
+static Uint32 ticksStart;
+static bool   enableRealtime;
+static Uint64 hardClockExpected;
+static Uint64 hardClockActual;
+static time_t unixTimeStart;
+static double unixTimeOffset = 0;
 
 void host_blank(int slot, int src, bool state) {
     slot = 1 << slot;
@@ -39,28 +54,27 @@ bool host_blank_state(int slot, int src) {
     return blank[src] & slot;
 }
 
-/* host time base in seconds */
-static Uint64 perfCounterStart;
-static Sint64 cycleCounterStart;
-static double secsStart;
-static bool   isRealtime;
-static bool   oldIsRealtime;
-static double cycleDivisor;
-static double realTimeAcc;
-static double cycleTimeAcc;
-static lock_t timeLock;
-static Uint32 ticksStart;
-static bool   enableRealtime;
+void host_hardclock(int expected, int actual) {
+    if(abs(actual-expected) > 1000)
+        fprintf(stderr, "[Hardclock] expected:%dus actual:%dus\n", expected, actual);
+    else {
+        hardClockExpected += expected;
+        hardClockActual   += actual;
+    }
+}
 
 void host_reset() {
     perfCounterStart  = SDL_GetPerformanceCounter();
     ticksStart        = SDL_GetTicks();
+    unixTimeStart     = time(NULL);
     cycleCounterStart = 0;
     secsStart         = 0;
     isRealtime        = false;
     oldIsRealtime     = false;
     realTimeAcc       = 0;
     cycleTimeAcc      = 0;
+    hardClockExpected = 0;
+    hardClockActual   = 0;
     enableRealtime    = ConfigureParams.System.bRealtime;
     
     for(int i = NUM_BLANKS; --i >= 0;) {
@@ -69,6 +83,8 @@ void host_reset() {
     }
     
     cycleDivisor = ConfigureParams.System.nCpuFreq * 1000 * 1000;
+    
+    SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);
 }
 
 extern Sint64 nCyclesMainCounter;
@@ -123,6 +139,14 @@ Uint32 host_time_ms() {
     return  host_time_us() / 1000LL;
 }
 
+time_t host_unix_time() {
+    return unixTimeStart + unixTimeOffset + host_time_sec();
+}
+
+void host_set_unix_time(time_t now) {
+    unixTimeOffset += difftime(now, host_unix_time());
+}
+
 /*-----------------------------------------------------------------------*/
 /**
  * Sleep for a given number of micro seconds.
@@ -170,11 +194,6 @@ void host_unlock(lock_t* lock) {
   SDL_AtomicUnlock(lock);
 }
 
-void host_checklock(lock_t* lock) {
-  SDL_AtomicLock(lock);
-  SDL_AtomicUnlock(lock);
-}
-
 thread_t* host_thread_create(thread_func_t func, void* data) {
   return SDL_CreateThread(func, "[ND] Thread", data);
 }
@@ -183,6 +202,10 @@ int host_thread_wait(thread_t* thread) {
   int status;
   SDL_WaitThread(thread, &status);
   return status;
+}
+                
+int host_num_cpus() {
+  return  SDL_GetCPUCount();
 }
                   
 // --- utilities
@@ -194,8 +217,10 @@ void host_print_stat() {
     ticks /= 1000;
     
     int rtFactor = (100 * t) / ticks;
+    double hardClock = hardClockExpected;
+    hardClock /= hardClockActual;
     
-    fprintf(stderr, "[time] host_time:%g rt:%d%% cycleTime:%g realTime:%g", t, rtFactor, cycleTimeAcc, realTimeAcc);
+    fprintf(stderr, "[%s] hostTime:%g rt:%d%% cycleTime:%g realTime:%g hardClock:%gMHz", enableRealtime ? "Realtime" : "CycleTime", t, rtFactor, cycleTimeAcc, realTimeAcc, hardClock);
     
     for(int i = NUM_BLANKS; --i >= 0;)
         fprintf(stderr, " %s:%gHz", BLANKS[i], (double)vblCounter[i]/t);

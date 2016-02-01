@@ -23,7 +23,7 @@ const char Keymap_fileid[] = "Hatari keymap.c : " __DATE__ " " __TIME__;
 #include "SDL.h"
 
 
-#define  LOG_KEYMAP_LEVEL   LOG_WARN
+#define  LOG_KEYMAP_LEVEL   LOG_DEBUG
 
 Uint8 modifiers = 0;
 bool capslock = false;

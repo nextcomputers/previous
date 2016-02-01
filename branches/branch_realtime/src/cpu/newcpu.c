@@ -81,7 +81,6 @@ struct mmufixup mmufixup[2];
 
 extern uae_u32 get_fpsr (void);
 
-#define COUNT_INSTRS 0
 #define MC68060_PCR   0x04300000
 #define MC68EC060_PCR 0x04310000
 //moved to newcpu.h
@@ -96,58 +95,6 @@ static struct cache040 caches040[CACHESETS040];
 static void InterruptAddJitter (int Level , int Pending);
 
 static void m68k_disasm_2 (FILE *f, uaecptr addr, uaecptr *nextpc, int cnt, uae_u32 *seaddr, uae_u32 *deaddr, int safemode);
-
-
-#if COUNT_INSTRS
-static unsigned long int instrcount[65536];
-static uae_u16 opcodenums[65536];
-
-static int compfn (const void *el1, const void *el2)
-{
-	return instrcount[*(const uae_u16 *)el1] < instrcount[*(const uae_u16 *)el2];
-}
-
-static TCHAR *icountfilename (void)
-{
-	TCHAR *name = getenv ("INSNCOUNT");
-	if (name)
-		return name;
-	return COUNT_INSTRS == 2 ? "frequent.68k" : "insncount";
-}
-
-void dump_counts (void)
-{
-	FILE *f = fopen (icountfilename (), "w");
-	unsigned long int total;
-	int i;
-
-	write_log ("Writing instruction count file...\n");
-	for (i = 0; i < 65536; i++) {
-		opcodenums[i] = i;
-		total += instrcount[i];
-	}
-	qsort (opcodenums, 65536, sizeof (uae_u16), compfn);
-
-	fprintf (f, "Total: %lu\n", total);
-	for (i=0; i < 65536; i++) {
-		unsigned long int cnt = instrcount[opcodenums[i]];
-		struct instr *dp;
-		struct mnemolookup *lookup;
-		if (!cnt)
-			break;
-		dp = table68k + opcodenums[i];
-		for (lookup = lookuptab;lookup->mnemo != dp->mnemo; lookup++)
-			;
-		fprintf (f, "%04x: %lu %s\n", opcodenums[i], cnt, lookup->name);
-	}
-	fclose (f);
-}
-#else
-void dump_counts (void)
-{
-}
-#endif
-
 
 uae_u32 (*x_prefetch)(int);
 uae_u32 (*x_next_iword)(void);
@@ -308,13 +255,7 @@ void set_cpu_caches (bool flush)
 	}
 }
 
-STATIC_INLINE void count_instr (unsigned int opcode)
-{
-}
-
-//static unsigned long REGPARAM3 op_illg_1 (uae_u32 opcode) REGPARAM;
-
-static unsigned long REGPARAM2 op_illg_1 (uae_u32 opcode)
+static uae_u32 REGPARAM2 op_illg_1 (uae_u32 opcode)
 {
 	op_illg (opcode);
 	return 4;
@@ -555,22 +496,6 @@ void init_m68k (void)
 		movem_next[i] = i & (~(1 << j));
 	}
 
-#if COUNT_INSTRS
-	{
-		FILE *f = fopen (icountfilename (), "r");
-		memset (instrcount, 0, sizeof instrcount);
-		if (f) {
-			uae_u32 opcode, count, total;
-			TCHAR name[20];
-			write_log ("Reading instruction count file...\n");
-			fscanf (f, "Total: %lu\n", &total);
-			while (fscanf (f, "%lx: %lu %s\n", &opcode, &count, name) == 3) {
-				instrcount[opcode] = count;
-			}
-			fclose (f);
-		}
-	}
-#endif
 	write_log ("Building CPU table for configuration: %d", currprefs.cpu_model);
 	regs.address_space_mask = 0xffffffff;
 //	if (currprefs.cpu_compatible) {
@@ -2188,7 +2113,6 @@ insretry:
 			for (;;) {
 				opcode = mmu030_opcode;
 				mmu030_idx = 0;
-				count_instr (opcode);
 				mmu030_retry = false;
 				cpu_cycles = (*cpufunctbl[opcode])(opcode) / nCyclesDivisor;
 				cnt--; // so that we don't get in infinite loop if things go horribly wrong
@@ -2287,11 +2211,19 @@ static void m68k_run_mmu040 (void)
 			mmu_restart = true;
 			pc = regs.instruction_pc = m68k_getpc ();
             
+            /*
+            switch(pc) {
+                case 0x04037152:
+                case 0x0403716e:
+                    DebugUI();
+                    break;
+            }
+            */
+             
 			mmu_opcode = -1;
 			mmu_opcode = opcode = x_prefetch (0);
-			count_instr (opcode);
 			cpu_cycles = (*cpufunctbl[opcode])(opcode) / nCyclesDivisor; ;
-            
+                        
 			DSP_Run(cpu_cycles);
             i860_Run(cpu_cycles);
 
@@ -2559,7 +2491,7 @@ static void m68k_disasm_2 (FILE *f, uaecptr addr, uaecptr *nextpc, int cnt, uae_
 		fprintf(f, "%08lX ", m68k_getpc () + m68kpc_offset);
 		m68kpc_offset += 2;
 
-		if (strcmp(lookup->friendlyname, ""))
+		if (lookup->friendlyname && strcmp(lookup->friendlyname, ""))
 			_tcscpy (instrname, lookup->friendlyname);
 		else
 			_tcscpy (instrname, lookup->name);

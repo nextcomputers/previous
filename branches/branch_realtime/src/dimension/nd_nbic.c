@@ -11,11 +11,7 @@
 #define ND_NBIC_ID		0xC0000001
 #define ND_NBIC_INTR    0x80
 
-static
-#if ENABLE_I860_THREAD
-volatile
-#endif
-struct {
+static volatile struct {
     Uint32 control;
     Uint32 id;
     Uint8  intstatus;

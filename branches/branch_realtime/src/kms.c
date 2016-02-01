@@ -68,6 +68,13 @@ struct {
  * ---x ---x ---- ---x ---- ---- ---- ----  zero bits
  */
 
+#define SNDOUT_DMA_ENABLE   0x80
+#define SNDOUT_DMA_REQUEST  0x40
+#define SNDOUT_DMA_UNDERRUN 0x20
+#define SNDIN_DMA_ENABLE    0x08
+#define SNDIN_DMA_REQUEST   0x04
+#define SNDIN_DMA_OVERRUN   0x02
+
 #define KBD_INT             0x80
 #define KBD_RECEIVED        0x40
 #define KBD_OVERRUN         0x20
@@ -247,14 +254,6 @@ void KMS_command(Uint8 command, Uint32 data) {
     }
 }
 
-void kms_snd_dma_or(Uint8 val) {
-    kms.status.snd_dma |= val;
-}
-
-void kms_snd_dma_and(Uint8 val) {
-    kms.status.snd_dma &= val;
-}
-
 void KMS_Ctrl_Snd_Write(void) {
     Uint8 val = IoMem[IoAccessCurrentAddress&IO_SEG_MASK];
     
@@ -272,7 +271,17 @@ void KMS_Ctrl_Snd_Write(void) {
 }
 
 void KMS_Stat_Snd_Read(void) {
+    if(dma_get_csr(CHANNEL_SOUNDOUT) & 0x01) // test DMA enable
+        kms.status.snd_dma |= SNDOUT_DMA_ENABLE;
+    else
+        kms.status.snd_dma &= ~SNDOUT_DMA_ENABLE;
     IoMem[IoAccessCurrentAddress&IO_SEG_MASK] = kms.status.snd_dma;
+}
+
+void kms_sndout_underrun() {
+    kms.status.snd_dma |=  SNDOUT_DMA_UNDERRUN|SNDOUT_DMA_REQUEST;
+    kms.status.snd_dma &= ~SNDOUT_DMA_ENABLE;
+    set_interrupt(INT_SOUND_OVRUN, RELEASE_INT);
 }
 
 void KMS_Ctrl_KM_Write(void) {

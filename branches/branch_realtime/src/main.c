@@ -49,13 +49,14 @@ int nFrameSkips;
 
 bool bQuitProgram = false;                /* Flag to quit program cleanly */
 
-static Uint32 nRunVBLs;                   /* Whether and how many VBLS to run before exit */
 static Uint32 nFirstMilliTick;            /* Ticks when VBL counting started */
 static Uint32 nVBLCount;                  /* Frame count */
 
 static bool bEmulationActive = true;      /* Run emulation when started */
 static bool bAccurateDelays;              /* Host system has an accurate SDL_Delay()? */
 static bool bIgnoreNextMouseMotion = false;  /* Next mouse motion will be ignored (needed after SDL_WarpMouse) */
+
+volatile int mainPauseEmulation;
 
 /*-----------------------------------------------------------------------*/
 /**
@@ -155,18 +156,6 @@ void Main_RequestQuit(void)
 
 /*-----------------------------------------------------------------------*/
 /**
- * Set how many VBLs Hatari should run, from the moment this function
- * is called.
- */
-void Main_SetRunVBLs(Uint32 vbls)
-{
-	fprintf(stderr, "Exit after %d VBLs.\n", vbls);
-	nRunVBLs = vbls;
-	nVBLCount = 0;
-}
-
-/*-----------------------------------------------------------------------*/
-/**
  * Since SDL_Delay and friends are very inaccurate on some systems, we have
  * to check if we can rely on this delay function.
  */
@@ -247,6 +236,17 @@ void Main_EventHandler(void)
 
 	do
 	{
+        switch (mainPauseEmulation) {
+            case PAUSE_EMULATION:
+                Main_PauseEmulation(true);
+                mainPauseEmulation = PAUSE_NONE;
+                break;
+            case UNPAUSE_EMULATION:
+                Main_UnPauseEmulation();
+                mainPauseEmulation = PAUSE_NONE;
+                break;
+        }
+        
 		bContinueProcessing = false;
 
 		/* check remote process control */
@@ -386,12 +386,8 @@ static void Main_Init(void)
 	SDLGui_Init();
 	Screen_Init();
 	Main_SetTitle(NULL);
-//	HostScreen_Init();
 	DSP_Init();
-//	Floppy_Init();
 	M68000_Init();                /* Init CPU emulation */
-//	Audio_Init();
-//	DmaSnd_Init();
 	Keymap_Init();
 
 
@@ -407,24 +403,8 @@ static void Main_Init(void)
         exit(-2);
     }
     
-    
-//    const char *err_msg;
-//    
-//    while ((err_msg=Reset_Cold())!=NULL)
-//    {
-//        DlgMissing_Rom();
-//        if (bQuitProgram) {
-//            Main_RequestQuit();
-//            break;
-//        }
-//    }
-
     Reset_Cold();
     
-//    if (bQuitProgram) {
-//        SDL_Quit();
-//        exit(-2);
-//    }
 	IoMem_Init();
 	
 	/* done as last, needs CPU & DSP running... */
@@ -562,7 +542,6 @@ int main(int argc, char *argv[])
 	/* Run emulation */
 	Main_UnPauseEmulation();
 	M68000_Start();                 /* Start emulation */
-
 
 	/* Un-init emulation system */
 	Main_UnInit();

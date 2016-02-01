@@ -29,20 +29,6 @@
 
 #define IO_SEG_MASK	0x1FFFF
 
-enum {
-    CHANNEL_SCSI,       // 0x00000010
-    CHANNEL_SOUNDOUT,   // 0x00000040
-    CHANNEL_DISK,       // 0x00000050
-    CHANNEL_SOUNDIN,    // 0x00000080
-    CHANNEL_PRINTER,    // 0x00000090
-    CHANNEL_SCC,        // 0x000000c0
-    CHANNEL_DSP,        // 0x000000d0
-    CHANNEL_EN_TX,      // 0x00000110
-    CHANNEL_EN_RX,      // 0x00000150
-    CHANNEL_VIDEO,      // 0x00000180
-    CHANNEL_M2R,        // 0x000001d0
-    CHANNEL_R2M         // 0x000001c0
-} DMA_CHANNEL;
 
 int get_channel(Uint32 address);
 int get_interrupt_type(int channel);
@@ -174,6 +160,10 @@ int get_interrupt_type(int channel) {
     }
 }
 
+Uint8 dma_get_csr(int channel) {
+    return dma[channel].csr;
+}
+
 void DMA_CSR_Read(void) { // 0x02000010, length of register is byte on 68030 based NeXT Computer
     int channel = get_channel(IoAccessCurrentAddress);
     
@@ -223,10 +213,6 @@ void DMA_CSR_Write(void) {
 
     if (writecsr&DMA_RESET) {
         dma[channel].csr &= ~(DMA_COMPLETE | DMA_SUPDATE | DMA_ENABLE);
-        if(channel==CHANNEL_SOUNDOUT)
-            kms_snd_dma_and(~SNDOUT_DMA_ENABLE);
-        if(channel==CHANNEL_SOUNDIN)
-            kms_snd_dma_and(~SNDIN_DMA_ENABLE);
     }
     if (writecsr&DMA_INITBUF) {
         dma_initialize_buffer(channel, 0);
@@ -751,14 +737,6 @@ Uint8* dma_sndout_read_memory(int* len) {
             dma[CHANNEL_SOUNDOUT].csr &= ~DMA_ENABLE;
             dma[CHANNEL_SOUNDOUT].csr |= (DMA_COMPLETE|DMA_BUSEXC);
         } ENDTRY
-        
-        if(*len ==  0) {
-            kms_snd_dma_or(SNDOUT_DMA_UNDERRUN);
-            set_interrupt(INT_SOUND_OVRUN, SET_INT);
-        }
-    } else {
-//        kms_snd_dma_or(SNDOUT_DMA_UNDERRUN);
-//        set_interrupt(INT_SOUND_OVRUN, SET_INT);
     }
     
     return result;

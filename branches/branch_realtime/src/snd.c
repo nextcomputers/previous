@@ -7,6 +7,7 @@
 #include "audio.h"
 #include "dma.h"
 #include "snd.h"
+#include "kms.h"
 
 #define LOG_SND_LEVEL   LOG_DEBUG
 #define LOG_VOL_LEVEL   LOG_DEBUG
@@ -97,17 +98,23 @@ void snd_stop_output(void) {
 
 /* Sound IO loop (reads via DMA from memory to queue) */
 
+const int DMA_BUFFER = 32;
+
 static double snd_start;
 static int    snd_samples;
 
-void SND_IO_Handler(void) {
-    CycInt_AcknowledgeInterrupt();
-    
+static void do_dma_sndout_intr() {
     if(snd_buffer) {
         dma_sndout_intr();
         free(snd_buffer);
         snd_buffer = NULL;
     }
+}
+
+void SND_IO_Handler(void) {
+    CycInt_AcknowledgeInterrupt();
+
+    do_dma_sndout_intr();
     
     int    len;
     snd_buffer = dma_sndout_read_memory(&len);
@@ -123,11 +130,15 @@ void SND_IO_Handler(void) {
         snd_start = host_time_sec();
         snd_samples = len;
         
-        Sint64 usDelay = len - 32; // assume 32 samples DMA buffer
+        Sint64 usDelay = len - DMA_BUFFER;
         usDelay *= 1000*1000;
         usDelay /= AUDIO_FREQUENCY;
 
-        CycInt_AddRelativeInterruptUs(usDelay, true, INTERRUPT_SND_IO);
+        if(usDelay < 0) {
+            do_dma_sndout_intr();
+            kms_sndout_underrun();
+        } else
+            CycInt_AddRelativeInterruptUs(usDelay, true, INTERRUPT_SND_IO);
     }
 }
 

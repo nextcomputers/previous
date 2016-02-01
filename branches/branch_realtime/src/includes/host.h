@@ -33,14 +33,17 @@ extern "C" {
     Uint64      host_time_us();
     Uint32      host_time_ms();
     double      host_time_sec();
+    time_t      host_unix_time();
+    void        host_set_unix_time(time_t now);
     void        host_sleep_sec(double sec);
     void        host_sleep_ms(Uint32 ms);
     void        host_sleep_us(Uint64 us);
     void        host_print_stat();
+    int         host_num_cpus();
+    void        host_hardclock(int expected, int actual);
     
     void        host_lock(lock_t* lock);
     void        host_unlock(lock_t* lock);
-    void        host_checklock(lock_t* lock);
     int         host_trylock(lock_t* lock);
     thread_t*   host_thread_create(thread_func_t, void* data);
     int         host_thread_wait(thread_t* thread);
