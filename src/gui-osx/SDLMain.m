@@ -80,22 +80,15 @@ static NSString *getApplicationName(void)
 @end
 #endif
 
-@interface NSApplication (SDLApplication)
-@end
-
-@implementation NSApplication (SDLApplication)
+/* The main class of the application, the application's delegate */
+@implementation SDLMain
 /* Invoked from the Quit menu item */
-- (void)terminate:(id)sender
-{
+- (void)applicationWillTerminate:(NSNotification *)aNotification {
     /* Post a SDL_QUIT event */
     SDL_Event event;
     event.type = SDL_QUIT;
     SDL_PushEvent(&event);
 }
-@end
-
-/* The main class of the application, the application's delegate */
-@implementation SDLMain
 
 /* Set the working directory to the .app's parent directory */
 - (void) setupWorkingDirectory:(BOOL)shouldChdir
@@ -301,7 +294,7 @@ static void CustomApplicationMain (int argc, char **argv)
 /* Called when the internal event loop has just started running */
 - (void) applicationDidFinishLaunching: (NSNotification *) note
 {
-    int status;
+    int status = 0;
 
     /* Set the working directory to the .app's parent directory */
     [self setupWorkingDirectory:gFinderLaunch];
@@ -338,6 +331,7 @@ static void CustomApplicationMain (int argc, char **argv)
 
 - (IBAction)warmReset:(id)sender
 {
+    /*
 	int b;
 
 	b = NSRunAlertPanel (
@@ -348,10 +342,12 @@ static void CustomApplicationMain (int argc, char **argv)
 	//printf("b=%i\n",b);
 	if (b == 1)
 		Reset_Warm();
+     */
 }
 
 - (IBAction)coldReset:(id)sender
 {
+    /*
 	int b;
 
 	b = NSRunAlertPanel (
@@ -362,17 +358,19 @@ static void CustomApplicationMain (int argc, char **argv)
 	//printf("b=%i\n",b);
 	if (b == 1)
 		Reset_Cold();
+     */
 }
 
 - (IBAction)insertDiskA:(id)sender
 {
+    /*
 	NSString *path = nil;
 	NSOpenPanel *openPanel = [ NSOpenPanel openPanel ];
 
 	if ( [ openPanel runModalForDirectory:nil
 									 file:@"SavedGame" types:nil ] )
 	{
-		path = [ [ openPanel filenames ] objectAtIndex:0 ];
+		path = [[ [ openPanel URLs ] objectAtIndex:0 ] path];
 	}
 
 	if (path != nil)
@@ -386,17 +384,19 @@ static void CustomApplicationMain (int argc, char **argv)
 //		Floppy_SetDiskFileName(0, szPath, NULL);
 //		Floppy_InsertDiskIntoDrive(0);
 	}
+     */
 }
 
 - (IBAction)insertDiskB:(id)sender
 {
+    /*
 	NSString *path = nil;
 	NSOpenPanel *openPanel = [ NSOpenPanel openPanel ];
 
 	if ( [ openPanel runModalForDirectory:nil
 									 file:@"SavedGame" types:nil ] )
 	{
-		path = [ [ openPanel filenames ] objectAtIndex:0 ];
+		path = [[ [ openPanel URLs ] objectAtIndex:0 ] path];
 	}
 
 	if (path != nil)
@@ -410,6 +410,7 @@ static void CustomApplicationMain (int argc, char **argv)
 //		Floppy_SetDiskFileName(1, szPath, NULL);
 //		Floppy_InsertDiskIntoDrive(1);
 	}
+     */
 }
 
 /*-----------------------------------------------------------------------*/
@@ -440,7 +441,7 @@ static void CustomApplicationMain (int argc, char **argv)
 
 - (NSString*)displayFileSelection:(const char*)pathInParams preferredFileName:(NSString*)preferredFileName allowedExtensions:(NSArray*)allowedExtensions
 {
-	
+/*
 	// Get the path from the user settings
 	NSString *preferredPath = [[NSString stringWithCString:(pathInParams) encoding:NSASCIIStringEncoding] stringByAbbreviatingWithTildeInPath];
 	
@@ -470,6 +471,7 @@ static void CustomApplicationMain (int argc, char **argv)
 	// Run the SavePanel, then check if the user clicked OK and selected at least one file
 	if (NSFileHandlingPanelOKButton == [savePanel runModalForDirectory:directoryToOpen file:fileToPreselect] )
 		return [[savePanel URL] path];
+ */
 	return nil;
 }
 
@@ -543,6 +545,7 @@ static void CustomApplicationMain (int argc, char **argv)
 
 - (IBAction)restoreMemorySnap:(id)sender
 {
+    /*
 	GuiOsx_Pause();
 
 	// Create and configure an OpenPanel
@@ -568,17 +571,18 @@ static void CustomApplicationMain (int argc, char **argv)
 	}
 
 	// Run the OpenPanel, then check if the user clicked OK and selected at least one file
-	if ( (NSOKButton == [openPanel runModalForDirectory:directoryToOpen file:fileToPreselect types:nil] )
-	    && ([[openPanel filenames] count] > 0) )
+	if ( (NSModalResponseOK == [openPanel runModalForDirectory:directoryToOpen file:fileToPreselect types:nil] )
+	    && ([[openPanel URLs] count] > 0) )
 	{
 		// Get the path to the selected file
-		NSString *path = [[openPanel filenames] objectAtIndex:0];
+		NSString *path = [[[openPanel URLs] objectAtIndex:0] path];
 		
 		// Perform the memory snapshot load
 		MemorySnapShot_Restore([path cStringUsingEncoding:NSASCIIStringEncoding], TRUE);
 	}
 
 	GuiOsx_Resume();
+     */
 }
 
 - (IBAction)doFullScreen:(id)sender

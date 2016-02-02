@@ -245,9 +245,7 @@ bad:
  * reassembly of this datagram already exists, then it
  * is given as fp; otherwise have to make a chain.
  */
-static struct ip *
-ip_reass(register struct ip *ip, register struct ipq *fp)
-{
+struct ip *ip_reass(register struct ip *ip, register struct ipq *fp) {
 	register struct mbuf *m = dtom(ip);
 	register struct ipasfrag *q;
 	int hlen = ip->ip_hl << 2;

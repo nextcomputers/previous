@@ -4,7 +4,6 @@
 #include "queue.h"
 #include "host.h"
 
-#include <SDL.h>
 #ifndef _WIN32
 #include <signal.h>
 #endif

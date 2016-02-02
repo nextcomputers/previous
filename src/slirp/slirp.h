@@ -102,7 +102,7 @@ typedef u_int32_t uint32;
 #include <stdio.h>
 #include <errno.h>
 
-#ifndef HAVE_MEMMOVE
+#if HAVE_MEMMOVE == 1
 #define memmove(x, y, z) bcopy(y, x, z)
 #endif
 
@@ -300,8 +300,7 @@ void if_output _P((struct socket *, struct mbuf *));
 /* ip_input.c */
 void ip_init _P((void));
 void ip_input _P((struct mbuf *));
-static struct ip *
-ip_reass(register struct ip *ip, register struct ipq *);
+struct ip *ip_reass(register struct ip *ip, register struct ipq *);
 void ip_freef _P((struct ipq *));
 void ip_enq _P((register struct ipasfrag *, register struct ipasfrag *));
 void ip_deq _P((register struct ipasfrag *));

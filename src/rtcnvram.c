@@ -913,7 +913,7 @@ char * get_rtc_ram_info(void) {
     int sum;
     int i;
     int ni_vol_l,ni_vol_r,ni_brightness;
-    int ni_hw_pwd,ni_spkren,ni_lowpass;
+    int ni_hw_pwd;
     sprintf(buf,"Rtc info:\n");
     strcpy(rtc_ram_info,buf);
     

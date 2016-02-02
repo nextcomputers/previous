@@ -24,7 +24,6 @@
 
 #include "options_cpu.h"
 #include "memory.h"
-#include "custom.h"
 #include "newcpu.h"
 #include "md-fpp.h"
 #include "savestate.h"

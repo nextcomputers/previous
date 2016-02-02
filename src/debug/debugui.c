@@ -845,8 +845,8 @@ static const dbgcommand_t uicommand[] =
  */
 void DebugUI_Init(void)
 {
-	const dbgcommand_t *cpucmd, *dspcmd;
-	int cpucmds, dspcmds;
+    const dbgcommand_t *cpucmd;
+    int cpucmds;
 
 	/* already intialized? */
 	if (debugCommands)

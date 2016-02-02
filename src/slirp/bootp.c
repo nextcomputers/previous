@@ -124,8 +124,7 @@ static void bootp_reply(struct bootp_t *bp)
     struct mbuf *m;
     struct bootp_t *rbp;
     struct sockaddr_in saddr, daddr;
-    struct in_addr dns_addr;
-    int dhcp_msg_type, val;
+    int dhcp_msg_type;
     uint8_t *q;
 
     /* extract exact DHCP msg type */

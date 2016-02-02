@@ -15,7 +15,6 @@
 #include "sysdeps.h"
 #include "hatari-glue.h"
 #include "options_cpu.h"
-#include "custom.h"
 #include "maccess.h"
 #include "memory.h"
 #include "newcpu.h"
@@ -64,8 +63,6 @@ unsigned long irqcycles[15];
 int irqdelay[15];
 int mmu_enabled, mmu_triggered;
 int cpu_cycles;
-static int baseclock;
-int cpucycleunit;
 
 const int areg_byteinc[] = { 1, 1, 1, 1, 1, 1, 1, 2 };
 const int imm8_table[] = { 8, 1, 2, 3, 4, 5, 6, 7 };
@@ -388,55 +385,13 @@ void build_cpufunctbl (void)
     }
 }
 
-void fill_prefetch_slow (void)
-{
-	if (currprefs.mmu_model)
-		return;
-	regs.ir = x_get_word (m68k_getpc ());
-	regs.irc = x_get_word (m68k_getpc () + 2);
-}
-
-unsigned long cycles_mask, cycles_val;
-
-static void update_68k_cycles (void)
-{
-	cycles_mask = 0;
-	cycles_val = currprefs.m68k_speed;
-	if (currprefs.m68k_speed < 1) {
-		cycles_mask = 0xFFFFFFFF;
-		cycles_val = 0;
-	}
-	currprefs.cpu_clock_multiplier = changed_prefs.cpu_clock_multiplier;
-	currprefs.cpu_frequency = changed_prefs.cpu_frequency;
-
-	baseclock = currprefs.ntscmode ? 28636360 : 28375160;
-	cpucycleunit = CYCLE_UNIT / 2;
-	if (currprefs.cpu_clock_multiplier) {
-		if (currprefs.cpu_clock_multiplier >= 256) {
-			cpucycleunit = CYCLE_UNIT / (currprefs.cpu_clock_multiplier >> 8);
-		} else {
-			cpucycleunit = CYCLE_UNIT * currprefs.cpu_clock_multiplier;
-		}
-	} else if (currprefs.cpu_frequency) {
-		cpucycleunit = CYCLE_UNIT * baseclock / currprefs.cpu_frequency;
-	}
-	if (cpucycleunit < 1)
-		cpucycleunit = 1;
-	if (currprefs.cpu_cycle_exact)
-		write_log ("CPU cycleunit: %d (%.3f)\n", cpucycleunit, (float)cpucycleunit / CYCLE_UNIT);
-	config_changed = 1;
-}
-
-static void prefs_changed_cpu (void)
-{
-	fixup_cpu (&changed_prefs);
+static void prefs_changed_cpu (void) {
 	currprefs.cpu_model = changed_prefs.cpu_model;
 	currprefs.fpu_model = changed_prefs.fpu_model;
     currprefs.fpu_revision = changed_prefs.fpu_revision;
 	currprefs.mmu_model = changed_prefs.mmu_model;
 	currprefs.cpu_compatible = changed_prefs.cpu_compatible;
 	currprefs.cpu_cycle_exact = changed_prefs.cpu_cycle_exact;
-	currprefs.blitter_cycle_exact = changed_prefs.cpu_cycle_exact;
 }
 
 void check_prefs_changed_cpu (void)
@@ -457,17 +412,7 @@ void check_prefs_changed_cpu (void)
 		|| currprefs.cpu_cycle_exact != changed_prefs.cpu_cycle_exact) {
 
 			prefs_changed_cpu ();
-			if (!currprefs.cpu_compatible && changed_prefs.cpu_compatible)
-				fill_prefetch_slow ();
 			build_cpufunctbl ();
-			changed = 1;
-	}
-	if (changed
-		|| currprefs.m68k_speed != changed_prefs.m68k_speed
-		|| currprefs.cpu_clock_multiplier != changed_prefs.cpu_clock_multiplier
-		|| currprefs.cpu_frequency != changed_prefs.cpu_frequency) {
-			currprefs.m68k_speed = changed_prefs.m68k_speed;
-			update_68k_cycles ();
 			changed = 1;
 	}
 
@@ -484,8 +429,8 @@ void init_m68k (void)
 	int i;
 
 	prefs_changed_cpu ();
-	update_68k_cycles ();
-
+    config_changed = 1;
+    
 	for (i = 0 ; i < 256 ; i++) {
 		int j;
 		for (j = 0 ; j < 8 ; j++) {
@@ -534,8 +479,6 @@ void init_m68k (void)
 
 struct regstruct regs, mmu_backup_regs;
 struct flag_struct regflags;
-static struct regstruct regs_backup[16];
-static int backup_pointer = 0;
 static long int m68kpc_offset;
 
 #define get_ibyte_1(o) get_byte (regs.pc + (regs.pc_p - regs.pc_oldp) + (o) + 1)
@@ -863,19 +806,6 @@ int get_cpu_model (void)
 	return currprefs.cpu_model;
 }
 
-#if AMIGA_ONLY
-STATIC_INLINE int in_rom (uaecptr pc)
-{
-	return (munge24 (pc) & 0xFFF80000) == 0xF80000;
-}
-
-
-STATIC_INLINE int in_rtarea (uaecptr pc)
-{
-	return (munge24 (pc) & 0xFFFF0000) == rtarea_base && uae_boot_rom;
-}
-#endif
-
 void REGPARAM2 MakeSR (void)
 {
 	regs.sr = ((regs.t1 << 15) | (regs.t0 << 14)
@@ -1147,10 +1077,8 @@ static void Exception_build_stack_frame (uae_u32 oldpc, uae_u32 currpc, uae_u32 
 }
 
 // 68030 MMU
-static void Exception_mmu030 (int nr, uaecptr oldpc)
-{
+static void Exception_mmu030 (int nr, uaecptr oldpc) {
     uae_u32 currpc = m68k_getpc (), newpc;
-    int sv = regs.s;
     
     exception_debug (nr);
     MakeSR ();
@@ -1209,10 +1137,8 @@ static void Exception_mmu030 (int nr, uaecptr oldpc)
 
 
 // 68040/060 MMU
-static void Exception_mmu (int nr, uaecptr oldpc)
-{
+static void Exception_mmu (int nr, uaecptr oldpc) {
 	uae_u32 currpc = m68k_getpc (), newpc;
-	int sv = regs.s;
 
 	exception_debug (nr);
 	MakeSR ();
@@ -1270,6 +1196,16 @@ static void Exception_mmu (int nr, uaecptr oldpc)
 	}
 	m68k_setpc (newpc);
 	exception_trace (nr);
+}
+
+void uae_reset (int hardreset) {
+    currprefs.quitstatefile[0] = changed_prefs.quitstatefile[0] = 0;
+    
+    if (quit_program == 0) {
+        quit_program = -2;
+        if (hardreset)
+            quit_program = -3;
+    }
 }
 
 /* Handle exceptions. We need a special case to handle MFP exceptions */
@@ -1462,7 +1398,6 @@ kludge_me_do:
 #ifdef JIT
 	set_special (SPCFLAG_END_COMPILE);
 #endif
-	fill_prefetch_slow ();
 	exception_trace (nr);
 	
     if (nr >= 24 && nr <= 31)
@@ -1526,11 +1461,6 @@ void REGPARAM2 Exception (int nr)
 
 STATIC_INLINE void do_interrupt (int nr, int Pending)
 {
-#if AMIGA_ONLY
-	if (debug_dma)
-		record_dma_event (DMA_EVENT_CPUIRQ, current_hpos (), vpos);
-#endif
-
 	regs.stopped = 0;
 	unset_special (SPCFLAG_STOP);
 	assert (nr < 8 && nr >= 0);
@@ -1625,7 +1555,6 @@ void m68k_reset (int hardreset)
 		regs.pcr = currprefs.fpu_model == 68060 ? MC68060_PCR : MC68EC060_PCR;
 		regs.pcr |= (currprefs.cpu060_revision & 0xff) << 8;
 	}
-	fill_prefetch_slow ();
 }
 
 void REGPARAM2 op_unimpl (uae_u16 opcode)
@@ -1730,7 +1659,6 @@ static void do_trace (void)
 		/* probably never used so why bother */
 		/* We can afford this to be inefficient... */
 		m68k_setpc (m68k_getpc ());
-		fill_prefetch_slow ();
 		opcode = x_get_word (regs.pc);
 		if (opcode == 0x4e73 			/* RTE */
 			|| opcode == 0x4e74 		/* RTD */
@@ -1858,26 +1786,11 @@ STATIC_INLINE int do_specialties (int cycles)
 				break;
 			}
 		
-#if AMIGA_ONLY
-		if (regs.spcflags & SPCFLAG_COPPER)
-			do_copper ();
-#endif
-
 		if (currprefs.cpu_cycle_exact) {
 			ipl_fetch ();
 			if (time_for_interrupt ()) {
 					do_interrupt (regs.ipl, true);
 			}
-		} else {
-#if 0
-			if (regs.spcflags & (SPCFLAG_INT | SPCFLAG_DOINT)) {
-				int intr = intlev ();
-				unset_special (SPCFLAG_INT | SPCFLAG_DOINT);
-				if (intr > 0 && intr > regs.intmask)
-						do_interrupt (intr, true);
-			}
-#endif
-
 		}
 		if ((regs.spcflags & (SPCFLAG_BRK | SPCFLAG_MODE_CHANGE))) {
 			unset_special (SPCFLAG_BRK | SPCFLAG_MODE_CHANGE);
@@ -1886,7 +1799,7 @@ STATIC_INLINE int do_specialties (int cycles)
 			return 1;
 		}
 
-		if (currprefs.cpu_idle && currprefs.m68k_speed != 0 && ((regs.spcflags & SPCFLAG_STOP)) == SPCFLAG_STOP) {
+		if (currprefs.cpu_idle && ((regs.spcflags & SPCFLAG_STOP)) == SPCFLAG_STOP) {
 			/* sleep 1ms if STOP-instruction is executed */
 			if (1) {
 				static int sleepcnt, lvpos;
@@ -2288,6 +2201,66 @@ static void m68k_run_mmu040 (void)
 	}
 }
 
+static uae_u32 mmu_callback, mmu_regs;
+static uae_u32 mmu_fault_bank_addr, mmu_fault_addr;
+static int mmu_fault_size, mmu_fault_rw;
+static struct regstruct mmur;
+
+/* Code taken from debug.cpp*/
+static void mmu_do_hit (void)
+{
+    int i;
+    uaecptr p;
+    uae_u32 pc;
+    
+    mmu_triggered = 0;
+    pc = m68k_getpc ();
+    p = mmu_regs + 18 * 4;
+    put_long (p, pc);
+    regs = mmu_backup_regs;
+    regs.intmask = 7;
+    regs.t0 = regs.t1 = 0;
+    if (!regs.s) {
+        regs.usp = m68k_areg (regs, 7);
+        if (currprefs.cpu_model >= 68020)
+            m68k_areg (regs, 7) = regs.m ? regs.msp : regs.isp;
+        else
+            m68k_areg (regs, 7) = regs.isp;
+        regs.s = 1;
+    }
+    MakeSR ();
+    m68k_setpc (mmu_callback);
+    
+    if (currprefs.cpu_model > 68000) {
+        for (i = 0 ; i < 9; i++) {
+            m68k_areg (regs, 7) -= 4;
+            put_long (m68k_areg (regs, 7), 0);
+        }
+        m68k_areg (regs, 7) -= 4;
+        put_long (m68k_areg (regs, 7), mmu_fault_addr);
+        m68k_areg (regs, 7) -= 2;
+        put_word (m68k_areg (regs, 7), 0); /* WB1S */
+        m68k_areg (regs, 7) -= 2;
+        put_word (m68k_areg (regs, 7), 0); /* WB2S */
+        m68k_areg (regs, 7) -= 2;
+        put_word (m68k_areg (regs, 7), 0); /* WB3S */
+        m68k_areg (regs, 7) -= 2;
+        put_word (m68k_areg (regs, 7),
+                  (mmu_fault_rw ? 0 : 0x100) | (mmu_fault_size << 5)); /* SSW */
+        m68k_areg (regs, 7) -= 4;
+        put_long (m68k_areg (regs, 7), mmu_fault_bank_addr);
+        m68k_areg (regs, 7) -= 2;
+        put_word (m68k_areg (regs, 7), 0x7002);
+    }
+    m68k_areg (regs, 7) -= 4;
+    put_long (m68k_areg (regs, 7), get_long (p - 4));
+    m68k_areg (regs, 7) -= 2;
+    put_word (m68k_areg (regs, 7), mmur.sr);
+#ifdef JIT
+    set_special(SPCFLAG_END_COMPILE);
+#endif
+}
+
 /* fake MMU 68k  */
 static void m68k_run_mmu (void)
 {
@@ -2301,8 +2274,6 @@ static void m68k_run_mmu (void)
 		opcode = get_iword (0);
 		mmu_backup_regs = regs;
 		cpu_cycles = (*cpufunctbl[opcode])(opcode);
-		cpu_cycles &= cycles_mask;
-		cpu_cycles |= cycles_val;
 		if (mmu_triggered)
 			mmu_do_hit ();
 		if (regs.spcflags) {
@@ -2333,8 +2304,8 @@ void m68k_go (int may_quit)
 		write_log ("Bug! m68k_go is not reentrant.\n");
 		abort ();
 	}
-
-	update_68k_cycles ();
+    
+    config_changed = 1;
 
 	in_m68k_go++;
 	for (;;) {
@@ -2352,23 +2323,11 @@ void m68k_go (int may_quit)
 		if (debugging)
 			debug ();
 #endif
-
-
-
-
+        
 	set_x_funcs ();
 	if (mmu_enabled && !currprefs.cachesize) {
 			run_func = m68k_run_mmu;
-		} else { /*
-			run_func = currprefs.cpu_cycle_exact && currprefs.cpu_model == 68000 ? m68k_run_1_ce :
-				currprefs.cpu_compatible && currprefs.cpu_model == 68000 ? m68k_run_1 :
-#ifdef JIT
-				currprefs.cpu_model >= 68020 && currprefs.cachesize ? m68k_run_jit :
-#endif
-				currprefs.cpu_model >= 68030 && currprefs.mmu_model ? m68k_run_mmu040 :
-				currprefs.cpu_model >= 68020 && currprefs.cpu_cycle_exact ? m68k_run_2ce :
-				currprefs.cpu_compatible ? m68k_run_2p : m68k_run_2;
-				*/
+		} else {
 			run_func=currprefs.cpu_model == 68040 ? m68k_run_mmu040 : m68k_run_mmu030;
 		}
 		run_func ();
@@ -2675,11 +2634,11 @@ void m68k_dumpstate (FILE *f, uaecptr *nextpc)
 	int i, j;
 
 	for (i = 0; i < 8; i++){
-		f_out (f, "  D%d %08lX ", i, m68k_dreg (regs, i));
+		f_out (f, "  D%d %08X ", i, m68k_dreg (regs, i));
 		if ((i & 3) == 3) f_out (f, "\n");
 	}
 	for (i = 0; i < 8; i++){
-		f_out (f, "  A%d %08lX ", i, m68k_areg (regs, i));
+		f_out (f, "  A%d %08X ", i, m68k_areg (regs, i));
 		if ((i & 3) == 3) f_out (f, "\n");
 	}
 	if (regs.s == 0)
@@ -2711,7 +2670,7 @@ void m68k_dumpstate (FILE *f, uaecptr *nextpc)
 	if (currprefs.fpu_model) {
 		uae_u32 fpsr;
 		for (i = 0; i < 8; i++){
-			f_out (f, "FP%d: %g ", i, regs.fp[i]);
+			f_out (f, "FP%d: %Lg ", i, regs.fp[i].fp);
 			if ((i & 3) == 3)
 				f_out (f, "\n");
 		}
@@ -2739,7 +2698,7 @@ void m68k_dumpstate (FILE *f, uaecptr *nextpc)
 
 	m68k_disasm (f, m68k_getpc (), nextpc, 1);
 	if (nextpc)
-		f_out (f, "Next PC: %08lx\n", *nextpc);
+		f_out (f, "Next PC: %08x\n", (Uint32)*nextpc);
 }
 
 #ifdef SAVESTATE
@@ -3042,7 +3001,6 @@ void exception2_fake (uaecptr addr)
 #ifdef JIT
 	set_special (SPCFLAG_END_COMPILE);
 #endif
-	fill_prefetch_slow ();
 }
 
 void cpureset (void)
@@ -3107,7 +3065,6 @@ void m68k_resumestopped (void)
 	if (!regs.stopped)
 		return;
 	regs.stopped = 0;
-	fill_prefetch_slow ();
 	unset_special (SPCFLAG_STOP);
 }
 

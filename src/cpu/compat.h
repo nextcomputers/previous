@@ -16,10 +16,6 @@
 
 #include "sysconfig.h"
 
-/* This define is here to remove some Amiga specific code when compiling */
-/* It results in ' #if 0 ' code in newcpu.c code */
-#define AMIGA_ONLY 0
-
 /* this defione is here for newcpu.c compatibility.
  * In WinUae, it's defined in debug.h" */
 #ifndef MAX_LINEWIDTH

@@ -109,18 +109,7 @@ bool Profile_CpuAddressData(Uint32 addr, Uint32 *count, Uint32 *cycles)
  */
 static Uint32 index2address(Uint32 idx)
 {
-	idx <<= 1;
-	/* RAM */
-//	if (idx < nextRamEnd) {
-//		return idx;
-//	}
-	/* ROM */
-//	idx -= nextRamEnd;
-//	if (idx < 0x20000) {
-//		return idx + 0xFA0000;
-//	}
-	/* TOS */
-//	return idx - 0x20000 + TosAddress;
+    return 0;
 }
 
 

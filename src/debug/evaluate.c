@@ -125,7 +125,7 @@ static long long close_bracket(long long x);
 static int getNumber(const char *str, Uint32 *number, int *nbase)
 {
 	char *end;
-	const char const *start = str;
+	const char *start = str;
 	int base = ConfigureParams.Debugger.nNumberBase;
 	unsigned long int value;
 
@@ -202,7 +202,7 @@ static int getValue(const char *str, Uint32 *number, int *base, bool bForDsp)
 {
 	char name[64];
 	const char *end;
-	Uint32 mask, *addr;
+	Uint32 *addr;
 	int len;
 
 	for (end = str; *end == '_' || isalnum(*end); end++);

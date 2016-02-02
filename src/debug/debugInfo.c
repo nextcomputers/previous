@@ -45,15 +45,6 @@ const char DebugInfo_fileid[] = "Hatari debuginfo.c : " __DATE__ " " __TIME__;
 #define COUNTRY_SPAIN 4
 
 /**
- * DebugInfo_GetSysbase: set osversion to given argument.
- * return sysbase address on success and zero on failure.
- */
-static Uint32 DebugInfo_GetSysbase(Uint16 *osversion)
-{
-	return 00;
-}
-
-/**
  * DebugInfo_CurrentBasepage: get currently running TOS program basepage
  */
 static Uint32 DebugInfo_CurrentBasepage(void)
@@ -123,6 +114,8 @@ static void DebugInfo_OSHeader(Uint32 dummy)
 /* ------------------------------------------------------------------
  * Next HW information
  */
+
+extern char* get_rtc_ram_info();
 
 /**
  * DebugInfo_Rtc : display the Videl registers values.

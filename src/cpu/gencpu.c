@@ -190,7 +190,7 @@ static void addcycles_ce020 (int cycles, char *s)
 		if (s == NULL)
 			printf ("\t%s (%d);\n", do_cycles, cycles);
 		else
-			printf ("\t%s (%d); /* %d */\n", do_cycles, cycles, s);
+			printf ("\t%s (%d); /* %s */\n", do_cycles, cycles, s);
 	}
 	count_cycles += cycles;
 	count_cycles_ce020 += cycles;
@@ -461,7 +461,7 @@ static const char *gen_nextiword (int flags)
 	} else {
 		if (using_prefetch) {
 			if (flags & GF_NOREFILL) {
-				sprintf (buffer, "regs.irc", r);
+				sprintf (buffer, "regs.irc");
 			} else {
 				sprintf (buffer, "%s (%d)", prefetch_word, r + 2);
 				count_read++;
@@ -495,7 +495,7 @@ static const char *gen_nextibyte (int flags)
 		insn_n_cycles += 4;
 		if (using_prefetch) {
 			if (flags & GF_NOREFILL) {
-				sprintf (buffer, "(uae_u8)regs.irc", r);
+				sprintf (buffer, "(uae_u8)regs.irc");
 			} else {
 				sprintf (buffer, "(uae_u8)%s (%d)", prefetch_word, r + 2);
 				insn_n_cycles += 4;
@@ -773,7 +773,7 @@ static void addopcycles_ce20 (int h, int t, int c, int subhead)
 				printf ("\tif (regs.ce020memcycles > %d * cpucycleunit)\n", h);
 				printf ("\t\tregs.ce020memcycles = %d * cpucycleunit;\n", h);
 			} else {
-				printf ("\tregs.ce020memcycles = 0;\n", h);
+				printf ("\tregs.ce020memcycles = 0;\n");
 			}
 		}
 	}
@@ -882,7 +882,7 @@ static void addcycles_ea_ce020 (char *ea, int h, int t, int c, int oph)
 		printf ("\tif (regs.ce020memcycles > %d * cpucycleunit)\n", h);
 		printf ("\t\tregs.ce020memcycles = %d * cpucycleunit;\n", h);
 	} else {
-		printf ("\tregs.ce020memcycles = 0;\n", h);
+		printf ("\tregs.ce020memcycles = 0;\n");
 	}
 
 	if (1 && c > 0) {
@@ -960,6 +960,8 @@ static int gence020cycles_fiea (struct instr *curi, wordsizes ssize, amodes dmod
 		else
 			SETCE020(5, 0, 8)
 		break;
+       default:
+            break;
 	}
 	addcycles_ea_ce020 ("fiea", h, t, c, oph);
 	return oph;
@@ -1023,6 +1025,9 @@ static int gence020cycles_ciea (struct instr *curi, wordsizes ssize, amodes dmod
 		else
 			SETCE020H(8, 0, 8)
 		break;
+        default:
+            break;
+
 	}
 	addcycles_ea_ce020 ("ciea", h, t, c, oph);
 	return oph;
@@ -1068,6 +1073,8 @@ static int gence020cycles_fea (amodes mode)
 		ws++;
 		SETCE020(1, 0, 4)
 		break;
+        default:
+            break;
 	}
 #if 0
 	if (using_waitstates) {
@@ -1111,6 +1118,9 @@ static int gence020cycles_cea (struct instr *curi, amodes mode)
 	case absl:
 		SETCE020H(4, 0, 4)
 		break;
+        default:
+            break;
+
 	}
 	addcycles_ea_ce020 ("cea", h, t, c, oph);
 	return oph;
@@ -1134,6 +1144,9 @@ static int gence020cycles_jea (struct instr *curi, amodes mode)
 	case absl:
 		SETCE020H(2, 0, 2)
 		break;
+        default:
+            break;
+
 	}
 	addcycles_ea_ce020 ("jea", h, t, c, oph);
 	return oph;
@@ -2286,6 +2299,8 @@ static void genflags_normal (flagtypes type, wordsizes size, char *value, char *
 		printf ("\t" BOOL_TYPE " flgo = %s < 0;\n", dstr);
 		printf ("\t" BOOL_TYPE " flgn = %s < 0;\n", vstr);
 		break;
+        default:
+            break;
 	}
 
 	switch (type) {
@@ -3499,7 +3514,7 @@ static void gen_opcode (unsigned long int opcode)
 		    printf ("\tregs.sr = newsr;\n");
 			makefromsr ();
 		    printf ("\tif (newpc & 1) {\n");
-		    printf ("\t\texception3i (0x%04X, newpc);\n", opcode);
+		    printf ("\t\texception3i (0x%04lX, newpc);\n", opcode);
 			printf ("\t\tgoto %s;\n", endlabelstr);
 			printf ("\t}\n");
 		    setpc ("newpc");
@@ -3546,7 +3561,7 @@ static void gen_opcode (unsigned long int opcode)
 		    printf ("\tregs.sr = newsr;\n");
 			makefromsr ();
 		    printf ("\tif (newpc & 1) {\n");
-		    printf ("\t\texception3i (0x%04X, newpc);\n", opcode);
+		    printf ("\t\texception3i (0x%04lX, newpc);\n", opcode);
 			printf ("\t\tgoto %s;\n", endlabelstr);
 			printf ("\t}\n");
 		    setpc ("newpc");
@@ -3568,12 +3583,12 @@ static void gen_opcode (unsigned long int opcode)
 			genamode (curi, curi->smode, "srcreg", curi->size, "offs", 1, 0, 0);
 			printf ("\tm68k_areg (regs, 7) += offs;\n");
 			printf ("\tif (pc & 1) {\n");
-			printf ("\t\texception3i (0x%04X, pc);\n", opcode);
+			printf ("\t\texception3i (0x%04lX, pc);\n", opcode);
 			printf ("\t\tgoto %s;\n", endlabelstr);
 			printf ("\t}\n");
 		}
 	    printf ("\tif (pc & 1) {\n");
-	    printf ("\t\texception3i (0x%04X, pc);\n", opcode);
+	    printf ("\t\texception3i (0x%04lX, pc);\n", opcode);
 		printf ("\t\tgoto %s;\n", endlabelstr);
 		printf ("\t}\n");
 		setpc ("pc");
@@ -3637,7 +3652,7 @@ static void gen_opcode (unsigned long int opcode)
 	    printf ("\tif (m68k_getpc () & 1) {\n");
 		printf ("\t\tuaecptr faultpc = m68k_getpc ();\n");
 		setpc ("pc");
-		printf ("\t\texception3i (0x%04X, faultpc);\n", opcode);
+		printf ("\t\texception3i (0x%04lX, faultpc);\n", opcode);
 		printf ("\t\tgoto %s;\n", endlabelstr);
 		printf ("\t}\n");
 		count_read += 2;
@@ -3666,7 +3681,7 @@ static void gen_opcode (unsigned long int opcode)
 		printf ("\tif (m68k_getpc () & 1) {\n");
 		printf ("\t\tuaecptr faultpc = m68k_getpc ();\n");
 		setpc ("oldpc");
-		printf ("\t\texception3i (0x%04X, faultpc);\n", opcode);
+		printf ("\t\texception3i (0x%04lX, faultpc);\n", opcode);
 		printf ("\t\tgoto %s;\n", endlabelstr);
 		printf ("\t}\n");
 		m68k_pc_offset = 0;
@@ -4711,7 +4726,6 @@ static void gen_opcode (unsigned long int opcode)
 	case i_BFINS:
 		{
 			char *getb, *putb;
-			int flags = 0;
 
 			if (using_mmu == 68060 && (curi->mnemo == i_BFCHG || curi->mnemo == i_BFCLR ||  curi->mnemo == i_BFSET ||  curi->mnemo == i_BFINS)) {
 				getb = "mmu060_get_rmw_bitfield";
@@ -5040,7 +5054,6 @@ static void generate_includes (FILE * f, int id)
 	fprintf (f, "#include \"sysdeps.h\"\n");
 	fprintf (f, "#include \"options_cpu.h\"\n");
 	fprintf (f, "#include \"memory.h\"\n");
-	fprintf (f, "#include \"custom.h\"\n");
 	fprintf (f, "#include \"newcpu.h\"\n");
 	fprintf (f, "#include \"cpu_prefetch.h\"\n");
 	fprintf (f, "#include \"cputbl.h\"\n");
@@ -5216,7 +5229,7 @@ static void generate_one_opcode (int rp, char *extra)
 		//char *name = ua (lookuptab[idx].name);
         const char *name = lookuptab[idx].name;
 		if (generate_stbl)
-			fprintf (stblfile, "{ %sCPUFUNC(op_%04x_%d%s), %d }, /* %s */\n",
+			fprintf (stblfile, "{ %sCPUFUNC(op_%04lx_%d%s), %ld }, /* %s */\n",
 			(using_ce || using_ce020) ? "(cpuop_func*)" : "",
 			opcode, opcode_last_postfix[rp],
 			extra, opcode, name);
@@ -5326,7 +5339,7 @@ static void generate_one_opcode (int rp, char *extra)
         const char *name = lookuptab[idx].name;
 		if (i68000)
 			fprintf (stblfile, "#ifndef CPUEMU_68000_ONLY\n");
-		fprintf (stblfile, "{ %sCPUFUNC(op_%04x_%d%s), %d }, /* %s */\n",
+		fprintf (stblfile, "{ %sCPUFUNC(op_%04lx_%d%s), %ld }, /* %s */\n",
 			(using_ce || using_ce020) ? "(cpuop_func*)" : "",
 			opcode, postfix, extra, opcode, name);
 		if (i68000)

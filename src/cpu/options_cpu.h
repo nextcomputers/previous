@@ -136,9 +136,6 @@ struct uae_prefs {
 	int catweasel;
 	int cpu_idle;
 	bool cpu_cycle_exact;
-	int cpu_clock_multiplier;
-	int cpu_frequency;
-	bool blitter_cycle_exact;
 	int floppy_speed;
 	int floppy_write_length;
 	int floppy_random_bits_min;
@@ -202,7 +199,6 @@ struct uae_prefs {
 	TCHAR path_hardfile[256];
 	TCHAR path_rom[256];
 
-	int m68k_speed;
 	int cpu_model;
 	int cpu_level;
 	int mmu_model;
@@ -314,8 +310,6 @@ struct uae_prefs {
 };
 
 extern struct uae_prefs currprefs, changed_prefs;
-extern void fixup_cpu (struct uae_prefs *prefs);
-
 
 extern void check_prefs_changed_cpu (void);
 

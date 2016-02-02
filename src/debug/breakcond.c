@@ -61,11 +61,6 @@ typedef enum {
 	VALUE_TYPE_REG32      = 32
 } value_t;
 
-static inline bool is_register_type(value_t vtype) {
-	/* type used for CPU/DSP registers */
-	return (vtype == VALUE_TYPE_REG16 || vtype == VALUE_TYPE_REG32);
-}
-
 typedef struct {
 	bool is_indirect;
 	char dsp_space;	/* DSP has P, X, Y address spaces, zero if not DSP */
@@ -173,14 +168,6 @@ static void _spaces(void)
 
 
 /* ------------- breakpoint condition checking, internals ------------- */
-
-/**
- * Return value from given DSP memory space/address
- */
-static Uint32 BreakCond_ReadDspMemory(Uint32 addr, const bc_value_t *bc_value)
-{
-	return 0;
-}
 
 /**
  * Return value of given size read from given ST memory address
@@ -417,43 +404,6 @@ static inline Uint16 getLineOpcode(Uint8 line)
     }
     return INVALID_OPCODE;
 }
-static inline bool isTrap(Uint8 trap)
-{
-    Uint32 pc;
-    Uint16 instr;
-    pc = M68000_GetPC();
-    instr = NEXTMemory_ReadWord(pc);
-    return (instr == (Uint16)0x4e40u + trap);
-}
-static inline Uint16 getControlOpcode(void)
-{
-    /* Control[] address from D1, opcode in Control[0] */
-    return NEXTMemory_ReadWord(NEXTMemory_ReadLong(Regs[REG_D1]));
-}
-static inline Uint16 getStackOpcode(void)
-{
-    return NEXTMemory_ReadWord(Regs[REG_A7]);
-}
-
-/* Actual TOS OS call opcode accessor functions */
-static Uint32 GetLineAOpcode(void)
-{
-    return getLineOpcode(0xA);
-}
-static Uint32 GetLineFOpcode(void)
-{
-    return getLineOpcode(0xF);
-}
-
-/* sorted by variable name so that this can be bisected */
-static const var_addr_t hatari_vars[] = {
-    { "BSS", (Uint32*)DebugInfo_GetBSS, VALUE_TYPE_FUNCTION32, 0, "invalid before Desktop is up" },
-    { "DATA", (Uint32*)DebugInfo_GetDATA, VALUE_TYPE_FUNCTION32, 0, "invalid before Desktop is up" },
-    { "LineAOpcode", (Uint32*)GetLineAOpcode, VALUE_TYPE_FUNCTION32, 16, "by default FFFF" },
-    { "LineFOpcode", (Uint32*)GetLineFOpcode, VALUE_TYPE_FUNCTION32, 16, "by default FFFF" },
-    { "TEXT", (Uint32*)DebugInfo_GetTEXT, VALUE_TYPE_FUNCTION32, 0, "invalid before Desktop is up" },
-};
-
 
 /**
  * Readline match callback for CPU variable/symbol name completion.
@@ -463,7 +413,6 @@ static const var_addr_t hatari_vars[] = {
 char *BreakCond_MatchCpuVariable(const char *text, int state)
 {
 	static int i, len;
-	const char *name;
 	
 	if (!state) {
 		/* first match */
@@ -1426,8 +1375,6 @@ int BreakCond_MatchCpuExpression(int position, const char *expression)
  */
 static void BreakCond_Help(void)
 {
-	Uint32 value;
-	int i;
 	fputs(
 "  condition = <value>[.mode] [& <mask>] <comparison> <value>[.mode]\n"
 "\n"
