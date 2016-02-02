@@ -15,6 +15,8 @@
 /* Initialize the audio system */
 static bool   sndout_inited;
 static bool   sound_output_active = false;
+static bool   sndin_inited;
+static bool   sound_input_active = false;
 static Uint8* snd_buffer = NULL;
 
 void sound_init(void) {
@@ -76,72 +78,106 @@ void snd_start_output(Uint8 mode) {
     if (sndout_inited) {
         Audio_Output_Enable(true);
     } else {
-        Log_Printf(LOG_SND_LEVEL, "[Audio] Not starting. Audio device not initialized.");
+        Log_Printf(LOG_SND_LEVEL, "[Audio] Not starting. Audio output device not initialized.");
     }
     /* Starting sound output loop */
     if (!sound_output_active) {
-        Log_Printf(LOG_SND_LEVEL, "[Sound] Starting loop.");
+        Log_Printf(LOG_SND_LEVEL, "[Sound] Starting output loop.");
         sound_output_active = true;
-        CycInt_AddRelativeInterrupt(100, INTERRUPT_SND_IO);
+        CycInt_AddRelativeInterruptTicks(100, INTERRUPT_SND_OUT);
     } else { /* Even re-enable loop if we are already active. This lowers the delay. */
-        Log_Printf(LOG_WARN, "[Sound] Restarting loop.");
-        CycInt_AddRelativeInterrupt(100, INTERRUPT_SND_IO);
+        Log_Printf(LOG_WARN, "[Sound] Restarting output loop.");
+        CycInt_AddRelativeInterruptTicks(100, INTERRUPT_SND_OUT);
     }
 }
 
 void snd_stop_output(void) {
-    if (sound_output_active) {
-        sound_output_active=false;
+    sound_output_active=false;
+}
+
+void snd_start_input(Uint8 mode) {
+    /* Starting SDL Audio */
+    if (sndin_inited) {
+        Audio_Input_Enable(true);
+    } else {
+        Log_Printf(LOG_SND_LEVEL, "[Audio] Not starting. Audio input device not initialized.");
+    }
+    /* Starting sound output loop */
+    if (!sound_input_active) {
+        Log_Printf(LOG_SND_LEVEL, "[Sound] Starting input loop.");
+        sound_input_active = true;
+        CycInt_AddRelativeInterruptTicks(100, INTERRUPT_SND_IN);
+    } else { /* Even re-enable loop if we are already active. This lowers the delay. */
+        Log_Printf(LOG_WARN, "[Sound] Restarting input loop.");
+        CycInt_AddRelativeInterruptTicks(100, INTERRUPT_SND_IN);
     }
 }
 
+void snd_stop_input(void) {
+    sound_input_active=false;
+}
 
-/* Sound IO loop (reads via DMA from memory to queue) */
+/* Sound IO loops */
 
-const int DMA_BUFFER = 32;
-
-static double snd_start;
-static int    snd_samples;
-
-static void do_dma_sndout_intr() {
+static bool do_dma_sndout_intr() {
+    bool result = false;
     if(snd_buffer) {
-        dma_sndout_intr();
+        result = dma_sndout_intr();
         free(snd_buffer);
         snd_buffer = NULL;
     }
+    return result;
 }
 
-void SND_IO_Handler(void) {
+/*
+ At a tick rate of 8MHz and a playback rate of 44.1kHz a sample takes about 181 ticks
+ Assuming that the emulation runs at least at 1/3 a s fast as a real m68k checking the 
+ sound queue every 60 ticks should be ok.
+*/
+static const int SND_CHECK_DELAY = 60 * AUDIO_BUFFER_SAMPLES;
+
+void SND_Out_Handler(void) {
     CycInt_AcknowledgeInterrupt();
 
+    if(Audio_Output_Queue_Size() > AUDIO_BUFFER_SAMPLES * 2) {
+        CycInt_AddRelativeInterruptTicks(SND_CHECK_DELAY, INTERRUPT_SND_OUT);
+        return;
+    }
+    
     do_dma_sndout_intr();
     
-    int    len;
+    int len;
     snd_buffer = dma_sndout_read_memory(&len);
     
     if (!sndout_inited || sndout_state.mute) {
         if (!sound_output_active)
             return;
-    } else if(len) {
-        len = snd_send_samples(snd_buffer, len) / 4;
-
-        Log_Printf(LOG_SND_LEVEL, "[Sound] %i samples ready.", len);
-
-        snd_start = host_time_sec();
-        snd_samples = len;
-        
-        Sint64 usDelay = len - DMA_BUFFER;
-        usDelay *= 1000*1000;
-        usDelay /= AUDIO_FREQUENCY;
-
-        if(usDelay < 0) {
+    } else {
+        if(len) {
+            len = snd_send_samples(snd_buffer, len) / 4;
+            Log_Printf(LOG_SND_LEVEL, "[Sound] %i samples ready.", len);
+            CycInt_AddRelativeInterruptTicks(len < AUDIO_BUFFER_SAMPLES ? 100 : SND_CHECK_DELAY, INTERRUPT_SND_OUT);
+        } else {
             do_dma_sndout_intr();
-            kms_sndout_underrun();
-        } else
-            CycInt_AddRelativeInterruptUs(usDelay, true, INTERRUPT_SND_IO);
+            if(snd_output_active())
+                kms_sndout_underrun();
+        }
     }
 }
 
+bool snd_output_active() {
+    return sound_output_active;
+}
+
+void SND_In_Handler(void) {
+    CycInt_AcknowledgeInterrupt();
+    
+    Log_Printf(LOG_WARN, "SND_In_Handler");
+}
+
+bool snd_input_active() {
+    return sound_input_active;
+}
 
 /* These functions put samples to a buffer for further processing */
 void snd_make_double_samples(Uint8 *buffer, int len, bool repeat) {
@@ -169,32 +205,25 @@ int snd_send_samples(Uint8* buffer, int len) {
         case SND_MODE_NORMAL:
             snd_make_normal_samples(buffer, len);
             snd_adjust_volume_and_lowpass(buffer, len);
-            sndout_queue_put(buffer, len);
+            Audio_Output_Queue(buffer, len);
             return len;
         case SND_MODE_DBL_RP:
             snd_make_double_samples(buffer, len, true);
             snd_adjust_volume_and_lowpass(buffer, 2*len);
-            sndout_queue_put(buffer, len);
-            sndout_queue_put(buffer+len, len);
+            Audio_Output_Queue(buffer, len);
+            Audio_Output_Queue(buffer+len, len);
             return 2*len;
         case SND_MODE_DBL_ZF:
             snd_make_double_samples(buffer, len, false);
             snd_adjust_volume_and_lowpass(buffer, 2*len);
-            sndout_queue_put(buffer, len);
-            sndout_queue_put(buffer+len, len);
+            Audio_Output_Queue(buffer, len);
+            Audio_Output_Queue(buffer+len, len);
             return 2*len;
         default:
             Log_Printf(LOG_WARN, "[Sound] Error: Unknown sound output mode!");
             return 0;
     }
 }
-
-/* This function puts data to a queue for the audio system */
-void sndout_queue_put(Uint8 *buf, int len) {
-    Audio_Output_Queue(buf, len);
-    Log_Printf(LOG_SND_LEVEL, "[Sound] Output %d samples to queue", len/4);
-}
-
 
 #if 1 /* FIXME: Is this correct? */
 /* This is a simple lowpass filter */

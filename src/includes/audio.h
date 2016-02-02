@@ -2,6 +2,7 @@ void Audio_Output_Enable(bool bEnable);
 void Audio_Output_Init(void);
 void Audio_Output_UnInit(void);
 void Audio_Output_Queue(Uint8* data, int len);
+Uint32 Audio_Output_Queue_Size();
 
 void Audio_Input_Enable(bool bEnable);
 void Audio_Input_Init(void);

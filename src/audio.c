@@ -12,16 +12,32 @@
 
 
 /* Sound emulation SDL interface */
-SDL_AudioDeviceID Audio_Input_Device;
-SDL_AudioDeviceID Audio_Output_Device;
+static SDL_AudioDeviceID Audio_Input_Device;
+static SDL_AudioDeviceID Audio_Output_Device;
 
-bool bSoundOutputWorking = false;       /* Is sound output OK */
-bool bSoundInputWorking = false;        /* Is sound input OK */
-volatile bool bPlayingBuffer = false;   /* Is playing buffer? */
-volatile bool bRecordingBuffer = false; /* Is recording buffer? */
+static bool          bSoundOutputWorking = false; /* Is sound output OK */
+static bool          bSoundInputWorking  = false; /* Is sound input OK */
+static bool          bPlayingBuffer      = false; /* Is playing buffer? */
+static bool          bRecordingBuffer    = false; /* Is recording buffer? */
+static const  int    REC_BUFFER_SZ       = 16;  /* Recording buffer size in power of two */
+static const  Uint32 REC_BUFFER_MASK     = (1<<REC_BUFFER_SZ) - 1;
+static Uint8         recBuffer[1<<REC_BUFFER_SZ];
+static Uint32        recBufferWr         = 0;
+static Uint32        recBufferRd         = 0;
+static lock_t        recBufferLock;
 
 void Audio_Output_Queue(Uint8* data, int len) {
-    SDL_QueueAudio(Audio_Output_Device, data, len);
+    int chunkSize = AUDIO_BUFFER_SAMPLES;
+    while(len > 0) {
+        if(len < chunkSize) chunkSize = len;
+        SDL_QueueAudio(Audio_Output_Device, data, chunkSize);
+        data += chunkSize;
+        len  -= chunkSize;
+    }
+}
+
+Uint32 Audio_Output_Queue_Size() {
+    return SDL_GetQueuedAudioSize(Audio_Output_Device) / 4;
 }
 
 /*-----------------------------------------------------------------------*/
@@ -30,9 +46,13 @@ void Audio_Output_Queue(Uint8* data, int len) {
  * Note: These functions will run in a separate thread.
  */
 
-static void Audio_Input_CallBack(void *userdata, Uint8 *stream, int len)
-{
-    /* FIXME: send data to emulator */
+static void Audio_Input_CallBack(void *userdata, Uint8 *stream, int len) {
+    Log_Printf(LOG_WARN, "Audio_Input_CallBack %d", len);
+    if(len == 0) return;
+    host_lock(&recBufferLock);
+    while(--len)
+        recBuffer[recBufferWr++&REC_BUFFER_MASK] = *stream++;
+    host_unlock(&recBufferLock);
 }
 
 static bool check_audio(int requested, int granted, const char* attribute) {
@@ -51,10 +71,8 @@ void Audio_Output_Init(void)
     SDL_AudioSpec granted;
     
     /* Init the SDL's audio subsystem: */
-    if (SDL_WasInit(SDL_INIT_AUDIO) == 0)
-    {
-        if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0)
-        {
+    if (SDL_WasInit(SDL_INIT_AUDIO) == 0) {
+        if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
             Log_Printf(LOG_WARN, "[Audio] Could not init audio output: %s\n", SDL_GetError());
             DlgAlert_Notice("Error: Can't open SDL audio subsystem.");
             bSoundOutputWorking = false;
@@ -63,16 +81,15 @@ void Audio_Output_Init(void)
     }
     
     /* Set up SDL audio: */
-    request.freq     = AUDIO_FREQUENCY;    /* 44,1 kHz */
-    request.format   = AUDIO_S16MSB;	/* 16-Bit signed, big endian */
-    request.channels = 2;			/* stereo */
+    request.freq     = AUDIO_FREQUENCY; /* 44,1 kHz */
+    request.format   = AUDIO_S16MSB;    /* 16-Bit signed, big endian */
+    request.channels = 2;               /* stereo */
     request.callback = NULL;
     request.userdata = NULL;
-    request.samples  = 512;	/* buffer size in samples */
+    request.samples  = AUDIO_BUFFER_SAMPLES; /* buffer size in samples */
 
     Audio_Output_Device = SDL_OpenAudioDevice(NULL, 0, &request, &granted, 0);
-    if (Audio_Output_Device==0)	/* Open audio device */
-    {
+    if (Audio_Output_Device==0)	/* Open audio device */ {
         Log_Printf(LOG_WARN, "[Audio] Can't use audio: %s\n", SDL_GetError());
         DlgAlert_Notice("Error: Can't open audio output device. No sound output.");
         bSoundOutputWorking = false;
@@ -89,16 +106,13 @@ void Audio_Output_Init(void)
     }
 }
 
-void Audio_Input_Init(void)
-{
+void Audio_Input_Init(void) {
     SDL_AudioSpec request;    /* We fill in the desired SDL audio options here */
     SDL_AudioSpec granted;
     
     /* Init the SDL's audio subsystem: */
-    if (SDL_WasInit(SDL_INIT_AUDIO) == 0)
-    {
-        if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0)
-        {
+    if (SDL_WasInit(SDL_INIT_AUDIO) == 0) {
+        if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
             Log_Printf(LOG_WARN, "Could not init audio input: %s\n", SDL_GetError());
             DlgAlert_Notice("Error: Can't open SDL audio subsystem.");
             bSoundInputWorking = false;
@@ -114,17 +128,19 @@ void Audio_Input_Init(void)
     request.userdata = NULL;
     request.samples = 1024;	/* buffer size in samples (2048 byte) */
     
-    Audio_Input_Device = SDL_OpenAudioDevice(NULL, 0, &request, &granted, 0);
-    if (Audio_Input_Device==0)	/* Open audio device */
-    {
+    bSoundInputWorking = true;
+    bSoundInputWorking &= check_audio(request.freq,     granted.freq,     "freq");
+    bSoundInputWorking &= check_audio(request.format,   granted.format,   "format");
+    bSoundInputWorking &= check_audio(request.channels, granted.channels, "channels");
+    bSoundInputWorking &= check_audio(request.samples,  granted.samples,  "samples");
+    
+    Audio_Input_Device = SDL_OpenAudioDevice(NULL, 1, &request, &granted, 0); /* Open audio device */
+    if (Audio_Input_Device==0 || (!(bSoundInputWorking))){
         Log_Printf(LOG_WARN, "Can't use audio: %s\n", SDL_GetError());
         DlgAlert_Notice("Error: Can't open audio input device. No sound recording.");
         bSoundInputWorking = false;
         return;
     }
-    
-    /* All OK */
-    bSoundInputWorking = true;
 }
 
 
@@ -132,10 +148,8 @@ void Audio_Input_Init(void)
 /**
  * Free audio subsystem
  */
-void Audio_Output_UnInit(void)
-{
-    if (bSoundOutputWorking)
-    {
+void Audio_Output_UnInit(void) {
+    if (bSoundOutputWorking) {
         /* Stop */
         Audio_Output_Enable(false);
         
@@ -145,10 +159,8 @@ void Audio_Output_UnInit(void)
     }
 }
 
-void Audio_Input_UnInit(void)
-{
-    if (bSoundInputWorking)
-    {
+void Audio_Input_UnInit(void) {
+    if (bSoundInputWorking) {
         /* Stop */
         Audio_Input_Enable(false);
         
@@ -163,13 +175,8 @@ void Audio_Input_UnInit(void)
 /**
  * Lock the audio sub system so that the callback function will not be called.
  */
-void Audio_Output_Lock(void)
-{
-    SDL_LockAudioDevice(Audio_Output_Device);
-}
 
-void Audio_Input_Lock(void)
-{
+void Audio_Input_Lock(void) {
     SDL_LockAudioDevice(Audio_Input_Device);
 }
 
@@ -178,13 +185,11 @@ void Audio_Input_Lock(void)
 /**
  * Unlock the audio sub system so that the callback function will be called again.
  */
-void Audio_Output_Unlock(void)
-{
+void Audio_Output_Unlock(void) {
     SDL_UnlockAudioDevice(Audio_Output_Device);
 }
 
-void Audio_Input_Unlock(void)
-{
+void Audio_Input_Unlock(void) {
     SDL_UnlockAudioDevice(Audio_Input_Device);
 }
 
@@ -192,33 +197,27 @@ void Audio_Input_Unlock(void)
 /**
  * Start/Stop sound buffer
  */
-void Audio_Output_Enable(bool bEnable)
-{
-    if (bEnable && !bPlayingBuffer)
-    {
+void Audio_Output_Enable(bool bEnable) {
+    if (bEnable && !bPlayingBuffer) {
         /* Start playing */
         SDL_PauseAudioDevice(Audio_Output_Device, false);
         bPlayingBuffer = true;
     }
-    else if (!bEnable && bPlayingBuffer)
-    {
+    else if (!bEnable && bPlayingBuffer) {
         /* Stop from playing */
         SDL_PauseAudioDevice(Audio_Output_Device, true);
         bPlayingBuffer = false;
     }
 }
 
-void Audio_Input_Enable(bool bEnable)
-{
-    if (bEnable && !bRecordingBuffer)
-    {
-        /* Start playing */
+void Audio_Input_Enable(bool bEnable) {
+    if (bEnable && !bRecordingBuffer) {
+        /* Start recording */
         SDL_PauseAudioDevice(Audio_Input_Device, false);
         bRecordingBuffer = true;
     }
-    else if (!bEnable && bPlayingBuffer)
-    {
-        /* Stop from playing */
+    else if (!bEnable && bRecordingBuffer) {
+        /* Stop recording */
         SDL_PauseAudioDevice(Audio_Input_Device, true);
         bRecordingBuffer = false;
     }

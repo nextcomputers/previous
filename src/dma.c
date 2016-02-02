@@ -160,10 +160,6 @@ int get_interrupt_type(int channel) {
     }
 }
 
-Uint8 dma_get_csr(int channel) {
-    return dma[channel].csr;
-}
-
 void DMA_CSR_Read(void) { // 0x02000010, length of register is byte on 68030 based NeXT Computer
     int channel = get_channel(IoAccessCurrentAddress);
     
@@ -742,8 +738,10 @@ Uint8* dma_sndout_read_memory(int* len) {
     return result;
 }
 
-void dma_sndout_intr() {
+bool dma_sndout_intr() {
+    bool result = (dma[CHANNEL_SOUNDOUT].csr & DMA_SUPDATE) != 0;
     dma_interrupt(CHANNEL_SOUNDOUT);
+    return result;
 }
 
 /* Channel Printer */
@@ -907,7 +905,7 @@ void dma_m2m_write_memory(void) {
             } ENDTRY
             
             if ((dma[CHANNEL_M2R].next==dma[CHANNEL_M2R].limit)||(dma[CHANNEL_M2R].csr&DMA_BUSEXC)) {
-                CycInt_AddRelativeInterrupt(time/4, INTERRUPT_M2R);
+                CycInt_AddRelativeInterruptTicks(time/4, INTERRUPT_M2R);
             }
         }
         
@@ -923,7 +921,7 @@ void dma_m2m_write_memory(void) {
             dma[CHANNEL_R2M].csr |= (DMA_COMPLETE|DMA_BUSEXC);
         } ENDTRY
     }
-    CycInt_AddRelativeInterrupt(time/4, INTERRUPT_R2M);
+    CycInt_AddRelativeInterruptTicks(time/4, INTERRUPT_R2M);
 }
 
 

@@ -93,8 +93,7 @@ Screen_Draw();
 /**
  * Start VBL interrupt
  */
-void Video_StartInterrupts ( int PendingCyclesOver )
-{
+void Video_StartInterrupts ( int PendingCyclesOver ) {
     CycInt_AddRelativeInterruptUs((1000*1000)/NEXT_VBL_FREQ, false, INTERRUPT_VIDEO_VBL);
 }
 

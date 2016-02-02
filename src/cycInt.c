@@ -11,12 +11,10 @@
   count into the global 'PendingInterrupt' variable. This is then
   decremented by the execution loop - rather than decrement each and every
   entry (as the others cannot occur before this one).
-  We have two methods of adding interrupts; Absolute and Relative.
-  Absolute will set values from the time of the previous interrupt (e.g., add
-  HBL every 512 cycles), and Relative will add from the current cycle time.
-  Note that interrupt may occur 'late'. I.e., if an interrupt is due in 4
-  cycles time but the current instruction takes 20 cycles we will be 16 cycles
-  late - this is handled in the adjust functions.
+  We support three time units: CPU cycles, ticks, and microseconds.
+  Ticks are bound to CPU cycles and run at TICK_RATE MHz. Microseconds are either
+  bound to the host CPU's performance counter in real-time mode or to the emulated
+  CPU cycles if non-realtime mode.
 */
 
 const char CycInt_fileid[] = "Previous cycInt.c : " __DATE__ " " __TIME__;
@@ -46,8 +44,10 @@ Sint64 PendingInterruptCounter;
 int    usCheckCycles;
 
 static Sint64 nCyclesOver;
-Sint64 nCyclesMainCounter;				/* Main cycles counter */
-int    nCyclesDivisor;                  /* CPU type dependent divisor */
+Sint64 nCyclesMainCounter;         /* Main cycles counter, counts emulated CPU cycles sind reset */
+int    nCyclesDivisor;             /* CPU type dependent divisor */
+
+static const Sint64 TICK_RATE = 8; /* Tick rate is 8MHz */
 
 /* List of possible interrupt handlers to be store in 'PendingInterruptTable',
  * used for 'MemorySnapShot' */
@@ -66,13 +66,14 @@ static void (* const pIntHandlerFunctions[MAX_INTERRUPTS])(void) =
     ECC_IO_Handler,
     ENET_IO_Handler,
     FLP_IO_Handler,
-    SND_IO_Handler,
+    SND_Out_Handler,
+    SND_In_Handler,
     Printer_IO_Handler
 };
 
 static INTERRUPTHANDLER InterruptHandlers[MAX_INTERRUPTS];
 INTERRUPTHANDLER        PendingInterrupt;
-static int ActiveInterrupt=0;
+static int              ActiveInterrupt=0;
 
 static void CycInt_SetNewInterrupt(void);
 
@@ -135,8 +136,7 @@ static int CycInt_HandlerFunctionToID(void (*pHandlerFunction)(void))
 /**
  * Convert ID back into interrupt handler function, used for restoring
  */
-static void *CycInt_IDToHandlerFunction(int ID)
-{
+static void *CycInt_IDToHandlerFunction(int ID) {
 	/* Get function pointer */
 	return pIntHandlerFunctions[ID];
 }
@@ -171,14 +171,12 @@ void CycInt_MemorySnapShot_Capture(bool bSave)
 	MemorySnapShot_Store(&nCyclesOver, sizeof(nCyclesOver));
     MemorySnapShot_Store(&PendingInterrupt.type, sizeof(PendingInterrupt.type));
 	MemorySnapShot_Store(&PendingInterrupt.time, sizeof(PendingInterrupt.time));
-	if (bSave)
-	{
+	if (bSave) {
 		/* Convert function to ID */
 		ID = CycInt_HandlerFunctionToID(PendingInterruptFunction);
 		MemorySnapShot_Store(&ID, sizeof(int));
 	}
-	else
-	{
+	else {
 		/* Convert ID to function */
 		MemorySnapShot_Store(&ID, sizeof(int));
 		PendingInterruptFunction = CycInt_IDToHandlerFunction(ID);
@@ -217,8 +215,7 @@ static void CycInt_SetNewInterrupt(void) {
 /**
  * Adjust all interrupt timings, MUST call CycInt_SetNewInterrupt after this.
  */
-static void CycInt_UpdateInterrupt(void)
-{
+static void CycInt_UpdateInterrupt(void) {
 	Sint64 CycleSubtract;
 	int i;
 
@@ -256,8 +253,7 @@ bool CycInt_SetNewInterruptUs(void) {
  * Adjust all interrupt timings as 'ActiveInterrupt' has occured, and
  * remove from active list.
  */
-void CycInt_AcknowledgeInterrupt(void)
-{
+void CycInt_AcknowledgeInterrupt(void) {
 	/* Update list cycle counts */
 	CycInt_UpdateInterrupt();
 
@@ -272,8 +268,7 @@ void CycInt_AcknowledgeInterrupt(void)
 /**
  * Add interrupt to occur from now.
  */
-void CycInt_AddRelativeInterrupt(Sint64 CycleTime, interrupt_id Handler)
-{
+void CycInt_AddRelativeInterruptCycles(Sint64 CycleTime, interrupt_id Handler) {
 	assert(CycleTime >= 0);
 
 	/* Update list cycle counts with current PendingInterruptCount before adding a new int, */
@@ -288,6 +283,14 @@ void CycInt_AddRelativeInterrupt(Sint64 CycleTime, interrupt_id Handler)
 	CycInt_SetNewInterrupt();
 }
 
+/*-----------------------------------------------------------------------*/
+/**
+ * Add interrupt to occur from now.
+ */
+void CycInt_AddRelativeInterruptTicks(Sint64 TickTime, interrupt_id Handler) {
+    TickTime *= ConfigureParams.System.nCpuFreq;
+    CycInt_AddRelativeInterruptCycles(TickTime / TICK_RATE, Handler);
+}
 
 /*-----------------------------------------------------------------------*/
 /**
@@ -295,30 +298,32 @@ void CycInt_AddRelativeInterrupt(Sint64 CycleTime, interrupt_id Handler)
  * time if time is no more than 1 ms in the past.
  */
 void CycInt_AddRelativeInterruptUs(Sint64 us, bool repeat, interrupt_id Handler) {
-    assert(us >= 0);
-    
-    /* Update list cycle counts with current PendingInterruptCount before adding a new int, */
-    /* because CycInt_SetNewInterrupt can change the active int / PendingInterruptCount */
-    if ( ActiveInterrupt > 0 )
-        CycInt_UpdateInterrupt();
-    
-    Uint64 now = host_time_us();
-    InterruptHandlers[Handler].type = CYC_INT_US;
-    if(repeat && (now - InterruptHandlers[Handler].time) < 1000)
-        InterruptHandlers[Handler].time += us;
-    else
-        InterruptHandlers[Handler].time = now + us;
-    
-    /* Set new active int and compute a new value for PendingInterruptCount*/
-    CycInt_SetNewInterrupt();
+    if(ConfigureParams.System.bRealtime) {
+        assert(us >= 0);
+        
+        /* Update list cycle counts with current PendingInterruptCount before adding a new int, */
+        /* because CycInt_SetNewInterrupt can change the active int / PendingInterruptCount */
+        if ( ActiveInterrupt > 0 ) CycInt_UpdateInterrupt();
+        
+        Uint64 now = host_time_us();
+        InterruptHandlers[Handler].type = CYC_INT_US;
+        if(repeat && (now - InterruptHandlers[Handler].time) < 1000)
+            InterruptHandlers[Handler].time += us;
+        else
+            InterruptHandlers[Handler].time = now + us;
+        
+        /* Set new active int and compute a new value for PendingInterruptCount*/
+        CycInt_SetNewInterrupt();
+    } else {
+        CycInt_AddRelativeInterruptCycles(us * ConfigureParams.System.nCpuFreq, Handler);
+    }
 }
 
 /*-----------------------------------------------------------------------*/
 /**
  * Remove a pending interrupt from our table
  */
-void CycInt_RemovePendingInterrupt(interrupt_id Handler)
-{
+void CycInt_RemovePendingInterrupt(interrupt_id Handler) {
 	/* Update list cycle counts, including the handler we want to remove */
 	/* to be able to resume it later (for MFP timers) */
 	CycInt_UpdateInterrupt();

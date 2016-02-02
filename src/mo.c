@@ -864,7 +864,7 @@ void ecc_write(void) {
     }
     ecc_buffer[eccin].size=0; /* FIXME: find a better place for this */
     ecc_buffer[eccin].limit=MO_SECTORSIZE_DATA; /* and this */
-    CycInt_AddRelativeInterrupt(ECC_DELAY, INTERRUPT_ECC_IO);
+    CycInt_AddRelativeInterruptTicks(ECC_DELAY, INTERRUPT_ECC_IO);
 }
 void ecc_read(void) {
     if (ecc_state!=ECC_STATE_DONE) {
@@ -876,7 +876,7 @@ void ecc_read(void) {
     if (mo.ctrlr_csr2&MOCSR2_ECC_BLOCKS) {
         ecc_repeat=true;
     }
-    CycInt_AddRelativeInterrupt(ECC_DELAY, INTERRUPT_ECC_IO);
+    CycInt_AddRelativeInterruptTicks(ECC_DELAY, INTERRUPT_ECC_IO);
 }
 void ecc_verify(void) {
     if (ecc_state!=ECC_STATE_DONE) {
@@ -885,7 +885,7 @@ void ecc_verify(void) {
     }
     ecc_mode=ECC_MODE_VERIFY;
     ecc_state=ECC_STATE_ECCING;
-    CycInt_AddRelativeInterrupt(ECC_DELAY, INTERRUPT_ECC_IO);
+    CycInt_AddRelativeInterruptTicks(ECC_DELAY, INTERRUPT_ECC_IO);
 }
 void ecc_sequence_done(void) {
     if (ecc_repeat==true) {
@@ -896,7 +896,7 @@ void ecc_sequence_done(void) {
         } else {
             ecc_state=ECC_STATE_ECCING;
         }
-        CycInt_AddRelativeInterrupt(ECC_DELAY, INTERRUPT_ECC_IO);
+        CycInt_AddRelativeInterruptTicks(ECC_DELAY, INTERRUPT_ECC_IO);
         return;
     }
 
@@ -998,7 +998,7 @@ void ECC_IO_Handler(void) {
             return;
     }
     
-    CycInt_AddRelativeInterrupt(ECC_DELAY, INTERRUPT_ECC_IO);
+    CycInt_AddRelativeInterruptTicks(ECC_DELAY, INTERRUPT_ECC_IO);
 }
 
 
@@ -1521,7 +1521,7 @@ void mo_start_spiraling(void) {
     }
 
     if (!modrv[0].spiraling && !modrv[1].spiraling) { /* periodic disk operation already active? */
-        CycInt_AddRelativeInterrupt(SECTOR_IO_DELAY, INTERRUPT_MO_IO);
+        CycInt_AddRelativeInterruptTicks(SECTOR_IO_DELAY, INTERRUPT_MO_IO);
     }
     modrv[dnum].spiraling=true;
 
@@ -1556,7 +1556,7 @@ void mo_spiraling_operation(void) {
             modrv[i].sec_offset%=MO_SEC_PER_TRACK;
         }
     }
-    CycInt_AddRelativeInterrupt(SECTOR_IO_DELAY, INTERRUPT_MO_IO);
+    CycInt_AddRelativeInterruptTicks(SECTOR_IO_DELAY, INTERRUPT_MO_IO);
 }
 
 void mo_self_diagnostic(void) {
@@ -1654,7 +1654,7 @@ void mo_set_signals(bool complete, bool attn, int delay) {
         delayed_drive=dnum;
         delayed_compl=complete;
         delayed_attn=attn;
-        CycInt_AddRelativeInterrupt(delay, INTERRUPT_MO);
+        CycInt_AddRelativeInterruptTicks(delay, INTERRUPT_MO);
     } else {
         mo_push_signals(complete, attn, dnum);
     }

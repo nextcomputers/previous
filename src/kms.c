@@ -237,6 +237,7 @@ void KMS_command(Uint8 command, Uint32 data) {
                     snd_start_output(command&(SIO_DBL_SMPL|SIO_ZERO));
                 } else {
                     Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out disable.");
+                    kms.status.snd_dma &= ~(SNDOUT_DMA_UNDERRUN|SNDOUT_DMA_REQUEST);
                     snd_stop_output();
                 }
             } else if ((command&KMSCMD_SIO_MASK)==KMSCMD_SND_IN) {
@@ -244,8 +245,11 @@ void KMS_command(Uint8 command, Uint32 data) {
                 
                 if (command&SIO_ENABLE) {
                     Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound in enable.");
+                    snd_start_input(command);
                 } else {
                     Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound in disable.");
+                    kms.status.snd_dma &= ~(SNDIN_DMA_OVERRUN|SNDIN_DMA_REQUEST);
+                    snd_stop_input();
                 }
             } else {
                 Log_Printf(LOG_WARN, "[KMS] Unknown command!");
@@ -260,28 +264,23 @@ void KMS_Ctrl_Snd_Write(void) {
     kms.status.snd_dma &= ~(SNDOUT_DMA_ENABLE|SNDIN_DMA_ENABLE);
     kms.status.snd_dma |= (val&(SNDOUT_DMA_ENABLE|SNDIN_DMA_ENABLE));
     
-    if (val&SNDOUT_DMA_UNDERRUN) {
+    if (val&SNDOUT_DMA_UNDERRUN && (!snd_output_active())) {
         kms.status.snd_dma &= ~(SNDOUT_DMA_UNDERRUN|SNDOUT_DMA_REQUEST);
         set_interrupt(INT_SOUND_OVRUN, RELEASE_INT);
     }
-    if (val&SNDIN_DMA_OVERRUN) {
+    if (val&SNDIN_DMA_OVERRUN && (!snd_input_active())) {
         kms.status.snd_dma &= ~(SNDIN_DMA_OVERRUN|SNDIN_DMA_REQUEST);
         set_interrupt(INT_SOUND_OVRUN, RELEASE_INT);
     }
 }
 
 void KMS_Stat_Snd_Read(void) {
-    if(dma_get_csr(CHANNEL_SOUNDOUT) & 0x01) // test DMA enable
-        kms.status.snd_dma |= SNDOUT_DMA_ENABLE;
-    else
-        kms.status.snd_dma &= ~SNDOUT_DMA_ENABLE;
     IoMem[IoAccessCurrentAddress&IO_SEG_MASK] = kms.status.snd_dma;
 }
 
 void kms_sndout_underrun() {
     kms.status.snd_dma |=  SNDOUT_DMA_UNDERRUN|SNDOUT_DMA_REQUEST;
-    kms.status.snd_dma &= ~SNDOUT_DMA_ENABLE;
-    set_interrupt(INT_SOUND_OVRUN, RELEASE_INT);
+    set_interrupt(INT_SOUND_OVRUN, SET_INT);
 }
 
 void KMS_Ctrl_KM_Write(void) {
@@ -420,7 +419,7 @@ bool kms_device_enabled(int dev_addr) {
         if(mask==dev_addr && mask!=0xF)
             return true;
     }
-    Log_Printf(LOG_WARN, "[KMS] Device %i disabled (mask: %08X)",dev_addr,km_dev_msk);
+    Log_Printf(LOG_KMS_LEVEL, "[KMS] Device %i disabled (mask: %08X)",dev_addr,km_dev_msk);
     return false;
 }
 
@@ -483,7 +482,7 @@ void kms_mouse_button(bool left, bool down) {
     }
 }
 
-#define MOUSE_POLL_FREQ 100 // 100Hz
+#define MOUSE_POLL_FREQ 400 // 400Hz
 
 void kms_mouse_move(int x, bool left, int y, bool up) {
     
@@ -554,6 +553,6 @@ void Mouse_Handler(void) {
     if (m_move_steps>0 && (m_move_x>0 || m_move_y>0)) {
         kms_mouse_move_step();
         
-        CycInt_AddRelativeInterrupt((1000*1000)/MOUSE_POLL_FREQ, INTERRUPT_MOUSE);
+        CycInt_AddRelativeInterruptUs((1000*1000)/MOUSE_POLL_FREQ, true, INTERRUPT_MOUSE);
     }
 }

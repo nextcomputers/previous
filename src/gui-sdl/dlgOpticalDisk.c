@@ -249,5 +249,10 @@ void DlgOptical_Main(void)
 	}
 	while (but != DISKDLG_EXIT && but != SDLGUI_QUIT
 	        && but != SDLGUI_ERROR && !bQuitProgram);
+    
+    /* Disable realtime mode if an MO drive is connected */
+    for (int i = 0; i < MO_MAX_DRIVES; i++)
+        if(ConfigureParams.MO.drive[i].bDriveConnected)
+            ConfigureParams.System.bRealtime = false;
 }
 

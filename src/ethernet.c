@@ -376,7 +376,7 @@ void print_buf(Uint8 *buf, Uint32 size) {
 #define ENET_FRAMESIZE_MAX  1518    /* 1500 byte data and 14 byte header, 4 byte CRC */
 
 /* Ethernet periodic check */
-#define ENET_IO_DELAY   40000   /* use 2000 for NeXT hardware test, 500 for status test */
+#define ENET_IO_DELAY   20000   /* use 20000 for NeXT hardware test, 500 for status test */
 #define ENET_IO_SHORT   500     /* use 400 for 68030 hardware test */
 
 enum {
@@ -611,7 +611,7 @@ void ENET_IO_Handler(void) {
 		enet_io();
 	}
 	
-	CycInt_AddRelativeInterrupt(receiver_state==RECV_STATE_WAITING?ENET_IO_DELAY:ENET_IO_SHORT, INTERRUPT_ENET_IO);
+	CycInt_AddRelativeInterruptTicks(receiver_state==RECV_STATE_WAITING?ENET_IO_DELAY:ENET_IO_SHORT, INTERRUPT_ENET_IO);
 }
 
 void enet_reset(void) {
@@ -620,7 +620,7 @@ void enet_reset(void) {
     } else if (enet_stopped==true) {
         Log_Printf(LOG_WARN, "Starting Ethernet Transmitter/Receiver");
         enet_stopped=false;
-        CycInt_AddRelativeInterrupt(ENET_IO_DELAY, INTERRUPT_ENET_IO);
+        CycInt_AddRelativeInterruptTicks(ENET_IO_DELAY, INTERRUPT_ENET_IO);
         /* Start SLIRP */
         if (ConfigureParams.Ethernet.bEthernetConnected) {
             enet_slirp_start();

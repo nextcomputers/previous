@@ -1,8 +1,14 @@
-#define AUDIO_FREQUENCY  44100;            /* Sound playback frequency */
+#define AUDIO_FREQUENCY      44100            /* Sound playback frequency */
+#define AUDIO_BUFFER_SAMPLES 512
 
-void SND_IO_Handler(void);
+void SND_Out_Handler(void);
+void SND_In_Handler(void);
 void Sound_Reset(void);
 
 void snd_start_output(Uint8 mode);
 void snd_stop_output(void);
+void snd_start_input(Uint8 mode);
+void snd_stop_input(void);
+bool snd_output_active();
+bool snd_input_active();
 void snd_gpo_access(Uint8 data);

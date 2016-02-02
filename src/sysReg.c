@@ -489,8 +489,14 @@ void HardclockReadCSR(void) {
 
 /* Event counter register */
 
+static Uint64 sysTimerOffset = 0;
+
 void System_Timer_Read(void) {
-    IoMem_WriteLong(IoAccessCurrentAddress&IO_SEG_MASK, host_time_us() & 0xFFFFF);
+    IoMem_WriteLong(IoAccessCurrentAddress&IO_SEG_MASK, (host_time_us() - sysTimerOffset) & 0xFFFFF);
+}
+
+void System_Timer_Write(void) {
+    sysTimerOffset = host_time_us() - IoMem_ReadLong(IoAccessCurrentAddress&IO_SEG_MASK);
 }
 
 /* Color Video Interrupt Register */

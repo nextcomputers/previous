@@ -276,9 +276,9 @@ void floppy_reset(bool hard) {
         flp.st[0]=flp.st[1]=flp.st[2]=flp.st[3]=0;
         flp.pcn=0;
     } else {
-        /* Single poll interrupt after reset (FIXME: delay should be 250 ms) */
+        /* Single poll interrupt after reset (delay = 250 ms) */
         flp_io_state = FLP_STATE_INTERRUPT;
-        CycInt_AddRelativeInterrupt(1000000, INTERRUPT_FLP_IO);
+        CycInt_AddRelativeInterruptUs(250*1000, false, INTERRUPT_FLP_IO);
     }
 }
 
@@ -509,7 +509,7 @@ void floppy_read(void) {
         flp_io_drv = drive;
         flp_io_state = FLP_STATE_READ;
     }
-    CycInt_AddRelativeInterrupt(1000, INTERRUPT_FLP_IO);
+    CycInt_AddRelativeInterruptTicks(1000, INTERRUPT_FLP_IO);
 }
 
 void floppy_write(void) {
@@ -566,7 +566,7 @@ void floppy_write(void) {
         flp_io_drv = drive;
         flp_io_state = FLP_STATE_WRITE;
     }
-    CycInt_AddRelativeInterrupt(1000, INTERRUPT_FLP_IO);
+    CycInt_AddRelativeInterruptTicks(1000, INTERRUPT_FLP_IO);
 }
 
 void floppy_format(void) {
@@ -591,7 +591,7 @@ void floppy_format(void) {
         flp_buffer.limit = 4;
         flp_io_drv = drive;
         flp_io_state = FLP_STATE_FORMAT;
-        CycInt_AddRelativeInterrupt(100000, INTERRUPT_FLP_IO);
+        CycInt_AddRelativeInterruptTicks(100000, INTERRUPT_FLP_IO);
     }
 }
 
@@ -613,7 +613,7 @@ void floppy_read_id(void) {
     send_rw_status(drive);
     
     flp_io_state = FLP_STATE_INTERRUPT;
-    CycInt_AddRelativeInterrupt(1000, INTERRUPT_FLP_IO);
+    CycInt_AddRelativeInterruptTicks(1000, INTERRUPT_FLP_IO);
 }
 
 void floppy_recalibrate(void) {
@@ -633,7 +633,7 @@ void floppy_recalibrate(void) {
         flp.sra &= ~SRA_TRK0_N;
         
         flp_io_state = FLP_STATE_INTERRUPT;
-        CycInt_AddRelativeInterrupt(1000000, INTERRUPT_FLP_IO);
+        CycInt_AddRelativeInterruptTicks(1000000, INTERRUPT_FLP_IO);
     }
 }
 
@@ -656,7 +656,7 @@ void floppy_seek(Uint8 relative) {
     }
         
     flp_io_state = FLP_STATE_INTERRUPT;
-    CycInt_AddRelativeInterrupt(1000000, INTERRUPT_FLP_IO);
+    CycInt_AddRelativeInterruptTicks(1000000, INTERRUPT_FLP_IO);
 }
 
 void floppy_interrupt_status(void) {
@@ -712,7 +712,7 @@ void floppy_unimplemented(void) {
     result_size = 1;
     
     flp_io_state = FLP_STATE_INTERRUPT;
-    CycInt_AddRelativeInterrupt(10000, INTERRUPT_FLP_IO);
+    CycInt_AddRelativeInterruptTicks(10000, INTERRUPT_FLP_IO);
 }
 
 void floppy_execute_cmd(void) {
@@ -1098,7 +1098,7 @@ void FLP_IO_Handler(void) {
             return;
     }
     
-    CycInt_AddRelativeInterrupt(2000, INTERRUPT_FLP_IO);
+    CycInt_AddRelativeInterruptTicks(2000, INTERRUPT_FLP_IO);
 }
 
 
