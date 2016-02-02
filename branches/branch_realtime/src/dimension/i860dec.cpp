@@ -49,7 +49,11 @@
 #include <fenv.h>
 #include <assert.h>
 
+
+#if __APPLE__
+#else
 #pragma STDC FENV_ACCESS ON
+#endif
 
 #define DELAY_SLOT_PC() ((m_dim == DIM_FULL) ? 12 : 8)
 #define DELAY_SLOT() do{\

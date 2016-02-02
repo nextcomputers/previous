@@ -197,19 +197,6 @@ size_t Preferences_cKeysForJoysticks = sizeof(Preferences_KeysForJoysticks) / si
 #define DLGSOUND_48KHZ      7
 #define DLGSOUND_50KHZ      8
 
-static const int nSoundFreqs[] =
-{
-	11025,
-	12517,
-	16000,
-	22050,
-	25033,
-	32000,
-	44100,
-	48000,
-	50066
-};
-
 @implementation PrefsController
 
 
@@ -220,6 +207,7 @@ static const int nSoundFreqs[] =
 */
 - (BOOL)choosePathForControl:(NSTextField*)textField chooseDirectories:(bool)chooseDirectories defaultInitialDir:(NSString*)defaultInitialDir
 {
+    /*
 	// Create and configure an OpenPanel
     NSOpenPanel *openPanel = [NSOpenPanel openPanel];
 	[openPanel setCanChooseDirectories: chooseDirectories];
@@ -242,11 +230,11 @@ static const int nSoundFreqs[] =
 	}
 	
 	// Run the OpenPanel, then check if the user clicked OK and selected at least one file
-    if ( (NSOKButton == [openPanel runModalForDirectory:directoryToOpen file:fileToPreselect types:nil] )
-	    && ([[openPanel filenames] count] > 0) )
+    if ( (NSModalResponseOK == [openPanel runModalForDirectory:directoryToOpen file:fileToPreselect types:nil] )
+	    && ([[openPanel URLs] count] > 0) )
 	{
 		// Get the path to the selected file
-		NSString *path = [[openPanel filenames] objectAtIndex:0];
+		NSString *path = [[[openPanel URLs] objectAtIndex:0] path];
 		
 		// Set the control to it (abbreviated if possible)
 		[textField setStringValue:[path stringByAbbreviatingWithTildeInPath]];
@@ -256,6 +244,7 @@ static const int nSoundFreqs[] =
     }
 	
 	// Signal that the selection was aborted
+     */
 	return FALSE;
 }
 
@@ -410,6 +399,7 @@ static const int nSoundFreqs[] =
 
 - (IBAction)loadConfigFrom:(id)sender
 {
+    /*
     NSString *ConfigFile = [NSString stringWithCString:(sConfigFileName) encoding:NSASCIIStringEncoding];
     NSOpenPanel *openPanel = [ NSOpenPanel openPanel ];
     
@@ -436,6 +426,7 @@ static const int nSoundFreqs[] =
 		// Refresh all the controls to match ConfigureParams
 		[self setAllControls];
 	}
+     */
 }
 
 /**
@@ -443,6 +434,7 @@ static const int nSoundFreqs[] =
  */
 - (IBAction)saveConfigAs:(id)sender
 {
+    /*
 	char splitpath[FILENAME_MAX], splitname[FILENAME_MAX];
 
 	// Update the ConfigureParams from the controls
@@ -474,6 +466,7 @@ static const int nSoundFreqs[] =
 		strcpy(sConfigFileName, szPath);
 		Configuration_Save();
 	}
+     */
 }
 
 
@@ -483,6 +476,7 @@ static const int nSoundFreqs[] =
 */
 - (IBAction)commitAndClose:(id)sender
 {
+    /*
 	BOOL applyChanges = true;
 
 	// The user clicked OK
@@ -510,6 +504,7 @@ static const int nSoundFreqs[] =
 
 	// Close the window
 	[window close];	
+     */
 }
 
 - (void)initKeysDropDown:(NSPopUpButton*)dropDown
@@ -553,7 +548,7 @@ static const int nSoundFreqs[] =
 			int i;
 			for (i = 0; i < cRealJoysticks; i++)
 			{
-				const char* szJoystickName = SDL_JoystickName(i);
+				const char* szJoystickName = SDL_JoystickNameForIndex(i);
 				[realJoystick addItemWithTitle:[[NSString stringWithCString:szJoystickName encoding:NSASCIIStringEncoding] capitalizedString]];	
 				[[realJoystick lastItem] setTag:i];	
 			}
@@ -932,13 +927,13 @@ static const int nSoundFreqs[] =
 
 - (IBAction) setWidth:(id)sender;
 {
-	NSLog(@"Change Max Zoom width: %ld", [sender intValue]);
+	NSLog(@"Change Max Zoom width: %d", [sender intValue]);
     [maxZoomedWidth setIntValue: [sender intValue]];
 }
 
 - (IBAction) setHeight:(id)sender;
 {
-	NSLog(@"Change Max Zoom height: %ld", [sender intValue]);
+	NSLog(@"Change Max Zoom height: %d", [sender intValue]);
     [maxZoomedHeight setIntValue: [sender intValue]];
 }
 

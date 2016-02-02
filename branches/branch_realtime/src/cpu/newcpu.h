@@ -17,7 +17,6 @@
 #include "compat.h"
 #include "maccess.h"
 #include "memory.h"
-#include "custom.h"
 
 /* Possible exceptions sources for M68000_Exception() and Exception() */
 #define M68000_EXC_SRC_CPU	    1  /* Direct CPU exception */
@@ -245,7 +244,7 @@ STATIC_INLINE uae_u32 munge24 (uae_u32 x)
 
 extern int mmu_enabled, mmu_triggered;
 extern int cpu_cycles;
-extern int cpucycleunit;
+
 STATIC_INLINE void set_special (uae_u32 x)
 {
 	regs.spcflags |= x;

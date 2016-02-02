@@ -70,7 +70,6 @@
 #endif
 
 //#include "machdep/m68k.h"
-#include "custom.h"
 #include "memory.h"
 //#include "readcpu.h"
 #include "newcpu.h"

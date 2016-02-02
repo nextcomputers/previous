@@ -82,5 +82,7 @@ extern void Screen_EnterFullScreen(void);
 extern void Screen_ReturnFromFullScreen(void);
 extern void Screen_ModeChanged(void);
 extern bool Screen_Draw(void);
+extern void SDL_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects);
+extern void SDL_UpdateRect(SDL_Surface *screen, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 
 #endif  /* ifndef HATARI_SCREEN_H */

@@ -14,6 +14,7 @@ const char SDLGui_fileid[] = "Previous sdlgui.c : " __DATE__ " " __TIME__;
 
 #include "main.h"
 #include "sdlgui.h"
+#include "screen.h"
 
 #include "font5x8.h"
 #include "font10x16.h"

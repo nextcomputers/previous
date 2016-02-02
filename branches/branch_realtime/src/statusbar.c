@@ -690,7 +690,7 @@ static void Statusbar_OverlayDraw(SDL_Surface *surf)
  * May not be called when screen is locked (SDL limitation).
  */
 void Statusbar_Update(SDL_Surface *surf) {
-    static nextCPUupdate = 0;
+    static Uint32 nextCPUupdate = 0;
 	Uint32 color, currentticks;
 	SDL_Rect rect;
 	int i;

@@ -516,10 +516,6 @@ extern void log_close (FILE *f);
 */
 #define CYCLE_UNIT 512
 
-/* This one is used by cfgfile.c.  We could reduce the CYCLE_UNIT back to 1,
-   I'm not 100% sure this code is bug free yet.  */
-#define OFFICIAL_CYCLE_UNIT 512
-
 /*
  * You can specify numbers from 0 to 5 here. It is possible that higher
  * numbers will make the CPU emulation slightly faster, but if the setting
@@ -559,12 +555,6 @@ extern void log_close (FILE *f);
 #define xcalloc(T, N) calloc(sizeof (T), N)
 #define xfree(T) free(T)
 #define xrealloc(T, TP, N) realloc(TP, sizeof (T) * (N))
-
-#if 0
-extern void *xmalloc (size_t);
-extern void *xcalloc (size_t, size_t);
-extern void xfree (const void*);
-#endif
 
 #else
 
