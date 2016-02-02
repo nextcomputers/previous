@@ -86,7 +86,7 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
 
     /* Did we change the realtime flag? */
     if(current->System.bRealtime != changed->System.bRealtime) {
-        printf("realtime flaf reset\n");
+        printf("realtime flag reset\n");
         return true;
     }
 

@@ -656,6 +656,11 @@ void Configuration_Apply(bool bReset)
  */
 void Configuration_SetSystemDefaults(void) {
     ConfigureParams.System.bRealtime = true;
+
+    for(int i = 0; i < MO_MAX_DRIVES; i++)
+        if(ConfigureParams.MO.drive[i].bDriveConnected)
+            ConfigureParams.System.bRealtime = false;
+
     switch (ConfigureParams.System.nMachineType) {
         case NEXT_CUBE030:
             ConfigureParams.System.bTurbo = false;

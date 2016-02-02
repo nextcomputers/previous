@@ -64,11 +64,9 @@ void dma_m2m_write_memory(void);
 void dma_scc_read_memory(void);
 
 Uint8* dma_sndout_read_memory(int* len);
-void   dma_sndout_intr();
+bool   dma_sndout_intr();
 
 void dma_printer_read_memory(void);
-
-Uint8 dma_get_csr(int channel);
 
 /* Delayed DMA interrupt handlers */
 void M2RDMA_InterruptHandler(void);

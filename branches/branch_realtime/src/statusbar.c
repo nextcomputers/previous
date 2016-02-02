@@ -81,13 +81,19 @@ static bool bOldDspLed;
 static SDL_Rect NdLedRect;
 static int nOldNdLed;
 
+static SDL_Rect CPULedRect;
+static double oldRealTime;
+static double oldVirtualTime;
+static double lastRealTime;
+static double lastVirtualTime;
+
 /* led colors */
 static Uint32 LedColorOn, LedColorOff, SysColorOn, SysColorOff, DspColorOn, DspColorOff;
 static Uint32 NdColorOn, NdColorCS8, NdColorOff;
 static Uint32 GrayBg, LedColorBg;
+static Uint32 CPUColors[256];
 
-
-#define MAX_MESSAGE_LEN 66 /* changed for Previous, was 50 */
+#define MAX_MESSAGE_LEN 62 /* changed for Previous, was 50 */
 typedef struct msg_item {
 	struct msg_item *next;
 	char msg[MAX_MESSAGE_LEN+1];
@@ -99,12 +105,6 @@ typedef struct msg_item {
 static msg_item_t DefaultMessage;
 static msg_item_t *MessageList = &DefaultMessage;
 static SDL_Rect MessageRect;
-#if 0
-/* rect for both frame skip value and fast forward indicator */
-static SDL_Rect FrameSkipsRect;
-static int nOldFrameSkips;
-static int bOldFastForward;
-#endif
 
 /* screen height above statusbar and height of statusbar below screen */
 static int ScreenHeight;
@@ -169,22 +169,24 @@ void Statusbar_BlinkLed(drive_index_t drive)
 
 /*-----------------------------------------------------------------------*/
 /**
- * Set system, dsp and nextdimension led state, anything enabling led with 
+ * Set system, DSP, CPU and NeXTdimension led state, anything enabling led with
  * this needs also to take care of disabling it.
  */
-void Statusbar_SetSystemLed(bool state)
-{
+void Statusbar_SetSystemLed(bool state) {
 	bOldSystemLed = state;
 }
 
-void Statusbar_SetDspLed(bool state)
-{
+void Statusbar_SetDspLed(bool state) {
 	bOldDspLed = state;
 }
 
-void Statusbar_SetNdLed(int state)
-{
+void Statusbar_SetNdLed(int state) {
     nOldNdLed = state;
+}
+
+void Statusbar_SetCPULed(double virtualTime, double realTime) {
+    oldVirtualTime = virtualTime;
+    oldRealTime    = realTime;
 }
 
 /*-----------------------------------------------------------------------*/
@@ -210,6 +212,52 @@ static void Statusbar_OverlayInit(const SDL_Surface *surf)
 		OverlayUnderside = NULL;
 	}
 	bOverlayState = OVERLAY_NONE;
+}
+
+static Uint32 hsv2rgb(const SDL_PixelFormat *format, float hue, float saturation, float value) {
+    int r = 0, g = 0, b = 0;
+    if (saturation == 0)
+        r = g = b = (int) (value * 255.0 + 0.5);
+    else {
+        float h = (hue -floor(hue)) * 6.0;
+        float f = h - floor(h);
+        float p = value * (1.0 - saturation);
+        float q = value * (1.0 - saturation * f);
+        float t = value * (1.0 - (saturation * (1.0 - f)));
+        switch ((int) h) {
+            case 0:
+                r = value * 255.0 + 0.5;
+                g = t * 255.0 + 0.5;
+                b = p * 255.0 + 0.5;
+                break;
+            case 1:
+                r = q * 255.0 + 0.5;
+                g = value * 255.0 + 0.5;
+                b = p * 255.0 + 0.5;
+                break;
+            case 2:
+                r = p * 255.0 + 0.5;
+                g = value * 255.0 + 0.5;
+                b = t * 255.0 + 0.5;
+                break;
+            case 3:
+                r = p * 255.0 + 0.5;
+                g = q * 255.0 + 0.5;
+                b = value * 255.0 + 0.5;
+                break;
+            case 4:
+                r = t * 255.0 + 0.5;
+                g = p * 255.0 + 0.5;
+                b = value * 255.0 + 0.5;
+                break;
+            case 5:
+                r = value * 255.0 + 0.5;
+                g = p * 255.0 + 0.5;
+                b = q * 255.0 + 0.5;
+                break;
+        }
+    }
+    return SDL_MapRGB(format, r, g, b);
 }
 
 /*-----------------------------------------------------------------------*/
@@ -239,7 +287,9 @@ void Statusbar_Init(SDL_Surface *surf)
     NdColorCS8  = SDL_MapRGB(surf->format, 0xe0, 0x00, 0x00);
     NdColorOn   = SDL_MapRGB(surf->format, 0x00, 0x00, 0xe0);
 	GrayBg      = SDL_MapRGB(surf->format, 0xb5, 0xb7, 0xaa);
-
+    for(int i = 0; i < 256; i++)
+        CPUColors[i] = hsv2rgb(surf->format, (float)i/(float)768, 1, 1);
+    
 	/* disable leds */
 	for (i = 0; i < NUM_DEVICE_LEDS; i++) {
 		Led[i].state = Led[i].oldstate = false;
@@ -304,34 +354,21 @@ void Statusbar_Init(SDL_Surface *surf)
 		Led[i].offset = offset;
 		offset += LedRect.w + fontw;
 	}
-#if 0
-	/* draw frameskip */
-	FrameSkipsRect.x = offset;
-	FrameSkipsRect.y = MessageRect.y;
-	SDLGui_Text(FrameSkipsRect.x, FrameSkipsRect.y, "FS:");
-	FrameSkipsRect.x += 3 * fontw + fontw/2;
-	FrameSkipsRect.w = 4 * fontw;
-	FrameSkipsRect.h = fonth;
-
-	if(ConfigureParams.System.bFastForward) {
-		SDLGui_Text(FrameSkipsRect.x, FrameSkipsRect.y, "0 >>");
-	} else {
-		SDLGui_Text(FrameSkipsRect.x, FrameSkipsRect.y, "0");
-	}
-
-	nOldFrameSkips = 0;
-
-	/* intialize messages */
-	MessageRect.x = FrameSkipsRect.x + FrameSkipsRect.w + fontw;
-#else
     MessageRect.x = offset + fontw;
-#endif
 	MessageRect.w = MAX_MESSAGE_LEN * fontw;
 	MessageRect.h = fonth;
 	for (item = MessageList; item; item = item->next) {
 		item->shown = false;
 	}
 
+    /* draw CPU led box */
+    CPULedRect = LedRect;
+    CPULedRect.x = surf->w - 21*fontw - CPULedRect.w;
+    ledbox.x = CPULedRect.x - 1;
+    SDLGui_Text(ledbox.x - 4*fontw - fontw/2, MessageRect.y, "CPU:");
+    SDL_FillRect(surf, &ledbox, LedColorBg);
+    SDL_FillRect(surf, &CPULedRect, CPUColors[0]);
+    
     /* draw i860 led box */
     NdLedRect = LedRect;
     NdLedRect.x = surf->w - 15*fontw - NdLedRect.w;
@@ -652,8 +689,8 @@ static void Statusbar_OverlayDraw(SDL_Surface *surf)
  * 
  * May not be called when screen is locked (SDL limitation).
  */
-void Statusbar_Update(SDL_Surface *surf)
-{
+void Statusbar_Update(SDL_Surface *surf) {
+    static nextCPUupdate = 0;
 	Uint32 color, currentticks;
 	SDL_Rect rect;
 	int i;
@@ -687,7 +724,6 @@ void Statusbar_Update(SDL_Surface *surf)
 		rect.x = Led[i].offset;
 		SDL_FillRect(surf, &rect, color);
 		SDL_UpdateRects(surf, 1, &rect);
-		DEBUGPRINT(("LED[%d] = %s\n", i, Led[i].state?"ON":"OFF"));
 	}
 
 	Statusbar_ShowMessage(surf, currentticks);
@@ -700,7 +736,6 @@ void Statusbar_Update(SDL_Surface *surf)
 	}
 	SDL_FillRect(surf, &DspLedRect, color);
 	SDL_UpdateRects(surf, 1, &DspLedRect);
-	DEBUGPRINT(("DSP LED = ON\n"));
 
     /* Draw scr2 LED */
     if (bOldSystemLed) {
@@ -710,7 +745,6 @@ void Statusbar_Update(SDL_Surface *surf)
     }
     SDL_FillRect(surf, &SystemLedRect, color);
     SDL_UpdateRects(surf, 1, &SystemLedRect);
-    DEBUGPRINT(("SCR2 LED = ON\n"));
     
     /* Draw NeXTdimension LED */
     switch(nOldNdLed) {
@@ -721,5 +755,23 @@ void Statusbar_Update(SDL_Surface *surf)
     }
     SDL_FillRect(surf, &NdLedRect, color);
     SDL_UpdateRects(surf, 1, &NdLedRect);
-    DEBUGPRINT(("ND LED = ON\n"));
+    
+    /* Draw CPU LED */
+    double dvt = oldVirtualTime - lastVirtualTime;
+    double drt = oldRealTime    - lastRealTime;
+    if(drt != 0) {
+        dvt /= drt;
+        dvt -= 0.6; // below 60% is really bad
+        dvt /= (1-0.6);
+        dvt *= 255;
+        if(dvt < 0)   dvt = 0;
+        if(dvt > 255) dvt = 255;
+        SDL_FillRect(surf, &CPULedRect, CPUColors[(int)dvt]);
+        SDL_UpdateRects(surf, 1, &CPULedRect);
+        if(currentticks > nextCPUupdate) {
+            lastRealTime    = oldRealTime;
+            lastVirtualTime = oldVirtualTime;
+            nextCPUupdate = currentticks + 500;
+        }
+    }
 }

@@ -26,7 +26,8 @@ typedef enum
   INTERRUPT_ECC_IO,
   INTERRUPT_ENET_IO,
   INTERRUPT_FLP_IO,
-  INTERRUPT_SND_IO,
+  INTERRUPT_SND_OUT,
+  INTERRUPT_SND_IN,
   INTERRUPT_LP_IO,
   MAX_INTERRUPTS
 } interrupt_id;
@@ -57,7 +58,8 @@ extern int usCheckCycles;
 extern void CycInt_Reset(void);
 extern void CycInt_MemorySnapShot_Capture(bool bSave);
 extern void CycInt_AcknowledgeInterrupt(void);
-extern void CycInt_AddRelativeInterrupt(int64_t CycleTime, interrupt_id Handler);
+extern void CycInt_AddRelativeInterruptCycles(int64_t CycleTime, interrupt_id Handler);
+extern void CycInt_AddRelativeInterruptTicks(int64_t TickTime, interrupt_id Handler);
 extern void CycInt_AddRelativeInterruptUs(int64_t CycleTime, bool repeat, interrupt_id Handler);
 extern void CycInt_RemovePendingInterrupt(interrupt_id Handler);
 extern bool CycInt_InterruptActive(interrupt_id Handler);

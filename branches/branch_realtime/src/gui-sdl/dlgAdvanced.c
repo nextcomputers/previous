@@ -245,6 +245,8 @@ void Dialog_AdvancedDlg(void) {
 	}
     if(ConfigureParams.System.bRealtime)
         advanceddlg[DLGADV_REALTIME].state |= SG_SELECTED;
+    else
+        advanceddlg[DLGADV_REALTIME].state &= ~SG_SELECTED;
     
     /* Remove 40 MHz option if system is non-Turbo */
     if (ConfigureParams.System.bTurbo) {
@@ -424,6 +426,10 @@ void Dialog_AdvancedDlg(void) {
 
     ConfigureParams.System.bRealtime = (advanceddlg[DLGADV_REALTIME].state & SG_SELECTED) != 0;
     
+    for(int i = 0; i < MO_MAX_DRIVES; i++)
+        if(ConfigureParams.MO.drive[i].bDriveConnected)
+            ConfigureParams.System.bRealtime = false;
+
     if (advanceddlg[DLGADV_120NS].state & SG_SELECTED)
         ConfigureParams.Memory.nMemorySpeed = MEMORY_120NS;
     else if (advanceddlg[DLGADV_100NS].state & SG_SELECTED)

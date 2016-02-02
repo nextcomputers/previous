@@ -307,10 +307,10 @@ const INTERCEPT_ACCESS_FUNC IoMemTable_NEXT[] =
 	{ 0x02018198, SIZE_BYTE, IoMem_ReadWithoutInterceptionButTrace, IoMem_WriteWithoutInterceptionButTrace },
 	
 	/* Event Counter */
-	{ 0x0201a000, SIZE_BYTE, System_Timer_Read, IoMem_WriteWithoutInterceptionButTrace },
-	{ 0x0201a001, SIZE_BYTE, IoMem_ReadWithoutInterception, IoMem_WriteWithoutInterceptionButTrace },
-	{ 0x0201a002, SIZE_BYTE, IoMem_ReadWithoutInterception, IoMem_WriteWithoutInterceptionButTrace },
-	{ 0x0201a003, SIZE_BYTE, IoMem_ReadWithoutInterception, IoMem_WriteWithoutInterceptionButTrace },
+	{ 0x0201a000, SIZE_BYTE, System_Timer_Read, System_Timer_Write },
+	{ 0x0201a001, SIZE_BYTE, IoMem_ReadWithoutInterception, System_Timer_Write },
+	{ 0x0201a002, SIZE_BYTE, IoMem_ReadWithoutInterception, System_Timer_Write },
+	{ 0x0201a003, SIZE_BYTE, IoMem_ReadWithoutInterception, System_Timer_Write },
 
 	{ 0, 0, NULL, NULL }
 };

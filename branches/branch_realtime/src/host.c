@@ -97,6 +97,8 @@ bool host_is_realtime() {
     return isRealtime;
 }
 
+extern void Statusbar_SetCPULed(double virtualTime, double realTime);
+
 double host_time_sec() {
     
     host_lock(&timeLock);
@@ -108,10 +110,10 @@ double host_time_sec() {
     } else {
         t  = nCyclesMainCounter - cycleCounterStart;
         t /= cycleDivisor;
-        rt -= t;
-        if(rt < -0.001) {
-            rt *= -1000 * 1000;
-            host_sleep_us(rt);
+        if(t-rt > 0.001) {
+            double sleep = t - rt;
+            sleep *= 1000*1000;
+            host_sleep_us(sleep);
         }
     }
     bool state = isRealtime;
@@ -124,9 +126,12 @@ double host_time_sec() {
         secsStart        += t;
         t                 = 0;
     }
+    t += secsStart;
+    Statusbar_SetCPULed(t,rt);
     host_unlock(&timeLock);
-
-    return t + secsStart;
+    
+    
+    return t;
 }
 
 // Return current time as micro seconds

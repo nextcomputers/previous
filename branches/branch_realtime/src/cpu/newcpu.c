@@ -1889,7 +1889,7 @@ STATIC_INLINE int do_specialties (int cycles)
 		if (currprefs.cpu_idle && currprefs.m68k_speed != 0 && ((regs.spcflags & SPCFLAG_STOP)) == SPCFLAG_STOP) {
 			/* sleep 1ms if STOP-instruction is executed */
 			if (1) {
-				static int sleepcnt, lvpos, zerocnt;
+				static int sleepcnt, lvpos;
 				if (vpos != lvpos) {
 					sleepcnt--;
 #ifdef JIT
@@ -2213,13 +2213,12 @@ static void m68k_run_mmu040 (void)
             
             /*
             switch(pc) {
-                case 0x04037152:
-                case 0x0403716e:
+                case 0x04025384:
                     DebugUI();
                     break;
             }
             */
-             
+            
 			mmu_opcode = -1;
 			mmu_opcode = opcode = x_prefetch (0);
 			cpu_cycles = (*cpufunctbl[opcode])(opcode) / nCyclesDivisor; ;
