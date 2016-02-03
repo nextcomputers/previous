@@ -319,11 +319,6 @@ static const struct Config_Tag configs_System[] =
 	{ "nDSPType", Int_Tag, &ConfigureParams.System.nDSPType },
 	{ "bDSPMemoryExpansion", Bool_Tag, &ConfigureParams.System.bDSPMemoryExpansion },
 	{ "bRealTimeClock", Bool_Tag, &ConfigureParams.System.bRealTimeClock },
-	{ "bPatchTimerD", Bool_Tag, &ConfigureParams.System.bPatchTimerD },
-	{ "bFastForward", Bool_Tag, &ConfigureParams.System.bFastForward },
-    
-    { "bAddressSpace24", Bool_Tag, &ConfigureParams.System.bAddressSpace24 },
-    { "bCycleExactCpu", Bool_Tag, &ConfigureParams.System.bCycleExactCpu },
     { "n_FPUType", Int_Tag, &ConfigureParams.System.n_FPUType },
     { "bCompatibleFPU", Bool_Tag, &ConfigureParams.System.bCompatibleFPU },
     { "bMMU", Bool_Tag, &ConfigureParams.System.bMMU },
@@ -528,12 +523,7 @@ void Configuration_SetDefault(void)
 	ConfigureParams.System.bRealtime = true;
 	ConfigureParams.System.nDSPType = DSP_TYPE_EMU;
 	ConfigureParams.System.bDSPMemoryExpansion = false;
-	ConfigureParams.System.bPatchTimerD = true;
 	ConfigureParams.System.bRealTimeClock = true;
-	ConfigureParams.System.bFastForward = false;
-    
-    ConfigureParams.System.bAddressSpace24 = false;
-    ConfigureParams.System.bCycleExactCpu = false;
     ConfigureParams.System.n_FPUType = FPU_68882;
     ConfigureParams.System.bCompatibleFPU = true;
     ConfigureParams.System.bMMU = true;
@@ -1010,10 +1000,6 @@ void Configuration_MemorySnapShot_Capture(bool bSave)
 	MemorySnapShot_Store(&ConfigureParams.System.nDSPType, sizeof(ConfigureParams.System.nDSPType));
 	MemorySnapShot_Store(&ConfigureParams.System.bDSPMemoryExpansion, sizeof(ConfigureParams.System.bDSPMemoryExpansion));
 	MemorySnapShot_Store(&ConfigureParams.System.bRealTimeClock, sizeof(ConfigureParams.System.bRealTimeClock));
-	MemorySnapShot_Store(&ConfigureParams.System.bPatchTimerD, sizeof(ConfigureParams.System.bPatchTimerD));
-    
-    MemorySnapShot_Store(&ConfigureParams.System.bAddressSpace24, sizeof(ConfigureParams.System.bAddressSpace24));
-    MemorySnapShot_Store(&ConfigureParams.System.bCycleExactCpu, sizeof(ConfigureParams.System.bCycleExactCpu));
     MemorySnapShot_Store(&ConfigureParams.System.n_FPUType, sizeof(ConfigureParams.System.n_FPUType));
     MemorySnapShot_Store(&ConfigureParams.System.bCompatibleFPU, sizeof(ConfigureParams.System.bCompatibleFPU));
     MemorySnapShot_Store(&ConfigureParams.System.bMMU, sizeof(ConfigureParams.System.bMMU));

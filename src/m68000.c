@@ -248,8 +248,6 @@ void M68000_CheckCpuSettings(void)
 		default: fprintf (stderr, "Init680x0() : Error, fpu_model unknown\n");
     }
 
-	changed_prefs.address_space_24 = ConfigureParams.System.bAddressSpace24;
-	changed_prefs.cpu_cycle_exact = ConfigureParams.System.bCycleExactCpu;
 	changed_prefs.fpu_strict = ConfigureParams.System.bCompatibleFPU;
 	changed_prefs.mmu_model = ConfigureParams.System.bMMU?changed_prefs.cpu_model:0;
 
@@ -269,8 +267,6 @@ void M68000_MemorySnapShot_Capture(bool bSave)
 	uae_u8 *chunk = 0;
 
 	/* For the UAE CPU core: */
-	MemorySnapShot_Store(&currprefs.address_space_24,
-	                     sizeof(currprefs.address_space_24));
 	MemorySnapShot_Store(&regs.regs[0], sizeof(regs.regs));       /* D0-D7 A0-A6 */
 
 	if (bSave)

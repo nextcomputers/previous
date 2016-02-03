@@ -49,9 +49,25 @@ Uint32 Audio_Output_Queue_Size() {
 static void Audio_Input_CallBack(void *userdata, Uint8 *stream, int len) {
     Log_Printf(LOG_WARN, "Audio_Input_CallBack %d", len);
     if(len == 0) return;
-    host_lock(&recBufferLock);
+    Audio_Input_Lock();
     while(--len)
         recBuffer[recBufferWr++&REC_BUFFER_MASK] = *stream++;
+    Audio_Input_Unlock();
+}
+
+void Audio_Input_Lock() {
+    host_lock(&recBufferLock);
+}
+
+int Audio_Input_Read() {
+    if(bSoundInputWorking) {
+        if((recBufferRd&REC_BUFFER_MASK)==(recBufferWr&REC_BUFFER_MASK)) return -1;
+        return recBuffer[recBufferRd++];
+    } else
+        return 0; // silence
+}
+
+void Audio_Input_Unlock() {
     host_unlock(&recBufferLock);
 }
 
@@ -81,9 +97,9 @@ void Audio_Output_Init(void)
     }
     
     /* Set up SDL audio: */
-    request.freq     = AUDIO_FREQUENCY; /* 44,1 kHz */
-    request.format   = AUDIO_S16MSB;    /* 16-Bit signed, big endian */
-    request.channels = 2;               /* stereo */
+    request.freq     = AUDIO_OUT_FREQUENCY; /* 44,1 kHz */
+    request.format   = AUDIO_S16MSB;        /* 16-Bit signed, big endian */
+    request.channels = 2;                   /* stereo */
     request.callback = NULL;
     request.userdata = NULL;
     request.samples  = AUDIO_BUFFER_SAMPLES; /* buffer size in samples */
@@ -121,26 +137,27 @@ void Audio_Input_Init(void) {
     }
     
     /* Set up SDL audio: */
-    request.freq = 8000;
-    request.format = AUDIO_S16MSB;	/* 16-Bit signed, big endian */
-    request.channels = 1;			/* mono */
+    request.freq     = AUDIO_IN_FREQUENCY; /* 8kHz */
+    request.format   = AUDIO_S16MSB;	   /* 16-Bit signed, big endian */
+    request.channels = 1;			       /* mono */
     request.callback = Audio_Input_CallBack;
     request.userdata = NULL;
-    request.samples = 1024;	/* buffer size in samples (2048 byte) */
+    request.samples  = AUDIO_BUFFER_SAMPLES; /* buffer size in samples */
+    
+    Audio_Input_Device = SDL_OpenAudioDevice(NULL, 1, &request, &granted, 0); /* Open audio device */
+    
+    if (Audio_Input_Device==0 || (!(bSoundInputWorking))){
+        Log_Printf(LOG_WARN, "Can't use audio: %s\n", SDL_GetError());
+        DlgAlert_Notice("Error: Can't open audio input device. No sound recording (will record silence instead).");
+        bSoundInputWorking = false;
+        return;
+    }
     
     bSoundInputWorking = true;
     bSoundInputWorking &= check_audio(request.freq,     granted.freq,     "freq");
     bSoundInputWorking &= check_audio(request.format,   granted.format,   "format");
     bSoundInputWorking &= check_audio(request.channels, granted.channels, "channels");
     bSoundInputWorking &= check_audio(request.samples,  granted.samples,  "samples");
-    
-    Audio_Input_Device = SDL_OpenAudioDevice(NULL, 1, &request, &granted, 0); /* Open audio device */
-    if (Audio_Input_Device==0 || (!(bSoundInputWorking))){
-        Log_Printf(LOG_WARN, "Can't use audio: %s\n", SDL_GetError());
-        DlgAlert_Notice("Error: Can't open audio input device. No sound recording.");
-        bSoundInputWorking = false;
-        return;
-    }
 }
 
 
@@ -170,27 +187,12 @@ void Audio_Input_UnInit(void) {
     }
 }
 
-
-/*-----------------------------------------------------------------------*/
-/**
- * Lock the audio sub system so that the callback function will not be called.
- */
-
-void Audio_Input_Lock(void) {
-    SDL_LockAudioDevice(Audio_Input_Device);
-}
-
-
 /*-----------------------------------------------------------------------*/
 /**
  * Unlock the audio sub system so that the callback function will be called again.
  */
 void Audio_Output_Unlock(void) {
     SDL_UnlockAudioDevice(Audio_Output_Device);
-}
-
-void Audio_Input_Unlock(void) {
-    SDL_UnlockAudioDevice(Audio_Input_Device);
 }
 
 /*-----------------------------------------------------------------------*/

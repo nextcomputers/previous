@@ -58,7 +58,6 @@ uae_u32 xhex_1e512[] ={0xa60e91c7, 0xe319a0ae, 0x46a3};
 uae_u32 xhex_1e1024[]={0x81750c17, 0xc9767586, 0x4d48};
 uae_u32 xhex_1e2048[]={0xc53d5de5, 0x9e8b3b5d, 0x5a92};
 uae_u32 xhex_1e4096[]={0x8a20979b, 0xc4605202, 0x7525};
-static uae_u32 xhex_inf[]   ={0x00000000, 0x00000000, 0x7fff};
 static uae_u32 xhex_nan[]   ={0xffffffff, 0xffffffff, 0x7fff};
 #if USE_LONG_DOUBLE
 static long double *fp_pi     = (long double *)xhex_pi;
@@ -77,7 +76,6 @@ static long double *fp_1e512  = (long double *)xhex_1e512;
 static long double *fp_1e1024 = (long double *)xhex_1e1024;
 static long double *fp_1e2048 = (long double *)xhex_1e2048;
 static long double *fp_1e4096 = (long double *)xhex_1e4096;
-static long double *fp_inf    = (long double *)xhex_inf;
 static long double *fp_nan    = (long double *)xhex_nan;
 #else
 static uae_u32 dhex_pi[]    ={0x54442D18, 0x400921FB};
@@ -308,40 +306,11 @@ typedef uae_s64 tointtype;
 typedef uae_s32 tointtype;
 #endif
 
-static void fpu_format_error (void)
-{
-	uaecptr newpc;
-	regs.t0 = regs.t1 = 0;
-	MakeSR ();
-	if (!regs.s) {
-		regs.usp = m68k_areg (regs, 7);
-		m68k_areg (regs, 7) = regs.isp;
-	}
-	regs.s = 1;
-	m68k_areg (regs, 7) -= 2;
-	x_put_long (m68k_areg (regs, 7), 0x0000 + 14 * 4);
-	m68k_areg (regs, 7) -= 4;
-	x_put_long (m68k_areg (regs, 7), m68k_getpc ());
-	m68k_areg (regs, 7) -= 2;
-	x_put_long (m68k_areg (regs, 7), regs.sr);
-	newpc = x_get_long (regs.vbr + 14 * 4);
-	m68k_setpc (newpc);
-#ifdef JIT
-	set_special (SPCFLAG_END_COMPILE);
-#endif
-	regs.fp_exception = true;
-}
-
 #define FPU_EXP_UNIMP_INS 0
 #define FPU_EXP_DISABLED 1
 #define FPU_EXP_UNIMP_DATATYPE_PACKED_PRE 2
 #define FPU_EXP_UNIMP_DATATYPE_PACKED_POST 3
 #define FPU_EXP_UNIMP_EA 4
-
-static void fpu_arithmetic_exception (uae_u16 opcode, uae_u16 extra, uae_u32 ea, uaecptr oldpc, int type, fpdata *src, int reg)
-{
-	// TODO
-}
 
 static void fpu_op_unimp (uae_u16 opcode, uae_u16 extra, uae_u32 ea, uaecptr oldpc, int type, fpdata *src, int reg)
 {
@@ -1837,7 +1806,6 @@ void fpuop_save (uae_u32 opcode)
 
 void fpuop_restore (uae_u32 opcode)
 {
-	int fpu_version = get_fpu_version ();
 	uaecptr pc = m68k_getpc () - 2;
 	uae_u32 ad;
 	uae_u32 d;
@@ -1861,7 +1829,6 @@ void fpuop_restore (uae_u32 opcode)
 		return;
 	regs.fpiar = pc;
 
-	uae_u32 pad = ad;
 	if (incr < 0) {
 		ad -= 4;
 		d = x_get_long (ad);

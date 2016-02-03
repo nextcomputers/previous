@@ -50,7 +50,7 @@ extern signed long pissoff;
 #endif
 
 #define SCALE 2
-#define MAXCYCLES (1000 * CYCLE_UNIT)
+#define MAXCYCLES 1000
 #define MAXREGOPT 65536
 
 #define BYTES_PER_INST 10240  /* paranoid ;-) */

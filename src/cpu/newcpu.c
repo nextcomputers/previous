@@ -303,8 +303,6 @@ void build_cpufunctbl (void)
 	case 68020:
 		lvl = 2;
 		tbl = op_smalltbl_3_ff;
-		if (currprefs.cpu_cycle_exact)
-			tbl = op_smalltbl_20_ff;
 		break;
 	case 68010:
 		lvl = 1;
@@ -322,10 +320,6 @@ void build_cpufunctbl (void)
 #ifdef CPUEMU_11
 		if (currprefs.cpu_compatible)
 			tbl = op_smalltbl_11_ff; /* prefetch */
-#endif
-#ifdef CPUEMU_12
-		if (currprefs.cpu_cycle_exact)
-			tbl = op_smalltbl_12_ff; /* prefetch and cycle-exact */
 #endif
 		break;
 #endif
@@ -362,9 +356,8 @@ void build_cpufunctbl (void)
 			opcnt++;
 		}
 	}
-	write_log ("Building CPU, %d opcodes (%d %d %d)\n",
-		opcnt, lvl,
-		currprefs.cpu_cycle_exact ? -1 : currprefs.cpu_compatible ? 1 : 0, currprefs.address_space_24);
+	write_log ("Building CPU, %d opcodes (%d %d)\n",
+		opcnt, lvl, currprefs.cpu_compatible ? 1 : 0);
 	write_log ("CPU=%d, MMU=%d, FPU=%d ($%02x), JIT%s=%d, realtime=%d\n",
                currprefs.cpu_model, currprefs.mmu_model,
                currprefs.fpu_model, currprefs.fpu_revision,
@@ -391,7 +384,6 @@ static void prefs_changed_cpu (void) {
     currprefs.fpu_revision = changed_prefs.fpu_revision;
 	currprefs.mmu_model = changed_prefs.mmu_model;
 	currprefs.cpu_compatible = changed_prefs.cpu_compatible;
-	currprefs.cpu_cycle_exact = changed_prefs.cpu_cycle_exact;
 }
 
 void check_prefs_changed_cpu (void)
@@ -408,8 +400,7 @@ void check_prefs_changed_cpu (void)
 		|| currprefs.fpu_model != changed_prefs.fpu_model
         || currprefs.fpu_revision != changed_prefs.fpu_revision
 		|| currprefs.mmu_model != changed_prefs.mmu_model
-		|| currprefs.cpu_compatible != changed_prefs.cpu_compatible
-		|| currprefs.cpu_cycle_exact != changed_prefs.cpu_cycle_exact) {
+		|| currprefs.cpu_compatible != changed_prefs.cpu_compatible) {
 
 			prefs_changed_cpu ();
 			build_cpufunctbl ();
@@ -449,17 +440,8 @@ void init_m68k (void)
 //	}
 	if (currprefs.fpu_model > 0)
 		write_log ("/%d", currprefs.fpu_model);
-	if (currprefs.cpu_cycle_exact) {
-		if (currprefs.cpu_model == 68000)
-			write_log (" prefetch and cycle-exact");
-		else
-			write_log (" ~cycle-exact");
-	} else if (currprefs.cpu_compatible)
+    if (currprefs.cpu_compatible)
 		write_log (" prefetch");
-	if (currprefs.address_space_24) {
-		regs.address_space_mask = 0x00ffffff;
-		write_log (" 24-bit");
-	}
 	write_log ("\n");
 
 	read_table68k ();
@@ -819,10 +801,6 @@ void REGPARAM2 MakeFromSR (void)
 {
 	int oldm = regs.m;
 	int olds = regs.s;
-
-	if (currprefs.cpu_cycle_exact && currprefs.cpu_model >= 68020) {
-		regs.ce020memcycles = 0;
-	}
 
 	SET_XFLG ((regs.sr >> 4) & 1);
 	SET_NFLG ((regs.sr >> 3) & 1);
@@ -1685,29 +1663,8 @@ static void do_trace (void)
 	}
 }
 
-
-// handle interrupt delay (few cycles)
-STATIC_INLINE int time_for_interrupt (void)
-{
-	if (regs.ipl > regs.intmask || regs.ipl == 7) {
-#if 0
-		if (regs.ipl == 3 && current_hpos () < 11) {
-			write_log ("%d\n", current_hpos ());
-			activate_debugger ();
-		}
-#endif
-		return 1;
-	}
-	return 0;
-}
-
 void doint (void)
 {
-	if (currprefs.cpu_cycle_exact) {
-		regs.ipl_pin = intlev ();
-		set_special (SPCFLAG_INT);
-		return;
-	}
 	if (currprefs.cpu_compatible)
 		set_special (SPCFLAG_INT);
 	else
@@ -1786,12 +1743,6 @@ STATIC_INLINE int do_specialties (int cycles)
 				break;
 			}
 		
-		if (currprefs.cpu_cycle_exact) {
-			ipl_fetch ();
-			if (time_for_interrupt ()) {
-					do_interrupt (regs.ipl, true);
-			}
-		}
 		if ((regs.spcflags & (SPCFLAG_BRK | SPCFLAG_MODE_CHANGE))) {
 			unset_special (SPCFLAG_BRK | SPCFLAG_MODE_CHANGE);
 			// SPCFLAG_BRK breaks STOP condition, need to prefetch
@@ -1825,21 +1776,6 @@ STATIC_INLINE int do_specialties (int cycles)
 
 	if (regs.spcflags & SPCFLAG_TRACE)
 		do_trace ();
-
-	if (currprefs.cpu_cycle_exact) {
-		if (time_for_interrupt ()) {
-			do_interrupt (regs.ipl, true);
-		}
-	} else {
-#if 0
-		if (regs.spcflags & SPCFLAG_INT) {
-			int intr = intlev ();
-			unset_special (SPCFLAG_INT | SPCFLAG_DOINT);
-			if (intr > 0 && (intr > regs.intmask || intr == 7))
-				do_interrupt (intr, false);		/* call do_interrupt() with Pending=false, not necessarily true but harmless */
-		}
-#endif
-	}
 
 	if (regs.spcflags & SPCFLAG_DOINT) {
 		unset_special (SPCFLAG_DOINT);
@@ -2027,7 +1963,7 @@ insretry:
 				opcode = mmu030_opcode;
 				mmu030_idx = 0;
 				mmu030_retry = false;
-				cpu_cycles = (*cpufunctbl[opcode])(opcode) / nCyclesDivisor;
+				cpu_cycles = (*cpufunctbl[opcode])(opcode);
 				cnt--; // so that we don't get in infinite loop if things go horribly wrong
 				if (!mmu030_retry)
 					break;
@@ -2071,7 +2007,7 @@ insretry:
             if (intr>regs.intmask || (intr==7 && intr>lastintr)) {
                 do_interrupt (intr, false);
             }
-            host_realtime(regs.intmask < 5);
+            host_realtime(regs.intmask <= REALTIME_INT_LVL);
             lastintr = intr;
 
 			if (regs.spcflags) {
@@ -2134,7 +2070,7 @@ static void m68k_run_mmu040 (void)
             
 			mmu_opcode = -1;
 			mmu_opcode = opcode = x_prefetch (0);
-			cpu_cycles = (*cpufunctbl[opcode])(opcode) / nCyclesDivisor; ;
+			cpu_cycles = (*cpufunctbl[opcode])(opcode);
                         
 			DSP_Run(cpu_cycles);
             i860_Run(cpu_cycles);
@@ -2166,7 +2102,7 @@ static void m68k_run_mmu040 (void)
             if (intr>regs.intmask || (intr==7 && intr>lastintr)) {
                 do_interrupt (intr, false);
             }
-            host_realtime(regs.intmask < 5);
+            host_realtime(regs.intmask <= REALTIME_INT_LVL);
             lastintr = intr;
             
             
@@ -3009,7 +2945,7 @@ void cpureset (void)
 	uaecptr ksboot = 0xf80002 - 2; /* -2 = RESET hasn't increased PC yet */
 	uae_u16 ins;
 
-	if (currprefs.cpu_compatible || currprefs.cpu_cycle_exact) {
+	if (currprefs.cpu_compatible) {
 //		customreset (0);
 		customreset ();
 		return;
@@ -3066,43 +3002,6 @@ void m68k_resumestopped (void)
 		return;
 	regs.stopped = 0;
 	unset_special (SPCFLAG_STOP);
-}
-
-STATIC_INLINE void fill_cache040 (uae_u32 addr)
-{
-	int index, i, lws;
-	uae_u32 tag;
-	uae_u32 data;
-	struct cache040 *c;
-	static int linecnt;
-	int line = 0;		// 25/12/2013 - Strict C compliance KVK
-
-	addr &= ~15;
-	index = (addr >> 4) & (CACHESETS040 - 1);
-	tag = regs.s | (addr & ~((CACHESETS040 << 4) - 1));
-	lws = (addr >> 2) & 3;
-	c = &caches040[index];
-	for (i = 0; i < CACHELINES040; i++) {
-		if (c->valid[i] && c->tag[i] == tag) {
-			// cache hit
-			regs.prefetch020addr[0] = addr;
-			regs.prefetch020data[0] = c->data[i][lws];
-			return;
-		}
-	}
-	// cache miss
-	data = mem_access_delay_longi_read_ce020 (addr);
-	line = linecnt;
-	for (i = 0; i < CACHELINES040; i++) {
-		int line = (linecnt + i) & (CACHELINES040 - 1);
-		if (c->tag[i] != tag || c->valid[i] == false) {
-			c->tag[i] = tag;
-			c->valid[i] = true;
-			c->data[i][0] = data;
-		}
-	}
-	regs.prefetch020addr[0] = addr;
-	regs.prefetch020data[0] = data;
 }
 
 // this one is really simple and easy
@@ -3308,7 +3207,6 @@ uae_u32 read_dcache030 (uaecptr addr, int size)
 	int lws1, lws2;
 	uae_u32 tag1, tag2;
 	int aligned = addr & 3;
-	int len = (1 << size) * 8;
 	uae_u32 v1, v2;
 
 	if (!(regs.cacr & 0x100) || currprefs.cpu_model == 68040 || !cancache030 (addr)) { // data cache disabled? shared with 68040 "ce"
@@ -3405,15 +3303,4 @@ uae_u32 get_word_ce030_prefetch (int o)
 
 void flush_dcache (uaecptr addr, int size)
 {
-	int i;
-	if (!currprefs.cpu_cycle_exact)
-		return;
-	if (currprefs.cpu_model >= 68030) {
-		for (i = 0; i < CACHELINES030; i++) {
-			dcaches030[i].valid[0] = 0;
-			dcaches030[i].valid[1] = 0;
-			dcaches030[i].valid[2] = 0;
-			dcaches030[i].valid[3] = 0;
-		}
-	}
 }

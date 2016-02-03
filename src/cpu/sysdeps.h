@@ -508,14 +508,6 @@ extern void log_close (FILE *f);
 #endif
 #endif
 
-/* Every Amiga hardware clock cycle takes this many "virtual" cycles.  This
-   used to be hardcoded as 1, but using higher values allows us to time some
-   stuff more precisely.
-   512 is the official value from now on - it can't change, unless we want
-   _another_ config option "finegrain2_m68k_speed".
-*/
-#define CYCLE_UNIT 512
-
 /*
  * You can specify numbers from 0 to 5 here. It is possible that higher
  * numbers will make the CPU emulation slightly faster, but if the setting

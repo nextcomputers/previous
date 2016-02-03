@@ -100,7 +100,9 @@ void snd_start_input(Uint8 mode) {
     if (sndin_inited) {
         Audio_Input_Enable(true);
     } else {
-        Log_Printf(LOG_SND_LEVEL, "[Audio] Not starting. Audio input device not initialized.");
+        sndin_inited = true;
+        Audio_Input_Init();
+        Audio_Input_Enable(true);
     }
     /* Starting sound output loop */
     if (!sound_input_active) {
@@ -115,6 +117,8 @@ void snd_start_input(Uint8 mode) {
 
 void snd_stop_input(void) {
     sound_input_active=false;
+    sndin_inited = false;
+    Audio_Input_UnInit();
 }
 
 /* Sound IO loops */
@@ -172,7 +176,18 @@ bool snd_output_active() {
 void SND_In_Handler(void) {
     CycInt_AcknowledgeInterrupt();
     
-    Log_Printf(LOG_WARN, "SND_In_Handler");
+    int samples = dma_sndin_write_memory() / 2;
+
+    if(samples) {
+        Uint64 delay = samples;
+        delay       *= 1000 * 1000;
+        delay       /= AUDIO_IN_FREQUENCY;
+    
+        CycInt_AddRelativeInterruptUs(delay, true, INTERRUPT_SND_IN);
+    } else {
+        if(snd_input_active())
+            kms_sndin_overrun();
+    }
 }
 
 bool snd_input_active() {

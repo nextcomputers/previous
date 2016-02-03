@@ -24,6 +24,7 @@
 #include "dsp.h"
 #include "mmu_common.h"
 #include "kms.h"
+#include "audio.h"
 
 #define LOG_DMA_LEVEL LOG_DEBUG
 
@@ -741,6 +742,37 @@ Uint8* dma_sndout_read_memory(int* len) {
 bool dma_sndout_intr() {
     bool result = (dma[CHANNEL_SOUNDOUT].csr & DMA_SUPDATE) != 0;
     dma_interrupt(CHANNEL_SOUNDOUT);
+    return result;
+}
+
+int dma_sndin_write_memory() {
+    int result = 0;
+    if (dma[CHANNEL_SOUNDIN].csr&DMA_ENABLE) {
+        Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel Sound In: Write to memory at $%08x, %i bytes",
+                   dma[CHANNEL_SOUNDIN].next,dma[CHANNEL_SOUNDIN].limit-dma[CHANNEL_SOUNDIN].next);
+        
+        if ((dma[CHANNEL_SOUNDIN].limit%4) || (dma[CHANNEL_SOUNDIN].next%4)) {
+            Log_Printf(LOG_WARN, "[DMA] Channel Sound In: Error! Bad alignment! (Next: $%08X, Limit: $%08X)",
+                       dma[CHANNEL_SOUNDIN].next, dma[CHANNEL_SOUNDIN].limit);
+            abort();
+        }
+        
+        TRY(prb) {
+            Audio_Input_Lock();
+            for(; dma[CHANNEL_SOUNDIN].next<dma[CHANNEL_SOUNDIN].limit; dma[CHANNEL_SOUNDIN].next++, result++) {
+                int value = Audio_Input_Read();
+                if(value < 0) break;
+                NEXTMemory_WriteByte(dma[CHANNEL_SOUNDIN].next, value);
+            }
+            Audio_Input_Unlock();
+        } CATCH(prb) {
+            Log_Printf(LOG_WARN, "[DMA] Channel Sound In: Bus error reading from %08x",dma[CHANNEL_SOUNDIN].next);
+            dma[CHANNEL_SOUNDIN].csr &= ~DMA_ENABLE;
+            dma[CHANNEL_SOUNDIN].csr |= (DMA_COMPLETE|DMA_BUSEXC);
+        } ENDTRY
+        
+        dma_interrupt(CHANNEL_SOUNDIN);
+    }
     return result;
 }
 

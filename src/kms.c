@@ -283,6 +283,11 @@ void kms_sndout_underrun() {
     set_interrupt(INT_SOUND_OVRUN, SET_INT);
 }
 
+void kms_sndin_overrun() {
+    kms.status.snd_dma |=  SNDIN_DMA_OVERRUN|SNDIN_DMA_REQUEST;
+    set_interrupt(INT_SOUND_OVRUN, SET_INT);
+}
+
 void KMS_Ctrl_KM_Write(void) {
     Uint8 val = IoMem[IoAccessCurrentAddress&IO_SEG_MASK];
     

@@ -430,7 +430,7 @@ void Profile_CpuStop(void)
 	memset(area, 0, sizeof(profile_area_t));
 	area->lowest = cpu_profile.size;
 
-	for (; i < cpu_profile.size; i++, item++) {
+	for (i = 0; i < cpu_profile.size; i++, item++) {
 		update_area(i, item, area);
 	}
 

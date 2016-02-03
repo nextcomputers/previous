@@ -341,10 +341,6 @@ typedef struct
   DSPTYPE nDSPType;               /* how to "emulate" DSP */
   bool bDSPMemoryExpansion;
   bool bRealTimeClock;
-  bool bPatchTimerD;
-  bool bFastForward;
-  bool bAddressSpace24;
-  bool bCycleExactCpu;
   FPUTYPE n_FPUType;
   bool bCompatibleFPU;            /* More compatible FPU */
   bool bMMU;                      /* TRUE if MMU is enabled */

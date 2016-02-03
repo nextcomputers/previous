@@ -65,6 +65,7 @@ void dma_scc_read_memory(void);
 
 Uint8* dma_sndout_read_memory(int* len);
 bool   dma_sndout_intr();
+int    dma_sndin_write_memory();
 
 void dma_printer_read_memory(void);
 

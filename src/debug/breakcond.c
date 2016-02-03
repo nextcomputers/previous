@@ -389,22 +389,6 @@ typedef struct {
 	const char *constraints;
 } var_addr_t;
 
-/* helpers for TOS OS call opcode accessor functions */
-#define INVALID_OPCODE 0xFFFFu
-
-static inline Uint16 getLineOpcode(Uint8 line)
-{
-    Uint32 pc;
-    Uint16 instr;
-    pc = M68000_GetPC();
-    instr = NEXTMemory_ReadWord(pc);
-    /* for opcode X, Line-A = 0xA00X, Line-F = 0xF00X */
-    if ((instr >> 12) == line) {
-        return instr & 0xFF;
-    }
-    return INVALID_OPCODE;
-}
-
 /**
  * Readline match callback for CPU variable/symbol name completion.
  * STATE = 0 -> different text from previous one.
