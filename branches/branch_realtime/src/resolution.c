@@ -57,53 +57,6 @@ void Resolution_GetDesktopSize(int *width, int *height)
  	*height = DesktopHeight;
 }
 
-
-/**
- * Select best resolution from given SDL video modes.
- * - If width and height are given, select the smallest mode larger
- *   or equal to requested size
- * - Otherwise select the largest available mode
- * return true for success and false if no matching mode was found.
- */
-static bool Resolution_Select(SDL_Rect **modes, int *width, int *height)
-{
-#define TOO_LARGE 0x7fff
-	int i, bestw, besth;
-
-	if (!(*width && *height)) {
-		/* search the largest mode (prefer wider ones) */
-		for (i = 0; modes[i]; i++) {
-			if ((modes[i]->w > *width) && (modes[i]->h >= *height)) {
-				*width = modes[i]->w;
-				*height = modes[i]->h;
-			}
-		}
-		Dprintf(("resolution: largest found video mode: %dx%d\n",*width,*height));
-		return true;
-	}
-
-	/* Search the smallest mode larger or equal to requested size */
-	bestw = TOO_LARGE;
-	besth = TOO_LARGE;
-	for (i = 0; modes[i]; i++) {
-		if ((modes[i]->w >= *width) && (modes[i]->h >= *height)) {
-			if ((modes[i]->w < bestw) || (modes[i]->h < besth)) {
-				bestw = modes[i]->w;
-				besth = modes[i]->h;
-			}
-		}
-	}
-	if (bestw == TOO_LARGE || besth == TOO_LARGE) {
-		return false;
-	}
-	*width = bestw;
-	*height = besth;
-	Dprintf(("resolution: video mode found: %dx%d\n",*width,*height));
-	return true;
-#undef TOO_LARGE
-}
-
-
 /**
  * Search video mode size that best suits the given width/height/bpp
  * constraints and set them into given arguments.  With zeroed arguments,

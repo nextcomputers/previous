@@ -51,7 +51,6 @@ typedef struct
 INTERRUPTHANDLER PendingInterrupt;
 
 extern int64_t nCyclesMainCounter;
-extern int     nCyclesDivisor;
 
 extern int usCheckCycles;
 

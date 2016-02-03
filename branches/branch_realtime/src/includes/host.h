@@ -15,6 +15,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#define REALTIME_INT_LVL 1
+    
     enum {
         MAIN_DISPLAY,
         ND_DISPLAY,

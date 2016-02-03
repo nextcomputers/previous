@@ -1,4 +1,5 @@
-#define AUDIO_FREQUENCY      44100            /* Sound playback frequency */
+#define AUDIO_OUT_FREQUENCY  44100            /* Sound playback frequency */
+#define AUDIO_IN_FREQUENCY   8000             /* Sound recording frequency */
 #define AUDIO_BUFFER_SAMPLES 512
 
 void SND_Out_Handler(void);

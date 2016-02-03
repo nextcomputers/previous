@@ -45,7 +45,6 @@ int    usCheckCycles;
 
 static Sint64 nCyclesOver;
 Sint64 nCyclesMainCounter;         /* Main cycles counter, counts emulated CPU cycles sind reset */
-int    nCyclesDivisor;             /* CPU type dependent divisor */
 
 static const Sint64 TICK_RATE = 8; /* Tick rate is 8MHz */
 
@@ -92,15 +91,7 @@ void CycInt_Reset(void) {
 	nCyclesOver           = 0;
     nCyclesMainCounter    = 0;
     usCheckCycles         = 0;
-    
-    nCyclesDivisor = 1;
-    if(ConfigureParams.System.nCpuLevel == 3) {
-        if(NEXTRom[0xFFAB] != 0x04) //  HACK for ROM version 0.8.31 power-on test
-            nCyclesDivisor = 2;
-    } else
-        nCyclesDivisor = 3;
-    nCyclesDivisor *= (CYCLE_UNIT / 2);
-    
+        
 	/* Reset interrupt table */
 	for (i=0; i<MAX_INTERRUPTS; i++) {
 		InterruptHandlers[i].type      = CYC_INT_NONE;

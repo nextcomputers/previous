@@ -727,7 +727,7 @@ static bool Opt_HandleArgument(const char *path)
  */
 bool Opt_ParseParameters(int argc, const char * const argv[])
 {
-	int ncpu, skips, zoom, planes, cpuclock, threshold, memsize, port, freq, temp;
+	int ncpu, skips, planes, cpuclock, memsize, freq, temp;
 	const char *errstr;
 	int i, ok = true;
 	int val;
@@ -759,10 +759,6 @@ bool Opt_ParseParameters(int argc, const char * const argv[])
 
 		case OPT_CONFIRMQUIT:
 			ok = Opt_Bool(argv[++i], OPT_CONFIRMQUIT, &ConfigureParams.Log.bConfirmQuit);
-			break;
-
-		case OPT_FASTFORWARD:
-			ok = Opt_Bool(argv[++i], OPT_FASTFORWARD, &ConfigureParams.System.bFastForward);
 			break;
 			
 		case OPT_CONFIGFILE:
@@ -1141,16 +1137,6 @@ bool Opt_ParseParameters(int argc, const char * const argv[])
 			}
 			bLoadAutoSave = false;
 			break;
-
-		case OPT_CPU_ADDR24:
-			ok = Opt_Bool(argv[++i], OPT_CPU_ADDR24, &ConfigureParams.System.bAddressSpace24);
-			bLoadAutoSave = false;
-			break;			
-
-		case OPT_CPU_CYCLE_EXACT:
-			ok = Opt_Bool(argv[++i], OPT_CPU_CYCLE_EXACT, &ConfigureParams.System.bCycleExactCpu);
-			bLoadAutoSave = false;
-			break;			
 
 		case OPT_FPU_TYPE:
 			i += 1;

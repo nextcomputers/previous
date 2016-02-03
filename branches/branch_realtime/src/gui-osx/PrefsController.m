@@ -621,7 +621,6 @@ size_t Preferences_cKeysForJoysticks = sizeof(Preferences_KeysForJoysticks) / si
     IMPORT_TEXTFIELD(keyboardMappingFile, ConfigureParams.Keyboard.szMappingFileName);
     IMPORT_RADIO(machineType, ConfigureParams.System.nMachineType);
     IMPORT_RADIO(monitor, ConfigureParams.Screen.nMonitorType);
-    IMPORT_SWITCH(patchTimerD, ConfigureParams.System.bPatchTimerD);
     IMPORT_TEXTFIELD(printToFile, ConfigureParams.Printer.szPrintToFileName);
 //    IMPORT_RADIO(ramSize, ConfigureParams.Memory.nMemorySize);
     IMPORT_TEXTFIELD(readRS232FromFile, ConfigureParams.RS232.szInFileName);
@@ -832,7 +831,6 @@ size_t Preferences_cKeysForJoysticks = sizeof(Preferences_KeysForJoysticks) / si
     EXPORT_TEXTFIELD(keyboardMappingFile, ConfigureParams.Keyboard.szMappingFileName);
     EXPORT_RADIO(machineType, ConfigureParams.System.nMachineType);
     EXPORT_RADIO(monitor, ConfigureParams.Screen.nMonitorType);
-    EXPORT_SWITCH(patchTimerD, ConfigureParams.System.bPatchTimerD);
     EXPORT_TEXTFIELD(printToFile, ConfigureParams.Printer.szPrintToFileName);
 //    EXPORT_RADIO(ramSize, ConfigureParams.Memory.nMemorySize);
     EXPORT_TEXTFIELD(readRS232FromFile, ConfigureParams.RS232.szInFileName);

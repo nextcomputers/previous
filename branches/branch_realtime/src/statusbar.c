@@ -748,9 +748,9 @@ void Statusbar_Update(SDL_Surface *surf) {
     
     /* Draw NeXTdimension LED */
     switch(nOldNdLed) {
-        case 0: color = NdColorOff; break;
-        case 1: color = NdColorCS8;  break;
-        case 2: color = NdColorOn;  break;
+        case 0:  color = NdColorOff; break;
+        case 1:  color = NdColorCS8;  break;
+        case 2:  color = NdColorOn;  break;
 		default: color = NdColorOff; break;
     }
     SDL_FillRect(surf, &NdLedRect, color);
@@ -760,6 +760,9 @@ void Statusbar_Update(SDL_Surface *surf) {
     double dvt = oldVirtualTime - lastVirtualTime;
     double drt = oldRealTime    - lastRealTime;
     if(drt != 0) {
+        int fontw, fonth;
+        SDL_Rect   r;
+        
         dvt /= drt;
         dvt -= 0.6; // below 60% is really bad
         dvt /= (1-0.6);
@@ -767,6 +770,13 @@ void Statusbar_Update(SDL_Surface *surf) {
         if(dvt < 0)   dvt = 0;
         if(dvt > 255) dvt = 255;
         SDL_FillRect(surf, &CPULedRect, CPUColors[(int)dvt]);
+        SDLGui_GetFontSize(&fontw, &fonth);
+        r.x = CPULedRect.x - 4*fontw - fontw/2;
+        r.y = CPULedRect.y;
+        r.w = 4*fontw;
+        r.h = CPULedRect.h + 2;
+        SDL_FillRect(surf, &r, GrayBg);
+        SDLGui_Text(r.x, r.y-2, ConfigureParams.System.bRealtime ? "cpu:" : "CPU:");
         SDL_UpdateRects(surf, 1, &CPULedRect);
         if(currentticks > nextCPUupdate) {
             lastRealTime    = oldRealTime;

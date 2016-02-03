@@ -135,7 +135,6 @@ struct uae_prefs {
 	bool uaeserial;
 	int catweasel;
 	int cpu_idle;
-	bool cpu_cycle_exact;
 	int floppy_speed;
 	int floppy_write_length;
 	int floppy_random_bits_min;
@@ -206,7 +205,6 @@ struct uae_prefs {
 	int fpu_model;
 	int fpu_revision;
 	bool cpu_compatible;
-	bool address_space_24;
 	bool picasso96_nocustom;
 	int picasso96_modeflags;
 

@@ -76,24 +76,6 @@ static void ShortCut_MouseGrab(void)
 
 /*-----------------------------------------------------------------------*/
 /**
- * Shortcut to toggle YM/WAV sound recording
- */
-static void ShortCut_RecordSound(void)
-{
-}
-
-
-/*-----------------------------------------------------------------------*/
-/**
- * Shortcut to toggle screen animation recording
- */
-static void ShortCut_RecordAnimation(void)
-{
-}
-
-
-/*-----------------------------------------------------------------------*/
-/**
  * Shortcut to sound on/off
  */
 static void ShortCut_SoundOnOff(void)
@@ -102,18 +84,6 @@ static void ShortCut_SoundOnOff(void)
     
     Sound_Reset();
 }
-
-
-/*-----------------------------------------------------------------------*/
-/**
- * Shortcut to fast forward
- */
-static void ShortCut_FastForward(void)
-{
-		/* Set maximum speed */
-		ConfigureParams.System.bFastForward = true;
-}
-
 
 /*-----------------------------------------------------------------------*/
 /**

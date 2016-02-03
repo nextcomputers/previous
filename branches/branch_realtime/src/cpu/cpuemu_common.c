@@ -478,8 +478,6 @@ uae_u32 REGPARAM2 x_get_disp_ea_020 (uae_u32 base, int idx)
 	} else {
 		v = base + (uae_s32)((uae_s8)dp) + regd;
 	}
-//	if (cycles && currprefs.cpu_cycle_exact)
-//		x_do_cycles (cycles * cpucycleunit);
 	return v;
 }
 
@@ -739,30 +737,6 @@ void divbyzero_special (bool issigned, uae_s32 dst)
 
 #ifndef CPUEMU_68000_ONLY
 
-STATIC_INLINE int div_unsigned (uae_u32 src_hi, uae_u32 src_lo, uae_u32 div, uae_u32 *quot, uae_u32 *rem)
-{
-	uae_u32 q = 0, cbit = 0;
-	int i;
-
-	if (div <= src_hi) {
-		return 1;
-	}
-	for (i = 0 ; i < 32 ; i++) {
-		cbit = src_hi & 0x80000000ul;
-		src_hi <<= 1;
-		if (src_lo & 0x80000000ul) src_hi++;
-		src_lo <<= 1;
-		q = q << 1;
-		if (cbit || div <= src_hi) {
-			q |= 1;
-			src_hi -= div;
-		}
-	}
-	*quot = q;
-	*rem = src_hi;
-	return 0;
-}
-
 bool m68k_divl (uae_u32 opcode, uae_u32 src, uae_u16 extra)
 {
 	if ((extra & 0x400) && currprefs.int_no_unimplemented && currprefs.cpu_model == 68060) {
@@ -890,24 +864,6 @@ bool m68k_divl (uae_u32 opcode, uae_u32 src, uae_u16 extra)
 	}
 #endif
 	return true;
-}
-
-STATIC_INLINE void mul_unsigned (uae_u32 src1, uae_u32 src2, uae_u32 *dst_hi, uae_u32 *dst_lo)
-{
-	uae_u32 r0 = (src1 & 0xffff) * (src2 & 0xffff);
-	uae_u32 r1 = ((src1 >> 16) & 0xffff) * (src2 & 0xffff);
-	uae_u32 r2 = (src1 & 0xffff) * ((src2 >> 16) & 0xffff);
-	uae_u32 r3 = ((src1 >> 16) & 0xffff) * ((src2 >> 16) & 0xffff);
-	uae_u32 lo;
-
-	lo = r0 + ((r1 << 16) & 0xffff0000ul);
-	if (lo < r0) r3++;
-	r0 = lo;
-	lo = r0 + ((r2 << 16) & 0xffff0000ul);
-	if (lo < r0) r3++;
-	r3 += ((r1 >> 16) & 0xffff) + ((r2 >> 16) & 0xffff);
-	*dst_lo = lo;
-	*dst_hi = r3;
 }
 
 bool m68k_mull (uae_u32 opcode, uae_u32 src, uae_u16 extra)

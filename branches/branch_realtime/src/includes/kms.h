@@ -20,6 +20,7 @@ void kms_mouse_button(bool left, bool down);
 void kms_response(void);
 
 void kms_sndout_underrun();
+void kms_sndin_overrun();
 
 void Mouse_Handler(void);
 

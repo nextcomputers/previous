@@ -94,7 +94,7 @@ static char *dstblrmw, *dstwlrmw, *dstllrmw;
 static char *srcbrmw, *srcwrmw, *srclrmw;
 static char *dstbrmw, *dstwrmw, *dstlrmw;
 static char *prefetch_long, *prefetch_word;
-static char *srcli, *srcwi, *srcbi, *nextl, *nextw, *nextb;
+static char *srcli, *srcwi, *srcbi, *nextl, *nextw;
 static char *srcld, *dstld;
 static char *srcwd, *dstwd;
 static char *do_cycles, *disp000, *disp020;
@@ -176,11 +176,6 @@ static void fpulimit (void)
 	limit_braces = n_braces;
 	n_braces = 0;
 }
-static void cpulimit (void)
-{
-	printf ("#ifndef CPUEMU_68000_ONLY\n");
-}
-
 
 static void addcycles_ce020 (int cycles, char *s)
 {
@@ -265,6 +260,14 @@ static void returntail (bool iswrite)
 	}
 }
 
+static int adjust_cycles(int cycles) {
+    if(cpu_level >= 3) {
+        cycles *= 7;
+        cycles /= 10;
+    }
+    if(cycles == 0) cycles = 1;
+    return cycles;
+}
 
 static void returncycles (char *s, int cycles)
 {
@@ -280,7 +283,7 @@ static void returncycles (char *s, int cycles)
 		printf ("%sreturn;\n", s);
 		return;
 	}
-	printf ("%sreturn %d * CYCLE_UNIT / 2;\n", s, cycles);
+	printf ("%sreturn %d;\n", s, adjust_cycles(cycles));
 }
 
 static void addcycles_ce020_4 (char *name, int head, int tail, int cycles)
@@ -314,13 +317,6 @@ static void addcycles000 (int cycles)
 	if (!using_ce)
 		return;
 	printf ("\t%s (%d);\n", do_cycles, cycles);
-	count_cycles += cycles;
-}
-static void addcycles000_2 (char *s, int cycles)
-{
-	if (!using_ce)
-		return;
-	printf ("%s%s (%d);\n", s, do_cycles, cycles);
 	count_cycles += cycles;
 }
 
@@ -601,16 +597,6 @@ static void fill_prefetch_0 (void)
 	printf ("\t%s (0);\n", prefetch_word);
 	did_prefetch = 1;
 	ir2irc = 0;
-	count_read++;
-	insn_n_cycles += 4;
-}
-
-static void dummy_prefetch (void)
-{
-	int o = m68k_pc_offset + 2;
-	if (!using_prefetch)
-		return;
-	printf ("\t%s (%d);\n", srcwi, o);
 	count_read++;
 	insn_n_cycles += 4;
 }
@@ -3818,8 +3804,8 @@ static void gen_opcode (unsigned long int opcode)
 			fill_prefetch_full_000 ();
 			if (using_ce)
 				printf ("\treturn;\n");
-			else
-				printf ("\treturn 10 * CYCLE_UNIT / 2;\n");
+            else
+				printf ("\treturn %d;\n", adjust_cycles(10));
 		} else {
 			incpc ("(uae_s32)src + 2");
 			add_head_cycs (6);
@@ -3901,7 +3887,17 @@ static void gen_opcode (unsigned long int opcode)
 		add_head_cycs (6);
 		fill_prefetch_1 (2);
 		fill_prefetch_full_020 ();
-		returncycles ("\t\t\t", 12);
+            switch(cpu_level) {
+                case 4:
+                    returncycles ("\t\t\t", 6);
+                    break;
+                case 3:
+                    returncycles ("\t\t\t", 9);
+                    break;
+                default:
+                    returncycles ("\t\t\t", 12);
+                    break;
+            }
 		printf ("\t\t}\n");
 		add_head_cycs (10);
 		printf ("\t} else {\n");
