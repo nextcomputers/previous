@@ -4,7 +4,7 @@ set(SOURCES
 	file.c floppy.c ioMem.c ioMemTabNEXT.c ioMemTabTurbo.c memorySnapShot.c 
 	keymap.c kms.c m68000.c main.c mo.c nbic.c nextMemory.c paths.c printer.c queue.c 
 	ramdac.c resolution.c reset.c rs.c rtcnvram.c scandir.c scc.c fast_screen.c host.c
-	screenSnapShot.c scsi.c shortcut.c snd.c statusbar.c str.c sysReg.c tmc.c unzip.c 
+    scsi.c shortcut.c snd.c statusbar.c str.c sysReg.c tmc.c unzip.c
 	utils.c video.c zip.c)
 
 # When building for OSX, define specific sources for gui and ressources

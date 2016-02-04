@@ -278,7 +278,7 @@ void floppy_reset(bool hard) {
     } else {
         /* Single poll interrupt after reset (delay = 250 ms) */
         flp_io_state = FLP_STATE_INTERRUPT;
-        CycInt_AddRelativeInterruptUs(250*1000, false, INTERRUPT_FLP_IO);
+        CycInt_AddRelativeInterruptUs(250*1000, INTERRUPT_FLP_IO);
     }
 }
 

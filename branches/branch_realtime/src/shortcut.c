@@ -18,7 +18,6 @@ const char ShortCut_fileid[] = "Hatari shortcut.c : " __DATE__ " " __TIME__;
 #include "memorySnapShot.h"
 #include "reset.h"
 #include "screen.h"
-#include "screenSnapShot.h"
 #include "configuration.h"
 #include "shortcut.h"
 #include "debugui.h"
@@ -87,28 +86,6 @@ static void ShortCut_SoundOnOff(void)
 
 /*-----------------------------------------------------------------------*/
 /**
- * Shortcut to 'Boss' key, ie minmize Window and switch to another application
- */
-static void ShortCut_BossKey(void)
-{
-	/* If we are in full-screen, then return to a window */
-	Screen_ReturnFromFullScreen();
-
-	if (bGrabMouse)
-	{
-		SDL_SetRelativeMouseMode(SDL_FALSE);
-        SDL_SetWindowGrab(sdlWindow, SDL_FALSE);
-		bGrabMouse = false;
-	}
-	Main_PauseEmulation(true);
-
-	/* Minimize Window and give up processing to next one! */
-    fprintf(stderr,"FIXME: minimize window!\n");
-}
-
-
-/*-----------------------------------------------------------------------*/
-/**
  * Shorcut to debug interface
  */
 static void ShortCut_Debug(void)
@@ -174,30 +151,6 @@ void ShortCut_ActKey(void)
 		Main_UnPauseEmulation();
 		Reset_Cold();                  /* Reset emulator with 'cold' (clear all) */
 		break;
-#if 0
-	 case SHORTCUT_WARMRESET:
-		Main_UnPauseEmulation();
-		Reset_Warm();                  /* Emulator 'warm' reset */
-		break;
-	 case SHORTCUT_SCREENSHOT:
-		ScreenSnapShot_SaveScreen();   /* Grab screenshot */
-		break;
-	 case SHORTCUT_BOSSKEY:
-		ShortCut_BossKey();            /* Boss key */
-		break;
-	 case SHORTCUT_CURSOREMU:          /* Toggle joystick emu on/off */
-		Joy_ToggleCursorEmulation();
-		break;
-	 case SHORTCUT_FASTFORWARD:
-		ShortCut_FastForward();       /* Toggle Min/Max speed */
-		break;
-	 case SHORTCUT_RECANIM:
-		ShortCut_RecordAnimation();    /* Record animation */
-		break;
-	 case SHORTCUT_RECSOUND:
-		ShortCut_RecordSound();        /* Toggle sound recording */
-		break;
-#endif
 	 case SHORTCUT_SOUND:
 		ShortCut_SoundOnOff();         /* Enable/disable sound */
 		break;

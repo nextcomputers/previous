@@ -17,6 +17,8 @@ static SDL_AudioDeviceID Audio_Output_Device;
 
 static bool          bSoundOutputWorking = false; /* Is sound output OK */
 static bool          bSoundInputWorking  = false; /* Is sound input OK */
+static bool          bSoundOutAlertShown = false;
+static bool          bSoundInAlertShown  = false;
 static bool          bPlayingBuffer      = false; /* Is playing buffer? */
 static bool          bRecordingBuffer    = false; /* Is recording buffer? */
 static const  int    REC_BUFFER_SZ       = 16;  /* Recording buffer size in power of two */
@@ -107,7 +109,10 @@ void Audio_Output_Init(void)
     Audio_Output_Device = SDL_OpenAudioDevice(NULL, 0, &request, &granted, 0);
     if (Audio_Output_Device==0)	/* Open audio device */ {
         Log_Printf(LOG_WARN, "[Audio] Can't use audio: %s\n", SDL_GetError());
-        DlgAlert_Notice("Error: Can't open audio output device. No sound output.");
+        if(!bSoundOutAlertShown) {
+            DlgAlert_Notice("Error: Can't open audio output device. No sound output.");
+            bSoundOutAlertShown = true;
+        }
         bSoundOutputWorking = false;
         return;
     }
@@ -123,6 +128,8 @@ void Audio_Output_Init(void)
 }
 
 void Audio_Input_Init(void) {
+    if(!(bSoundInputWorking)) return;
+    
     SDL_AudioSpec request;    /* We fill in the desired SDL audio options here */
     SDL_AudioSpec granted;
     
@@ -148,7 +155,10 @@ void Audio_Input_Init(void) {
     
     if (Audio_Input_Device==0 || (!(bSoundInputWorking))){
         Log_Printf(LOG_WARN, "Can't use audio: %s\n", SDL_GetError());
-        DlgAlert_Notice("Error: Can't open audio input device. No sound recording (will record silence instead).");
+        if(!bSoundInAlertShown) {
+            DlgAlert_Notice("Error: Can't open audio input device. No sound recording (will record silence instead).");
+            bSoundInAlertShown = true;
+        }
         bSoundInputWorking = false;
         return;
     }

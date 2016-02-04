@@ -7,6 +7,7 @@
 
 #include "host.h"
 #include "configuration.h"
+#include "main.h"
 
 /* NeXTdimension blank handling, see nd_sdl.c */
 extern void nd_display_blank(void);
@@ -18,22 +19,50 @@ static const char* BLANKS[] = {
 };
 
 static volatile Uint32 blank[NUM_BLANKS];
-static Uint32 vblCounter[NUM_BLANKS];
-static Uint64 perfCounterStart;
-static Sint64 cycleCounterStart;
-static double secsStart;
-static bool   isRealtime;
-static bool   oldIsRealtime;
-static double cycleDivisor;
-static double realTimeAcc;
-static double cycleTimeAcc;
-static lock_t timeLock;
-static Uint32 ticksStart;
-static bool   enableRealtime;
-static Uint64 hardClockExpected;
-static Uint64 hardClockActual;
-static time_t unixTimeStart;
-static double unixTimeOffset = 0;
+static Uint32       vblCounter[NUM_BLANKS];
+static Uint64       perfCounterStart;
+static Sint64       cycleCounterStart;
+static double       secsStart;
+static bool         isRealtime;
+static bool         oldIsRealtime;
+static double       cycleDivisor;
+static double       realTimeAcc;
+static double       cycleTimeAcc;
+static lock_t       timeLock;
+static Uint32       ticksStart;
+static bool         enableRealtime;
+static Uint64       hardClockExpected;
+static Uint64       hardClockActual;
+static time_t       unixTimeStart;
+static double       unixTimeOffset = 0;
+static double       perfFrequency;
+static SDL_threadID mainThreadID;
+
+void host_reset() {
+    perfCounterStart  = SDL_GetPerformanceCounter();
+    perfFrequency     = SDL_GetPerformanceFrequency();
+    ticksStart        = SDL_GetTicks();
+    unixTimeStart     = time(NULL);
+    cycleCounterStart = 0;
+    secsStart         = 0;
+    isRealtime        = false;
+    oldIsRealtime     = false;
+    realTimeAcc       = 0;
+    cycleTimeAcc      = 0;
+    hardClockExpected = 0;
+    hardClockActual   = 0;
+    enableRealtime    = ConfigureParams.System.bRealtime;
+    mainThreadID      = SDL_ThreadID();
+    
+    for(int i = NUM_BLANKS; --i >= 0;) {
+        vblCounter[i] = 0;
+        blank[i]      = 0;
+    }
+    
+    cycleDivisor = ConfigureParams.System.nCpuFreq * 1000 * 1000;
+    
+    SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);
+}
 
 void host_blank(int slot, int src, bool state) {
     slot = 1 << slot;
@@ -63,30 +92,6 @@ void host_hardclock(int expected, int actual) {
     }
 }
 
-void host_reset() {
-    perfCounterStart  = SDL_GetPerformanceCounter();
-    ticksStart        = SDL_GetTicks();
-    unixTimeStart     = time(NULL);
-    cycleCounterStart = 0;
-    secsStart         = 0;
-    isRealtime        = false;
-    oldIsRealtime     = false;
-    realTimeAcc       = 0;
-    cycleTimeAcc      = 0;
-    hardClockExpected = 0;
-    hardClockActual   = 0;
-    enableRealtime    = ConfigureParams.System.bRealtime;
-    
-    for(int i = NUM_BLANKS; --i >= 0;) {
-        vblCounter[i] = 0;
-        blank[i]      = 0;
-    }
-    
-    cycleDivisor = ConfigureParams.System.nCpuFreq * 1000 * 1000;
-    
-    SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);
-}
-
 extern Sint64 nCyclesMainCounter;
 
 void host_realtime(bool state) {
@@ -102,19 +107,15 @@ extern void Statusbar_SetCPULed(double virtualTime, double realTime);
 double host_time_sec() {
     
     host_lock(&timeLock);
-    double rt, t;
+    double rt;
+    double t;
     rt  = (SDL_GetPerformanceCounter() - perfCounterStart);
-    rt /= SDL_GetPerformanceFrequency();
+    rt /= perfFrequency;
     if(oldIsRealtime) {
         t = rt;
     } else {
         t  = nCyclesMainCounter - cycleCounterStart;
         t /= cycleDivisor;
-        if(t-rt > 0.001) {
-            double sleep = t - rt;
-            sleep *= 1000*1000;
-            host_sleep_us(sleep);
-        }
     }
     bool state = isRealtime;
     if(oldIsRealtime != state) {
@@ -130,6 +131,19 @@ double host_time_sec() {
     Statusbar_SetCPULed(t,rt);
     host_unlock(&timeLock);
     
+    if(t > rt + 0.01) {
+        if(SDL_ThreadID() == mainThreadID) {
+            SDL_Event event;
+            // burn cycles by calling the main event handler
+            for(;;) {
+                if(SDL_PollEvent(&event)) Main_DispatchEvent(&event);
+                double ct  = (SDL_GetPerformanceCounter() - perfCounterStart);
+                ct /= perfFrequency;
+                if(ct > t) break;
+            }
+        } else
+            host_sleep_sec(t - rt);
+    }
     
     return t;
 }
@@ -154,9 +168,8 @@ void host_set_unix_time(time_t now) {
 
 /*-----------------------------------------------------------------------*/
 /**
- * Sleep for a given number of micro seconds.
- * If nanosleep is available, we use it directly, else we use SDL_Delay
- * together with a wait-loop.
+ * Sleep for a given number of micro seconds. We burn cycles by running
+ * the event loop.
  */
 void host_sleep_us(Uint64 us) {
 #if HAVE_NANOSLEEP

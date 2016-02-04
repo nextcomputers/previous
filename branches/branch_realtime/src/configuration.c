@@ -520,7 +520,7 @@ void Configuration_SetDefault(void)
 	ConfigureParams.System.nCpuLevel = 3;
 	ConfigureParams.System.nCpuFreq = 25;
 	ConfigureParams.System.bCompatibleCpu = true;
-	ConfigureParams.System.bRealtime = true;
+	ConfigureParams.System.bRealtime = false;
 	ConfigureParams.System.nDSPType = DSP_TYPE_EMU;
 	ConfigureParams.System.bDSPMemoryExpansion = false;
 	ConfigureParams.System.bRealTimeClock = true;
@@ -645,7 +645,7 @@ void Configuration_Apply(bool bReset)
  * Set defaults depending on selected machine type.
  */
 void Configuration_SetSystemDefaults(void) {
-    ConfigureParams.System.bRealtime = true;
+    ConfigureParams.System.bRealtime = false;
 
     for(int i = 0; i < MO_MAX_DRIVES; i++)
         if(ConfigureParams.MO.drive[i].bDriveConnected)

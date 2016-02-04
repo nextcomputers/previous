@@ -668,7 +668,7 @@ void esp_bus_reset(void) {
         intstatus = INTR_RST;
         SCSIbus.phase = PHASE_MI; /* CHECK: why message in phase? */
         Log_Printf(LOG_ESPCMD_LEVEL,"[ESP] SCSI bus reset raising IRQ (configuration=$%02X)\n",configuration);
-        CycInt_AddRelativeInterruptUs(500, false, INTERRUPT_ESP); /* CHECK: how is this delay defined? */
+        CycInt_AddRelativeInterruptUs(500, INTERRUPT_ESP); /* CHECK: how is this delay defined? */
     } else {
         Log_Printf(LOG_ESPCMD_LEVEL,"[ESP] SCSI bus reset not interrupting (configuration=$%02X)\n",configuration);
         esp_finish_command();
@@ -701,7 +701,7 @@ void esp_select(bool atn) {
         esp_state = DISCONNECTED;
         int seltout = (selecttimeout * 8192 * clockconv) / ESP_CLOCK_FREQ; /* timeout in microseconds */
         Log_Printf(LOG_ESPCMD_LEVEL, "[ESP] Select: Target %i, timeout after %i microseconds",target,seltout);
-        CycInt_AddRelativeInterruptUs(seltout, false, INTERRUPT_ESP);
+        CycInt_AddRelativeInterruptUs(seltout, INTERRUPT_ESP);
         return;
     }
     
