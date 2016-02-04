@@ -73,7 +73,6 @@ extern bool Main_UnPauseEmulation();
 extern void Main_RequestQuit();
 extern void Main_WarpMouse(int x, int y);
 extern void Main_EventHandler();
-extern bool Main_DispatchEvent(SDL_Event* event);
 extern void Main_EventHandlerInterrupt();
 extern void Main_SetTitle(const char *title);
 

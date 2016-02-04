@@ -127,23 +127,13 @@ double host_time_sec() {
         secsStart        += t;
         t                 = 0;
     }
+    
+    if(oldIsRealtime && t > rt + 0.01)
+        host_sleep_sec(t - rt);
+
     t += secsStart;
     Statusbar_SetCPULed(t,rt);
     host_unlock(&timeLock);
-    
-    if(t > rt + 0.01) {
-        if(SDL_ThreadID() == mainThreadID) {
-            SDL_Event event;
-            // burn cycles by calling the main event handler
-            for(;;) {
-                if(SDL_PollEvent(&event)) Main_DispatchEvent(&event);
-                double ct  = (SDL_GetPerformanceCounter() - perfCounterStart);
-                ct /= perfFrequency;
-                if(ct > t) break;
-            }
-        } else
-            host_sleep_sec(t - rt);
-    }
     
     return t;
 }
