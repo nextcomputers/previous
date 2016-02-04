@@ -255,7 +255,7 @@ static int fromBCD(Uint8 bcd) {
 
 void my_get_rtc_time(void) {
     time_t tmp = host_unix_time();
-    struct tm t =*localtime(&tmp);
+    struct tm t =*gmtime(&tmp);
     
     rtc.time.sec   = toBCD(t.tm_sec);
     rtc.time.min   = toBCD(t.tm_min);

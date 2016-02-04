@@ -1945,7 +1945,7 @@ insretry:
 			pc = regs.instruction_pc = m68k_getpc ();
 			f.cznv = regflags.cznv;
 			f.x = regflags.x;
-
+            
 			mmu030_state[0] = mmu030_state[1] = mmu030_state[2] = 0;
 			mmu030_opcode = -1;
 			if (mmu030_opcode_stageb < 0) {

@@ -37,6 +37,7 @@ const char CycInt_fileid[] = "Previous cycInt.c : " __DATE__ " " __TIME__;
 #include "printer.h"
 #include "kms.h"
 #include "configuration.h"
+#include "main.h"
 
 
 void (*PendingInterruptFunction)(void);
@@ -67,7 +68,8 @@ static void (* const pIntHandlerFunctions[MAX_INTERRUPTS])(void) =
     FLP_IO_Handler,
     SND_Out_Handler,
     SND_In_Handler,
-    Printer_IO_Handler
+    Printer_IO_Handler,
+    Main_EventHandlerInterrupt,
 };
 
 static INTERRUPTHANDLER InterruptHandlers[MAX_INTERRUPTS];
@@ -288,7 +290,7 @@ void CycInt_AddRelativeInterruptTicks(Sint64 TickTime, interrupt_id Handler) {
  * Add interrupt to occur us microsencods from now or if repeat=true relative to
  * time if time is no more than 1 ms in the past.
  */
-void CycInt_AddRelativeInterruptUs(Sint64 us, bool repeat, interrupt_id Handler) {
+void CycInt_AddRelativeInterruptUs(Sint64 us, interrupt_id Handler) {
     if(ConfigureParams.System.bRealtime) {
         assert(us >= 0);
         
@@ -296,12 +298,8 @@ void CycInt_AddRelativeInterruptUs(Sint64 us, bool repeat, interrupt_id Handler)
         /* because CycInt_SetNewInterrupt can change the active int / PendingInterruptCount */
         if ( ActiveInterrupt > 0 ) CycInt_UpdateInterrupt();
         
-        Uint64 now = host_time_us();
         InterruptHandlers[Handler].type = CYC_INT_US;
-        if(repeat && (now - InterruptHandlers[Handler].time) < 1000)
-            InterruptHandlers[Handler].time += us;
-        else
-            InterruptHandlers[Handler].time = now + us;
+        InterruptHandlers[Handler].time = host_time_us() + us;
         
         /* Set new active int and compute a new value for PendingInterruptCount*/
         CycInt_SetNewInterrupt();

@@ -139,7 +139,6 @@ static bool do_dma_sndout_intr() {
  sound queue every 60 ticks should be ok.
 */
 static const int SND_CHECK_DELAY = 60 * AUDIO_BUFFER_SAMPLES;
-
 void SND_Out_Handler(void) {
     CycInt_AcknowledgeInterrupt();
 
@@ -154,17 +153,18 @@ void SND_Out_Handler(void) {
     snd_buffer = dma_sndout_read_memory(&len);
     
     if (!sndout_inited || sndout_state.mute) {
-        if (!sound_output_active)
+        if (!sound_output_active) {
             return;
+        }
     } else {
         if(len) {
             len = snd_send_samples(snd_buffer, len) / 4;
-            Log_Printf(LOG_SND_LEVEL, "[Sound] %i samples ready.", len);
             CycInt_AddRelativeInterruptTicks(len < AUDIO_BUFFER_SAMPLES ? 100 : SND_CHECK_DELAY, INTERRUPT_SND_OUT);
         } else {
             do_dma_sndout_intr();
-            if(snd_output_active())
+            if(snd_output_active()) {
                 kms_sndout_underrun();
+            }
         }
     }
 }
@@ -183,7 +183,7 @@ void SND_In_Handler(void) {
         delay       *= 1000 * 1000;
         delay       /= AUDIO_IN_FREQUENCY;
     
-        CycInt_AddRelativeInterruptUs(delay, true, INTERRUPT_SND_IN);
+        CycInt_AddRelativeInterruptUs(delay, INTERRUPT_SND_IN);
     } else {
         if(snd_input_active())
             kms_sndin_overrun();

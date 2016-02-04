@@ -193,9 +193,9 @@ const INTERCEPT_ACCESS_FUNC IoMemTable_Turbo[] =
 	
 	/* Event Counter */
 	{ 0x0201a000, SIZE_BYTE, System_Timer_Read, System_Timer_Write },
-	{ 0x0201a001, SIZE_BYTE, IoMem_ReadWithoutInterception, System_Timer_Write },
-	{ 0x0201a002, SIZE_BYTE, IoMem_ReadWithoutInterception, System_Timer_Write },
-	{ 0x0201a003, SIZE_BYTE, IoMem_ReadWithoutInterception, System_Timer_Write },
+	{ 0x0201a001, SIZE_BYTE, IoMem_ReadWithoutInterception, IoMem_WriteWithoutInterceptionButTrace },
+	{ 0x0201a002, SIZE_BYTE, IoMem_ReadWithoutInterception, IoMem_WriteWithoutInterceptionButTrace },
+	{ 0x0201a003, SIZE_BYTE, IoMem_ReadWithoutInterception, IoMem_WriteWithoutInterceptionButTrace },
 	
 	/* Floppy Controller (Intel 82077AA) */
 	{ 0x02014100, SIZE_BYTE, FLP_StatA_Read, IoMem_WriteWithoutInterceptionButTrace },

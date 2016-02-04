@@ -78,6 +78,7 @@ static int mmudisp020cnt;
 static bool candormw;
 static bool genastore_done;
 static char rmw_varname[100];
+static unsigned long current_opcode;
 
 #define GENA_GETV_NO_FETCH	0
 #define GENA_GETV_FETCH		1
@@ -104,6 +105,40 @@ static char *do_cycles, *disp000, *disp020;
 #define fetchmode_fiea 3
 #define fetchmode_ciea 4
 #define fetchmode_jea 5
+
+/* (SC) central hacking place for 030/040 instruction timinigs. This is carefully adjusted
+ in order to
+ - make all ROM POST happy
+ - make diagnostic kernels (diagnostics and dvt040) happy
+ - give reasonable results in NXbench
+ */
+static int adjust_cycles(int cycles) {
+    struct instr *curi = table68k + current_opcode;
+    // General instruction timing scaling factors for 030/040. Mostly guesswork based
+    // on NXbench scores
+    switch(cpu_level) {
+        case 3: cycles *= 3; cycles /= 2; break;
+        case 4: cycles *= 1; cycles /= 3; break;
+    }
+    if(cycles == 0) cycles = 1;
+    // special cases for timing loops, ROM POST depend on these
+    switch (cpu_level) {
+        case 3: // MC68030
+            switch(curi->mnemo) {
+                case i_DBcc: cycles  = 6; break;
+                case i_Bcc:  cycles  = 4; break;
+                case i_ASL:  cycles  = 2; break;
+                case i_MOVE: cycles /= 5; break;
+            }
+            break;
+        case 4: // MC68040
+            switch(curi->mnemo) {
+                case i_DBcc: cycles = 4; break;
+            }
+            break;
+    }
+    return cycles;
+}
 
 static void term (void)
 {
@@ -258,15 +293,6 @@ static void returntail (bool iswrite)
 #endif
 		tail_ce020_done = true;
 	}
-}
-
-static int adjust_cycles(int cycles) {
-    if(cpu_level >= 3) {
-        cycles *= 7;
-        cycles /= 10;
-    }
-    if(cycles == 0) cycles = 1;
-    return cycles;
 }
 
 static void returncycles (char *s, int cycles)
@@ -2761,6 +2787,7 @@ static void resetvars (void)
 
 static void gen_opcode (unsigned long int opcode)
 {
+    current_opcode = opcode;
 	struct instr *curi = table68k + opcode;
 
 	resetvars ();
@@ -3856,62 +3883,51 @@ static void gen_opcode (unsigned long int opcode)
 		if ((curi->smode == absw || curi->smode == absl))
 			fill_prefetch_next ();
 		break;
-	case i_DBcc:
-		// cc true: idle cycle, prefetch
-		// cc false, counter expired: idle cycle, prefetch (from branch address), 2xprefetch (from next address)
-		// cc false, counter not expired: idle cycle, prefetch
-		tail_ce020_done = true;
-		genamodedual (curi,
-			curi->smode, "srcreg", curi->size, "src", 1, GF_AA | GF_NOREFILL,
-			curi->dmode, "dstreg", curi->size, "offs", 1, GF_AA | GF_NOREFILL);
-		//genamode (curi, curi->smode, "srcreg", curi->size, "src", 1, 0, GF_AA | GF_NOREFILL);
-		//genamode (curi, curi->dmode, "dstreg", curi->size, "offs", 1, 0, GF_AA | GF_NOREFILL);
-		printf ("\tuaecptr oldpc = m68k_getpc ();\n");
-		addcycles000 (2);
-		printf ("\tif (!cctrue (%d)) {\n", curi->cc);
-		incpc ("(uae_s32)offs + 2");
-		printf ("\t");
-		fill_prefetch_1 (0);
-		printf ("\t");
-		genastore ("(src - 1)", curi->smode, "srcreg", curi->size, "src");
-
-		printf ("\t\tif (src) {\n");
-		if (using_exception_3) {
-			printf ("\t\t\tif (offs & 1) {\n");
-			printf ("\t\t\t\texception3i (opcode, m68k_getpc () + 2 + (uae_s32)offs + 2);\n");
-			printf ("\t\t\t\tgoto %s;\n", endlabelstr);
-			printf ("\t\t\t}\n");
-			need_endlabel = 1;
-		}
-		irc2ir ();
-		add_head_cycs (6);
-		fill_prefetch_1 (2);
-		fill_prefetch_full_020 ();
-            switch(cpu_level) {
-                case 4:
-                    returncycles ("\t\t\t", 6);
-                    break;
-                case 3:
-                    returncycles ("\t\t\t", 9);
-                    break;
-                default:
-                    returncycles ("\t\t\t", 12);
-                    break;
-            }
-		printf ("\t\t}\n");
-		add_head_cycs (10);
-		printf ("\t} else {\n");
-		addcycles000 (2);
-		printf ("\t}\n");
-		setpc ("oldpc + %d", m68k_pc_offset);
-		m68k_pc_offset = 0;
-		get_prefetch_020_0 ();
-		fill_prefetch_full_000 ();
-		insn_n_cycles = 12;
-		need_endlabel = 1;
-		break;
-	case i_Scc:
-		// confirmed
+    case i_DBcc:
+        // cc true: idle cycle, prefetch
+        // cc false, counter expired: idle cycle, prefetch (from branch address), 2xprefetch (from next address)
+        // cc false, counter not expired: idle cycle, prefetch
+        tail_ce020_done = true;
+        genamodedual (curi,
+                      curi->smode, "srcreg", curi->size, "src", 1, GF_AA | GF_NOREFILL,
+                      curi->dmode, "dstreg", curi->size, "offs", 1, GF_AA | GF_NOREFILL);
+        //genamode (curi, curi->smode, "srcreg", curi->size, "src", 1, 0, GF_AA | GF_NOREFILL);
+        //genamode (curi, curi->dmode, "dstreg", curi->size, "offs", 1, 0, GF_AA | GF_NOREFILL);
+        printf ("\tuaecptr oldpc = m68k_getpc ();\n");
+        addcycles000 (2);
+        printf ("\tif (!cctrue (%d)) {\n", curi->cc);
+        incpc ("(uae_s32)offs + 2");
+        printf ("\t");
+        fill_prefetch_1 (0);
+        printf ("\t");
+        genastore ("(src - 1)", curi->smode, "srcreg", curi->size, "src");
+        
+        printf ("\t\tif (src) {\n");
+        if (using_exception_3) {
+            printf ("\t\t\tif (offs & 1) {\n");
+            printf ("\t\t\t\texception3i (opcode, m68k_getpc () + 2 + (uae_s32)offs + 2);\n");
+            printf ("\t\t\t\tgoto %s;\n", endlabelstr);
+            printf ("\t\t\t}\n");
+            need_endlabel = 1;
+        }
+        irc2ir ();
+        add_head_cycs (6);
+        fill_prefetch_1 (2);
+        fill_prefetch_full_020 ();
+        returncycles ("\t\t\t", 12);
+        printf ("\t\t}\n");
+        add_head_cycs (10);
+        printf ("\t} else {\n");
+        addcycles000 (2);
+        printf ("\t}\n");
+        setpc ("oldpc + %d", m68k_pc_offset);
+        m68k_pc_offset = 0;
+        get_prefetch_020_0 ();
+        fill_prefetch_full_000 ();
+        insn_n_cycles = 12;
+        need_endlabel = 1;
+        break;
+    case i_Scc:		// confirmed
 		next_level_000 ();
 		genamode (curi, curi->smode, "srcreg", curi->size, "src", cpu_level == 0 ? 1 : 2, 0, 0);
 		start_brace ();

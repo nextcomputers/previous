@@ -29,6 +29,7 @@ typedef enum
   INTERRUPT_SND_OUT,
   INTERRUPT_SND_IN,
   INTERRUPT_LP_IO,
+  INTERRUPT_EVENT_LOOP,
   MAX_INTERRUPTS
 } interrupt_id;
 
@@ -59,7 +60,7 @@ extern void CycInt_MemorySnapShot_Capture(bool bSave);
 extern void CycInt_AcknowledgeInterrupt(void);
 extern void CycInt_AddRelativeInterruptCycles(int64_t CycleTime, interrupt_id Handler);
 extern void CycInt_AddRelativeInterruptTicks(int64_t TickTime, interrupt_id Handler);
-extern void CycInt_AddRelativeInterruptUs(int64_t us, bool repeat, interrupt_id Handler);
+extern void CycInt_AddRelativeInterruptUs(int64_t us, interrupt_id Handler);
 extern void CycInt_RemovePendingInterrupt(interrupt_id Handler);
 extern bool CycInt_InterruptActive(interrupt_id Handler);
 extern bool CycInt_SetNewInterruptUs(void);

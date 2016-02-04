@@ -36,6 +36,14 @@ struct {
     Uint32 km_data;
 } kms;
 
+void KMS_Reset() {
+    kms.status.snd_dma  = 0;
+    kms.status.km       = 0;
+    kms.status.transmit = 0;
+    kms.status.cmd      = 0;
+    kms.data            = 0;
+    kms.km_data         = 0;
+}
 
 /* KMS control and status register (0x0200E000) 
  *
@@ -389,13 +397,13 @@ void KMS_Data_Read(void) {
 
 
 bool m_button_right = false;
-bool m_button_left = false;
-bool m_move_left = false;
-bool m_move_up = false;
-Uint8 m_move_x = 0;
-Uint8 m_move_y = 0;
-
-Uint8 m_move_steps = 0;
+bool m_button_left  = false;
+bool m_move_left    = false;
+bool m_move_up      = false;
+int  m_move_x       = 0;
+int  m_move_y       = 0;
+int  m_move_dx      = 0;
+int  m_move_dy      = 0;
 void kms_mouse_move_step(void);
 
 
@@ -487,44 +495,33 @@ void kms_mouse_button(bool left, bool down) {
     }
 }
 
-#define MOUSE_POLL_FREQ 400 // 400Hz
+#define MOUSE_STEP_FREQ 1000
 
 void kms_mouse_move(int x, bool left, int y, bool up) {
-    
-    if (x<0 || y<0) {
-        abort();
-    }
-    
-    if (x>0x40)
-        x=0x40;
-    if (y>0x40)
-        y=0x40;
+    if (x<0 || y<0) abort();
     
     m_move_left = left;
-    m_move_up = up;
+    m_move_up   = up;
+
+    int xsteps = x / 8; if(xsteps == 0) xsteps = 1;
+    int ysteps = y / 8; if(ysteps == 0) ysteps = 1;
     
-    m_move_x = x;
-    m_move_y = y;
+    m_move_x  = x;
+    m_move_dx = x / xsteps;
     
-    m_move_steps = 8;
+    m_move_y  = y;
+    m_move_dy = y / ysteps;
     
-    CycInt_AddRelativeInterruptUs((1000*1000)/MOUSE_POLL_FREQ, false, INTERRUPT_MOUSE);
+    CycInt_AddRelativeInterruptCycles(10, INTERRUPT_MOUSE);
 }
 
 void kms_mouse_move_step(void) {
-    int x = 0;
-    int y = 0;
     
-    if (m_move_x>0) {
-        x = m_move_x/m_move_steps;
-        m_move_x -= x;
-    }
-    if (m_move_y>0) {
-        y = m_move_y/m_move_steps;
-        m_move_y -= y;
-    }
-    
-    m_move_steps--;
+    int x = m_move_x > m_move_dx ? m_move_dx : m_move_x;
+    int y = m_move_y > m_move_dy ? m_move_dy : m_move_y;
+
+    m_move_x -= x;
+    m_move_y -= y;
     
     if (!m_move_left && x>0)  /* right */
         x=(0x40-x)|0x40;
@@ -555,9 +552,8 @@ void kms_response(void) {
 void Mouse_Handler(void) {
     CycInt_AcknowledgeInterrupt();
     
-    if (m_move_steps>0 && (m_move_x>0 || m_move_y>0)) {
+    if (m_move_x > 0 || m_move_y > 0) {
         kms_mouse_move_step();
-        
-        CycInt_AddRelativeInterruptUs((1000*1000)/MOUSE_POLL_FREQ, true, INTERRUPT_MOUSE);
+        CycInt_AddRelativeInterruptUs((1000*1000)/MOUSE_STEP_FREQ, INTERRUPT_MOUSE);
     }
 }

@@ -441,7 +441,7 @@ void Hardclock_InterruptHandler ( void )
         Uint64 now = host_time_us();
         host_hardclock(latch_hardclock, now - hardClockLastLatch);
         hardClockLastLatch = now;
-        CycInt_AddRelativeInterruptUs(latch_hardclock, true, INTERRUPT_HARDCLOCK);
+        CycInt_AddRelativeInterruptUs(latch_hardclock, INTERRUPT_HARDCLOCK);
 	}
 }
 
@@ -473,7 +473,7 @@ void HardclockWriteCSR(void) {
 	}
 	if ((hardclock_csr&HARDCLOCK_ENABLE) && (latch_hardclock>0)) {
         Log_Printf(LOG_HARDCLOCK_LEVEL,"[hardclock] enable periodic interrupt (%i microseconds).", latch_hardclock);
-        CycInt_AddRelativeInterruptUs(latch_hardclock, false, INTERRUPT_HARDCLOCK);
+        CycInt_AddRelativeInterruptUs(latch_hardclock, INTERRUPT_HARDCLOCK);
 	} else {
         Log_Printf(LOG_HARDCLOCK_LEVEL,"[hardclock] disable periodic interrupt.");
     }
@@ -490,13 +490,20 @@ void HardclockReadCSR(void) {
 /* Event counter register */
 
 static Uint64 sysTimerOffset = 0;
+static bool   resetTimer;
 
 void System_Timer_Read(void) {
-    IoMem_WriteLong(IoAccessCurrentAddress&IO_SEG_MASK, (host_time_us() - sysTimerOffset) & 0xFFFFF);
+    Uint64 now = host_time_us();
+    if(resetTimer) {
+        sysTimerOffset = now;
+        resetTimer = false;
+    }
+    now -= sysTimerOffset;
+    IoMem_WriteLong(IoAccessCurrentAddress&IO_SEG_MASK, now & 0xFFFFF);
 }
 
 void System_Timer_Write(void) {
-    sysTimerOffset = host_time_us() - IoMem_ReadLong(IoAccessCurrentAddress&IO_SEG_MASK);
+    resetTimer = true;
 }
 
 /* Color Video Interrupt Register */

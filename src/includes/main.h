@@ -31,7 +31,7 @@
 #include <math.h>
 #include <time.h>
 
-#include <SDL_types.h>
+#include <SDL.h>
 #include <stdbool.h>
 
 #if __GNUC__ >= 3
@@ -69,10 +69,12 @@ extern volatile int mainPauseEmulation;
 extern bool bQuitProgram;
 
 extern bool Main_PauseEmulation(bool visualize);
-extern bool Main_UnPauseEmulation(void);
-extern void Main_RequestQuit(void);
+extern bool Main_UnPauseEmulation();
+extern void Main_RequestQuit();
 extern void Main_WarpMouse(int x, int y);
-extern void Main_EventHandler(void);
+extern void Main_EventHandler();
+extern bool Main_DispatchEvent(SDL_Event* event);
+extern void Main_EventHandlerInterrupt();
 extern void Main_SetTitle(const char *title);
 
 #endif /* ifndef HATARI_MAIN_H */

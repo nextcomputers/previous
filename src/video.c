@@ -7,16 +7,15 @@
 */
 const char Video_fileid[] = "Previous video.c : " __DATE__ " " __TIME__;
 
+#include <stdbool.h>
 #include <SDL_endian.h>
 
-#include "main.h"
 #include "configuration.h"
 #include "cycInt.h"
 #include "ioMem.h"
 #include "m68000.h"
 #include "memorySnapShot.h"
 #include "screen.h"
-#include "screenSnapShot.h"
 #include "shortcut.h"
 #include "nextMemory.h"
 #include "video.h"
@@ -33,11 +32,6 @@ const char Video_fileid[] = "Previous video.c : " __DATE__ " " __TIME__;
 
 
 static void	Video_DrawScreen(void);
-
-
-
-int nScanlinesPerFrame = 832;                   /* Number of scan lines per frame */
-int nCyclesPerLine = 1120;
 
 /*-----------------------------------------------------------------------*/
 /**
@@ -94,7 +88,7 @@ Screen_Draw();
  * Start VBL interrupt
  */
 void Video_StartInterrupts ( int PendingCyclesOver ) {
-    CycInt_AddRelativeInterruptUs((1000*1000)/NEXT_VBL_FREQ, false, INTERRUPT_VIDEO_VBL);
+    CycInt_AddRelativeInterruptUs((1000*1000)/NEXT_VBL_FREQ, INTERRUPT_VIDEO_VBL);
 }
 
 
@@ -123,9 +117,8 @@ void Video_InterruptHandler_VBL ( void )
 	CycInt_AcknowledgeInterrupt();
     host_blank(0, MAIN_DISPLAY, true);
 	Video_DrawScreen();
-    Main_EventHandler();
     Video_InterruptHandler();
-    CycInt_AddRelativeInterruptUs((1000*1000)/NEXT_VBL_FREQ, true, INTERRUPT_VIDEO_VBL);
+    CycInt_AddRelativeInterruptUs((1000*1000)/NEXT_VBL_FREQ, INTERRUPT_VIDEO_VBL);
 }
 
 

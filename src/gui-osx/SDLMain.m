@@ -14,7 +14,6 @@
 
 #include "dialog.h"
 #include "reset.h"
-#include "screenSnapShot.h"
 #include "memorySnapShot.h"
 #include "screen.h"
 #include "PrefsController.h"
@@ -478,7 +477,7 @@ static void CustomApplicationMain (int argc, char **argv)
 - (IBAction)captureScreen:(id)sender
 {
 	GuiOsx_Pause();
-	ScreenSnapShot_SaveScreen();
+//	ScreenSnapShot_SaveScreen();
 	GuiOsx_Resume();
 }
 

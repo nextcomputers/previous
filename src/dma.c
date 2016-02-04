@@ -375,7 +375,7 @@ void dma_initialize_buffer(int channel, Uint8 offset) {
 
 void dma_interrupt(int channel) {
     int interrupt = get_interrupt_type(channel);
-    
+
     /* If we have reached limit, generate an interrupt and set the flags */
     if (dma[channel].next==dma[channel].limit) {
         
