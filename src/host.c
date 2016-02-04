@@ -128,7 +128,7 @@ double host_time_sec() {
         t                 = 0;
     }
     
-    if(oldIsRealtime && t > rt + 0.01)
+    if(t > rt + 0.01)
         host_sleep_sec(t - rt);
 
     t += secsStart;
