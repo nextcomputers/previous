@@ -225,115 +225,113 @@ static void Main_HandleMouseMotion(SDL_Event *pEvent)
  * SDL message handler.
  * Here we process the SDL events (keyboard, mouse, ...)
  */
-
-extern bool Main_DispatchEvent(SDL_Event* event) {
-    bool bContinueProcessing = false;
-
-    switch (event->type) {
-        case SDL_WINDOWEVENT:
-            if(event->window.event == SDL_WINDOWEVENT_CLOSE)
-                Main_RequestQuit();
-            break;
-            
-        case SDL_QUIT:
-            Main_RequestQuit();
-            break;
-            
-        case SDL_MOUSEMOTION:               /* Read/Update internal mouse position */
-            Main_HandleMouseMotion(event);
-            bContinueProcessing = false;
-            break;
-            
-        case SDL_MOUSEBUTTONDOWN:
-            if (event->button.button == SDL_BUTTON_LEFT)
-            {
-                if (ConfigureParams.Mouse.bEnableAutoGrab && !bGrabMouse) {
-                    bGrabMouse = true;        /* Toggle flag */
-                    
-                    /* If we are in windowed mode, toggle the mouse cursor mode now: */
-                    if (!bInFullScreen)
-                    {
-                        SDL_SetRelativeMouseMode(SDL_TRUE);
-                        SDL_SetWindowGrab(sdlWindow, SDL_TRUE);
-                        Main_SetTitle(MOUSE_LOCK_MSG);
-                    }
-                }
+void Main_EventHandler(void)
+{
+    bool bContinueProcessing;
+    SDL_Event event;
+    int events;
+    int remotepause;
+    
+    do
+    {
+        bContinueProcessing = false;
+        
+        /* check remote process control */
+        remotepause = Control_CheckUpdates();
+        
+        if ( bEmulationActive || remotepause )
+        {
+            events = SDL_PollEvent(&event);
+        }
+        else
+        {
+            ShortCut_ActKey();
+            /* last (shortcut) event activated emulation? */
+            if ( bEmulationActive )
+                break;
+            events = SDL_WaitEvent(&event);
+        }
+        if (!events)
+        {
+            /* no events -> if emulation is active or
+             * user is quitting -> return from function.
+             */
+            continue;
+        }
+        switch (event.type)
+        {
                 
-                Keymap_MouseDown(true);
-            }
-            else if (event->button.button == SDL_BUTTON_RIGHT) {
-                Keymap_MouseDown(false);
-            }
-            else if (event->button.button == SDL_BUTTON_MIDDLE) {
-            }
-            break;
-            
-        case SDL_MOUSEBUTTONUP:
-            if (event->button.button == SDL_BUTTON_LEFT) {
-                Keymap_MouseUp(true);
-            }
-            else if (event->button.button == SDL_BUTTON_RIGHT) {
-                Keymap_MouseUp(false);
-            }
-            break;
-            
-        case SDL_KEYDOWN:
-            if (ConfigureParams.Keyboard.bDisableKeyRepeat && event->key.repeat)
+            case SDL_QUIT:
+                Main_RequestQuit();
                 break;
-            
-            Keymap_KeyDown(&event->key.keysym);
-            break;
-            
-        case SDL_KEYUP:
-            Keymap_KeyUp(&event->key.keysym);
-            break;
-            
-        default:
-            /* don't let unknown events delay event processing */
-            bContinueProcessing = true;
-            break;
-    }
-    return bContinueProcessing;
-}
-
-void Main_EventHandler() {
-	SDL_Event event;
-	int events;
-	int remotepause;
-
-	do {
-        switch (mainPauseEmulation) {
-            case PAUSE_EMULATION:
-                Main_PauseEmulation(true);
-                mainPauseEmulation = PAUSE_NONE;
+                
+            case SDL_MOUSEMOTION:               /* Read/Update internal mouse position */
+                Main_HandleMouseMotion(&event);
+                bContinueProcessing = false;
                 break;
-            case UNPAUSE_EMULATION:
-                Main_UnPauseEmulation();
-                mainPauseEmulation = PAUSE_NONE;
+                
+            case SDL_MOUSEBUTTONDOWN:
+                if (event.button.button == SDL_BUTTON_LEFT)
+                {
+                    if (ConfigureParams.Mouse.bEnableAutoGrab && !bGrabMouse) {
+                        bGrabMouse = true;        /* Toggle flag */
+                        
+                        /* If we are in windowed mode, toggle the mouse cursor mode now: */
+                        if (!bInFullScreen)
+                        {
+                            SDL_SetRelativeMouseMode(SDL_TRUE);
+                            SDL_SetWindowGrab(sdlWindow, SDL_TRUE);
+                            Main_SetTitle(MOUSE_LOCK_MSG);
+                        }
+                    }
+                    
+                    Keymap_MouseDown(true);
+                }
+                else if (event.button.button == SDL_BUTTON_RIGHT)
+                {
+                    Keymap_MouseDown(false);
+                    //				Keyboard.bRButtonDown |= BUTTON_MOUSE;
+                }
+                else if (event.button.button == SDL_BUTTON_MIDDLE)
+                {
+                    /* Start double-click sequence in emulation time */
+                    //				Keyboard.LButtonDblClk = 1;
+                }
+                break;
+                
+            case SDL_MOUSEBUTTONUP:
+                if (event.button.button == SDL_BUTTON_LEFT)
+                {
+                    Keymap_MouseUp(true);
+                    //				Keyboard.bLButtonDown &= ~BUTTON_MOUSE;
+                }
+                else if (event.button.button == SDL_BUTTON_RIGHT)
+                {
+                    Keymap_MouseUp(false);
+                    //				Keyboard.bRButtonDown &= ~BUTTON_MOUSE;
+                }
+                break;
+                
+            case SDL_KEYDOWN:
+                if (ConfigureParams.Keyboard.bDisableKeyRepeat && event.key.repeat)
+                    break;
+                
+                Keymap_KeyDown(&event.key.keysym);
+                break;
+                
+            case SDL_KEYUP:
+                Keymap_KeyUp(&event.key.keysym);
+                break;
+                
+                
+            default:
+                /* don't let unknown events delay event processing */
+                bContinueProcessing = true;
                 break;
         }
-        
-		/* check remote process control */
-		remotepause = Control_CheckUpdates();
-
-		if ( bEmulationActive || remotepause ) {
-			events = SDL_PollEvent(&event);
-		}
-		else {
-			ShortCut_ActKey();
-			/* last (shortcut) event activated emulation? */
-			if ( bEmulationActive )
-				break;
-			events = SDL_WaitEvent(&event);
-		}
-		if (!events) {
-			/* no events -> if emulation is active or
-			 * user is quitting -> return from function.
-			 */
-			return;
-		}
-	} while (Main_DispatchEvent(&event) || !(bEmulationActive || bQuitProgram));
+    } while (bContinueProcessing || !(bEmulationActive || bQuitProgram));
 }
+
 
 void Main_EventHandlerInterrupt() {
     CycInt_AcknowledgeInterrupt();
