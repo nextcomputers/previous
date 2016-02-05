@@ -36,7 +36,8 @@ static Uint64       hardClockActual;
 static time_t       unixTimeStart;
 static double       unixTimeOffset = 0;
 static double       perfFrequency;
-static SDL_threadID mainThreadID;
+static double       realTimeOffset;
+static Uint64       pauseTimeStamp;
 
 void host_reset() {
     perfCounterStart  = SDL_GetPerformanceCounter();
@@ -52,7 +53,7 @@ void host_reset() {
     hardClockExpected = 0;
     hardClockActual   = 0;
     enableRealtime    = ConfigureParams.System.bRealtime;
-    mainThreadID      = SDL_ThreadID();
+    realTimeOffset    = 0;
     
     for(int i = NUM_BLANKS; --i >= 0;) {
         vblCounter[i] = 0;
@@ -128,8 +129,7 @@ double host_time_sec() {
         t                 = 0;
     }
     
-    if(t > rt + 0.01)
-        host_sleep_sec(t - rt);
+    realTimeOffset = t - rt;
 
     t += secsStart;
     Statusbar_SetCPULed(t,rt);
@@ -154,6 +154,21 @@ time_t host_unix_time() {
 
 void host_set_unix_time(time_t now) {
     unixTimeOffset += difftime(now, host_unix_time());
+}
+
+double host_real_time_offset() {
+    host_lock(&timeLock);
+    double result = realTimeOffset;
+    host_unlock(&timeLock);
+    return result;
+}
+
+void host_pause_time(bool pausing) {
+    if(pausing) {
+        pauseTimeStamp = SDL_GetPerformanceCounter();
+    } else {
+        perfCounterStart -= SDL_GetPerformanceCounter() - pauseTimeStamp;
+    }
 }
 
 /*-----------------------------------------------------------------------*/

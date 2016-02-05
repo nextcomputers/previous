@@ -23,7 +23,6 @@ const char DebugCpu_fileid[] = "Hatari debugcpu.c : " __DATE__ " " __TIME__;
 #include "hatari-glue.h"
 #include "log.h"
 #include "m68000.h"
-#include "memorySnapShot.h"
 #include "profile.h"
 #include "nextMemory.h"
 #include "str.h"

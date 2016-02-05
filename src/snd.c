@@ -123,14 +123,12 @@ void snd_stop_input(void) {
 
 /* Sound IO loops */
 
-static bool do_dma_sndout_intr() {
-    bool result = false;
+static void do_dma_sndout_intr() {
     if(snd_buffer) {
-        result = dma_sndout_intr();
+        dma_sndout_intr();
         free(snd_buffer);
         snd_buffer = NULL;
     }
-    return result;
 }
 
 /*
@@ -138,19 +136,19 @@ static bool do_dma_sndout_intr() {
  Assuming that the emulation runs at least at 1/3 a s fast as a real m68k checking the 
  sound queue every 60 ticks should be ok.
 */
-static const int SND_CHECK_DELAY = 60 * AUDIO_BUFFER_SAMPLES;
+static const int SND_CHECK_DELAY = 60;
 void SND_Out_Handler(void) {
     CycInt_AcknowledgeInterrupt();
 
     if(Audio_Output_Queue_Size() > AUDIO_BUFFER_SAMPLES * 2) {
-        CycInt_AddRelativeInterruptTicks(SND_CHECK_DELAY, INTERRUPT_SND_OUT);
+        CycInt_AddRelativeInterruptTicks(SND_CHECK_DELAY  * AUDIO_BUFFER_SAMPLES, INTERRUPT_SND_OUT);
         return;
     }
     
     do_dma_sndout_intr();
-    
     int len;
-    snd_buffer = dma_sndout_read_memory(&len);
+    bool chaining;
+    snd_buffer = dma_sndout_read_memory(&len, &chaining);
     
     if (!sndout_inited || sndout_state.mute) {
         if (!sound_output_active) {
@@ -159,12 +157,10 @@ void SND_Out_Handler(void) {
     } else {
         if(len) {
             len = snd_send_samples(snd_buffer, len) / 4;
-            CycInt_AddRelativeInterruptTicks(len < AUDIO_BUFFER_SAMPLES ? 100 : SND_CHECK_DELAY, INTERRUPT_SND_OUT);
-        } else {
-            do_dma_sndout_intr();
-            if(snd_output_active()) {
-                kms_sndout_underrun();
-            }
+            if(chaining) do_dma_sndout_intr();
+            CycInt_AddRelativeInterruptTicks(SND_CHECK_DELAY, INTERRUPT_SND_OUT);
+        } else if(snd_output_active()) {
+            kms_sndout_underrun();
         }
     }
 }

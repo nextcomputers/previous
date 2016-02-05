@@ -17,7 +17,7 @@
 #define CONF_STR(CONF) #CONF
 
 /* Change this to select your emulator configuration */
-#define CONF_I860 CONF_I860_DEV
+#define CONF_I860 CONF_I860_SPEED
 
 /* Emulator configurations */
 
@@ -38,7 +38,7 @@
 #define TRACE_UNALIGNED_MEM  0
 #define TRACE_EXT_INT        0
 #define ENABLE_I860_DB_BREAK 0
-#define ENABLE_PERF_COUNTERS 1
+#define ENABLE_PERF_COUNTERS 0
 #define ENABLE_DEBUGGER      0
 
 

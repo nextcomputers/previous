@@ -327,7 +327,7 @@ void build_cpufunctbl (void)
 
 	if (tbl == 0) {
 		write_log ("no CPU emulation cores available CPU=%d!", currprefs.cpu_model);
-		abort ();
+        DebugUI();
 	}
 
 	for (opcode = 0; opcode < 65536; opcode++)
@@ -351,7 +351,7 @@ void build_cpufunctbl (void)
 			int idx = table68k[opcode].handler;
 			f = cpufunctbl[idx];
 			if (f == op_illg_1)
-				abort ();
+                DebugUI();
 			cpufunctbl[opcode] = f;
 			opcnt++;
 		}
@@ -887,14 +887,14 @@ static void exception_debug (int nr)
 	if (!exception_debugging)
 		return;
 	console_out_f ("Exception %d, PC=%08X\n", nr, M68K_GETPC);
-	abort();
+    DebugUI();
 #endif
 }
 
 void cpu_halt (int e)
 {
 	write_log("HALT!");
-	abort();
+    DebugUI();
 }
 
 static void Exception_build_stack_frame (uae_u32 oldpc, uae_u32 currpc, uae_u32 ssw, int nr, int format)
@@ -2129,8 +2129,8 @@ static void m68k_run_mmu040 (void)
 		TRY (prb) {
 			Exception (save_except);
 		} CATCH (prb) {
-    			Log_Printf(LOG_WARN, "[FATAL] double fault");	
-			abort();		
+            Log_Printf(LOG_WARN, "[FATAL] double fault");
+            DebugUI();
 		} ENDTRY
 
 	} ENDTRY
@@ -2238,7 +2238,7 @@ void m68k_go (int may_quit)
 
 	if (in_m68k_go || !may_quit) {
 		write_log ("Bug! m68k_go is not reentrant.\n");
-		abort ();
+        DebugUI();
 	}
     
     config_changed = 1;

@@ -709,9 +709,10 @@ void dma_mo_read_memory(void) {
 }
 
 
-Uint8* dma_sndout_read_memory(int* len) {
+Uint8* dma_sndout_read_memory(int* len, bool* chaining) {
     Uint8* result = NULL;
     *len          = 0;
+    *chaining     = false;
     
     if (dma[CHANNEL_SOUNDOUT].csr&DMA_ENABLE) {
         
@@ -725,7 +726,8 @@ Uint8* dma_sndout_read_memory(int* len) {
         }
         
         TRY(prb) {
-            *len = dma[CHANNEL_SOUNDOUT].limit - dma[CHANNEL_SOUNDOUT].next;
+            *len      = dma[CHANNEL_SOUNDOUT].limit - dma[CHANNEL_SOUNDOUT].next;
+            *chaining = (dma[CHANNEL_SOUNDOUT].csr & DMA_SUPDATE) != 0;
             result = malloc(*len * 2);
             for(int i = 0; dma[CHANNEL_SOUNDOUT].next<dma[CHANNEL_SOUNDOUT].limit; dma[CHANNEL_SOUNDOUT].next++, i++)
                 result[i] = NEXTMemory_ReadByte(dma[CHANNEL_SOUNDOUT].next);
@@ -739,10 +741,8 @@ Uint8* dma_sndout_read_memory(int* len) {
     return result;
 }
 
-bool dma_sndout_intr() {
-    bool result = (dma[CHANNEL_SOUNDOUT].csr & DMA_SUPDATE) != 0;
+void dma_sndout_intr() {
     dma_interrupt(CHANNEL_SOUNDOUT);
-    return result;
 }
 
 int dma_sndin_write_memory() {

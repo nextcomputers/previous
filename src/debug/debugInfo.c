@@ -263,7 +263,7 @@ static void DebugInfo_FileParse(Uint32 dummy)
     if (parse_filename) {
         DebugUI_ParseFile(parse_filename);
     } else {
-        fputs("ERROR: debugger input file name to parse isn't set!\n", stderr);
+       // fputs("ERROR: debugger input file name to parse isn't set!\n", stderr);
     }
 }
 

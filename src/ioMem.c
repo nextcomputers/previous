@@ -12,7 +12,6 @@ const char IoMem_fileid[] = "Hatari ioMem.c : " __DATE__ " " __TIME__;
 #include "configuration.h"
 #include "ioMem.h"
 #include "ioMemTables.h"
-#include "memorySnapShot.h"
 #include "m68000.h"
 #include "sysdeps.h"
 

@@ -9,7 +9,6 @@ const char DlgMemory_fileid[] = "Previous dlgMemory.c : " __DATE__ " " __TIME__;
 #include "main.h"
 #include "dialog.h"
 #include "sdlgui.h"
-#include "memorySnapShot.h"
 #include "file.h"
 #include "screen.h"
 

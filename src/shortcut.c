@@ -15,7 +15,6 @@ const char ShortCut_fileid[] = "Hatari shortcut.c : " __DATE__ " " __TIME__;
 #include "file.h"
 #include "m68000.h"
 #include "dimension.h"
-#include "memorySnapShot.h"
 #include "reset.h"
 #include "screen.h"
 #include "configuration.h"
@@ -86,19 +85,47 @@ static void ShortCut_SoundOnOff(void)
 
 /*-----------------------------------------------------------------------*/
 /**
- * Shorcut to debug interface
+ * Shorcut to M68K debug interface
  */
-static void ShortCut_Debug(void)
+static void ShortCut_Debug_M68K(void)
 {
 	int running;
 
-	/* Call the debugger */
 	running = Main_PauseEmulation(true);
+    /* Call the debugger */
 	DebugUI();
 	if (running)
 		Main_UnPauseEmulation();
 }
 
+/*-----------------------------------------------------------------------*/
+/**
+ * Shorcut to I860 debug interface
+ */
+static void ShortCut_Debug_I860(void) {
+    int running;
+    
+    if (bInFullScreen)
+        Screen_ReturnFromFullScreen();
+
+    running = Main_PauseEmulation(true);
+    
+    /* override paused message so that user knows to look into console
+     * on how to continue in case he invoked the debugger by accident.
+     */
+    Statusbar_AddMessage("I860 Console Debugger", 100);
+    Statusbar_Update(sdlscrn);
+    
+    /* disable normal GUI alerts while on console */
+    int alertLevel = Log_SetAlertLevel(LOG_FATAL);
+    
+    /* Call the debugger */
+    nd_start_debugger();
+    Log_SetAlertLevel(alertLevel);
+
+    if (running)
+        Main_UnPauseEmulation();
+}
 
 /*-----------------------------------------------------------------------*/
 /**
@@ -154,13 +181,11 @@ void ShortCut_ActKey(void)
 	 case SHORTCUT_SOUND:
 		ShortCut_SoundOnOff();         /* Enable/disable sound */
 		break;
-#if 0
-	 case SHORTCUT_DEBUG:
-		ShortCut_Debug();              /* Invoke the Debug UI */
+	 case SHORTCUT_DEBUG_M68K:
+		ShortCut_Debug_M68K();         /* Invoke the Debug UI */
 		break;
-#endif
-	 case SHORTCUT_DEBUG:
-		nd_start_debugger();              /* Invoke the Debug UI */
+	 case SHORTCUT_DEBUG_I860:
+		ShortCut_Debug_I860();         /* Invoke the M68K UI */
 		break;
 	 case SHORTCUT_PAUSE:
 		ShortCut_Pause();              /* Invoke Pause */
@@ -168,14 +193,6 @@ void ShortCut_ActKey(void)
 	 case SHORTCUT_QUIT:
 		Main_RequestQuit();
 		break;
-#if 0
-	 case SHORTCUT_LOADMEM:
-		MemorySnapShot_Restore(ConfigureParams.Memory.szMemoryCaptureFileName, true);
-		break;
-	 case SHORTCUT_SAVEMEM:
-		MemorySnapShot_Capture(ConfigureParams.Memory.szMemoryCaptureFileName, true);
-		break;
-#endif
 	 case SHORTCUT_DIMENSION:
 		ShortCut_Dimension();
 		break;
@@ -204,11 +221,6 @@ bool Shortcut_Invoke(const char *shortcut)
 		{ SHORTCUT_MOUSEGRAB, "mousegrab" },
 		{ SHORTCUT_COLDRESET, "coldreset" },
 		{ SHORTCUT_WARMRESET, "warmreset" },
-		{ SHORTCUT_SCREENSHOT, "screenshot" },
-		{ SHORTCUT_BOSSKEY, "bosskey" },
-		{ SHORTCUT_RECANIM, "recanim" },
-		{ SHORTCUT_RECSOUND, "recsound" },
-		{ SHORTCUT_SAVEMEM, "savemem" },
 		{ SHORTCUT_QUIT, "quit" },
 		{ SHORTCUT_NONE, NULL }
 	};

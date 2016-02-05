@@ -20,7 +20,6 @@ const char Main_fileid[] = "Hatari main.c : " __DATE__ " " __TIME__;
 #include "keymap.h"
 #include "log.h"
 #include "m68000.h"
-#include "memorySnapShot.h"
 #include "paths.h"
 #include "reset.h"
 #include "resolution.h"
@@ -69,10 +68,9 @@ bool Main_PauseEmulation(bool visualize)
 	if ( !bEmulationActive )
 		return false;
 
-	//Audio_Output_Enable(false);
 	bEmulationActive = false;
-	if (visualize)
-	{
+    host_pause_time(!(bEmulationActive));
+	if (visualize) {
 		if (nFirstMilliTick)
 		{
 			int interval = host_time_ms() - nFirstMilliTick;
@@ -111,8 +109,8 @@ bool Main_UnPauseEmulation(void)
 	if ( bEmulationActive )
 		return false;
 
-	//Audio_Output_Enable(ConfigureParams.Sound.bEnableSound);
 	bEmulationActive = true;
+    host_pause_time(!(bEmulationActive));
 
 	/* Cause full screen update (to clear all) */
 	Screen_SetFullUpdate();
@@ -131,12 +129,7 @@ bool Main_UnPauseEmulation(void)
  */
 void Main_RequestQuit(void)
 {
-	if (ConfigureParams.Memory.bAutoSave)
-	{
-		bQuitProgram = true;
-		MemorySnapShot_Capture(ConfigureParams.Memory.szAutoSaveFileName, false);
-	}
-	else if (ConfigureParams.Log.bConfirmQuit)
+    if (ConfigureParams.Log.bConfirmQuit)
 	{
 		bQuitProgram = false;	/* if set true, dialog exits */
 		bQuitProgram = DlgAlert_Query("All unsaved data will be lost.\nDo you really want to quit?");
@@ -232,35 +225,45 @@ void Main_EventHandler(void)
     int events;
     int remotepause;
     
-    do
-    {
+    do {
         bContinueProcessing = false;
+        
+        /* check remote process control from different thread (e.g. i860) */
+        switch(mainPauseEmulation) {
+            case PAUSE_EMULATION:
+                mainPauseEmulation = PAUSE_NONE;
+                Main_PauseEmulation(true);
+                break;
+            case UNPAUSE_EMULATION:
+                mainPauseEmulation = PAUSE_NONE;
+                Main_UnPauseEmulation();
+                break;
+        }
         
         /* check remote process control */
         remotepause = Control_CheckUpdates();
         
-        if ( bEmulationActive || remotepause )
-        {
-            events = SDL_PollEvent(&event);
+        if ( bEmulationActive || remotepause ) {
+            double time_offset = host_real_time_offset() * 1000;
+            if(time_offset > 10)
+                events = SDL_WaitEventTimeout(&event, time_offset);
+            else
+                events = SDL_PollEvent(&event);
         }
-        else
-        {
+        else {
             ShortCut_ActKey();
             /* last (shortcut) event activated emulation? */
             if ( bEmulationActive )
                 break;
             events = SDL_WaitEvent(&event);
         }
-        if (!events)
-        {
+        if (!events) {
             /* no events -> if emulation is active or
              * user is quitting -> return from function.
              */
             continue;
         }
-        switch (event.type)
-        {
-                
+        switch (event.type) {
             case SDL_QUIT:
                 Main_RequestQuit();
                 break;
@@ -271,8 +274,7 @@ void Main_EventHandler(void)
                 break;
                 
             case SDL_MOUSEBUTTONDOWN:
-                if (event.button.button == SDL_BUTTON_LEFT)
-                {
+                if (event.button.button == SDL_BUTTON_LEFT) {
                     if (ConfigureParams.Mouse.bEnableAutoGrab && !bGrabMouse) {
                         bGrabMouse = true;        /* Toggle flag */
                         
@@ -300,8 +302,7 @@ void Main_EventHandler(void)
                 break;
                 
             case SDL_MOUSEBUTTONUP:
-                if (event.button.button == SDL_BUTTON_LEFT)
-                {
+                if (event.button.button == SDL_BUTTON_LEFT) {
                     Keymap_MouseUp(true);
                     //				Keyboard.bLButtonDown &= ~BUTTON_MOUSE;
                 }

@@ -173,6 +173,10 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
                  return true;
              }
     }
+    if(current->SCSI.nWriteProtection != changed->SCSI.nWriteProtection) {
+        printf("scsi disk reset\n");
+        return true;
+    }
     
     /* Did we change MO drive? */
     for (i = 0; i < MO_MAX_DRIVES; i++) {

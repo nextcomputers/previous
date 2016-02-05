@@ -14,7 +14,6 @@
 
 #include "dialog.h"
 #include "reset.h"
-#include "memorySnapShot.h"
 #include "screen.h"
 #include "PrefsController.h"
 #include "Shared.h"
@@ -530,9 +529,10 @@ static void CustomApplicationMain (int argc, char **argv)
 
 - (IBAction)saveMemorySnap:(id)sender
 {
+    /*
 	GuiOsx_Pause();
 
-	NSString* path = [self displayFileSelection:ConfigureParams.Memory.szMemoryCaptureFileName preferredFileName:@"hatari.sav" 
+	NSString* path = [self displayFileSelection:ConfigureParams.Memory.szMemoryCaptureFileName preferredFileName:@"hatari.sav"
 								 allowedExtensions:[NSArray arrayWithObjects:@"sav",nil]];
 	if(path) {
 		GuiOsx_ExportPathString(path, ConfigureParams.Memory.szMemoryCaptureFileName, sizeof(ConfigureParams.Memory.szMemoryCaptureFileName));
@@ -540,6 +540,7 @@ static void CustomApplicationMain (int argc, char **argv)
 	}
 	
 	GuiOsx_Resume();
+     */
 }
 
 - (IBAction)restoreMemorySnap:(id)sender

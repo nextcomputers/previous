@@ -14,7 +14,6 @@ const char M68000_fileid[] = "Hatari m68000.c : " __DATE__ " " __TIME__;
 #include "hatari-glue.h"
 #include "cycInt.h"
 #include "m68000.h"
-#include "memorySnapShot.h"
 #include "options.h"
 #include "savestate.h"
 #include "nextMemory.h"
@@ -180,16 +179,6 @@ void M68000_Stop(void)
  */
 void M68000_Start(void)
 {
-	/* Load initial memory snapshot */
-	if (bLoadMemorySave)
-	{
-		MemorySnapShot_Restore(ConfigureParams.Memory.szMemoryCaptureFileName, false);
-	}
-	else if (bLoadAutoSave)
-	{
-		MemorySnapShot_Restore(ConfigureParams.Memory.szAutoSaveFileName, false);
-	}
-
 	m68k_go(true);
 }
 
@@ -254,90 +243,6 @@ void M68000_CheckCpuSettings(void)
 	if (table68k)
 		check_prefs_changed_cpu();
 }
-
-
-/*-----------------------------------------------------------------------*/
-/**
- * Save/Restore snapshot of CPU variables ('MemorySnapShot_Store' handles type)
- */
-void M68000_MemorySnapShot_Capture(bool bSave)
-{
-	Uint32 savepc;
-	int len;
-	uae_u8 *chunk = 0;
-
-	/* For the UAE CPU core: */
-	MemorySnapShot_Store(&regs.regs[0], sizeof(regs.regs));       /* D0-D7 A0-A6 */
-
-	if (bSave)
-	{
-		savepc = M68000_GetPC();
-		MemorySnapShot_Store(&savepc, sizeof(savepc));            /* PC */
-	}
-	else
-	{
-		MemorySnapShot_Store(&savepc, sizeof(savepc));            /* PC */
-		regs.pc = savepc;
-#ifdef UAE_NEWCPU_H
-		regs.prefetch_pc = regs.pc + 128;
-#endif
-	}
-
-#ifdef UAE_NEWCPU_H
-	MemorySnapShot_Store(&regs.prefetch, sizeof(regs.prefetch));  /* prefetch */
-#else
-	uae_u32 prefetch_dummy;
-	MemorySnapShot_Store(&prefetch_dummy, sizeof(prefetch_dummy));
-#endif
-
-	if (bSave)
-	{
-		MakeSR();
-		if (regs.s)
-		{
-			MemorySnapShot_Store(&regs.usp, sizeof(regs.usp));    /* USP */
-			MemorySnapShot_Store(&regs.regs[15], sizeof(regs.regs[15]));  /* ISP */
-		}
-		else
-		{
-			MemorySnapShot_Store(&regs.regs[15], sizeof(regs.regs[15]));  /* USP */
-			MemorySnapShot_Store(&regs.isp, sizeof(regs.isp));    /* ISP */
-		}
-		MemorySnapShot_Store(&regs.sr, sizeof(regs.sr));          /* SR/CCR */
-	}
-	else
-	{
-		MemorySnapShot_Store(&regs.usp, sizeof(regs.usp));
-		MemorySnapShot_Store(&regs.isp, sizeof(regs.isp));
-		MemorySnapShot_Store(&regs.sr, sizeof(regs.sr));
-	}
-	MemorySnapShot_Store(&regs.stopped, sizeof(regs.stopped));
-	MemorySnapShot_Store(&regs.dfc, sizeof(regs.dfc));            /* DFC */
-	MemorySnapShot_Store(&regs.sfc, sizeof(regs.sfc));            /* SFC */
-	MemorySnapShot_Store(&regs.vbr, sizeof(regs.vbr));            /* VBR */
-	MemorySnapShot_Store(&regs.caar, sizeof(regs.caar));          /* CAAR */
-	MemorySnapShot_Store(&regs.cacr, sizeof(regs.cacr));          /* CACR */
-	MemorySnapShot_Store(&regs.msp, sizeof(regs.msp));            /* MSP */
-
-	if (!bSave)
-	{
-		M68000_SetPC(regs.pc);
-		/* MakeFromSR() must not swap stack pointer */
-		regs.s = (regs.sr >> 13) & 1;
-		MakeFromSR();
-		/* set stack pointer */
-		if (regs.s)
-			m68k_areg(regs, 7) = regs.isp;
-		else
-			m68k_areg(regs, 7) = regs.usp;
-	}
-
-	if (bSave)
-		save_fpu(&len,0);
-	else
-		restore_fpu(chunk);
-}
-
 
 /*-----------------------------------------------------------------------*/
 /**

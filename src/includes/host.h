@@ -43,6 +43,8 @@ extern "C" {
     void        host_print_stat();
     int         host_num_cpus();
     void        host_hardclock(int expected, int actual);
+    double      host_real_time_offset();
+    void        host_pause_time(bool pausing);
     
     void        host_lock(lock_t* lock);
     void        host_unlock(lock_t* lock);
