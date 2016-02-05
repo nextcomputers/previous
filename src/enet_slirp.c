@@ -6,13 +6,14 @@
 
 #ifndef _WIN32
 #include <signal.h>
+#include <arpa/inet.h>
+#else
+#include <winsock2.h>
 #endif
-
 
 /****************/
 /* -- SLIRP -- */
 
-#include <arpa/inet.h>
 
 /* slirp prototypes */
 extern  int slirp_init(void);
