@@ -86,8 +86,8 @@ void snd_start_output(Uint8 mode) {
         sound_output_active = true;
         CycInt_AddRelativeInterruptTicks(100, INTERRUPT_SND_OUT);
     } else { /* Even re-enable loop if we are already active. This lowers the delay. */
-        Log_Printf(LOG_WARN, "[Sound] Restarting output loop.");
-        CycInt_AddRelativeInterruptTicks(100, INTERRUPT_SND_OUT);
+        Log_Printf(LOG_DEBUG, "[Sound] Restarting output loop.");
+        CycInt_AddRelativeInterruptTicks(1, INTERRUPT_SND_OUT);
     }
 }
 
@@ -110,8 +110,8 @@ void snd_start_input(Uint8 mode) {
         sound_input_active = true;
         CycInt_AddRelativeInterruptTicks(100, INTERRUPT_SND_IN);
     } else { /* Even re-enable loop if we are already active. This lowers the delay. */
-        Log_Printf(LOG_WARN, "[Sound] Restarting input loop.");
-        CycInt_AddRelativeInterruptTicks(100, INTERRUPT_SND_IN);
+        Log_Printf(LOG_DEBUG, "[Sound] Restarting input loop.");
+        CycInt_AddRelativeInterruptTicks(1, INTERRUPT_SND_IN);
     }
 }
 

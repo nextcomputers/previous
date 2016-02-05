@@ -824,7 +824,7 @@ static uae_u32 mem_bmap_lget(uaecptr addr)
 		M68000_BusError(addr, 0);
 		return 0;
 	}
-	write_log ("bmap lget at %08lx PC=%08x\n", (long)addr,m68k_getpc());
+	//write_log ("bmap lget at %08lx PC=%08x\n", (long)addr,m68k_getpc());
 	addr &= NEXT_BMAP_MASK;
 	return bmap_lget(addr);
 }
@@ -836,7 +836,7 @@ static uae_u32 mem_bmap_wget(uaecptr addr)
 		M68000_BusError(addr, 0);
 		return 0;
 	}
-	write_log ("bmap wget at %08lx PC=%08x\n", (long)addr,m68k_getpc());
+	//write_log ("bmap wget at %08lx PC=%08x\n", (long)addr,m68k_getpc());
 	addr &= NEXT_BMAP_MASK;
 	return bmap_wget(addr);
 }
@@ -848,7 +848,7 @@ static uae_u32 mem_bmap_bget(uaecptr addr)
 		M68000_BusError(addr, 0);
 		return 0;
 	}
-	write_log ("bmap bget at %08lx PC=%08x\n", (long)addr,m68k_getpc());
+	//write_log ("bmap bget at %08lx PC=%08x\n", (long)addr,m68k_getpc());
 	addr &= NEXT_BMAP_MASK;
 	return bmap_bget(addr);
 }
@@ -859,7 +859,7 @@ static void mem_bmap_lput(uaecptr addr, uae_u32 l)
 		write_log ("bmap bus error at %08lx PC=%08x\n", (long)addr,m68k_getpc());
 		M68000_BusError(addr, 0);
 	}
-	write_log ("bmap lput at %08lx val=%x PC=%08x\n", (long)addr,l,m68k_getpc());
+	//write_log ("bmap lput at %08lx val=%x PC=%08x\n", (long)addr,l,m68k_getpc());
 	addr &= NEXT_BMAP_MASK;
 	bmap_lput(addr, l);
 }
@@ -870,7 +870,7 @@ static void mem_bmap_wput(uaecptr addr, uae_u32 w)
 		write_log ("bmap bus error at %08lx PC=%08x\n", (long)addr,m68k_getpc());
 		M68000_BusError(addr, 0);
 	}
-	write_log ("bmap wput at %08lx val=%x PC=%08x\n", (long)addr,w,m68k_getpc());
+	//write_log ("bmap wput at %08lx val=%x PC=%08x\n", (long)addr,w,m68k_getpc());
 	addr &= NEXT_BMAP_MASK;
 	bmap_wput(addr, w);
 }
@@ -881,7 +881,7 @@ static void mem_bmap_bput(uaecptr addr, uae_u32 b)
 		write_log ("bmap bus error at %08lx PC=%08x\n", (long)addr,m68k_getpc());
 		M68000_BusError(addr, 0);
 	}
-	write_log ("bmap bput at %08lx val=%x PC=%08x\n", (long)addr,b,m68k_getpc());
+	//write_log ("bmap bput at %08lx val=%x PC=%08x\n", (long)addr,b,m68k_getpc());
 	addr &= NEXT_BMAP_MASK;
 	bmap_bput(addr, b);
 }

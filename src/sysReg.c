@@ -16,6 +16,7 @@
 
 #define LOG_HARDCLOCK_LEVEL LOG_DEBUG
 #define LOG_SOFTINT_LEVEL   LOG_DEBUG
+#define LOG_DSP_LEVEL       LOG_DEBUG
 
 #define IO_SEG_MASK	0x1FFFF
 
@@ -244,25 +245,25 @@ void SCR2_Write0(void)
     
     /* DSP bits */
     if (scr2_0&SCR2_DSP_MODE_A) {
-        Log_Printf(LOG_WARN,"[SCR2] DSP Mode A");
+        Log_Printf(LOG_DSP_LEVEL,"[SCR2] DSP Mode A");
     }
     if (scr2_0&SCR2_DSP_MODE_B) {
-        Log_Printf(LOG_WARN,"[SCR2] DSP Mode B");
+        Log_Printf(LOG_DSP_LEVEL,"[SCR2] DSP Mode B");
     }
     if (!(scr2_0&SCR2_DSP_RESET) && (old_scr2_0&SCR2_DSP_RESET)) {
-        Log_Printf(LOG_WARN,"[SCR2] DSP Reset");
+        Log_Printf(LOG_DSP_LEVEL,"[SCR2] DSP Reset");
         DSP_Reset();
     } else if ((scr2_0&SCR2_DSP_RESET) && !(old_scr2_0&SCR2_DSP_RESET)) {
-        Log_Printf(LOG_WARN,"[SCR2] DSP Start (mode %i)",(~(scr2_0>>3))&3);
+        Log_Printf(LOG_DSP_LEVEL,"[SCR2] DSP Start (mode %i)",(~(scr2_0>>3))&3);
         DSP_Start((~(scr2_0>>3))&3);
     }
 	dsp_intr_at_block_end = scr2_0&SCR2_DSP_BLK_END;
     if ((old_scr2_0&SCR2_DSP_BLK_END) != (scr2_0&SCR2_DSP_BLK_END)) {
-        Log_Printf(LOG_WARN,"[SCR2] %s DSP interrupt from DMA at block end",dsp_intr_at_block_end?"Enable":"Disable");
+        Log_Printf(LOG_DSP_LEVEL,"[SCR2] %s DSP interrupt from DMA at block end",dsp_intr_at_block_end?"Enable":"Disable");
     }
 	dsp_dma_unpacked = scr2_0&SCR2_DSP_UNPKD;
     if ((old_scr2_0&SCR2_DSP_UNPKD) != (scr2_0&SCR2_DSP_UNPKD)) {
-        Log_Printf(LOG_WARN,"[SCR2] %s DSP DMA unpacked mode",dsp_dma_unpacked?"Enable":"Disable");
+        Log_Printf(LOG_DSP_LEVEL,"[SCR2] %s DSP DMA unpacked mode",dsp_dma_unpacked?"Enable":"Disable");
     }
 }
 
@@ -331,15 +332,15 @@ void SCR2_Write3(void)
     }
     
     if ((old_scr2_3&SCR2_DSP_INT_EN) != (scr2_3&SCR2_DSP_INT_EN)) {
-        Log_Printf(LOG_WARN,"[SCR2] DSP interrupt at level %i",(scr2_3&SCR2_DSP_INT_EN)?4:3);
+        Log_Printf(LOG_DSP_LEVEL,"[SCR2] DSP interrupt at level %i",(scr2_3&SCR2_DSP_INT_EN)?4:3);
 		if (intStat&(INT_DSP_L3|INT_DSP_L4)) {
-			Log_Printf(LOG_WARN,"[SCR2] Switching DSP interrupt to level %i",(scr2_3&SCR2_DSP_INT_EN)?4:3);
+			Log_Printf(LOG_DSP_LEVEL,"[SCR2] Switching DSP interrupt to level %i",(scr2_3&SCR2_DSP_INT_EN)?4:3);
 			set_interrupt(INT_DSP_L3|INT_DSP_L4, RELEASE_INT);
 			set_dsp_interrupt(SET_INT);
 		}
     }
     if ((old_scr2_3&SCR2_DSP_MEM_EN) != (scr2_3&SCR2_DSP_MEM_EN)) {
-        Log_Printf(LOG_WARN,"[SCR2] %s DSP memory",(scr2_3&SCR2_DSP_MEM_EN)?"Enable":"Disable");
+        Log_Printf(LOG_DSP_LEVEL,"[SCR2] %s DSP memory",(scr2_3&SCR2_DSP_MEM_EN)?"Enable":"Disable");
     }
 }
 
