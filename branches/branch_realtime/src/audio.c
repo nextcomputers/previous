@@ -21,7 +21,7 @@ static bool          bSoundOutAlertShown = false;
 static bool          bSoundInAlertShown  = false;
 static bool          bPlayingBuffer      = false; /* Is playing buffer? */
 static bool          bRecordingBuffer    = false; /* Is recording buffer? */
-static const  int    REC_BUFFER_SZ       = 16;  /* Recording buffer size in power of two */
+#define              REC_BUFFER_SZ       16  /* Recording buffer size in power of two */
 static const  Uint32 REC_BUFFER_MASK     = (1<<REC_BUFFER_SZ) - 1;
 static Uint8         recBuffer[1<<REC_BUFFER_SZ];
 static Uint32        recBufferWr         = 0;
