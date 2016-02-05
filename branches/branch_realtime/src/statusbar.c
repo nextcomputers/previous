@@ -87,7 +87,7 @@ static double lastRealTime;
 static double lastVirtualTime;
 
 /* led colors */
-static Uint32 LedColorOn, LedColorOff, SysColorOn, SysColorOff, DspColorOn, DspColorOff;
+static Uint32 LedColorOn, LedColorOnWP, LedColorOff, SysColorOn, SysColorOff, DspColorOn, DspColorOff;
 static Uint32 NdColorOn, NdColorCS8, NdColorOff;
 static Uint32 GrayBg, LedColorBg;
 static Uint32 CPUColors[256];
@@ -275,17 +275,18 @@ void Statusbar_Init(SDL_Surface *surf)
 	assert(surf);
 
 	/* dark green and light green for leds themselves */
-	LedColorOff = SDL_MapRGB(surf->format, 0x00, 0x40, 0x00);
-	LedColorOn  = SDL_MapRGB(surf->format, 0x00, 0xe0, 0x00);
-	LedColorBg  = SDL_MapRGB(surf->format, 0x00, 0x00, 0x00);
-	SysColorOff = SDL_MapRGB(surf->format, 0x40, 0x00, 0x00);
-	SysColorOn  = SDL_MapRGB(surf->format, 0xe0, 0x00, 0x00);
-	DspColorOff = SDL_MapRGB(surf->format, 0x00, 0x00, 0x40);
-	DspColorOn  = SDL_MapRGB(surf->format, 0x00, 0x00, 0xe0);
-    NdColorOff  = SDL_MapRGB(surf->format, 0x00, 0x00, 0x40);
-    NdColorCS8  = SDL_MapRGB(surf->format, 0xe0, 0x00, 0x00);
-    NdColorOn   = SDL_MapRGB(surf->format, 0x00, 0x00, 0xe0);
-	GrayBg      = SDL_MapRGB(surf->format, 0xb5, 0xb7, 0xaa);
+	LedColorOff  = SDL_MapRGB(surf->format, 0x00, 0x40, 0x00);
+	LedColorOn   = SDL_MapRGB(surf->format, 0x00, 0xe0, 0x00);
+    LedColorOnWP = SDL_MapRGB(surf->format, 0xFF, 0xe0, 0x00);
+	LedColorBg   = SDL_MapRGB(surf->format, 0x00, 0x00, 0x00);
+	SysColorOff  = SDL_MapRGB(surf->format, 0x40, 0x00, 0x00);
+	SysColorOn   = SDL_MapRGB(surf->format, 0xe0, 0x00, 0x00);
+	DspColorOff  = SDL_MapRGB(surf->format, 0x00, 0x00, 0x40);
+	DspColorOn   = SDL_MapRGB(surf->format, 0x00, 0x00, 0xe0);
+    NdColorOff   = SDL_MapRGB(surf->format, 0x00, 0x00, 0x40);
+    NdColorCS8   = SDL_MapRGB(surf->format, 0xe0, 0x00, 0x00);
+    NdColorOn    = SDL_MapRGB(surf->format, 0x00, 0x00, 0xe0);
+	GrayBg       = SDL_MapRGB(surf->format, 0xb5, 0xb7, 0xaa);
     for(int i = 0; i < 256; i++)
         CPUColors[i] = hsv2rgb(surf->format, (float)i/(float)768, 1, 1);
     
@@ -471,7 +472,10 @@ void Statusbar_UpdateInfo(void)
 		*end++ = '0' + ConfigureParams.System.nCpuFreq / 10;
 	}
 	*end++ = '0' + ConfigureParams.System.nCpuFreq % 10;
-	end = Statusbar_AddString(end, "MHz/");
+	end = Statusbar_AddString(end, "MHz");
+    if(ConfigureParams.System.bRealtime)
+        end = Statusbar_AddString(end, "/FM");
+    *end++ = '/';
 
 	/* CPU type */
 	if(ConfigureParams.System.nCpuLevel > 0) {
@@ -661,7 +665,7 @@ static void Statusbar_OverlayDraw(SDL_Surface *surf)
 				Led[i].state = false;
 				continue;
 			}
-			Statusbar_OverlayDrawLed(surf, LedColorOn);
+            Statusbar_OverlayDrawLed(surf, ConfigureParams.SCSI.nWriteProtection == WRITEPROT_ON && i == DEVICE_LED_SCSI ? LedColorOnWP : LedColorOn);
 			break;
 		}
 	}
@@ -716,7 +720,7 @@ void Statusbar_Update(SDL_Surface *surf) {
 		}
 		Led[i].oldstate = Led[i].state;
 		if (Led[i].state) {
-			color = LedColorOn;
+            color = ConfigureParams.SCSI.nWriteProtection == WRITEPROT_ON  && i == DEVICE_LED_SCSI ? LedColorOnWP : LedColorOn;
 		} else {
 			color = LedColorOff;
 		}
@@ -759,28 +763,28 @@ void Statusbar_Update(SDL_Surface *surf) {
     double dvt = oldVirtualTime - lastVirtualTime;
     double drt = oldRealTime    - lastRealTime;
     if(drt != 0) {
-        int fontw, fonth;
-        SDL_Rect   r;
-        
-        dvt /= drt;
-        dvt -= 0.6; // below 60% is really bad
-        dvt /= (1-0.6);
-        dvt *= 255;
-        if(dvt < 0)   dvt = 0;
-        if(dvt > 255) dvt = 255;
-        SDL_FillRect(surf, &CPULedRect, CPUColors[(int)dvt]);
-        SDLGui_GetFontSize(&fontw, &fonth);
-        r.x = CPULedRect.x - 4*fontw - fontw/2;
-        r.y = CPULedRect.y;
-        r.w = 4*fontw;
-        r.h = CPULedRect.h + 2;
-        SDL_FillRect(surf, &r, GrayBg);
-        SDLGui_Text(r.x, r.y-2, ConfigureParams.System.bRealtime ? "cpu:" : "CPU:");
-        SDL_UpdateRects(surf, 1, &CPULedRect);
         if(currentticks > nextCPUupdate) {
+            int fontw, fonth;
+            SDL_Rect   r;
+            
+            dvt /= drt;
+            dvt -= 0.6; // below 60% is really bad
+            dvt /= (1-0.6);
+            dvt *= 255;
+            if(dvt < 0)   dvt = 0;
+            if(dvt > 255) dvt = 255;
+            SDL_FillRect(surf, &CPULedRect, CPUColors[(int)dvt]);
+            SDLGui_GetFontSize(&fontw, &fonth);
+            r.x = CPULedRect.x - 4*fontw - fontw/2;
+            r.y = CPULedRect.y;
+            r.w = 4*fontw;
+            r.h = CPULedRect.h + 2;
+            SDL_FillRect(surf, &r, GrayBg);
+            SDLGui_Text(r.x, r.y-2, ConfigureParams.System.bRealtime ? "cpu:" : "CPU:");
+            SDL_UpdateRects(surf, 1, &CPULedRect);
             lastRealTime    = oldRealTime;
             lastVirtualTime = oldVirtualTime;
-            nextCPUupdate = currentticks + 500;
+            nextCPUupdate = currentticks + 100;
         }
     }
 }

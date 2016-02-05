@@ -25,7 +25,6 @@
 #include "main.h"
 #include "sysdeps.h"
 #include "newcpu.h"
-#include "memorySnapShot.h"
 #include "ioMem.h"
 #include "dsp.h"
 #include "configuration.h"
@@ -256,22 +255,6 @@ void DSP_Start(Uint8 mode)
 #if ENABLE_DSP_EMU
     dsp_core_start(mode);
     save_cycles = 0;
-#endif
-}
-
-
-/**
- * Save/Restore snapshot of CPU variables ('MemorySnapShot_Store' handles type)
- */
-void DSP_MemorySnapShot_Capture(bool bSave)
-{
-#if ENABLE_DSP_EMU
-	if (!bSave)
-		DSP_Reset();
-
-	MemorySnapShot_Store(&bDspEnabled, sizeof(bDspEnabled));
-	MemorySnapShot_Store(&dsp_core, sizeof(dsp_core));
-	MemorySnapShot_Store(&save_cycles, sizeof(save_cycles));
 #endif
 }
 

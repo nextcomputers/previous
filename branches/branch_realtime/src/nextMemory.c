@@ -13,7 +13,6 @@ const char STMemory_fileid[] = "Hatari stMemory.c : " __DATE__ " " __TIME__;
 #include "ioMem.h"
 #include "log.h"
 #include "memory.h"
-#include "memorySnapShot.h"
 
 /*
  * Main RAM buffer (128 MB for turbo systems)
@@ -34,18 +33,6 @@ void NEXTMemory_Clear(Uint32 StartAddress, Uint32 EndAddress)
 {
 	memset(&NEXTRam[StartAddress], 0, EndAddress-StartAddress);
 }
-
-/**
- * TODO 
- */
-void NEXTMemory_MemorySnapShot_Capture(bool bSave)
-{
-	MemorySnapShot_Store(&NEXTRamEnd, sizeof(NEXTRamEnd));
-
-	/* Only save/restore area of memory machine is set to, eg 1Mb */
-	MemorySnapShot_Store(NEXTRam, NEXTRamEnd);
-}
-
 
 /**
  * TODO

@@ -19,7 +19,6 @@ const char Configuration_fileid[] = "Hatari configuration.c : " __DATE__ " " __T
 #include "file.h"
 #include "log.h"
 #include "m68000.h"
-#include "memorySnapShot.h"
 #include "paths.h"
 #include "screen.h"
 #include "video.h"
@@ -62,20 +61,8 @@ static const struct Config_Tag configs_Screen[] =
 	{ "nMonitorType", Int_Tag, &ConfigureParams.Screen.nMonitorType },
 //	{ "nFrameSkips", Int_Tag, &ConfigureParams.Screen.nFrameSkips },
 	{ "bFullScreen", Bool_Tag, &ConfigureParams.Screen.bFullScreen },
-    { "bKeepResolution", Bool_Tag, &ConfigureParams.Screen.bKeepResolution },
-	{ "bAllowOverscan", Bool_Tag, &ConfigureParams.Screen.bAllowOverscan },
-	{ "nSpec512Threshold", Int_Tag, &ConfigureParams.Screen.nSpec512Threshold },
-	{ "nForceBpp", Int_Tag, &ConfigureParams.Screen.nForceBpp },
-	{ "bAspectCorrect", Bool_Tag, &ConfigureParams.Screen.bAspectCorrect },
-	{ "bUseExtVdiResolutions", Bool_Tag, &ConfigureParams.Screen.bUseExtVdiResolutions },
-	{ "nVdiWidth", Int_Tag, &ConfigureParams.Screen.nVdiWidth },
-	{ "nVdiHeight", Int_Tag, &ConfigureParams.Screen.nVdiHeight },
-	{ "nVdiColors", Int_Tag, &ConfigureParams.Screen.nVdiColors },
 	{ "bShowStatusbar", Bool_Tag, &ConfigureParams.Screen.bShowStatusbar },
 	{ "bShowDriveLed", Bool_Tag, &ConfigureParams.Screen.bShowDriveLed },
-	{ "bCrop", Bool_Tag, &ConfigureParams.Screen.bCrop },
-	{ "nMaxWidth", Int_Tag, &ConfigureParams.Screen.nMaxWidth },
-	{ "nMaxHeight", Int_Tag, &ConfigureParams.Screen.nMaxHeight },
 	{ NULL , Error_Tag, NULL }
 };
 
@@ -103,48 +90,36 @@ static const struct Config_Tag configs_Mouse[] =
 /* Used to load/save shortcut key bindings with modifiers options */
 static const struct Config_Tag configs_ShortCutWithMod[] =
 {
-	{ "keyOptions",    Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_OPTIONS] },
-	{ "keyFullScreen", Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_FULLSCREEN] },
-	{ "keyMouseMode",  Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_MOUSEGRAB] },
-	{ "keyColdReset",  Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_COLDRESET] },
-	{ "keyWarmReset",  Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_WARMRESET] },
-	{ "keyScreenShot", Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_SCREENSHOT] },
-	{ "keyBossKey",    Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_BOSSKEY] },
-	{ "keyCursorEmu",  Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_CURSOREMU] },
-	{ "keyFastForward",Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_FASTFORWARD] },
-	{ "keyRecAnim",    Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_RECANIM] },
-	{ "keyRecSound",   Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_RECSOUND] },
-	{ "keySound",      Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_SOUND] },
-	{ "keyPause",      Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_PAUSE] },
-	{ "keyDebugger",   Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_DEBUG] },
-	{ "keyQuit",       Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_QUIT] },
-	{ "keyLoadMem",    Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_LOADMEM] },
-	{ "keySaveMem",    Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_SAVEMEM] },
-	{ "keyDimension",  Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_DIMENSION] },
+	{ "keyOptions",     Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_OPTIONS] },
+	{ "keyFullScreen",  Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_FULLSCREEN] },
+	{ "keyMouseMode",   Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_MOUSEGRAB] },
+	{ "keyColdReset",   Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_COLDRESET] },
+	{ "keyWarmReset",   Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_WARMRESET] },
+	{ "keyCursorEmu",   Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_CURSOREMU] },
+	{ "keySound",       Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_SOUND] },
+	{ "keyPause",       Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_PAUSE] },
+	{ "keyDebuggerM68K",Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_DEBUG_M68K] },
+    { "keyDebuggerI860",Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_DEBUG_I860] },
+	{ "keyQuit",        Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_QUIT] },
+	{ "keyDimension",   Int_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_DIMENSION] },
 	{ NULL , Error_Tag, NULL }
 };
 
 /* Used to load/save shortcut key bindings without modifiers options */
 static const struct Config_Tag configs_ShortCutWithoutMod[] =
 {
-	{ "keyOptions",    Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_OPTIONS] },
-	{ "keyFullScreen", Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_FULLSCREEN] },
-	{ "keyMouseMode",  Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_MOUSEGRAB] },
-	{ "keyColdReset",  Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_COLDRESET] },
-	{ "keyWarmReset",  Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_WARMRESET] },
-	{ "keyScreenShot", Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_SCREENSHOT] },
-	{ "keyBossKey",    Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_BOSSKEY] },
-	{ "keyCursorEmu",  Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_CURSOREMU] },
-	{ "keyFastForward",Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_FASTFORWARD] },
-	{ "keyRecAnim",    Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_RECANIM] },
-	{ "keyRecSound",   Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_RECSOUND] },
-	{ "keySound",      Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_SOUND] },
-	{ "keyPause",      Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_PAUSE] },
-	{ "keyDebugger",   Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_DEBUG] },
-	{ "keyQuit",       Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_QUIT] },
-	{ "keyLoadMem",    Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_LOADMEM] },
-	{ "keySaveMem",    Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_SAVEMEM] },
-	{ "keyDimension",  Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_DIMENSION] },
+	{ "keyOptions",     Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_OPTIONS] },
+	{ "keyFullScreen",  Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_FULLSCREEN] },
+	{ "keyMouseMode",   Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_MOUSEGRAB] },
+	{ "keyColdReset",   Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_COLDRESET] },
+	{ "keyWarmReset",   Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_WARMRESET] },
+	{ "keyCursorEmu",   Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_CURSOREMU] },
+	{ "keySound",       Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_SOUND] },
+	{ "keyPause",       Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_PAUSE] },
+	{ "keyDebuggerM68K",Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_DEBUG_M68K] },
+    { "keyDebuggerI860",Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_DEBUG_I860] },
+	{ "keyQuit",        Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_QUIT] },
+	{ "keyDimension",   Int_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_DIMENSION] },
 	{ NULL , Error_Tag, NULL }
 };
 
@@ -165,9 +140,6 @@ static const struct Config_Tag configs_Memory[] =
 	{ "nMemoryBankSize2", Int_Tag, &ConfigureParams.Memory.nMemoryBankSize[2] },
 	{ "nMemoryBankSize3", Int_Tag, &ConfigureParams.Memory.nMemoryBankSize[3] },
     { "nMemorySpeed", Int_Tag, &ConfigureParams.Memory.nMemorySpeed },
-	{ "bAutoSave", Bool_Tag, &ConfigureParams.Memory.bAutoSave },
-	{ "szMemoryCaptureFileName", String_Tag, ConfigureParams.Memory.szMemoryCaptureFileName },
-	{ "szAutoSaveFileName", String_Tag, ConfigureParams.Memory.szAutoSaveFileName },
 	{ NULL , Error_Tag, NULL }
 };
 
@@ -223,6 +195,8 @@ static const struct Config_Tag configs_SCSI[] =
     { "bDiskInserted6", Bool_Tag, &ConfigureParams.SCSI.target[6].bDiskInserted },
     { "bWriteProtected6", Bool_Tag, &ConfigureParams.SCSI.target[6].bWriteProtected },
 
+    { "nWriteProtection", Int_Tag, &ConfigureParams.SCSI.nWriteProtection },
+    
     { NULL , Error_Tag, NULL }
 };
 
@@ -275,30 +249,12 @@ static const struct Config_Tag configs_Rom[] =
 	{ NULL , Error_Tag, NULL }
 };
 
-/* Used to load/save RS232 options */
-static const struct Config_Tag configs_Rs232[] =
-{
-	{ "bEnableRS232", Bool_Tag, &ConfigureParams.RS232.bEnableRS232 },
-	{ "szOutFileName", String_Tag, ConfigureParams.RS232.szOutFileName },
-	{ "szInFileName", String_Tag, ConfigureParams.RS232.szInFileName },
-	{ NULL , Error_Tag, NULL }
-};
-
 /* Used to load/save printer options */
 static const struct Config_Tag configs_Printer[] =
 {
 	{ "bPrinterConnected", Bool_Tag, &ConfigureParams.Printer.bPrinterConnected },
 	{ "nPaperSize", Int_Tag, &ConfigureParams.Printer.nPaperSize },
 	{ "szPrintToFileName", String_Tag, ConfigureParams.Printer.szPrintToFileName },
-	{ NULL , Error_Tag, NULL }
-};
-
-/* Used to load/save MIDI options */
-static const struct Config_Tag configs_Midi[] =
-{
-	{ "bEnableMidi", Bool_Tag, &ConfigureParams.Midi.bEnableMidi },
-	{ "sMidiInFileName", String_Tag, ConfigureParams.Midi.sMidiInFileName },
-	{ "sMidiOutFileName", String_Tag, ConfigureParams.Midi.sMidiOutFileName },
 	{ NULL , Error_Tag, NULL }
 };
 
@@ -336,16 +292,6 @@ static const struct Config_Tag configs_Dimension[] =
     { "szRomFileName", String_Tag, ConfigureParams.Dimension.szRomFileName },
     { NULL , Error_Tag, NULL }
 };
-
-/* Used to load/save video options */
-static const struct Config_Tag configs_Video[] =
-{
-    { "AviRecordVcodec", Int_Tag, &ConfigureParams.Video.AviRecordVcodec },
-    { "AviRecordFps", Int_Tag, &ConfigureParams.Video.AviRecordFps },
-    { "AviRecordFile", String_Tag, ConfigureParams.Video.AviRecordFile },
-	{ NULL , Error_Tag, NULL }
-};
-
 
 /*-----------------------------------------------------------------------*/
 /**
@@ -396,6 +342,7 @@ void Configuration_SetDefault(void)
         ConfigureParams.SCSI.target[i].bDiskInserted = false;
         ConfigureParams.SCSI.target[i].bWriteProtected = false;
     }
+    ConfigureParams.SCSI.nWriteProtection = WRITEPROT_OFF;
     
     /* Set defaults for MO drives */
     for (i = 0; i < MO_MAX_DRIVES; i++) {
@@ -430,38 +377,27 @@ void Configuration_SetDefault(void)
     ConfigureParams.Mouse.bEnableAutoGrab = true;
 
 	/* Set defaults for Shortcuts */
-	ConfigureParams.Shortcut.withoutModifier[SHORTCUT_OPTIONS] = SDLK_F12;
+	ConfigureParams.Shortcut.withoutModifier[SHORTCUT_OPTIONS]    = SDLK_F12;
 	ConfigureParams.Shortcut.withoutModifier[SHORTCUT_FULLSCREEN] = SDLK_F11;
     
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_PAUSE] = SDLK_p;
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_DEBUG] = SDLK_d;
+	ConfigureParams.Shortcut.withModifier[SHORTCUT_PAUSE]         = SDLK_p;
+	ConfigureParams.Shortcut.withModifier[SHORTCUT_DEBUG_M68K]    = SDLK_d;
+    ConfigureParams.Shortcut.withModifier[SHORTCUT_DEBUG_I860]    = SDLK_i;
     
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_OPTIONS] = SDLK_o;
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_FULLSCREEN] = SDLK_f;
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_MOUSEGRAB] = SDLK_m;
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_COLDRESET] = SDLK_c;
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_WARMRESET] = SDLK_r;
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_SCREENSHOT] = SDLK_g;
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_BOSSKEY] = SDLK_i;
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_CURSOREMU] = SDLK_j;
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_FASTFORWARD] = SDLK_x;
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_RECANIM] = SDLK_a;
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_RECSOUND] = SDLK_y;
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_SOUND] = SDLK_s;
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_QUIT] = SDLK_q;
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_LOADMEM] = SDLK_l;
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_SAVEMEM] = SDLK_k;
-	ConfigureParams.Shortcut.withModifier[SHORTCUT_DIMENSION] = SDLK_n;
+	ConfigureParams.Shortcut.withModifier[SHORTCUT_OPTIONS]       = SDLK_o;
+	ConfigureParams.Shortcut.withModifier[SHORTCUT_FULLSCREEN]    = SDLK_f;
+	ConfigureParams.Shortcut.withModifier[SHORTCUT_MOUSEGRAB]     = SDLK_m;
+	ConfigureParams.Shortcut.withModifier[SHORTCUT_COLDRESET]     = SDLK_c;
+	ConfigureParams.Shortcut.withModifier[SHORTCUT_WARMRESET]     = SDLK_r;
+	ConfigureParams.Shortcut.withModifier[SHORTCUT_CURSOREMU]     = SDLK_j;
+	ConfigureParams.Shortcut.withModifier[SHORTCUT_SOUND]         = SDLK_s;
+	ConfigureParams.Shortcut.withModifier[SHORTCUT_QUIT]          = SDLK_q;
+	ConfigureParams.Shortcut.withModifier[SHORTCUT_DIMENSION]     = SDLK_n;
 
 	/* Set defaults for Memory */
 	memset(ConfigureParams.Memory.nMemoryBankSize, 16, 
            sizeof(ConfigureParams.Memory.nMemoryBankSize)); /* 64 MiB */
     ConfigureParams.Memory.nMemorySpeed = MEMORY_100NS;
-	ConfigureParams.Memory.bAutoSave = false;
-	sprintf(ConfigureParams.Memory.szMemoryCaptureFileName, "%s%chatari.sav",
-	        psHomeDir, PATHSEP);
-	sprintf(ConfigureParams.Memory.szAutoSaveFileName, "%s%cauto.sav",
-	        psHomeDir, PATHSEP);
 
 	/* Set defaults for Printer */
 	ConfigureParams.Printer.bPrinterConnected = false;
@@ -469,32 +405,11 @@ void Configuration_SetDefault(void)
 	sprintf(ConfigureParams.Printer.szPrintToFileName, "%s%c",
 	        psHomeDir, PATHSEP);
 
-	/* Set defaults for RS232 */
-	ConfigureParams.RS232.bEnableRS232 = false;
-	strcpy(ConfigureParams.RS232.szOutFileName, "/dev/modem");
-	strcpy(ConfigureParams.RS232.szInFileName, "/dev/modem");
-
-	/* Set defaults for MIDI */
-	ConfigureParams.Midi.bEnableMidi = false;
-	strcpy(ConfigureParams.Midi.sMidiInFileName, "/dev/snd/midiC1D0");
-	strcpy(ConfigureParams.Midi.sMidiOutFileName, "/dev/snd/midiC1D0");
-
 	/* Set defaults for Screen */
 	ConfigureParams.Screen.bFullScreen = false;
-    ConfigureParams.Screen.bKeepResolution = true;
-//	ConfigureParams.Screen.nFrameSkips = AUTO_FRAMESKIP_LIMIT;
-	ConfigureParams.Screen.bAllowOverscan = true;
-	ConfigureParams.Screen.nSpec512Threshold = 16;
-	ConfigureParams.Screen.nForceBpp = 0;
-	ConfigureParams.Screen.bAspectCorrect = true;
 	ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_CPU;
-	ConfigureParams.Screen.bUseExtVdiResolutions = false;
 	ConfigureParams.Screen.bShowStatusbar = true;
 	ConfigureParams.Screen.bShowDriveLed = true;
-	ConfigureParams.Screen.bCrop = false;
-	/* target 800x600 screen with statusbar out of screen */
-	ConfigureParams.Screen.nMaxWidth = 0;
-	ConfigureParams.Screen.nMaxHeight = 0;
 
 	/* Set defaults for Sound */
     ConfigureParams.Sound.bEnableMicrophone = true;
@@ -536,16 +451,6 @@ void Configuration_SetDefault(void)
     ConfigureParams.Dimension.nMemoryBankSize[3] = 4;
     sprintf(ConfigureParams.Dimension.szRomFileName, "%s%cdimension_eeprom.bin",
             Paths_GetWorkingDir(), PATHSEP);
-
-    /* Set defaults for Video */
-#if HAVE_LIBPNG
-    ConfigureParams.Video.AviRecordVcodec = AVI_RECORD_VIDEO_CODEC_PNG;
-#else
-    ConfigureParams.Video.AviRecordVcodec = AVI_RECORD_VIDEO_CODEC_BMP;
-#endif
-    ConfigureParams.Video.AviRecordFps = 0;			/* automatic FPS */
-    sprintf(ConfigureParams.Video.AviRecordFile, "%s%chatari.avi", psWorkingDir, PATHSEP);
-
 
 	/* Initialize the configuration file name */
 	if (strlen(psHomeDir) < sizeof(sConfigFileName)-13)
@@ -625,18 +530,10 @@ void Configuration_Apply(bool bReset)
         File_MakeAbsoluteName(ConfigureParams.Floppy.drive[i].szImageName);
     }
     
-	File_MakeAbsoluteName(ConfigureParams.Memory.szMemoryCaptureFileName);
-	if (strlen(ConfigureParams.Keyboard.szMappingFileName) > 0)
-		File_MakeAbsoluteName(ConfigureParams.Keyboard.szMappingFileName);
-    File_MakeAbsoluteName(ConfigureParams.Video.AviRecordFile);
 	
 	/* make path names absolute, but handle special file names */
 	File_MakeAbsoluteSpecialName(ConfigureParams.Log.sLogFileName);
 	File_MakeAbsoluteSpecialName(ConfigureParams.Log.sTraceFileName);
-	File_MakeAbsoluteSpecialName(ConfigureParams.RS232.szInFileName);
-	File_MakeAbsoluteSpecialName(ConfigureParams.RS232.szOutFileName);
-	File_MakeAbsoluteSpecialName(ConfigureParams.Midi.sMidiInFileName);
-	File_MakeAbsoluteSpecialName(ConfigureParams.Midi.sMidiOutFileName);
 }
 
 
@@ -866,12 +763,9 @@ void Configuration_Load(const char *psFileName)
     Configuration_LoadSection(psFileName, configs_Floppy, "[Floppy]");
     Configuration_LoadSection(psFileName, configs_Ethernet, "[Ethernet]");
 	Configuration_LoadSection(psFileName, configs_Rom, "[ROM]");
-	Configuration_LoadSection(psFileName, configs_Rs232, "[RS232]");
 	Configuration_LoadSection(psFileName, configs_Printer, "[Printer]");
-	Configuration_LoadSection(psFileName, configs_Midi, "[Midi]");
 	Configuration_LoadSection(psFileName, configs_System, "[System]");
     Configuration_LoadSection(psFileName, configs_Dimension, "[Dimension]");
-    Configuration_LoadSection(psFileName, configs_Video, "[Video]");
 }
 
 
@@ -918,98 +812,8 @@ void Configuration_Save(void)
     Configuration_SaveSection(sConfigFileName, configs_Floppy, "[Floppy]");
     Configuration_SaveSection(sConfigFileName, configs_Ethernet, "[Ethernet]");
 	Configuration_SaveSection(sConfigFileName, configs_Rom, "[ROM]");
-	Configuration_SaveSection(sConfigFileName, configs_Rs232, "[RS232]");
 	Configuration_SaveSection(sConfigFileName, configs_Printer, "[Printer]");
-	Configuration_SaveSection(sConfigFileName, configs_Midi, "[Midi]");
 	Configuration_SaveSection(sConfigFileName, configs_System, "[System]");
     Configuration_SaveSection(sConfigFileName, configs_Dimension, "[Dimension]");
-    Configuration_SaveSection(sConfigFileName, configs_Video, "[Video]");
-}
-
-
-/*-----------------------------------------------------------------------*/
-/**
- * Save/restore snapshot of configuration variables
- * ('MemorySnapShot_Store' handles type)
- */
-void Configuration_MemorySnapShot_Capture(bool bSave)
-{       
-    /* ROM files */
-    MemorySnapShot_Store(ConfigureParams.Rom.szRom030FileName, sizeof(ConfigureParams.Rom.szRom030FileName));
-    MemorySnapShot_Store(ConfigureParams.Rom.szRom040FileName, sizeof(ConfigureParams.Rom.szRom040FileName));
-    MemorySnapShot_Store(ConfigureParams.Rom.szRomTurboFileName, sizeof(ConfigureParams.Rom.szRomTurboFileName));
-
-    /* Memory options */
-	MemorySnapShot_Store(ConfigureParams.Memory.nMemoryBankSize, sizeof(ConfigureParams.Memory.nMemoryBankSize));
-    MemorySnapShot_Store(&ConfigureParams.Memory.nMemorySpeed, sizeof(ConfigureParams.Memory.nMemorySpeed));
-    
-    /* SCSI disks */
-    int target;
-    for (target = 0; target < ESP_MAX_DEVS; target++) {
-        MemorySnapShot_Store(ConfigureParams.SCSI.target[target].szImageName, sizeof(ConfigureParams.SCSI.target[target].szImageName));
-        MemorySnapShot_Store(&ConfigureParams.SCSI.target[target].nDeviceType, sizeof(ConfigureParams.SCSI.target[target].nDeviceType));
-        MemorySnapShot_Store(&ConfigureParams.SCSI.target[target].bDiskInserted, sizeof(ConfigureParams.SCSI.target[target].bDiskInserted));
-        MemorySnapShot_Store(&ConfigureParams.SCSI.target[target].bWriteProtected, sizeof(ConfigureParams.SCSI.target[target].bWriteProtected));
-
-    }
-    
-    /* MO drives */
-    int drive;
-    for (drive = 0; drive < MO_MAX_DRIVES; drive++) {
-        MemorySnapShot_Store(ConfigureParams.MO.drive[drive].szImageName, sizeof(ConfigureParams.MO.drive[drive].szImageName));
-        MemorySnapShot_Store(&ConfigureParams.MO.drive[drive].bDriveConnected, sizeof(ConfigureParams.MO.drive[drive].bDriveConnected));
-        MemorySnapShot_Store(&ConfigureParams.MO.drive[drive].bDiskInserted, sizeof(ConfigureParams.MO.drive[drive].bDiskInserted));
-        MemorySnapShot_Store(&ConfigureParams.MO.drive[drive].bWriteProtected, sizeof(ConfigureParams.MO.drive[drive].bWriteProtected));
-    }
-    
-    /* Floppy drives */
-    for (drive = 0; drive < FLP_MAX_DRIVES; drive++) {
-        MemorySnapShot_Store(ConfigureParams.Floppy.drive[drive].szImageName, sizeof(ConfigureParams.Floppy.drive[drive].szImageName));
-        MemorySnapShot_Store(&ConfigureParams.Floppy.drive[drive].bDriveConnected, sizeof(ConfigureParams.Floppy.drive[drive].bDriveConnected));
-        MemorySnapShot_Store(&ConfigureParams.Floppy.drive[drive].bDiskInserted, sizeof(ConfigureParams.Floppy.drive[drive].bDiskInserted));
-        MemorySnapShot_Store(&ConfigureParams.Floppy.drive[drive].bWriteProtected, sizeof(ConfigureParams.Floppy.drive[drive].bWriteProtected));
-    }
-    
-    /* Ethernet options */
-    MemorySnapShot_Store(&ConfigureParams.Ethernet.bEthernetConnected, sizeof(ConfigureParams.Ethernet.bEthernetConnected));
-
-    /* Sound options */
-    MemorySnapShot_Store(&ConfigureParams.Sound.bEnableSound, sizeof(ConfigureParams.Sound.bEnableSound));
-    MemorySnapShot_Store(&ConfigureParams.Sound.bEnableMicrophone, sizeof(ConfigureParams.Sound.bEnableMicrophone));
-    
-    /* Monitor options */
-	MemorySnapShot_Store(&ConfigureParams.Screen.nMonitorType, sizeof(ConfigureParams.Screen.nMonitorType));
-	MemorySnapShot_Store(&ConfigureParams.Screen.bUseExtVdiResolutions, sizeof(ConfigureParams.Screen.bUseExtVdiResolutions));
-	MemorySnapShot_Store(&ConfigureParams.Screen.nVdiWidth, sizeof(ConfigureParams.Screen.nVdiWidth));
-	MemorySnapShot_Store(&ConfigureParams.Screen.nVdiHeight, sizeof(ConfigureParams.Screen.nVdiHeight));
-	MemorySnapShot_Store(&ConfigureParams.Screen.nVdiColors, sizeof(ConfigureParams.Screen.nVdiColors));
-
-    /* System options */
-	MemorySnapShot_Store(&ConfigureParams.System.nCpuLevel, sizeof(ConfigureParams.System.nCpuLevel));
-	MemorySnapShot_Store(&ConfigureParams.System.nCpuFreq, sizeof(ConfigureParams.System.nCpuFreq));
-	MemorySnapShot_Store(&ConfigureParams.System.bCompatibleCpu, sizeof(ConfigureParams.System.bCompatibleCpu));
-	
-    MemorySnapShot_Store(&ConfigureParams.System.nMachineType, sizeof(ConfigureParams.System.nMachineType));
-    MemorySnapShot_Store(&ConfigureParams.System.bColor, sizeof(ConfigureParams.System.bColor));
-    MemorySnapShot_Store(&ConfigureParams.System.bTurbo, sizeof(ConfigureParams.System.bTurbo));
-    MemorySnapShot_Store(&ConfigureParams.System.bNBIC, sizeof(ConfigureParams.System.bNBIC));
-    MemorySnapShot_Store(&ConfigureParams.System.nSCSI, sizeof(ConfigureParams.System.nSCSI));
-    MemorySnapShot_Store(&ConfigureParams.System.nRTC, sizeof(ConfigureParams.System.nRTC));
-    
-	MemorySnapShot_Store(&ConfigureParams.System.bRealtime, sizeof(ConfigureParams.System.bRealtime));
-	MemorySnapShot_Store(&ConfigureParams.System.nDSPType, sizeof(ConfigureParams.System.nDSPType));
-	MemorySnapShot_Store(&ConfigureParams.System.bDSPMemoryExpansion, sizeof(ConfigureParams.System.bDSPMemoryExpansion));
-	MemorySnapShot_Store(&ConfigureParams.System.bRealTimeClock, sizeof(ConfigureParams.System.bRealTimeClock));
-    MemorySnapShot_Store(&ConfigureParams.System.n_FPUType, sizeof(ConfigureParams.System.n_FPUType));
-    MemorySnapShot_Store(&ConfigureParams.System.bCompatibleFPU, sizeof(ConfigureParams.System.bCompatibleFPU));
-    MemorySnapShot_Store(&ConfigureParams.System.bMMU, sizeof(ConfigureParams.System.bMMU));
-    
-    /* Dimension options */
-    MemorySnapShot_Store(&ConfigureParams.Dimension.bEnabled, sizeof(ConfigureParams.Dimension.bEnabled));
-    MemorySnapShot_Store(ConfigureParams.Dimension.nMemoryBankSize, sizeof(ConfigureParams.Dimension.nMemoryBankSize));
-    MemorySnapShot_Store(ConfigureParams.Dimension.szRomFileName, sizeof(ConfigureParams.Dimension.szRomFileName));
-
-	if (!bSave)
-		Configuration_Apply(true);
 }
 

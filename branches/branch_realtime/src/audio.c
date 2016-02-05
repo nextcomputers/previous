@@ -127,9 +127,7 @@ void Audio_Output_Init(void)
     }
 }
 
-void Audio_Input_Init(void) {
-    if(!(bSoundInputWorking)) return;
-    
+void Audio_Input_Init(void) {    
     SDL_AudioSpec request;    /* We fill in the desired SDL audio options here */
     SDL_AudioSpec granted;
     

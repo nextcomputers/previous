@@ -387,15 +387,6 @@ void mmu_bus_error(uaecptr addr, int fc, bool write, int size, bool rmw, uae_u32
 
 	regs.mmu_fault_addr = addr;
 
-#if 0
-	if (m68k_getpc () == 0x0004B0AC) {
-		write_log (_T("*"));
-#if 0
-		extern void activate_debugger(void);
-		activate_debugger ();
-#endif
-	}
-#endif
 	THROW(2);
 }
 

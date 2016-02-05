@@ -19,7 +19,6 @@ const char BreakCond_fileid[] = "Hatari breakcond.c : " __DATE__ " " __TIME__;
 #include "main.h"
 #include "file.h"
 #include "m68000.h"
-#include "memorySnapShot.h"
 #include "nextMemory.h"
 #include "str.h"
 #include "screen.h" /* for defines needed by video.h */

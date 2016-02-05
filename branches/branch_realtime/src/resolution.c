@@ -38,12 +38,6 @@ void Resolution_Init(void)
 	DesktopWidth = 800;
 	DesktopHeight = 600;
 
- 	/* if user hasn't set own max zoom size, use desktop size */
- 	if (!(ConfigureParams.Screen.nMaxWidth &&
- 	      ConfigureParams.Screen.nMaxHeight)) {
- 		ConfigureParams.Screen.nMaxWidth = DesktopWidth;
- 		ConfigureParams.Screen.nMaxHeight = DesktopHeight;
- 	}
  	Dprintf(("Desktop resolution: %dx%d\n",DesktopWidth, DesktopHeight));
  	Dprintf(("Configured Max res: %dx%d\n",ConfigureParams.Screen.nMaxWidth,ConfigureParams.Screen.nMaxHeight));
 }
@@ -81,18 +75,10 @@ void Resolution_GetLimits(int *width, int *height, int *bpp)
     Dprintf(("resolution: request limits for: %dx%dx%d\n", *width, *height, *bpp));
 	Resolution_Search(width, height, bpp);
 
- 	if (bInFullScreen && ConfigureParams.Screen.bKeepResolution) {
+ 	if (bInFullScreen) {
  		/* resolution change not allowed */
  		Dprintf(("resolution: limit to desktop size\n"));
  		Resolution_GetDesktopSize(width, height);
  		return;
  	}
-	if (!(*width && *height) ||
-
-	    (ConfigureParams.Screen.nMaxWidth < *width &&
-	     ConfigureParams.Screen.nMaxHeight < *height)) {
-		Dprintf(("resolution: limit to user configured max\n"));
-		*width = ConfigureParams.Screen.nMaxWidth;
-		*height = ConfigureParams.Screen.nMaxHeight;
-	}
 }

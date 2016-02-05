@@ -107,7 +107,7 @@ void print_system_overview(void) {
         default: break;
     }
     
-    sprintf(cpu_clock, "%i MHz %s", ConfigureParams.System.nCpuFreq, ConfigureParams.System.bRealtime ? "(RT)" : "");
+    sprintf(cpu_clock, "%i MHz %s", ConfigureParams.System.nCpuFreq, ConfigureParams.System.bRealtime ? "(FM)" : "");
     
     sprintf(main_memory, "%i MB", Configuration_CheckMemory(ConfigureParams.Memory.nMemoryBankSize));
     

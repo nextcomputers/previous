@@ -24,7 +24,6 @@ const char CycInt_fileid[] = "Previous cycInt.c : " __DATE__ " " __TIME__;
 #include "main.h"
 #include "cycInt.h"
 #include "m68000.h"
-#include "memorySnapShot.h"
 #include "screen.h"
 #include "video.h"
 #include "sysReg.h"
@@ -100,84 +99,6 @@ void CycInt_Reset(void) {
 		InterruptHandlers[i].time      = INT64_MAX;
 		InterruptHandlers[i].pFunction = pIntHandlerFunctions[i];
 	}
-}
-
-
-/*-----------------------------------------------------------------------*/
-/**
- * Convert interrupt handler function pointer to ID, used for saving
- */
-static int CycInt_HandlerFunctionToID(void (*pHandlerFunction)(void))
-{
-	int i;
-
-	/* Scan for function match */
-	for (i=0; i<MAX_INTERRUPTS; i++)
-	{
-		if (pIntHandlerFunctions[i]==pHandlerFunction)
-			return i;
-	}
-
-	/* Didn't find one! Oops */
-	fprintf(stderr, "\nError: didn't find interrupt function matching 0x%p\n",
-	        pHandlerFunction);
-	return 0;
-}
-
-
-/*-----------------------------------------------------------------------*/
-/**
- * Convert ID back into interrupt handler function, used for restoring
- */
-static void *CycInt_IDToHandlerFunction(int ID) {
-	/* Get function pointer */
-	return pIntHandlerFunctions[ID];
-}
-
-
-/*-----------------------------------------------------------------------*/
-/**
- * Save/Restore snapshot of local variables('MemorySnapShot_Store' handles type)
- */
-void CycInt_MemorySnapShot_Capture(bool bSave)
-{
-	int i,ID;
-
-	/* Save/Restore details */
-	for (i=0; i<MAX_INTERRUPTS; i++)
-	{
-		MemorySnapShot_Store(&InterruptHandlers[i].type, sizeof(InterruptHandlers[i].type));
-		MemorySnapShot_Store(&InterruptHandlers[i].time, sizeof(InterruptHandlers[i].time));
-		if (bSave)
-		{
-			/* Convert function to ID */
-			ID = CycInt_HandlerFunctionToID(InterruptHandlers[i].pFunction);
-			MemorySnapShot_Store(&ID, sizeof(int));
-		}
-		else
-		{
-			/* Convert ID to function */
-			MemorySnapShot_Store(&ID, sizeof(int));
-			InterruptHandlers[i].pFunction = CycInt_IDToHandlerFunction(ID);
-		}
-	}
-	MemorySnapShot_Store(&nCyclesOver, sizeof(nCyclesOver));
-    MemorySnapShot_Store(&PendingInterrupt.type, sizeof(PendingInterrupt.type));
-	MemorySnapShot_Store(&PendingInterrupt.time, sizeof(PendingInterrupt.time));
-	if (bSave) {
-		/* Convert function to ID */
-		ID = CycInt_HandlerFunctionToID(PendingInterruptFunction);
-		MemorySnapShot_Store(&ID, sizeof(int));
-	}
-	else {
-		/* Convert ID to function */
-		MemorySnapShot_Store(&ID, sizeof(int));
-		PendingInterruptFunction = CycInt_IDToHandlerFunction(ID);
-	}
-
-
-	if (!bSave)
-		CycInt_SetNewInterrupt();	/* when restoring snapshot, compute current state after */
 }
 
 /*-----------------------------------------------------------------------*/

@@ -27,7 +27,6 @@ const char DebugUI_fileid[] = "Hatari debugui.c : " __DATE__ " " __TIME__;
 #include "file.h"
 #include "log.h"
 #include "m68000.h"
-#include "memorySnapShot.h"
 #include "options.h"
 #include "screen.h"
 #include "statusbar.h"
@@ -272,28 +271,6 @@ static char *DebugUI_EvaluateExpressions(char *input)
 	/* no (more) expressions to evaluate */
 	return input;
 }
-
-
-/**
- * Command: Store and restore emulation state
- */
-static int DebugUI_DoMemorySnap(int argc, char *argv[])
-{
-	const char *file;
-
-	if (argc > 1)
-		file = argv[1];
-	else
-		file = ConfigureParams.Memory.szMemoryCaptureFileName;
-
-	if (strcmp(argv[0], "stateload") == 0)
-		MemorySnapShot_Restore(file, true);
-	else
-		MemorySnapShot_Capture(file, true);
-
-	return DEBUGGER_CMDDONE;
-}
-
 
 /**
  * Command: Set command line and debugger options
@@ -811,18 +788,6 @@ static const dbgcommand_t uicommand[] =
 	  "\t'bin', 'dec' and 'hex' arguments change the default number base\n"
 	  "\tused in debugger.",
 	  false },
-	{ DebugUI_DoMemorySnap, NULL,
-	  "stateload", "",
-	  "restore emulation state",
-	  "[filename]\n"
-	  "\tRestore emulation snapshot from default or given file",
-	  false },
-	{ DebugUI_DoMemorySnap, NULL,
-	  "statesave", "",
-	  "save emulation state",
-	  "[filename]\n"
-	  "\tSave emulation snapshot to default or given file",
-	  false },
 	{ DebugUI_SetTracing, Log_MatchTrace,
 	  "trace", "t",
 	  "select Hatari tracing settings",
@@ -887,7 +852,7 @@ bool DebugUI_SetParseFile(const char *path)
 		parseFileName = path;
 		return true;
 	}
-	fprintf(stderr, "ERROR: debugger input file '%s' missing.\n", path);
+	//fprintf(stderr, "ERROR: debugger input file '%s' missing.\n", path);
 	return false;
 }
 
@@ -920,7 +885,7 @@ void DebugUI(void)
 	/* override paused message so that user knows to look into console
 	 * on how to continue in case he invoked the debugger by accident.
 	 */
-	Statusbar_AddMessage("Console Debugger", 100);
+	Statusbar_AddMessage("M68K Console Debugger", 100);
 	Statusbar_Update(sdlscrn);
 
 	/* disable normal GUI alerts while on console */

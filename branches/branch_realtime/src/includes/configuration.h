@@ -51,17 +51,6 @@ typedef struct
   bool bEnableSound;
 } CNF_SOUND;
 
-
-
-/* RS232 configuration */
-typedef struct
-{
-  bool bEnableRS232;
-  char szOutFileName[FILENAME_MAX];
-  char szInFileName[FILENAME_MAX];
-} CNF_RS232;
-
-
 /* Dialog Keyboard */
 typedef enum
 {
@@ -85,18 +74,12 @@ typedef enum {
   SHORTCUT_MOUSEGRAB,
   SHORTCUT_COLDRESET,
   SHORTCUT_WARMRESET,
-  SHORTCUT_SCREENSHOT,
-  SHORTCUT_BOSSKEY,
   SHORTCUT_CURSOREMU,
-  SHORTCUT_FASTFORWARD,
-  SHORTCUT_RECANIM,
-  SHORTCUT_RECSOUND,
   SHORTCUT_SOUND,
-  SHORTCUT_DEBUG,
+  SHORTCUT_DEBUG_M68K,
+  SHORTCUT_DEBUG_I860,
   SHORTCUT_PAUSE,
   SHORTCUT_QUIT,
-  SHORTCUT_LOADMEM,
-  SHORTCUT_SAVEMEM,
   SHORTCUT_DIMENSION,
   SHORTCUT_KEYS,  /* number of shortcuts */
   SHORTCUT_NONE
@@ -138,9 +121,6 @@ typedef struct
 {
   int nMemoryBankSize[4];
   MEMORY_SPEED nMemorySpeed;
-  bool bAutoSave;
-  char szMemoryCaptureFileName[FILENAME_MAX];
-  char szAutoSaveFileName[FILENAME_MAX];
 } CNF_MEMORY;
 
 
@@ -185,8 +165,16 @@ typedef struct {
     bool bWriteProtected;
 } SCSIDISK;
 
+typedef enum
+{
+    WRITEPROT_OFF,
+    WRITEPROT_ON,
+    WRITEPROT_AUTO
+} WRITEPROTECTION;
+
 typedef struct {
     SCSIDISK target[ESP_MAX_DEVS];
+    int nWriteProtection;
 } CNF_SCSI;
 
 
@@ -246,22 +234,9 @@ typedef enum
 typedef struct
 {
   MONITORTYPE nMonitorType;
-  int nFrameSkips;
   bool bFullScreen;
-  bool bKeepResolution;
-  bool bAllowOverscan;
-  bool bAspectCorrect;
-  bool bUseExtVdiResolutions;
-  int nSpec512Threshold;
-  int nForceBpp;
-  int nVdiColors;
-  int nVdiWidth;
-  int nVdiHeight;
   bool bShowStatusbar;
   bool bShowDriveLed;
-  bool bCrop;
-  int nMaxWidth;
-  int nMaxHeight;
 } CNF_SCREEN;
 
 
@@ -280,16 +255,6 @@ typedef struct
   PAPER_SIZE nPaperSize;
   char szPrintToFileName[FILENAME_MAX];
 } CNF_PRINTER;
-
-
-/* Midi configuration */
-typedef struct
-{
-  bool bEnableMidi;
-  char sMidiInFileName[FILENAME_MAX];
-  char sMidiOutFileName[FILENAME_MAX];
-} CNF_MIDI;
-
 
 /* Dialog System */
 typedef enum
@@ -353,15 +318,6 @@ typedef struct
     char szRomFileName[FILENAME_MAX];
 } CNF_ND;
 
-typedef struct
-{
-  int AviRecordVcodec;
-  int AviRecordFps;
-  char AviRecordFile[FILENAME_MAX];
-} CNF_VIDEO;
-
-
-
 /* State of system is stored in this structure */
 /* On reset, variables are copied into system globals and used. */
 typedef struct
@@ -382,12 +338,9 @@ typedef struct
   CNF_FLOPPY Floppy;
   CNF_ENET Ethernet;
   CNF_ROM Rom;
-  CNF_RS232 RS232;
   CNF_PRINTER Printer;
-  CNF_MIDI Midi;
   CNF_SYSTEM System;
   CNF_ND Dimension;
-  CNF_VIDEO Video;
 } CNF_PARAMS;
 
 
