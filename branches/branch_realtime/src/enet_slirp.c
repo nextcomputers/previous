@@ -8,7 +8,9 @@
 #include <signal.h>
 #include <arpa/inet.h>
 #else
+#undef TCHAR
 #include <winsock2.h>
+extern int inet_aton(const char *cp, struct in_addr *addr);
 #endif
 
 /****************/

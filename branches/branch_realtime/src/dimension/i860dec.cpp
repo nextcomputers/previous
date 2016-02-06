@@ -46,9 +46,12 @@
  *
  */
 #include <math.h>
-#include <fenv.h>
 #include <assert.h>
 
+#ifdef __MINGW32__
+#define _GLIBCXX_HAVE_FENV_H 1
+#endif
+#include <fenv.h>
 
 #if __APPLE__
 #else

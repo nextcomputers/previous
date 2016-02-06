@@ -572,13 +572,12 @@ bool nd_dbg_cmd(const char* buf) {
     
     switch(buf[0]) {
         case 'w': {
-            char tmp[PATH_MAX];
             FILE* fp = fopen(nd_dump_path, "wb");
             size_t size  = ConfigureParams.Dimension.nMemoryBankSize[0];
             size        += ConfigureParams.Dimension.nMemoryBankSize[1];
             size        += ConfigureParams.Dimension.nMemoryBankSize[2];
             size        += ConfigureParams.Dimension.nMemoryBankSize[3];
-            fprintf(stderr, "Writing %luMB to '%s'...", size, realpath(nd_dump_path, tmp));
+            fprintf(stderr, "Writing %luMB to '%s'...", size, nd_dump_path);
             size <<= 20;
             fwrite(ND_ram, sizeof(Uint8), size, fp);
             fclose(fp);
