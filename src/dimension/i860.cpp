@@ -39,7 +39,7 @@ extern "C" {
         nd_nbic_interrupt();
     }
 
-    static void i860_run(int nHostCycles) {
+    static void i860_run_no_thread(int nHostCycles) {
 #if ENABLE_PERF_COUNTERS
         nd_i860.m_m68k_cylces += nHostCycles;
 #endif
@@ -58,7 +58,7 @@ extern "C" {
     }
     
     void nd_i860_init() {
-        i860_Run = nd_i860.use_threads() ? i860_run_thread : i860_run;
+        i860_Run = nd_i860.use_threads() ? i860_run_thread : i860_run_no_thread;
         nd_i860.init();
     }
 	

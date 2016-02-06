@@ -208,13 +208,12 @@ void CycInt_AddRelativeInterruptTicks(Sint64 TickTime, interrupt_id Handler) {
 
 /*-----------------------------------------------------------------------*/
 /**
- * Add interrupt to occur us microsencods from now or if repeat=true relative to
- * time if time is no more than 1 ms in the past.
+ * Add interrupt to occur us microsencods from now
  */
 void CycInt_AddRelativeInterruptUs(Sint64 us, interrupt_id Handler) {
+    assert(us >= 0);
+    
     if(ConfigureParams.System.bRealtime) {
-        assert(us >= 0);
-        
         /* Update list cycle counts with current PendingInterruptCount before adding a new int, */
         /* because CycInt_SetNewInterrupt can change the active int / PendingInterruptCount */
         if ( ActiveInterrupt > 0 ) CycInt_UpdateInterrupt();
