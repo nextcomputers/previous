@@ -476,16 +476,3 @@ void SDL_UpdateRect(SDL_Surface *screen, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
     SDL_Rect rect = { x, y, w, h };
     SDL_UpdateRects(screen, 1, &rect);
 }
-
-/*-----------------------------------------------------------------------*/
-/**
- * Reset screen - (SC) unused
- */
-void Screen_Reset(void) {}
-
-/*-----------------------------------------------------------------------*/
-/**
- * Set flags so screen will be TOTALLY re-drawn (clears whole of full-screen)
- * next time around - (SC) unused
- */
-void Screen_SetFullUpdate(void) {}

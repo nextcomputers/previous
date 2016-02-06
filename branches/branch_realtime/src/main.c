@@ -112,9 +112,6 @@ bool Main_UnPauseEmulation(void)
 	bEmulationActive = true;
     host_pause_time(!(bEmulationActive));
 
-	/* Cause full screen update (to clear all) */
-	Screen_SetFullUpdate();
-
 	if (bGrabMouse) {
 		/* Grab mouse pointer again */
 		SDL_SetRelativeMouseMode(SDL_TRUE);

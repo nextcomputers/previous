@@ -76,8 +76,6 @@ extern SDL_Surface *sdlscrn;
 
 extern void Screen_Init(void);
 extern void Screen_UnInit(void);
-extern void Screen_Reset(void);
-extern void Screen_SetFullUpdate(void);
 extern void Screen_EnterFullScreen(void);
 extern void Screen_ReturnFromFullScreen(void);
 extern void Screen_ModeChanged(void);

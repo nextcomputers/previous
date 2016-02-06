@@ -150,7 +150,6 @@ static void ShortCut_Dimension(void)
         }
     }
 	Statusbar_UpdateInfo();
-    Screen_SetFullUpdate();
 }
 
 

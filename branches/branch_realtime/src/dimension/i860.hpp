@@ -369,8 +369,6 @@ public:
     /* External tick event for the i860 emulator to update real-time dependent state + interrupt flag */
     void   tick(bool intr);
     
-    bool   use_threads() {return host_num_cpus() > 4;}
-
 #if ENABLE_PERF_COUNTERS
     UINT64 m_m68k_cylces;
 #endif
