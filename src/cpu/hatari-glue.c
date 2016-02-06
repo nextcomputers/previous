@@ -26,23 +26,6 @@ const char HatariGlue_fileid[] = "Hatari hatari-glue.c : " __DATE__ " " __TIME__
 
 struct uae_prefs currprefs, changed_prefs;
 
-int pendingInterrupts = 0;
-
-
-/**
- * Reset custom chips
- */
-void customreset(void)
-{
-	pendingInterrupts = 0;
-
-	/* In case the 6301 was executing a custom program from its RAM */
-	/* we must turn it back to the 'normal' mode. */
-//	IKBD_Reset_ExeMode ();
-
-	/* Reseting the GLUE video chip should also set freq/res register to 0 */
-	Video_Reset_Glue ();
-}
 
 
 /**
@@ -50,8 +33,7 @@ void customreset(void)
  * Note that the interrupt stays pending if it can't be executed yet
  * due to the interrupt level field in the SR.
  */
-int intlev(void)
-{
+int intlev(void) {
     /* Poll interrupt level from interrupt status and mask registers
      * --> see sysReg.c
      */
@@ -61,8 +43,7 @@ int intlev(void)
 /**
  * Initialize 680x0 emulation
  */
-int Init680x0(void)
-{
+int Init680x0(void) {
 	currprefs.cpu_level = changed_prefs.cpu_level = ConfigureParams.System.nCpuLevel;
 
 	switch (currprefs.cpu_level) {

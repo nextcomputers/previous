@@ -144,7 +144,7 @@ inline Uint32 nd_board_lget(Uint32 addr) {
     Uint32 result = nd_longget(addr);
     // (SC) delay m68k read on csr0 while in ROM (CS8=1)to give ND some time to start up.
     if(addr == 0xFF800000 && (result & 0x02))
-        host_sleep_us(100);
+        M68000_AddCycles(ConfigureParams.System.nCpuFreq * 100);
     return result;
 }
 
@@ -251,6 +251,10 @@ void nd_slot_bput(Uint32 addr, Uint8 b) {
     } else {
         nd_nbic_bput(addr, b);
     }
+}
+
+bool nd_use_threads() {
+    return host_num_cpus() > 4;
 }
 
 /* Reset function */

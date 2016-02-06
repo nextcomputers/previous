@@ -143,15 +143,15 @@ void M68000_Init(void)
 	M68000_InitPairing();
 }
 
+static int pendingInterrupts = 0;
 
 /*-----------------------------------------------------------------------*/
 /**
  * Reset CPU 68000 variables
  */
-void M68000_Reset(bool bCold)
-{
-    if (bCold)
-    {
+void M68000_Reset(bool bCold) {
+    pendingInterrupts = 0;
+    if (bCold) {
         /* Clear registers, but we need to keep SPCFLAG_MODE_CHANGE and SPCFLAG_BRK unchanged */
         int spcFlags = regs.spcflags & (SPCFLAG_MODE_CHANGE | SPCFLAG_BRK);
         memset(&regs, 0, sizeof(regs));

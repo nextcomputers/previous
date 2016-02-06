@@ -2939,29 +2939,18 @@ void exception2_fake (uaecptr addr)
 #endif
 }
 
-void cpureset (void)
-{
+void cpureset (void) {
 	uaecptr pc;
 	uaecptr ksboot = 0xf80002 - 2; /* -2 = RESET hasn't increased PC yet */
 	uae_u16 ins;
 
 	if (currprefs.cpu_compatible) {
-//		customreset (0);
-		customreset ();
 		return;
 	}
+    
 	pc = m68k_getpc ();
 	if (pc >= currprefs.chipmem_size) {
-//		addrbank *b = &get_mem_bank (pc);
-//		if (b->check (pc, 2 + 2)) {
-			/* We have memory, hope for the best.. */
-//			customreset (0);
-//			customreset ();
-//			return;
-//		}
 		write_log ("M68K RESET PC=%x, rebooting..\n", pc);
-//		customreset (0);
-		customreset ();
 		m68k_setpc (ksboot);
 		return;
 	}
@@ -2971,16 +2960,12 @@ void cpureset (void)
 		int reg = ins & 7;
 		uae_u32 addr = m68k_areg (regs, reg);
 		write_log ("reset/jmp (ax) combination emulated -> %x\n", addr);
-//		customreset (0);
-		customreset ();
 		if (addr < 0x80000)
 			addr += 0xf80000;
 		m68k_setpc (addr - 2);
 		return;
 	}
 	write_log ("M68K RESET PC=%x, rebooting..\n", pc);
-//	customreset (0);
-	customreset ();
 	m68k_setpc (ksboot);
 }
 

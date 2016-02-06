@@ -22,52 +22,20 @@ const char Video_fileid[] = "Previous video.c : " __DATE__ " " __TIME__;
 #include "dma.h"
 #include "sysReg.h"
 #include "tmc.h"
-
+#include "nd_sdl.h"
 
 /*--------------------------------------------------------------*/
 /* Local functions prototypes                                   */
 /*--------------------------------------------------------------*/
 
 
-
-static void	Video_DrawScreen(void);
-
-/*-----------------------------------------------------------------------*/
-/**
- * Save/Restore snapshot of local variables('MemorySnapShot_Store' handles type)
- */
-void Video_MemorySnapShot_Capture(bool bSave)
-{
-}
-
-
 /*-----------------------------------------------------------------------*/
 /**
  * Reset video chip
  */
-void Video_Reset(void)
-{
+void Video_Reset(void) {
 	Video_StartInterrupts(0);
-}
-
-
-/*-----------------------------------------------------------------------*/
-/**
- * Reset the GLUE chip responsible for generating the H/V sync signals.
- * When the 68000 RESET instruction is called, frequency and resolution
- * should be reset to 0.
- */
-void Video_Reset_Glue(void)
-{
-}
-
-/*-----------------------------------------------------------------------*/
-/**
- * Clear raster line table to store changes in palette/resolution on a line
- * basic. Called once on VBL interrupt.
- */
-void Video_SetScreenRasters(void)
-{
+    nd_start_interrupts();
 }
 
 /*-----------------------------------------------------------------------*/
@@ -75,9 +43,8 @@ void Video_SetScreenRasters(void)
  * Draw screen (either with ST/STE shifter drawing functions or with
  * Videl drawing functions)
  */
-static void Video_DrawScreen(void)
-{
-Screen_Draw();
+static void Video_DrawScreen(void) {
+    Screen_Draw();
 }
 
 
@@ -90,12 +57,10 @@ void Video_StartInterrupts ( int PendingCyclesOver ) {
     CycInt_AddRelativeInterruptUs((1000*1000)/NEXT_VBL_FREQ, INTERRUPT_VIDEO_VBL);
 }
 
-
 /**
  * Generate vertical video retrace interrupt
  */
-void Video_InterruptHandler(void)
-{
+void Video_InterruptHandler(void) {
 	if (ConfigureParams.System.bTurbo) {
 		tmc_video_interrupt();
 	} else if (ConfigureParams.System.bColor) {
@@ -111,8 +76,7 @@ void Video_InterruptHandler(void)
  * VBL interrupt : set new interrupts, draw screen, generate sound,
  * reset counters, ...
  */
-void Video_InterruptHandler_VBL ( void )
-{
+void Video_InterruptHandler_VBL ( void ) {
 	CycInt_AcknowledgeInterrupt();
     host_blank(0, MAIN_DISPLAY, true);
 	Video_DrawScreen();

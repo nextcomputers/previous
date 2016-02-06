@@ -59,7 +59,6 @@ static const char* Reset_NeXT(bool bCold)
     KMS_Reset();                  /* Reset KMS */
 	Sound_Reset();                /* Reset Sound */
 	Printer_Reset();              /* Reset Printer */
-	Screen_Reset();               /* Reset screen */
 	DSP_Reset();                  /* Reset DSP */
 	M68000_Reset(bCold);          /* Reset CPU */
 	DebugCpu_SetDebugging();      /* Re-set debugging flag if needed */

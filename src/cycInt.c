@@ -37,7 +37,7 @@ const char CycInt_fileid[] = "Previous cycInt.c : " __DATE__ " " __TIME__;
 #include "kms.h"
 #include "configuration.h"
 #include "main.h"
-
+#include "nd_sdl.h"
 
 void (*PendingInterruptFunction)(void);
 Sint64 PendingInterruptCounter;
@@ -69,6 +69,8 @@ static void (* const pIntHandlerFunctions[MAX_INTERRUPTS])(void) =
     SND_In_Handler,
     Printer_IO_Handler,
     Main_EventHandlerInterrupt,
+    nd_vbl_handler,
+    nd_video_vbl_handler,
 };
 
 static INTERRUPTHANDLER InterruptHandlers[MAX_INTERRUPTS];

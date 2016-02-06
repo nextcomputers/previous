@@ -4,6 +4,7 @@
 #include "dimension.h"
 #include "screen.h"
 #include "host.h"
+#include "cycInt.h"
 
 /* Because of SDL time (in)accuracy, timing is very approximative */
 const int DISPLAY_VBL_MS = 1000 / 68; // main display at 68Hz, actually this is 71.42 Hz because (int)1000/(int)68Hz=14ms
@@ -18,6 +19,11 @@ static SDL_Renderer* ndRenderer    = NULL;
 
 extern void blitDimension(SDL_Texture* tex);
 
+// if this is a cube and we have our on thread, then do ND blank emulation, otherwise we use nd_devs.c CycInt or do nothing
+static bool do_vbl_emulation() {
+    return (ConfigureParams.System.nMachineType == NEXT_CUBE030 || ConfigureParams.System.nMachineType == NEXT_CUBE040) && nd_use_threads();
+}
+
 static int repainter(void* unused) {
     SDL_SetThreadPriority(SDL_THREAD_PRIORITY_NORMAL);
     
@@ -27,6 +33,8 @@ static int repainter(void* unused) {
     SDL_RenderSetLogicalSize(ndRenderer, r.w, r.h);
     ndTexture = SDL_CreateTexture(ndRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, r.w, r.h);
     
+    bool doVBLemulation = do_vbl_emulation();
+    
     while(doRepaint) {
         if(ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_DUAL) {
             blitDimension(ndTexture);
@@ -35,8 +43,7 @@ static int repainter(void* unused) {
         } else {
             SDL_Delay(VIDEO_VBL_MS - BLANK_MS);
         }
-        // if this is a cube, then do ND blank emulation.
-        if(ConfigureParams.System.nMachineType == NEXT_CUBE030 || ConfigureParams.System.nMachineType == NEXT_CUBE040) {
+        if(doVBLemulation) {
             host_blank(ND_SLOT, ND_DISPLAY, true);
             SDL_Delay(BLANK_MS);
             host_blank(ND_SLOT, ND_DISPLAY, false);
@@ -50,12 +57,31 @@ static int repainter(void* unused) {
     return 0;
 }
 
-bool nd_video_toggle;
+static bool ndVBLtoggle;
+void nd_vbl_handler() {
+    CycInt_AcknowledgeInterrupt();
+    
+    host_blank(ND_SLOT, ND_DISPLAY, ndVBLtoggle);
+    ndVBLtoggle = !ndVBLtoggle;
+    
+    CycInt_AddRelativeInterruptUs((1000*1000)/136, INTERRUPT_ND_VBL); // 136Hz with toggle gives 68Hz, blank time is 1/2 frame time
+}
+
+bool ndVideoVBLtoggle;
 
 Uint32 nd_video_vbl(Uint32 interval, void *param) {
-    host_blank(ND_SLOT, ND_VIDEO, nd_video_toggle);
-    nd_video_toggle = !nd_video_toggle;
+    host_blank(ND_SLOT, ND_VIDEO, ndVideoVBLtoggle);
+    ndVideoVBLtoggle = !ndVideoVBLtoggle;
     return interval;
+}
+
+void nd_video_vbl_handler() {
+    CycInt_AcknowledgeInterrupt();
+    
+    host_blank(ND_SLOT, ND_VIDEO, ndVideoVBLtoggle);
+    ndVideoVBLtoggle = !ndVideoVBLtoggle;
+    
+    CycInt_AddRelativeInterruptUs((1000*1000)/120, INTERRUPT_ND_VIDEO_VBL); // 120Hz with toggle gives 60Hz NTSC, blank time is 1/2 frame time
 }
 
 void nd_sdl_init() {
@@ -70,17 +96,26 @@ void nd_sdl_init() {
             fprintf(stderr,"[ND] Failed to create renderer!\n");
             exit(-1);
         }
-        
-        repaintThread = SDL_CreateThread(repainter, "[ND] repainter", NULL);
     }
     if(videoVBL) SDL_RemoveTimer(videoVBL);
-    // NTSC video at 60Hz
-    videoVBL = SDL_AddTimer(VIDEO_VBL_MS/2, nd_video_vbl, NULL);
+    
     
     if(ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_DUAL) {
         SDL_ShowWindow(ndWindow);
     } else {
         SDL_HideWindow(ndWindow);
+    }
+}
+
+void nd_start_interrupts() {
+    if(!(repaintThread))
+        repaintThread = SDL_CreateThread(repainter, "[ND] repainter", NULL);
+    
+    if(do_vbl_emulation())
+        SDL_AddTimer(VIDEO_VBL_MS/2, nd_video_vbl, NULL);
+    else {
+        CycInt_AddRelativeInterruptUs(1000, INTERRUPT_ND_VBL);
+        CycInt_AddRelativeInterruptUs(1000, INTERRUPT_ND_VIDEO_VBL);
     }
 }
 
