@@ -13,7 +13,7 @@
 extern void nd_display_blank(void);
 extern void nd_video_blank(void);
 
-static const size_t NUM_BLANKS = 3;
+#define NUM_BLANKS 3
 static const char* BLANKS[] = {
   "main","nd_main","nd_video"  
 };

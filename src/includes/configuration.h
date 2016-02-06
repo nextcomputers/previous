@@ -8,6 +8,7 @@
 #ifndef HATARI_CONFIGURATION_H
 #define HATARI_CONFIGURATION_H
 
+#include <stdio.h>
 
 /* Configuration Dialog */
 typedef struct
