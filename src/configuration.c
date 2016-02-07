@@ -707,7 +707,7 @@ int Configuration_CheckDimensionMemory(int *banksize) {
 }
 
 void Configuration_CheckDimensionSettings(void) {
-	if (ConfigureParams.System.nMachineType==NEXT_STATION) {
+	if (ConfigureParams.System.nMachineType==NEXT_STATION || !ConfigureParams.Dimension.bEnabled) {
 		ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_CPU;
 	}
 }
