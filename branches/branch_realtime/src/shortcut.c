@@ -138,11 +138,15 @@ static void ShortCut_Pause(void)
 }
 
 /**
- * Shorcut to load a disk image
+ * Shorcut to switch monochrome and dimension screen
  */
 static void ShortCut_Dimension(void)
 {
-    if(ConfigureParams.Screen.nMonitorType != MONITOR_TYPE_DUAL) {
+	if (ConfigureParams.System.nMachineType==NEXT_STATION || !ConfigureParams.Dimension.bEnabled) {
+		return;
+	}
+	
+    if (ConfigureParams.Screen.nMonitorType != MONITOR_TYPE_DUAL) {
         if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
             ConfigureParams.Screen.nMonitorType=MONITOR_TYPE_CPU;
         } else {
