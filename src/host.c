@@ -22,12 +22,10 @@ static volatile Uint32 blank[NUM_BLANKS];
 static Uint32       vblCounter[NUM_BLANKS];
 static Uint64       perfCounterStart;
 static Sint64       cycleCounterStart;
-static double       secsStart;
+static double       cycleSecsStart;
 static bool         isRealtime;
 static bool         oldIsRealtime;
 static double       cycleDivisor;
-static double       realTimeAcc;
-static double       cycleTimeAcc;
 static lock_t       timeLock;
 static Uint32       ticksStart;
 static bool         enableRealtime;
@@ -45,11 +43,9 @@ void host_reset() {
     ticksStart        = SDL_GetTicks();
     unixTimeStart     = time(NULL);
     cycleCounterStart = 0;
-    secsStart         = 0;
+    cycleSecsStart    = 0;
     isRealtime        = false;
     oldIsRealtime     = false;
-    realTimeAcc       = 0;
-    cycleTimeAcc      = 0;
     hardClockExpected = 0;
     hardClockActual   = 0;
     enableRealtime    = ConfigureParams.System.bRealtime;
@@ -113,33 +109,28 @@ double host_time_sec() {
 void host_time(double* realTime, double* hostTime) {
 
     host_lock(&timeLock);
-    double t;
     *realTime  = (SDL_GetPerformanceCounter() - perfCounterStart);
     *realTime /= perfFrequency;
+    
     if(oldIsRealtime) {
-        t = *realTime;
+        *hostTime = *realTime;
     } else {
-        t  = nCyclesMainCounter - cycleCounterStart;
-        t /= cycleDivisor;
+        *hostTime  = nCyclesMainCounter - cycleCounterStart;
+        *hostTime /= cycleDivisor;
+        *hostTime += cycleSecsStart;
     }
     bool state = isRealtime;
     if(oldIsRealtime != state) {
-        if(oldIsRealtime)   realTimeAcc += t;
-        else                cycleTimeAcc += t;
-        perfCounterStart  = SDL_GetPerformanceCounter();
-        cycleCounterStart = nCyclesMainCounter;
-        oldIsRealtime     = state;
-        secsStart        += t;
-        t                 = 0;
+        if(oldIsRealtime) {
+            cycleSecsStart = *realTime;
+            cycleCounterStart = nCyclesMainCounter;
+        }
+        oldIsRealtime = state;
     }
     
-    realTimeOffset = t - *realTime;
+    realTimeOffset = *hostTime - *realTime;
 
-    t += secsStart;
     host_unlock(&timeLock);
-    
-    *hostTime = t;
-    *realTime += secsStart;
 }
 
 // Return current time as micro seconds
@@ -245,7 +236,7 @@ const char* host_report(double realTime, double hostTime) {
     hardClock /= hardClockActual == 0 ? 1 : hardClockActual;
     
     char* r = report;
-    r += sprintf(r, "[%s] hostTime:%.1f cycleTime:%.1f realTime:%.1f hardClock:%.3fMHz", enableRealtime ? "Max.speed" : "CycleTime", hostTime, cycleTimeAcc, realTimeAcc, hardClock);
+    r += sprintf(r, "[%s] hostTime:%.1f hardClock:%.3fMHz", enableRealtime ? "Max.speed" : "CycleTime", hostTime, hardClock);
 
     for(int i = NUM_BLANKS; --i >= 0;) {
         r += sprintf(r, " %s:%.1fHz", BLANKS[i], (double)vblCounter[i]/dVT);
