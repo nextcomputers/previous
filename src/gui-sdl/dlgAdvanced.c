@@ -61,7 +61,7 @@ static SGOBJ advanceddlg[] =
     { SGRADIOBUT, 0, 0, 4,10, 8,1, "25 MHz" },
     { SGRADIOBUT, 0, 0, 4,12, 8,1, "33 MHz" },
     { SGRADIOBUT, 0, 0, 4,14, 8,1, "40 MHz" },
-    { SGCHECKBOX, 0, 0, 4,16, 8,1, "Fastmode" },
+    { SGCHECKBOX, 0, 0, 4,16, 8,1, "Max.speed" },
 
     { SGBOX, 0, 0, 17,3, 14,15, NULL },
     { SGTEXT, 0, 0, 18,4, 12,1, "Memory size" },

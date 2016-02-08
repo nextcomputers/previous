@@ -380,6 +380,12 @@ extern void REGPARAM3 mmu_reset(void) REGPARAM;
 extern void REGPARAM3 mmu_set_tc(uae_u16 tc) REGPARAM;
 extern void REGPARAM3 mmu_set_super(bool super) REGPARAM;
 
+#define M68K_ICACHE_SZ (4 * 1024)
+extern uae_u16 icache_s[M68K_ICACHE_SZ];
+extern uae_u16 icache_u[M68K_ICACHE_SZ];
+extern uae_u32 icache_saddr[M68K_ICACHE_SZ];
+extern uae_u32 icache_uaddr[M68K_ICACHE_SZ];
+
 static ALWAYS_INLINE uaecptr mmu_get_real_address(uaecptr addr, struct mmu_atc_line *cl)
 {
     return cl->phys | (addr & mmu_pagemask);
@@ -576,22 +582,38 @@ static ALWAYS_INLINE uae_u32 HWget_b(uaecptr addr)
     return get_byte (addr);
 }
 
-static ALWAYS_INLINE uae_u32 uae_mmu040_get_ilong(uaecptr addr)
-{
-	if (unlikely(is_unaligned(addr, 4)))
-		return mmu_get_long_unaligned(addr, false, false);
-	return mmu_get_long(addr, false, sz_long, false);
-}
-static ALWAYS_INLINE uae_u16 uae_mmu040_get_iword(uaecptr addr)
-{
+static ALWAYS_INLINE uae_u16 uae_mmu040_get_iword(uaecptr addr) {
 	if (unlikely(is_unaligned(addr, 2)))
 		return mmu_get_word_unaligned(addr, false, false);
-	return mmu_get_word(addr, false, sz_word, false);
+    
+    int icidx = (addr >> 1) & (M68K_ICACHE_SZ  - 1);
+    if(regs.s) {
+        if(addr != icache_saddr[icidx]) {
+            icache_saddr[icidx] = addr;
+            icache_s[icidx]     = mmu_get_word(addr, false, sz_word, false);
+        }
+        return icache_s[icidx];
+    } else {
+        if(addr != icache_uaddr[icidx]) {
+            icache_uaddr[icidx] = addr;
+            icache_u[icidx]     = mmu_get_word(addr, false, sz_word, false);
+        }
+        return icache_u[icidx];
+    }
 }
-static ALWAYS_INLINE uae_u16 uae_mmu040_get_ibyte(uaecptr addr)
-{
+
+static ALWAYS_INLINE uae_u32 uae_mmu040_get_ilong(uaecptr addr) {
+    uae_u32 result = uae_mmu040_get_iword(addr);
+    result <<= 16;
+    result |= uae_mmu040_get_iword(addr+2);
+    return result;
+}
+
+
+static ALWAYS_INLINE uae_u16 uae_mmu040_get_ibyte(uaecptr addr) {
 	return mmu_get_byte(addr, false, sz_byte, false);
 }
+
 static ALWAYS_INLINE uae_u32 uae_mmu040_get_long(uaecptr addr)
 {
 	if (unlikely(is_unaligned(addr, 4)))
@@ -629,22 +651,23 @@ static ALWAYS_INLINE void uae_mmu040_put_long(uaecptr addr, uae_u32 val)
 }
 
 
-static ALWAYS_INLINE uae_u32 uae_mmu060_get_ilong(uaecptr addr)
-{
+static ALWAYS_INLINE uae_u32 uae_mmu060_get_ilong(uaecptr addr) {
 	if (unlikely(is_unaligned(addr, 4)))
 		return mmu_get_long_unaligned(addr, false, false);
 	return mmu_get_long(addr, false, sz_long, false);
 }
+
 static ALWAYS_INLINE uae_u16 uae_mmu060_get_iword(uaecptr addr)
 {
 	if (unlikely(is_unaligned(addr, 2)))
 		return mmu_get_word_unaligned(addr, false, false);
 	return mmu_get_word(addr, false, sz_word, false);
 }
-static ALWAYS_INLINE uae_u16 uae_mmu060_get_ibyte(uaecptr addr)
-{
+
+static ALWAYS_INLINE uae_u16 uae_mmu060_get_ibyte(uaecptr addr){
 	return mmu_get_byte(addr, false, sz_byte, false);
 }
+
 static ALWAYS_INLINE uae_u32 uae_mmu060_get_long(uaecptr addr, bool rmw)
 {
 	if (unlikely(is_unaligned(addr, 4)))

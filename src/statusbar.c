@@ -24,11 +24,6 @@
     hiding the overlay drive led when drive leds are turned OFF.
   - If other information shown by Statusbar (TOS version etc) changes,
     call Statusbar_UpdateInfo()
-
-  TODO:
-  - re-calculate colors on each update to make sure they're
-    correct in Falcon & TT 8-bit palette modes?
-  - call Statusbar_AddMessage() from log.c?
 */
 const char Statusbar_fileid[] = "Hatari statusbar.c : " __DATE__ " " __TIME__;
 
@@ -80,19 +75,12 @@ static bool bOldDspLed;
 static SDL_Rect NdLedRect;
 static int nOldNdLed;
 
-static SDL_Rect CPULedRect;
-static double oldRealTime;
-static double oldVirtualTime;
-static double lastRealTime;
-static double lastVirtualTime;
-
 /* led colors */
 static Uint32 LedColorOn, LedColorOnWP, LedColorOff, SysColorOn, SysColorOff, DspColorOn, DspColorOff;
 static Uint32 NdColorOn, NdColorCS8, NdColorOff;
 static Uint32 GrayBg, LedColorBg;
-static Uint32 CPUColors[256];
 
-#define MAX_MESSAGE_LEN 62 /* changed for Previous, was 50 */
+#define MAX_MESSAGE_LEN 69 /* changed for Previous, was 50 */
 typedef struct msg_item {
 	struct msg_item *next;
 	char msg[MAX_MESSAGE_LEN+1];
@@ -183,11 +171,6 @@ void Statusbar_SetNdLed(int state) {
     nOldNdLed = state;
 }
 
-void Statusbar_SetCPULed(double virtualTime, double realTime) {
-    oldVirtualTime = virtualTime;
-    oldRealTime    = realTime;
-}
-
 /*-----------------------------------------------------------------------*/
 /**
  * Set overlay led size/pos on given screen to internal Rect
@@ -211,52 +194,6 @@ static void Statusbar_OverlayInit(const SDL_Surface *surf)
 		OverlayUnderside = NULL;
 	}
 	bOverlayState = OVERLAY_NONE;
-}
-
-static Uint32 hsv2rgb(const SDL_PixelFormat *format, float hue, float saturation, float value) {
-    int r = 0, g = 0, b = 0;
-    if (saturation == 0)
-        r = g = b = (int) (value * 255.0 + 0.5);
-    else {
-        float h = (hue -floor(hue)) * 6.0;
-        float f = h - floor(h);
-        float p = value * (1.0 - saturation);
-        float q = value * (1.0 - saturation * f);
-        float t = value * (1.0 - (saturation * (1.0 - f)));
-        switch ((int) h) {
-            case 0:
-                r = value * 255.0 + 0.5;
-                g = t * 255.0 + 0.5;
-                b = p * 255.0 + 0.5;
-                break;
-            case 1:
-                r = q * 255.0 + 0.5;
-                g = value * 255.0 + 0.5;
-                b = p * 255.0 + 0.5;
-                break;
-            case 2:
-                r = p * 255.0 + 0.5;
-                g = value * 255.0 + 0.5;
-                b = t * 255.0 + 0.5;
-                break;
-            case 3:
-                r = p * 255.0 + 0.5;
-                g = q * 255.0 + 0.5;
-                b = value * 255.0 + 0.5;
-                break;
-            case 4:
-                r = t * 255.0 + 0.5;
-                g = p * 255.0 + 0.5;
-                b = value * 255.0 + 0.5;
-                break;
-            case 5:
-                r = value * 255.0 + 0.5;
-                g = p * 255.0 + 0.5;
-                b = q * 255.0 + 0.5;
-                break;
-        }
-    }
-    return SDL_MapRGB(format, r, g, b);
 }
 
 /*-----------------------------------------------------------------------*/
@@ -287,8 +224,6 @@ void Statusbar_Init(SDL_Surface *surf)
     NdColorCS8   = SDL_MapRGB(surf->format, 0xe0, 0x00, 0x00);
     NdColorOn    = SDL_MapRGB(surf->format, 0x00, 0x00, 0xe0);
 	GrayBg       = SDL_MapRGB(surf->format, 0xb5, 0xb7, 0xaa);
-    for(int i = 0; i < 256; i++)
-        CPUColors[i] = hsv2rgb(surf->format, (float)i/(float)768, 1, 1);
     
 	/* disable leds */
 	for (i = 0; i < NUM_DEVICE_LEDS; i++) {
@@ -360,14 +295,6 @@ void Statusbar_Init(SDL_Surface *surf)
 	for (item = MessageList; item; item = item->next) {
 		item->shown = false;
 	}
-
-    /* draw CPU led box */
-    CPULedRect = LedRect;
-    CPULedRect.x = surf->w - 21*fontw - CPULedRect.w;
-    ledbox.x = CPULedRect.x - 1;
-    SDLGui_Text(ledbox.x - 4*fontw - fontw/2, MessageRect.y, "CPU:");
-    SDL_FillRect(surf, &ledbox, LedColorBg);
-    SDL_FillRect(surf, &CPULedRect, CPUColors[0]);
     
     /* draw i860 led box */
     NdLedRect = LedRect;
@@ -468,14 +395,13 @@ void Statusbar_UpdateInfo(void)
 	}
 	
 	/* CPU MHz */
+    end = Statusbar_AddString(end, Main_SpeedMsg());
+    
 	if (ConfigureParams.System.nCpuFreq > 9) {
 		*end++ = '0' + ConfigureParams.System.nCpuFreq / 10;
 	}
 	*end++ = '0' + ConfigureParams.System.nCpuFreq % 10;
-	end = Statusbar_AddString(end, "MHz");
-    if(ConfigureParams.System.bRealtime)
-        end = Statusbar_AddString(end, "/FM");
-    *end++ = '/';
+	end = Statusbar_AddString(end, "MHz/");
 
 	/* CPU type */
 	if(ConfigureParams.System.nCpuLevel > 0) {
@@ -693,7 +619,6 @@ static void Statusbar_OverlayDraw(SDL_Surface *surf)
  * May not be called when screen is locked (SDL limitation).
  */
 void Statusbar_Update(SDL_Surface *surf) {
-    static Uint32 nextCPUupdate = 0;
 	Uint32 color, currentticks;
 	SDL_Rect rect;
 	int i;
@@ -758,33 +683,4 @@ void Statusbar_Update(SDL_Surface *surf) {
     }
     SDL_FillRect(surf, &NdLedRect, color);
     SDL_UpdateRects(surf, 1, &NdLedRect);
-    
-    /* Draw CPU LED */
-    double dvt = oldVirtualTime - lastVirtualTime;
-    double drt = oldRealTime    - lastRealTime;
-    if(drt != 0) {
-        if(currentticks > nextCPUupdate) {
-            int fontw, fonth;
-            SDL_Rect   r;
-            
-            dvt /= drt;
-            dvt -= 0.6; // below 60% is really bad
-            dvt /= (1-0.6);
-            dvt *= 255;
-            if(dvt < 0)   dvt = 0;
-            if(dvt > 255) dvt = 255;
-            SDL_FillRect(surf, &CPULedRect, CPUColors[(int)dvt]);
-            SDLGui_GetFontSize(&fontw, &fonth);
-            r.x = CPULedRect.x - 4*fontw - fontw/2;
-            r.y = CPULedRect.y;
-            r.w = 4*fontw;
-            r.h = CPULedRect.h + 2;
-            SDL_FillRect(surf, &r, GrayBg);
-            SDLGui_Text(r.x, r.y-2, ConfigureParams.System.bRealtime ? "cpu:" : "CPU:");
-            SDL_UpdateRects(surf, 1, &CPULedRect);
-            lastRealTime    = oldRealTime;
-            lastVirtualTime = oldVirtualTime;
-            nextCPUupdate = currentticks + 100;
-        }
-    }
 }

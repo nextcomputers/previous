@@ -31,9 +31,10 @@ extern void dimension_uninit();
 extern void nd_i860_init();
 extern void nd_i860_uninit();
 extern void i860_reset();
-extern void i860_tick(bool intr);
+extern void i860_interrupt();
 extern void nd_start_debugger();
 extern bool nd_use_threads();
+extern const char* nd_reports(double realTime, double hostTime);
 
 #define ND_LOG_IO_RD LOG_NONE
 #define ND_LOG_IO_WR LOG_NONE

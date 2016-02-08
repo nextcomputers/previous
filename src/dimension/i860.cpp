@@ -35,16 +35,10 @@ extern "C" {
     i860_run_func i860_Run = i860_run_nop;
 
     static void i860_run_thread(int nHostCycles) {
-#if ENABLE_PERF_COUNTERS
-        nd_i860.m_m68k_cylces += nHostCycles;
-#endif
         nd_nbic_interrupt();
     }
 
     static void i860_run_no_thread(int nHostCycles) {
-#if ENABLE_PERF_COUNTERS
-        nd_i860.m_m68k_cylces += nHostCycles;
-#endif
         nd_i860.handle_msgs();
         
         if(nd_i860.is_halted()) return;
@@ -90,17 +84,18 @@ extern "C" {
         nd_i860.send_msg(MSG_VIDEO_BLANK);
     }
 
-    void i860_tick(bool intr) {
-        nd_i860.tick(intr);
+    void i860_interrupt() {
+        nd_i860.interrupt();
+    }
+    
+    const char* nd_reports(double realTime, double hostTime) {
+        return nd_i860.reports(realTime, hostTime);
     }
 }
 
 i860_cpu_device::i860_cpu_device() {
     m_thread = NULL;
-#if ENABLE_PERF_COUNTERS
-    dump_reset_perfc();
-#endif
-    m_halt = true;
+    m_halt   = true;
     
     for(int i = 0; i < 8192; i++) {
         int upper6 = i >> 7;
@@ -597,56 +592,41 @@ void i860_cpu_device::run() {
     }
 }
 
-void i860_cpu_device::tick(bool intr) {
-    if(intr) send_msg(MSG_INTR);
-#if ENABLE_PERF_COUNTERS
-    UINT32 now = host_time_ms();
-    m_time_delta_ms += now - m_abs_time_ms;
-    m_abs_time_ms = now;
-    if(m_time_delta_ms > 5000)
-        dump_reset_perfc();
-#endif
+void i860_cpu_device::interrupt() {
+    send_msg(MSG_INTR);
 }
 
-extern volatile int mainPauseEmulation;
+const char* i860_cpu_device::reports(double realTime, double hostTime) {
+    double dVT = hostTime - m_last_vt;
+    
+    if(is_halted()) {
+        m_report[0] = 0;
+    } else {
+        if(dVT == 0) dVT = 0.0001;
+        sprintf(m_report, "i860:{MIPS=%.1f icache_hit=%lld%% tlb_hit=%lld%% icach_inval/s=%.0f tlb_inval/s=%.0f intr/s=%0.f}",
+                               (m_insn_decoded / (dVT*1000*1000)),
+                               m_icache_hit+m_icache_miss == 0 ? 0 : (100 * m_icache_hit) / (m_icache_hit+m_icache_miss) ,
+                               m_tlb_hit+m_tlb_miss       == 0 ? 0 : (100 * m_tlb_hit)    / (m_tlb_hit+m_tlb_miss),
+                               (m_icache_inval)/dVT,
+                               (m_tlb_inval)/dVT,
+                               (m_intrs)/dVT
+                               );
+        
+        m_insn_decoded  = 0;
+        m_icache_hit    = 0;
+        m_icache_miss   = 0;
+        m_icache_inval  = 0;
+        m_tlb_hit       = 0;
+        m_tlb_miss      = 0;
+        m_tlb_inval     = 0;
+        m_intrs         = 0;
 
-#if ENABLE_PERF_COUNTERS
-void i860_cpu_device::dump_reset_perfc() {
-    static bool dump = false;
-    if(dump) {
-        UINT32 dt = m_time_delta_ms;
-        if(dt) {
-            if(!(mainPauseEmulation)) {
-                Log_Printf(LOG_WARN, "[i860] Stats: MIPS=%lld.%lld icache_hit=%lld%% tlb_hit=%lld%% icach_inval/s=%lld tlb_inval/s=%lld intr/s=%lld",
-                           (m_insn_decoded / (dt * 100)) / 10, (m_insn_decoded / (dt * 100)) % 10,
-                           m_icache_hit+m_icache_miss == 0 ? 0 : (100 * m_icache_hit) / (m_icache_hit+m_icache_miss) ,
-                           m_tlb_hit+m_tlb_miss       == 0 ? 0 : (100 * m_tlb_hit)    / (m_tlb_hit+m_tlb_miss),
-                           (1000*m_icache_inval)/dt,
-                           (1000*m_tlb_inval)/dt,
-                           (1000*m_intrs)/dt
-                           );
-                Log_Printf(LOG_WARN, "[m68k] Stats: Mcycles/s=%lld.%lld",
-                           (m_m68k_cylces / (dt * 100)) / 10, (m_insn_decoded / (dt * 100)) % 10);
-                
-                host_print_stat();
-                
-                m_m68k_cylces   = 0;
-                m_insn_decoded  = 0;
-                m_icache_hit    = 0;
-                m_icache_miss   = 0;
-                m_icache_inval  = 0;
-                m_tlb_hit       = 0;
-                m_tlb_miss      = 0;
-                m_tlb_inval     = 0;
-                m_time_delta_ms = 0;
-                m_intrs         = 0;
-            }
-        }
+        m_last_rt = realTime;
+        m_last_vt = hostTime;
     }
     
-    dump            = true;
+    return m_report;
 }
-#endif
 
 offs_t i860_cpu_device::disasm(char* buffer, offs_t pc) {
     return pc + i860_disassembler(pc, ifetch_notrap(pc), buffer);

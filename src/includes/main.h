@@ -10,7 +10,7 @@
 
 
 /* Name and version for window title: */
-#define PROG_NAME "Previous 2.0"
+#define PROG_NAME "Previous 1.4"
 
 /* Messages for window title: */
 #ifdef _WIN32
@@ -75,5 +75,6 @@ extern void Main_WarpMouse(int x, int y);
 extern void Main_EventHandler();
 extern void Main_EventHandlerInterrupt();
 extern void Main_SetTitle(const char *title);
+extern const char* Main_SpeedMsg();
 
 #endif /* ifndef HATARI_MAIN_H */

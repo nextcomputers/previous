@@ -315,10 +315,10 @@ void nd_mc_write_register(uaecptr addr, uae_u32 val) {
                 val &= ~CSR0_i860PIN_RESET;
             }
             if ((nd_mc.csr0 & CSR0_i860_INT) && (nd_mc.csr0 & CSR0_i860_IMASK))
-                i860_tick(true);
+                i860_interrupt();
             
             if((nd_mc.csr0 & CSR0_BE_INT) && (nd_mc.csr0 & CSR0_BE_IMASK))
-                i860_tick(true);
+                i860_interrupt();
             
             nd_mc.csr0 = val;
             break;
@@ -555,7 +555,8 @@ void nd_set_blank_state(int src, bool state) {
             else        nd_mc.csr0 &= ~CSR0_VIOBLANK;
             break;
     }
-    i860_tick((nd_mc.csr0 & (CSR0_VBL_IMASK | CSR0_VIOVBL_IMASK)) != 0);
+    if(nd_mc.csr0 & (CSR0_VBL_IMASK | CSR0_VIOVBL_IMASK))
+        i860_interrupt();
 }
 
 static const char* nd_dump_path = "nd_memory.bin";

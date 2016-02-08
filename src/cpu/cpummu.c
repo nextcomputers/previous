@@ -61,6 +61,16 @@ int mmu040_movem;
 uaecptr mmu040_movem_ea;
 uae_u32 mmu040_move16[4];
 
+uae_u16 icache_s[M68K_ICACHE_SZ];
+uae_u16 icache_u[M68K_ICACHE_SZ];
+uae_u32 icache_saddr[M68K_ICACHE_SZ];
+uae_u32 icache_uaddr[M68K_ICACHE_SZ];
+
+void flush_icache(uaecptr addr, int n) {
+    memset(icache_saddr, 0xFF, sizeof(icache_saddr));
+    memset(icache_uaddr, 0xFF, sizeof(icache_uaddr));
+}
+
 static void mmu_dump_ttr(const TCHAR * label, uae_u32 ttr)
 {
 	DUNUSED(label);
