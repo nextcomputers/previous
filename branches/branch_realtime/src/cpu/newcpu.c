@@ -242,12 +242,15 @@ void set_cpu_caches (bool flush)
 		}
 	} else if (currprefs.cpu_model == 68040) {
 		if (!(regs.cacr & 0x8000)) {
+         flush_icache(0, -1);
+            /*
 			for (i = 0; i < CACHESETS040; i++) {
 				caches040[i].valid[0] = 0;
 				caches040[i].valid[1] = 0;
 				caches040[i].valid[2] = 0;
 				caches040[i].valid[3] = 0;
 			}
+             */
 		}
 	}
 }
@@ -1176,9 +1179,7 @@ static void Exception_mmu (int nr, uaecptr oldpc) {
 	exception_trace (nr);
 }
 
-void uae_reset (int hardreset) {
-    currprefs.quitstatefile[0] = changed_prefs.quitstatefile[0] = 0;
-    
+void uae_reset (int hardreset) {    
     if (quit_program == 0) {
         quit_program = -2;
         if (hardreset)
@@ -1958,6 +1959,7 @@ insretry:
 			mmu030_opcode = opcode;
 			mmu030_ad[0].done = false;
 
+            Uint64 beforeCycles = nCyclesMainCounter;
 			cnt = 50;
 			for (;;) {
 				opcode = mmu030_opcode;
@@ -1977,10 +1979,11 @@ insretry:
 
 			mmu030_opcode = -1;
             
+            M68000_AddCycles(cpu_cycles);
+            cpu_cycles = nCyclesMainCounter - beforeCycles;
+            
 			DSP_Run(cpu_cycles);
             i860_Run(cpu_cycles);
-
-			M68000_AddCycles(cpu_cycles);
 
 			if (regs.spcflags & SPCFLAG_EXTRA_CYCLES) {
 				/* Add some extra cycles to simulate a wait state */
@@ -2059,23 +2062,17 @@ static void m68k_run_mmu040 (void)
 			f.x = regflags.x;
 			mmu_restart = true;
 			pc = regs.instruction_pc = m68k_getpc ();
-            
-            /*
-            switch(pc) {
-                case 0x04025384:
-                    DebugUI();
-                    break;
-            }
-            */
-            
+        
+            Uint64 beforeCycles = nCyclesMainCounter;
 			mmu_opcode = -1;
 			mmu_opcode = opcode = x_prefetch (0);
 			cpu_cycles = (*cpufunctbl[opcode])(opcode);
-                        
+            M68000_AddCycles(cpu_cycles);
+            
+            cpu_cycles = nCyclesMainCounter - beforeCycles;
+
 			DSP_Run(cpu_cycles);
             i860_Run(cpu_cycles);
-
-			M68000_AddCycles(cpu_cycles);
 
 			if (regs.spcflags & SPCFLAG_EXTRA_CYCLES) {
 				/* Add some extra cycles to simulate a wait state */
@@ -2949,11 +2946,6 @@ void cpureset (void) {
 	}
     
 	pc = m68k_getpc ();
-	if (pc >= currprefs.chipmem_size) {
-		write_log ("M68K RESET PC=%x, rebooting..\n", pc);
-		m68k_setpc (ksboot);
-		return;
-	}
 	/* panic, RAM is going to disappear under PC */
 	ins = get_word (pc + 2);
 	if ((ins & ~7) == 0x4ed0) {

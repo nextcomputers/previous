@@ -515,7 +515,7 @@ extern void flush_icache (uaecptr, int);
 extern void compemu_reset (void);
 extern bool check_prefs_changed_comp (void);
 #else
-#define flush_icache(uaecptr, int) do {} while (0)
+extern void flush_icache(uaecptr, int);
 #endif
 extern void flush_dcache (uaecptr, int);
 extern void flush_mmu (uaecptr, int);

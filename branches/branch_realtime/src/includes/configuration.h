@@ -10,6 +10,8 @@
 
 #include <stdio.h>
 
+#define ENABLE_TESTING 0
+
 /* Configuration Dialog */
 typedef struct
 {
@@ -212,18 +214,6 @@ typedef struct {
     bool bEthernetConnected;
 } CNF_ENET;
 
-
-/* Falcon register $FFFF8006 bits 6 & 7 (mirrored in $FFFF82C0 bits 0 & 1):
- * 00 Monochrome
- * 01 RGB - Colormonitor
- * 10 VGA - Colormonitor
- * 11 TV
- */
-#define FALCON_MONITOR_MONO 0x00  /* SM124 */
-#define FALCON_MONITOR_RGB  0x40
-#define FALCON_MONITOR_VGA  0x80
-#define FALCON_MONITOR_TV   0xC0
-
 typedef enum
 {
   MONITOR_TYPE_DUAL,
@@ -352,7 +342,7 @@ extern void Configuration_SetDefault(void);
 extern void Configuration_SetSystemDefaults(void);
 extern void Configuration_Apply(bool bReset);
 extern int Configuration_CheckMemory(int *banksize);
-extern int Configuration_CheckDimensionMemory(int *banksize);
+extern int  Configuration_CheckDimensionMemory(int *banksize);
 extern void Configuration_CheckDimensionSettings(void);
 extern void Configuration_Load(const char *psFileName);
 extern void Configuration_Save(void);

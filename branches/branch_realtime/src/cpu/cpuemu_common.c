@@ -739,7 +739,7 @@ void divbyzero_special (bool issigned, uae_s32 dst)
 
 bool m68k_divl (uae_u32 opcode, uae_u32 src, uae_u16 extra)
 {
-	if ((extra & 0x400) && currprefs.int_no_unimplemented && currprefs.cpu_model == 68060) {
+	if ((extra & 0x400) && currprefs.cpu_model == 68060) {
 		op_unimpl (opcode);
 		return false;
 	}
@@ -868,7 +868,7 @@ bool m68k_divl (uae_u32 opcode, uae_u32 src, uae_u16 extra)
 
 bool m68k_mull (uae_u32 opcode, uae_u32 src, uae_u16 extra)
 {
-	if ((extra & 0x400) && currprefs.int_no_unimplemented && currprefs.cpu_model == 68060) {
+	if ((extra & 0x400) && currprefs.cpu_model == 68060) {
 		op_unimpl (opcode);
 		return false;
 	}

@@ -9,6 +9,8 @@
 #ifndef i860cfg_h
 #define i860cfg_h
 
+#include "configuration.h"
+
 /* Emulator configurations - keep in sync with i860_cpu_device::init() */
 
 #define CONF_I860_SPEED     1
@@ -16,8 +18,11 @@
 #define CONF_I860_NO_THREAD 3
 #define CONF_STR(CONF) #CONF
 
-/* Change this to select your emulator configuration */
+#if ENABLE_TESTING
+#define CONF_I860 CONF_I860_DEV
+#else
 #define CONF_I860 CONF_I860_SPEED
+#endif
 
 /* Emulator configurations */
 

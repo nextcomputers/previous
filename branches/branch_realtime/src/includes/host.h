@@ -35,16 +35,17 @@ extern "C" {
     Uint64      host_time_us();
     Uint32      host_time_ms();
     double      host_time_sec();
+    void        host_time(double* realTime, double* hostTime);
     time_t      host_unix_time();
     void        host_set_unix_time(time_t now);
     void        host_sleep_sec(double sec);
     void        host_sleep_ms(Uint32 ms);
     void        host_sleep_us(Uint64 us);
-    void        host_print_stat();
     int         host_num_cpus();
     void        host_hardclock(int expected, int actual);
     double      host_real_time_offset();
     void        host_pause_time(bool pausing);
+    const char* host_report(double realTime, double hostTime);
     
     void        host_lock(lock_t* lock);
     void        host_unlock(lock_t* lock);

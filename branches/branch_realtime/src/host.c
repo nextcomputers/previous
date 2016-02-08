@@ -103,17 +103,21 @@ bool host_is_realtime() {
     return isRealtime;
 }
 
-extern void Statusbar_SetCPULed(double virtualTime, double realTime);
-
 double host_time_sec() {
-    
-    host_lock(&timeLock);
     double rt;
+    double vt;
+    host_time(&rt, &vt);
+    return vt;
+}
+
+void host_time(double* realTime, double* hostTime) {
+
+    host_lock(&timeLock);
     double t;
-    rt  = (SDL_GetPerformanceCounter() - perfCounterStart);
-    rt /= perfFrequency;
+    *realTime  = (SDL_GetPerformanceCounter() - perfCounterStart);
+    *realTime /= perfFrequency;
     if(oldIsRealtime) {
-        t = rt;
+        t = *realTime;
     } else {
         t  = nCyclesMainCounter - cycleCounterStart;
         t /= cycleDivisor;
@@ -129,13 +133,13 @@ double host_time_sec() {
         t                 = 0;
     }
     
-    realTimeOffset = t - rt;
+    realTimeOffset = t - *realTime;
 
     t += secsStart;
-    Statusbar_SetCPULed(t,rt);
     host_unlock(&timeLock);
     
-    return t;
+    *hostTime = t;
+    *realTime += secsStart;
 }
 
 // Return current time as micro seconds
@@ -230,23 +234,25 @@ int host_thread_wait(thread_t* thread) {
 int host_num_cpus() {
   return  SDL_GetCPUCount();
 }
-                  
-// --- utilities
-                  
-void host_print_stat() {
-    double t = host_time_sec();
-    
-    double ticks = SDL_GetTicks() - ticksStart;
-    ticks /= 1000;
-    
-    int rtFactor = (100 * t) / ticks;
+ 
+static double lastVT;
+static char   report[512];
+
+const char* host_report(double realTime, double hostTime) {
+    double dVT = hostTime - lastVT;
+
     double hardClock = hardClockExpected;
-    hardClock /= hardClockActual;
+    hardClock /= hardClockActual == 0 ? 1 : hardClockActual;
     
-    fprintf(stderr, "[%s] hostTime:%g rt:%d%% cycleTime:%g realTime:%g hardClock:%gMHz", enableRealtime ? "Realtime" : "CycleTime", t, rtFactor, cycleTimeAcc, realTimeAcc, hardClock);
+    char* r = report;
+    r += sprintf(r, "[%s] hostTime:%.1f cycleTime:%.1f realTime:%.1f hardClock:%.3fMHz", enableRealtime ? "Max.speed" : "CycleTime", hostTime, cycleTimeAcc, realTimeAcc, hardClock);
+
+    for(int i = NUM_BLANKS; --i >= 0;) {
+        r += sprintf(r, " %s:%.1fHz", BLANKS[i], (double)vblCounter[i]/dVT);
+        vblCounter[i] = 0;
+    }
     
-    for(int i = NUM_BLANKS; --i >= 0;)
-        fprintf(stderr, " %s:%gHz", BLANKS[i], (double)vblCounter[i]/t);
-    
-    fprintf(stderr, "\n");
+    lastVT = hostTime;
+
+    return report;
 }

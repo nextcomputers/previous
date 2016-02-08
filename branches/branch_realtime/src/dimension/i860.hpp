@@ -366,13 +366,10 @@ public:
     void run();
     /* i860 thread message handler */
     bool   handle_msgs();
-    /* External tick event for the i860 emulator to update real-time dependent state + interrupt flag */
-    void   tick(bool intr);
+    /* External interrupt for i860 emulator */
+    void   interrupt();
     
-#if ENABLE_PERF_COUNTERS
-    UINT64 m_m68k_cylces;
-#endif
-
+    const char* reports(double realTime, double hostTIme);
 private:
     // debugger
     void debugger(char cmd, const char* format, ...);
@@ -383,7 +380,6 @@ private:
     lock_t       m_port_lock;
     thread_t*    m_thread;
 
-#if ENABLE_PERF_COUNTERS
     UINT64 m_insn_decoded;
     UINT64 m_icache_hit;
     UINT64 m_icache_miss;
@@ -392,15 +388,13 @@ private:
     UINT64 m_tlb_miss;
     UINT64 m_tlb_inval;
     UINT64 m_intrs;
-    UINT32 m_time_delta_ms;
-    UINT32 m_abs_time_ms;
-    
-    void dump_reset_perfc();
-#endif
-    
+    UINT32 m_last_rt;
+    UINT32 m_last_vt;
+    char   m_report[1024];
+
     /* Debugger stuff */
     char   m_lastcmd;
-    char   m_console[512*1024];
+    char   m_console[32*1024];
     int    m_console_idx;
     bool   m_break_on_next_msg;
     UINT32 m_traceback[256];
