@@ -34,7 +34,7 @@ const char DlgAdvanced_fileid[] = "Hatari dlgAdvanced.c : " __DATE__ " " __TIME_
 
 #define DLGADV_DSPNONE    26
 #define DLGADV_DSP56001   27
-#define DLGADV_DSPMEM24   28
+#define DLGADV_DSPMEM24   29
 #define DLGADV_DSPMEM96   30
 
 #define DLGADV_NBIC       33
@@ -61,7 +61,7 @@ static SGOBJ advanceddlg[] =
     { SGRADIOBUT, 0, 0, 4,10, 8,1, "25 MHz" },
     { SGRADIOBUT, 0, 0, 4,12, 8,1, "33 MHz" },
     { SGRADIOBUT, 0, 0, 4,14, 8,1, "40 MHz" },
-    { SGCHECKBOX, 0, 0, 4,16, 8,1, "Variable" },
+    { SGCHECKBOX, 0, 0, 4,16, 10,1, "Variable" },
 
     { SGBOX, 0, 0, 17,3, 14,15, NULL },
     { SGTEXT, 0, 0, 18,4, 12,1, "Memory size" },
@@ -223,6 +223,14 @@ void Dialog_AdvancedDlg(void) {
 	{
 		advanceddlg[i].state &= ~SG_SELECTED;
 	}
+	
+	/* Remove 40 MHz option if system is non-Turbo */
+	if (ConfigureParams.System.bTurbo) {
+		advanceddlg[DLGADV_40MHZ] = enable_40mhz_opt;
+	} else {
+		advanceddlg[DLGADV_40MHZ] = disable_40mhz_opt;
+	}
+
 	switch (ConfigureParams.System.nCpuFreq)
 	{
         case 16:
@@ -247,14 +255,7 @@ void Dialog_AdvancedDlg(void) {
         advanceddlg[DLGADV_REALTIME].state |= SG_SELECTED;
     else
         advanceddlg[DLGADV_REALTIME].state &= ~SG_SELECTED;
-    
-    /* Remove 40 MHz option if system is non-Turbo */
-    if (ConfigureParams.System.bTurbo) {
-        advanceddlg[DLGADV_40MHZ] = enable_40mhz_opt;
-    } else {
-        advanceddlg[DLGADV_40MHZ] = disable_40mhz_opt;
-    }
-    
+	
     /* Remove 64 and 128MB option if system is non-Turbo Slab,
      * remove 128MB option if system is not Turbo */
     if (ConfigureParams.System.bTurbo) {

@@ -1,6 +1,6 @@
 
 
-                                 Previous 1.3
+                                 Previous 1.4
 
 
                     http://previous.alternative-system.com/
@@ -52,6 +52,7 @@ Previous emulates the following machines:
  NeXTstation Turbo
  NeXTstation Color
  NeXTstation Turbo Color
+ NeXTdimension Graphics Board
 
 
  3) Compiling and installing
@@ -60,7 +61,7 @@ Previous emulates the following machines:
 For using Previous, you need to have installed the following libraries:
 
 Required:
-- The SDL library v2.0.3 or later (http://www.libsdl.org)
+- The SDL library v2.0.4 or later (http://www.libsdl.org)
 - The zlib compression library (http://www.gzip.org/zlib/)
 
 
@@ -102,12 +103,12 @@ MMU		good
 FPU		good
 DSP		buggy
 DMA		good
-NextBus		missing
+NextBus		good
 Memory		good
 2-bit graphics	good
 Color graphics	good
 RTC		good
-Timers		buggy
+Timers		good
 SCSI drive	good
 MO drive	good (single drive)
 Floppy drive	good
@@ -119,6 +120,7 @@ Keyboard	good
 Mouse		good
 ADB		dummy
 Nitro		dummy
+Dimension	good
 
 
 There are remaining problems with the host to emulated machine interface for
@@ -130,14 +132,14 @@ input devices.
 
 - Un-emulated hardware may cause problems in certain situations (see above).
 - The MO drive causes problems (mainly hangs) when both drives are used (disabled).
+- Variable CPU speed mode does not work if an MO drive is connected.
 - Shortcuts do not work properly or overlap with host commands on some platforms.
-- The clock does not tick accurately. Real time clock power-on test may fail
-  sporadically on fast host systems.
+- CPU timings are not correct. You may experience performance differences compared 
+  to real hardware.
 - There is a lot of instability when running Mac OS via Daydream.
 - FPU only works on x86 hosts.
 - Slirp: In certain rare conditions Slirp may crash.
-- Mac OS X: When minimizing and maximizing the application window the mouse
-  gets unlocked and sometimes is clicking is ignored (SDL bug).
+
 
 
  6) Release notes
@@ -161,6 +163,12 @@ input devices.
   > Adds Laser Printer emulation.
   > Introduces option for swapping cmd and alt key.
 
+  Previous v1.4:
+  > Adds NeXTdimension emulation, including emulated i860 CPU.
+  > Improves timings and adds a mode for higher than real speed.
+  > Improves emulator efficiency through optimizations and threads.
+  > Improves mouse movement handling.
+
 
  7) Running Previous
  -------------------
@@ -178,8 +186,8 @@ and initiate a clean shut down by pressing F10 (emulates the power button).
 
 Many thanks go to the members of the NeXT International Forums for their
 help. Special thanks go to Gavin Thomas Nicol, Piotr Twarecki, Toni Wilen,
-Michael Bosshard, Thomas Huth, Olivier Galibert, Simon Schubiger,
-Jason Stevens, Vaughan Kaufman and Peter Leonard!
+Michael Bosshard, Thomas Huth, Olivier Galibert, Simon Schubiger, Jason 
+Eckhardt, Jason Stevens, Vaughan Kaufman and Peter Leonard!
 This emulator would not exist without their help.
 
 

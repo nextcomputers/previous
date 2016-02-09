@@ -65,7 +65,7 @@ void nd_sdl_init() {
         int x, y, w, h;
         SDL_GetWindowPosition(sdlWindow, &x, &y);
         SDL_GetWindowSize(sdlWindow, &w, &h);
-        ndWindow   = SDL_CreateWindow("NeXT Dimension",(x-w)+1, y, 1120, 832, SDL_WINDOW_HIDDEN);
+        ndWindow   = SDL_CreateWindow("NeXTdimension",(x-w)+1, y, 1120, 832, SDL_WINDOW_HIDDEN);
         ndRenderer = SDL_CreateRenderer(ndWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
         
         if (!ndWindow || !ndRenderer) {

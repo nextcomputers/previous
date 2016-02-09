@@ -868,16 +868,16 @@ void nvram_init(void) {
         case MC68HC68T1: rtc.ram[17] &= ~NEW_CLOCK_CHIP; break;
         default: break;
     }
-#if ENABLE_DIMENSION
+
 	/* Set prefered console slot */
 	if (ConfigureParams.Dimension.bEnabled) {
 		rtc.ram[17] |= USE_CONSOLE_SLOT;
-		if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
+		if (ConfigureParams.Dimension.bMainDisplay) {
 			rtc.ram[17] |= (ND_SLOT>>1)<<3;
 		}
     }
-#endif
-    /* Re-calculate checksum */
+
+	/* Re-calculate checksum */
     nvram_checksum(1);
 }
 

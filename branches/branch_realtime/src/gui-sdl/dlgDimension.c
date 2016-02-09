@@ -18,13 +18,14 @@ const char DlgDimension_fileid[] = "Previous dlgDimension.c : " __DATE__ " " __T
 #define DLGND_ENABLE        4
 #define DLGND_CUSTOMIZE     5
 #define DLGND_I860THREAD    6
-#define DLGND_COLOR         8
-#define DLGND_MONOCHROME    9
-#define DLGND_BOTH          10
-#define DLGND_MEMSIZE       17
-#define DLGND_BROWSE        22
-#define DLGND_NAME          23
-#define DLGND_EXIT          25
+#define DLGND_MEMSIZE       13
+#define DLGND_BROWSE        18
+#define DLGND_NAME          19
+#define DLGND_COLOR         22
+#define DLGND_MONOCHROME    23
+#define DLGND_BOTH          24
+#define DLGND_DISPLAY		25
+#define DLGND_EXIT          27
 
 /* Variable strings */
 char dimension_memory[16] = "64 MB";
@@ -36,23 +37,18 @@ void get_nd_default_values(void);
 
 static SGOBJ dimensiondlg[] =
 {
-    { SGBOX,      0, 0, 0,  0, 58, 26, NULL },
+    { SGBOX,      0, 0, 0,  0, 58, 30, NULL },
     { SGTEXT,     0, 0, 18, 1, 21, 1, "NeXTdimension options" },
     
-    { SGBOX,      0, 0, 2,  3, 26, 10, NULL },
+    { SGBOX,      0, 0, 2,  3, 26, 8, NULL },
     { SGTEXT,     0, 0, 3,  4, 19, 1, "NeXTdimension board" },
     { SGCHECKBOX, 0, 0, 4,  6, 9,  1, "Enabled" },
     { SGBUTTON,   0, 0, 15, 6, 11, 1, "Customize" },
-    { SGCHECKBOX, 0, 0, 4,  7, 9,  1, "i860 Thread" },
-    
-    { SGTEXT,     0, 0, 3,  9,  7, 1, "System display" },
-    { SGRADIOBUT, 0, 0, 4,  11, 7, 1, "Color" },
-    { SGRADIOBUT, 0, 0, 12, 11, 6, 1, "Mono" },
-    { SGRADIOBUT, 0, 0, 19, 11, 6, 1, "Both" },
-
+    { SGCHECKBOX, 0, 0, 6,  8, 21,  1, "Run separate thread" },
+	
     { SGTEXT, 0, 0, 30,4, 13,1, "System overview:" },
     { SGTEXT, 0, 0, 30,6, 13,1, "CPU type:" },
-    { SGTEXT, 0, 0, 44,6, 13,1, "i860 XR" },
+    { SGTEXT, 0, 0, 44,6, 13,1, "i860XR" },
     { SGTEXT, 0, 0, 30,7, 13,1, "CPU clock:" },
     { SGTEXT, 0, 0, 44,7, 13,1, "33 MHz" },
     { SGTEXT, 0, 0, 30,8, 13,1, "Memory size:" },
@@ -60,14 +56,21 @@ static SGOBJ dimensiondlg[] =
     { SGTEXT, 0, 0, 30,9, 13,1, "NBIC:" },
     { SGTEXT, 0, 0, 44,9, 13,1, "present" },
 
-    { SGBOX, 0, 0, 2,14, 54,5, NULL },
-    { SGTEXT, 0, 0, 3,15, 22,1, "ROM for NeXTdimension:" },
-    { SGBUTTON, 0, 0, 27,15, 8,1, "Browse" },
-    { SGTEXT, 0, 0, 4,17, 50,1, NULL },
+    { SGBOX, 0, 0, 2,12, 54,5, NULL },
+    { SGTEXT, 0, 0, 3,13, 22,1, "ROM for NeXTdimension:" },
+    { SGBUTTON, 0, 0, 27,13, 8,1, "Browse" },
+    { SGTEXT, 0, 0, 4,15, 50,1, NULL },
+	
+	{ SGBOX, 0, 0, 2,18, 54,5, NULL },
+	{ SGTEXT, 0, 0, 3,19, 13,1, "Show display:" },
+	{ SGRADIOBUT, 0, 0, 18,  19, 7, 1, "Color" },
+	{ SGRADIOBUT, 0, 0, 26, 19, 12, 1, "Monochrome" },
+	{ SGRADIOBUT, 0, 0, 39, 19, 6, 1, "Both" },
+	{ SGCHECKBOX, 0, 0, 5,21, 33,1, "System display on NeXTdimension" },
 
-    { SGTEXT, 0, 0, 3,20, 52,1, "Note: NeXTdimension does not work with NeXTstations." },
+    { SGTEXT, 0, 0, 3,24, 52,1, "Note: NeXTdimension does not work with NeXTstations." },
     
-    { SGBUTTON, SG_DEFAULT, 0, 18,23, 21,1, "Back to main menu" },
+    { SGBUTTON, SG_DEFAULT, 0, 18,27, 21,1, "Back to main menu" },
 
     { -1, 0, 0, 0,0, 0,0, NULL }
 };
@@ -120,7 +123,10 @@ void Dialog_DimensionDlg(void)
     dimensiondlg[DLGND_COLOR].state      &= ~SG_SELECTED;
     dimensiondlg[DLGND_MONOCHROME].state &= ~SG_SELECTED;
     dimensiondlg[DLGND_BOTH].state       &= ~SG_SELECTED;
-    
+	
+	if (ConfigureParams.Dimension.bMainDisplay) dimensiondlg[DLGND_DISPLAY].state |= SG_SELECTED;
+	else                                        dimensiondlg[DLGND_DISPLAY].state &= ~SG_SELECTED;
+	
     switch (ConfigureParams.Screen.nMonitorType) {
         case MONITOR_TYPE_DUAL:
             dimensiondlg[DLGND_BOTH].state |= SG_SELECTED;
@@ -169,9 +175,10 @@ void Dialog_DimensionDlg(void)
            && but != SDLGUI_ERROR && !bQuitProgram);
     
     /* Read values from dialog */
-    ConfigureParams.Dimension.bEnabled    = (dimensiondlg[DLGND_ENABLE].    state&SG_SELECTED) != 0;
-    ConfigureParams.Dimension.bI860Thread = (dimensiondlg[DLGND_I860THREAD].state&SG_SELECTED) != 0;
-    
+    ConfigureParams.Dimension.bEnabled     = (dimensiondlg[DLGND_ENABLE].    state&SG_SELECTED) != 0;
+    ConfigureParams.Dimension.bI860Thread  = (dimensiondlg[DLGND_I860THREAD].state&SG_SELECTED) != 0;
+	ConfigureParams.Dimension.bMainDisplay = (dimensiondlg[DLGND_DISPLAY].state&SG_SELECTED) != 0;
+	
     if (ConfigureParams.Dimension.bEnabled)
         ConfigureParams.System.bNBIC = true;
     
