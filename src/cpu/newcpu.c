@@ -134,27 +134,18 @@ static void set_x_funcs (void)
 			x_get_word   = get_word_mmu060;
 			x_get_byte   = get_byte_mmu060;
 		} else if (currprefs.cpu_model == 68040) {
-            if(ConfigureParams.System.bRealtime) {
-                x_prefetch   = getc_iword_mmu040;
-                x_get_ilong  = getc_ilong_mmu040;
-                x_get_iword  = getc_iword_mmu040;
-                x_get_ibyte  = getc_ibyte_mmu040;
-                x_next_iword = nextc_iword_mmu040;
-                x_next_ilong = nextc_ilong_mmu040;
-            } else {
-                x_prefetch   = get_iword_mmu040;
-                x_get_ilong  = get_ilong_mmu040;
-                x_get_iword  = get_iword_mmu040;
-                x_get_ibyte  = get_ibyte_mmu040;
-                x_next_iword = next_iword_mmu040;
-                x_next_ilong = next_ilong_mmu040;
-            }
-			x_put_long = put_long_mmu040;
-			x_put_word = put_word_mmu040;
-			x_put_byte = put_byte_mmu040;
-			x_get_long = get_long_mmu040;
-			x_get_word = get_word_mmu040;
-			x_get_byte = get_byte_mmu040;
+            x_prefetch   = get_iword_mmu040;
+            x_get_ilong  = get_ilong_mmu040;
+            x_get_iword  = get_iword_mmu040;
+            x_get_ibyte  = get_ibyte_mmu040;
+            x_next_iword = next_iword_mmu040;
+            x_next_ilong = next_ilong_mmu040;
+			x_put_long   = put_long_mmu040;
+			x_put_word   = put_word_mmu040;
+			x_put_byte   = put_byte_mmu040;
+			x_get_long   = get_long_mmu040;
+			x_get_word   = get_word_mmu040;
+			x_get_byte   = get_byte_mmu040;
 		} else {
 			x_prefetch   = get_iword_mmu030;
 			x_get_ilong  = get_ilong_mmu030;
@@ -250,17 +241,24 @@ void set_cpu_caches (bool flush)
 			regs.cacr &= ~0x400;
 		}
 	} else if (currprefs.cpu_model == 68040) {
-		if (!(regs.cacr & 0x8000)) {
-         flush_icache(0, -1);
-            /*
-			for (i = 0; i < CACHESETS040; i++) {
-				caches040[i].valid[0] = 0;
-				caches040[i].valid[1] = 0;
-				caches040[i].valid[2] = 0;
-				caches040[i].valid[3] = 0;
-			}
-             */
-		}
+        if(ConfigureParams.System.bRealtime) {
+            if(false && regs.cacr & 0x8000) { // disable ICACHE for now (doesn't work wit NS 1.0 & 2.1)
+                flush_icache(0, -1);
+                x_prefetch   = getc_iword_mmu040;
+                x_get_ilong  = getc_ilong_mmu040;
+                x_get_iword  = getc_iword_mmu040;
+                x_get_ibyte  = getc_ibyte_mmu040;
+                x_next_iword = nextc_iword_mmu040;
+                x_next_ilong = nextc_ilong_mmu040;
+            } else {
+                x_prefetch   = get_iword_mmu040;
+                x_get_ilong  = get_ilong_mmu040;
+                x_get_iword  = get_iword_mmu040;
+                x_get_ibyte  = get_ibyte_mmu040;
+                x_next_iword = next_iword_mmu040;
+                x_next_ilong = next_ilong_mmu040;
+            }
+        }
 	}
 }
 
