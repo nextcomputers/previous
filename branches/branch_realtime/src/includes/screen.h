@@ -74,13 +74,13 @@ extern volatile bool bInFullScreen;
 extern struct SDL_Window *sdlWindow;
 extern SDL_Surface *sdlscrn;
 
-extern void Screen_Init(void);
-extern void Screen_UnInit(void);
-extern void Screen_EnterFullScreen(void);
-extern void Screen_ReturnFromFullScreen(void);
-extern void Screen_ModeChanged(void);
-extern bool Screen_Draw(void);
-extern void SDL_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects);
-extern void SDL_UpdateRect(SDL_Surface *screen, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
+void Screen_Init(void);
+void Screen_UnInit(void);
+void Screen_EnterFullScreen(void);
+void Screen_ReturnFromFullScreen(void);
+void Screen_ModeChanged(void);
+bool Screen_Draw(void);
+void SDL_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects);
+void SDL_UpdateRect(SDL_Surface *screen, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 
 #endif  /* ifndef HATARI_SCREEN_H */

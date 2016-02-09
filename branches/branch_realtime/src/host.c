@@ -10,8 +10,8 @@
 #include "main.h"
 
 /* NeXTdimension blank handling, see nd_sdl.c */
-extern void nd_display_blank(void);
-extern void nd_video_blank(void);
+void nd_display_blank(void);
+void nd_video_blank(void);
 
 #define NUM_BLANKS 3
 static const char* BLANKS[] = {

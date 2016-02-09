@@ -14,12 +14,12 @@
 /* Functions prototypes						*/
 /*--------------------------------------------------------------*/
 
-extern void	Video_MemorySnapShot_Capture(bool bSave);
+void	Video_MemorySnapShot_Capture(bool bSave);
 
-extern void Video_Reset(void);
-extern void	Video_Reset_Glue(void);
+void Video_Reset(void);
+void	Video_Reset_Glue(void);
 
-extern void	Video_StartInterrupts ( int PendingCyclesOver );
-extern void	Video_InterruptHandler_VBL(void);
+void	Video_StartInterrupts ( int PendingCyclesOver );
+void	Video_InterruptHandler_VBL(void);
 
 #endif  /* HATARI_VIDEO_H */

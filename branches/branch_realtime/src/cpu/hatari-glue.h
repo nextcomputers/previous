@@ -11,9 +11,9 @@
 #include "sysdeps.h"
 #include "options_cpu.h"
 
-extern int Init680x0(void);
-extern void Exit680x0(void);
-extern int intlev (void);
+int Init680x0(void);
+void Exit680x0(void);
+int intlev (void);
 
 #define write_log printf
 

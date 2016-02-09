@@ -7,8 +7,8 @@
 #ifndef HATARI_OPTIONS_H
 #define HATARI_OPTIONS_H
 
-extern Uint32 Opt_GetNoParachuteFlag(void);
-extern bool Opt_ParseParameters(int argc, const char * const argv[]);
-extern char *Opt_MatchOption(const char *text, int state);
+Uint32 Opt_GetNoParachuteFlag(void);
+bool Opt_ParseParameters(int argc, const char * const argv[]);
+char *Opt_MatchOption(const char *text, int state);
 
 #endif /* HATARI_OPTIONS_H */

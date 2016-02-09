@@ -97,8 +97,7 @@ static inline Uint8 NEXTMemory_ReadByte(Uint32 Address)
 }
 
 
-extern void NEXTMemory_Clear(Uint32 StartAddress, Uint32 EndAddress);
-extern void NEXTMemory_MemorySnapShot_Capture(bool bSave);
-extern void NEXTMemory_SetDefaultConfig(void);
+void NEXTMemory_Clear(Uint32 StartAddress, Uint32 EndAddress);
+void NEXTMemory_SetDefaultConfig(void);
 
 #endif

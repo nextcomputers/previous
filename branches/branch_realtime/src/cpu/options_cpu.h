@@ -26,6 +26,6 @@ struct uae_prefs {
 
 extern struct uae_prefs currprefs, changed_prefs;
 
-extern void check_prefs_changed_cpu (void);
+void check_prefs_changed_cpu (void);
 
 #endif /* OPTIONS_CPU_H */

@@ -14,12 +14,12 @@ extern "C" {
     extern const int VIDEO_VBL_MS;
     extern const int BLANK_MS;
 
-    extern void    nd_sdl_init();
-    extern void    nd_sdl_uninit();
-    extern void    nd_sdl_destroy();
-    extern void    nd_start_interrupts();
-    extern void    nd_vbl_handler();
-    extern void    nd_video_vbl_handler();
+    void    nd_sdl_init(void);
+    void    nd_sdl_uninit(void);
+    void    nd_sdl_destroy(void);
+    void    nd_start_interrupts(void);
+    void    nd_vbl_handler(void);
+    void    nd_video_vbl_handler(void);
 
 #ifdef __cplusplus
 }

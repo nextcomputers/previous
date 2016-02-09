@@ -5768,7 +5768,7 @@ void alloc_cache(void)
 
 
 
-extern void op_illg_1 (uae_u32 opcode) REGPARAM;
+void op_illg_1 (uae_u32 opcode) REGPARAM;
 
 static void calc_checksum(blockinfo* bi, uae_u32* c1, uae_u32* c2)
 {

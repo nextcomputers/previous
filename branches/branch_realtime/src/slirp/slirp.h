@@ -257,19 +257,19 @@ void if_start _P((struct ttys *));
 #ifdef BAD_SPRINTF
 # define vsprintf vsprintf_len
 # define sprintf sprintf_len
- extern int vsprintf_len _P((char *, const char *, va_list));
- extern int sprintf_len _P((char *, const char *, ...));
+ int vsprintf_len _P((char *, const char *, va_list));
+ int sprintf_len _P((char *, const char *, ...));
 #endif
 
 #ifdef DECLARE_SPRINTF
 # ifndef BAD_SPRINTF
- extern int vsprintf _P((char *, const char *, va_list));
+ int vsprintf _P((char *, const char *, va_list));
 # endif
- extern int vfprintf _P((FILE *, const char *, va_list));
+ int vfprintf _P((FILE *, const char *, va_list));
 #endif
 
 #ifndef HAVE_STRERROR
- extern char *strerror _P((int error));
+ char *strerror _P((int error));
 #endif
 
 #ifndef HAVE_INDEX

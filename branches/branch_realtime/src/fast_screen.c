@@ -105,8 +105,6 @@ static void blitColor(SDL_Texture* tex) {
     SDL_UnlockTexture(tex);
 }
 
-extern 
-
 /*
  Dimension format is 8bit per pixel, big-endian: RRGGBBAA
  */
@@ -339,7 +337,7 @@ void Screen_Init(void) {
     SDL_SemWait(initLatch);
 }
 
-extern void nd_sdl_destroy();
+void nd_sdl_destroy(void);
 
 /*-----------------------------------------------------------------------*/
 /**

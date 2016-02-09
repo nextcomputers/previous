@@ -22,7 +22,6 @@ const char Configuration_fileid[] = "Hatari configuration.c : " __DATE__ " " __T
 #include "paths.h"
 #include "screen.h"
 #include "video.h"
-#include "avi_record.h"
 
 CNF_PARAMS ConfigureParams;                 /* List of configuration for the emulator */
 char sConfigFileName[FILENAME_MAX];         /* Stores the name of the configuration file */

@@ -76,7 +76,7 @@ cpuop_func *cpufunctbl[65536];
 int OpcodeFamily;
 struct mmufixup mmufixup[2];
 
-extern uae_u32 get_fpsr (void);
+uae_u32 get_fpsr (void);
 
 #define MC68060_PCR   0x04300000
 #define MC68EC060_PCR 0x04310000

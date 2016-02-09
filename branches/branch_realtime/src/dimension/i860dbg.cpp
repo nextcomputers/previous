@@ -15,7 +15,7 @@
  
 ***************************************************************************/
 
-extern int i860_disassembler(UINT32 pc, UINT32 insn, char* buffer);
+int i860_disassembler(UINT32 pc, UINT32 insn, char* buffer);
 
 /* A simple internal debugger.  */
 void i860_cpu_device::debugger() {

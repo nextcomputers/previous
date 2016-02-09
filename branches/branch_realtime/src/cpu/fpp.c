@@ -26,7 +26,6 @@
 #include "memory.h"
 #include "newcpu.h"
 #include "md-fpp.h"
-#include "savestate.h"
 #include "cpu_prefetch.h"
 #include "cpummu.h"
 #include "cpummu030.h"

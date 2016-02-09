@@ -31,7 +31,6 @@ const char Main_fileid[] = "Hatari main.c : " __DATE__ " " __TIME__;
 #include "str.h"
 #include "video.h"
 #include "audio.h"
-#include "avi_record.h"
 #include "debugui.h"
 #include "file.h"
 #include "dsp.h"
