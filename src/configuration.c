@@ -286,6 +286,7 @@ static const struct Config_Tag configs_Dimension[] =
 {
     { "bEnabled",         Bool_Tag, &ConfigureParams.Dimension.bEnabled },
     { "bI860Thread",      Bool_Tag, &ConfigureParams.Dimension.bI860Thread },
+	{ "bMainDisplay",     Bool_Tag, &ConfigureParams.Dimension.bMainDisplay },
     { "nMemoryBankSize0", Int_Tag,  &ConfigureParams.Dimension.nMemoryBankSize[0] },
     { "nMemoryBankSize1", Int_Tag,  &ConfigureParams.Dimension.nMemoryBankSize[1] },
     { "nMemoryBankSize2", Int_Tag,  &ConfigureParams.Dimension.nMemoryBankSize[2] },
@@ -447,6 +448,7 @@ void Configuration_SetDefault(void)
     /* Set defaults for Dimension */
     ConfigureParams.Dimension.bI860Thread        = host_num_cpus() > 4;
     ConfigureParams.Dimension.bEnabled           = false;
+	ConfigureParams.Dimension.bMainDisplay       = false;
     ConfigureParams.Dimension.nMemoryBankSize[0] = 4;
     ConfigureParams.Dimension.nMemoryBankSize[1] = 4;
     ConfigureParams.Dimension.nMemoryBankSize[2] = 4;

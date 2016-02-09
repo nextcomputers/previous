@@ -306,6 +306,7 @@ typedef struct
 {
     bool bEnabled;
     bool bI860Thread;
+	bool bMainDisplay;
     int  nMemoryBankSize[4];
     char szRomFileName[FILENAME_MAX];
 } CNF_ND;
