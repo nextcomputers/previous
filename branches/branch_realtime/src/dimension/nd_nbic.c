@@ -18,7 +18,7 @@ static volatile struct {
     Uint8  intmask;
 } nd_nbic;
 
-
+#if 0 // in case registers are accessible
 static Uint8 nd_nbic_control_read0(Uint32 addr) {
     Log_Printf(ND_LOG_IO_RD, "[ND] NBIC Control (byte 0) read at %08X",addr);
     return (nd_nbic.control>>24);
@@ -57,24 +57,6 @@ static void nd_nbic_control_write3(Uint32 addr, Uint8 val) {
     nd_nbic.control |= val&0xFF;
 }
 
-
-static Uint8 nd_nbic_id_read0(Uint32 addr) {
-    Log_Printf(ND_LOG_IO_RD, "[ND] NBIC ID (byte 0) read at %08X",addr);
-    return (nd_nbic.id>>24);
-}
-static Uint8 nd_nbic_id_read1(Uint32 addr) {
-    Log_Printf(ND_LOG_IO_RD, "[ND] NBIC ID (byte 1) read at %08X",addr);
-    return (nd_nbic.id>>16);
-}
-static Uint8 nd_nbic_id_read2(Uint32 addr) {
-    Log_Printf(ND_LOG_IO_RD, "[ND] NBIC ID (byte 2) read at %08X",addr);
-    return (nd_nbic.id>>8);
-}
-static Uint8 nd_nbic_id_read3(Uint32 addr) {
-    Log_Printf(ND_LOG_IO_RD, "[ND] NBIC ID (byte 3) read at %08X",addr);
-    return nd_nbic.id;
-}
-
 static void nd_nbic_id_write0(Uint32 addr, Uint8 val) {
     Log_Printf(ND_LOG_IO_WR, "[ND] NBIC ID (byte 0) write %02X at %08X",val,addr);
     nd_nbic.id &= 0x00FFFFFF;
@@ -94,6 +76,24 @@ static void nd_nbic_id_write3(Uint32 addr, Uint8 val) {
     Log_Printf(ND_LOG_IO_WR, "[ND] NBIC ID (byte 3) write %02X at %08X",val,addr);
     nd_nbic.id &= 0xFFFFFF00;
     nd_nbic.id |= val&0xFF;
+}
+#endif
+
+static Uint8 nd_nbic_id_read0(Uint32 addr) {
+    Log_Printf(ND_LOG_IO_RD, "[ND] NBIC ID (byte 0) read at %08X",addr);
+    return (nd_nbic.id>>24);
+}
+static Uint8 nd_nbic_id_read1(Uint32 addr) {
+    Log_Printf(ND_LOG_IO_RD, "[ND] NBIC ID (byte 1) read at %08X",addr);
+    return (nd_nbic.id>>16);
+}
+static Uint8 nd_nbic_id_read2(Uint32 addr) {
+    Log_Printf(ND_LOG_IO_RD, "[ND] NBIC ID (byte 2) read at %08X",addr);
+    return (nd_nbic.id>>8);
+}
+static Uint8 nd_nbic_id_read3(Uint32 addr) {
+    Log_Printf(ND_LOG_IO_RD, "[ND] NBIC ID (byte 3) read at %08X",addr);
+    return nd_nbic.id;
 }
 
 static Uint8 nd_nbic_intstatus_read(Uint32 addr) {

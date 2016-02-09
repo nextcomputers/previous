@@ -242,7 +242,7 @@ void set_cpu_caches (bool flush)
 		}
 	} else if (currprefs.cpu_model == 68040) {
         if(ConfigureParams.System.bRealtime) {
-            if(false && regs.cacr & 0x8000) { // disable ICACHE for now (doesn't work wit NS 1.0 & 2.1)
+            if(regs.cacr & 0x8000) {
                 flush_icache(0, -1);
                 x_prefetch   = getc_iword_mmu040;
                 x_get_ilong  = getc_ilong_mmu040;
@@ -2017,7 +2017,7 @@ insretry:
             if (intr>regs.intmask || (intr==7 && intr>lastintr)) {
                 do_interrupt (intr, false);
             }
-            host_realtime(regs.intmask <= REALTIME_INT_LVL);
+            host_realtime(!(regs.s));
             lastintr = intr;
 
 			if (regs.spcflags) {
@@ -2106,7 +2106,7 @@ static void m68k_run_mmu040 (void)
             if (intr>regs.intmask || (intr==7 && intr>lastintr)) {
                 do_interrupt (intr, false);
             }
-            host_realtime(regs.intmask <= REALTIME_INT_LVL);
+            host_realtime(!(regs.s));
             lastintr = intr;
             
             
