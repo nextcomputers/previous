@@ -136,9 +136,6 @@ static inline void M68000_SetSR(Uint16 v)
 extern Uint32 BusErrorAddress;
 extern Uint32 BusErrorPC;
 extern bool bBusErrorReadWrite;
-extern int nCpuFreqShift;
-extern int nCpuFreqDivider;
-#define USE_FREQ_DIVIDER 1
 extern int nWaitStateCycles;
 extern int BusMode;
 
@@ -165,14 +162,13 @@ static inline void M68000_AddCycles(int cycles) {
     nCyclesMainCounter += cycles;
 }
 
-extern void M68000_Init(void);
-extern void M68000_Reset(bool bCold);
-extern void M68000_Stop(void);
-extern void M68000_Start(void);
-extern void M68000_CheckCpuSettings(void);
-extern void M68000_MemorySnapShot_Capture(bool bSave);
-extern void M68000_BusError(Uint32 addr, bool bReadWrite);
-extern void M68000_Exception(Uint32 ExceptionVector , int ExceptionSource);
-extern void M68000_WaitState(int nCycles);
+void M68000_Init(void);
+void M68000_Reset(bool bCold);
+void M68000_Stop(void);
+void M68000_Start(void);
+void M68000_CheckCpuSettings(void);
+void M68000_BusError(Uint32 addr, bool bReadWrite);
+void M68000_Exception(Uint32 ExceptionVector , int ExceptionSource);
+void M68000_WaitState(int nCycles);
 
 #endif

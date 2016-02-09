@@ -57,14 +57,14 @@ extern int64_t nCyclesMainCounter;
 
 extern int usCheckCycles;
 
-extern void CycInt_Reset(void);
-extern void CycInt_MemorySnapShot_Capture(bool bSave);
-extern void CycInt_AcknowledgeInterrupt(void);
-extern void CycInt_AddRelativeInterruptCycles(int64_t CycleTime, interrupt_id Handler);
-extern void CycInt_AddRelativeInterruptTicks(int64_t TickTime, interrupt_id Handler);
-extern void CycInt_AddRelativeInterruptUs(int64_t us, interrupt_id Handler);
-extern void CycInt_RemovePendingInterrupt(interrupt_id Handler);
-extern bool CycInt_InterruptActive(interrupt_id Handler);
-extern bool CycInt_SetNewInterruptUs(void);
+void CycInt_Reset(void);
+void CycInt_MemorySnapShot_Capture(bool bSave);
+void CycInt_AcknowledgeInterrupt(void);
+void CycInt_AddRelativeInterruptCycles(int64_t CycleTime, interrupt_id Handler);
+void CycInt_AddRelativeInterruptTicks(int64_t TickTime, interrupt_id Handler);
+void CycInt_AddRelativeInterruptUs(int64_t us, interrupt_id Handler);
+void CycInt_RemovePendingInterrupt(interrupt_id Handler);
+bool CycInt_InterruptActive(interrupt_id Handler);
+bool CycInt_SetNewInterruptUs(void);
 
 #endif /* ifndef HATARI_CYCINT_H */

@@ -21,7 +21,7 @@
 // %%% BRIAN KING WAS HERE %%%
 extern bool canbang;
 #include <sys/mman.h>
-extern void jit_abort(const TCHAR*,...);
+void jit_abort(const TCHAR*,...);
 compop_func *compfunctbl[65536];
 compop_func *nfcompfunctbl[65536];
 #ifdef NOFLAGS_SUPPORT

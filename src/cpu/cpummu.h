@@ -107,7 +107,7 @@ struct log_addr8 {
 #define MMU_TEST_FORCE_TABLE_SEARCH		4
 #define MMU_TEST_NO_BUSERR				8
 
-extern void mmu_dump_tables(void);
+void mmu_dump_tables(void);
 
 #define MMU_TTR_LOGICAL_BASE				0xff000000
 #define MMU_TTR_LOGICAL_MASK				0x00ff0000
@@ -304,7 +304,7 @@ STATIC_INLINE int mmu_match_ttr(uaecptr addr, bool super, bool data, bool rmw)
 	}
 	return res;
 }
-extern void mmu_bus_error_ttr_write_fault(uaecptr addr, bool super, bool data, uae_u32 val, int size, bool rmw);
+void mmu_bus_error_ttr_write_fault(uaecptr addr, bool super, bool data, uae_u32 val, int size, bool rmw);
 STATIC_INLINE int mmu_match_ttr_write(uaecptr addr, bool super, bool data,  uae_u32 val, int size, bool rmw)
 {
 	if (!mmu_ttr_enabled)
@@ -315,45 +315,45 @@ STATIC_INLINE int mmu_match_ttr_write(uaecptr addr, bool super, bool data,  uae_
 	return res;
 }
 
-extern void mmu_tt_modified (void);
+void mmu_tt_modified (void);
 
-extern uae_u32 REGPARAM3 mmu060_get_rmw_bitfield (uae_u32 src, uae_u32 bdata[2], uae_s32 offset, int width) REGPARAM;
-extern void REGPARAM3 mmu060_put_rmw_bitfield (uae_u32 dst, uae_u32 bdata[2], uae_u32 val, uae_s32 offset, int width) REGPARAM;
+uae_u32 REGPARAM3 mmu060_get_rmw_bitfield (uae_u32 src, uae_u32 bdata[2], uae_s32 offset, int width) REGPARAM;
+void REGPARAM3 mmu060_put_rmw_bitfield (uae_u32 dst, uae_u32 bdata[2], uae_u32 val, uae_s32 offset, int width) REGPARAM;
 
-extern uae_u16 REGPARAM3 mmu_get_word_unaligned(uaecptr addr, bool data, bool rmw) REGPARAM;
-extern uae_u32 REGPARAM3 mmu_get_long_unaligned(uaecptr addr, bool data, bool rmw) REGPARAM;
+uae_u16 REGPARAM3 mmu_get_word_unaligned(uaecptr addr, bool data, bool rmw) REGPARAM;
+uae_u32 REGPARAM3 mmu_get_long_unaligned(uaecptr addr, bool data, bool rmw) REGPARAM;
 
-extern uae_u8 REGPARAM3 mmu_get_byte_slow(uaecptr addr, bool super, bool data,
+uae_u8 REGPARAM3 mmu_get_byte_slow(uaecptr addr, bool super, bool data,
 										  int size, bool rmw, struct mmu_atc_line *cl) REGPARAM;
-extern uae_u16 REGPARAM3 mmu_get_word_slow(uaecptr addr, bool super, bool data,
+uae_u16 REGPARAM3 mmu_get_word_slow(uaecptr addr, bool super, bool data,
 										   int size, bool rmw, struct mmu_atc_line *cl) REGPARAM;
-extern uae_u32 REGPARAM3 mmu_get_long_slow(uaecptr addr, bool super, bool data,
+uae_u32 REGPARAM3 mmu_get_long_slow(uaecptr addr, bool super, bool data,
 										   int size, bool rmw, struct mmu_atc_line *cl) REGPARAM;
 
-extern void REGPARAM3 mmu_put_word_unaligned(uaecptr addr, uae_u16 val, bool data, bool rmw) REGPARAM;
-extern void REGPARAM3 mmu_put_long_unaligned(uaecptr addr, uae_u32 val, bool data, bool rmw) REGPARAM;
+void REGPARAM3 mmu_put_word_unaligned(uaecptr addr, uae_u16 val, bool data, bool rmw) REGPARAM;
+void REGPARAM3 mmu_put_long_unaligned(uaecptr addr, uae_u32 val, bool data, bool rmw) REGPARAM;
 
-extern void REGPARAM3 mmu_put_byte_slow(uaecptr addr, uae_u8 val, bool super, bool data,
+void REGPARAM3 mmu_put_byte_slow(uaecptr addr, uae_u8 val, bool super, bool data,
 										int size, bool rmw, struct mmu_atc_line *cl) REGPARAM;
-extern void REGPARAM3 mmu_put_word_slow(uaecptr addr, uae_u16 val, bool super, bool data,
+void REGPARAM3 mmu_put_word_slow(uaecptr addr, uae_u16 val, bool super, bool data,
 										int size, bool rmw, struct mmu_atc_line *cl) REGPARAM;
-extern void REGPARAM3 mmu_put_long_slow(uaecptr addr, uae_u32 val, bool super, bool data,
+void REGPARAM3 mmu_put_long_slow(uaecptr addr, uae_u32 val, bool super, bool data,
 										int size, bool rmw, struct mmu_atc_line *cl) REGPARAM;
 
-extern void mmu_make_transparent_region(uaecptr baseaddr, uae_u32 size, int datamode);
+void mmu_make_transparent_region(uaecptr baseaddr, uae_u32 size, int datamode);
 
 #define FC_DATA		(regs.s ? 5 : 1)
 #define FC_INST		(regs.s ? 6 : 2)
 
-extern uaecptr REGPARAM3 mmu_translate(uaecptr addr, bool super, bool data, bool write) REGPARAM;
-extern void mmu_bus_error(uaecptr addr, int fc, bool write, int size, bool rmw, uae_u32 status, bool nonmmu);
+uaecptr REGPARAM3 mmu_translate(uaecptr addr, bool super, bool data, bool write) REGPARAM;
+void mmu_bus_error(uaecptr addr, int fc, bool write, int size, bool rmw, uae_u32 status, bool nonmmu);
 
-extern uae_u32 REGPARAM3 sfc_get_long(uaecptr addr) REGPARAM;
-extern uae_u16 REGPARAM3 sfc_get_word(uaecptr addr) REGPARAM;
-extern uae_u8 REGPARAM3 sfc_get_byte(uaecptr addr) REGPARAM;
-extern void REGPARAM3 dfc_put_long(uaecptr addr, uae_u32 val) REGPARAM;
-extern void REGPARAM3 dfc_put_word(uaecptr addr, uae_u16 val) REGPARAM;
-extern void REGPARAM3 dfc_put_byte(uaecptr addr, uae_u8 val) REGPARAM;
+uae_u32 REGPARAM3 sfc_get_long(uaecptr addr) REGPARAM;
+uae_u16 REGPARAM3 sfc_get_word(uaecptr addr) REGPARAM;
+uae_u8 REGPARAM3 sfc_get_byte(uaecptr addr) REGPARAM;
+void REGPARAM3 dfc_put_long(uaecptr addr, uae_u32 val) REGPARAM;
+void REGPARAM3 dfc_put_word(uaecptr addr, uae_u16 val) REGPARAM;
+void REGPARAM3 dfc_put_byte(uaecptr addr, uae_u8 val) REGPARAM;
 
 #define sfc040_get_long sfc_get_long
 #define sfc040_get_word sfc_get_word
@@ -369,16 +369,16 @@ extern void REGPARAM3 dfc_put_byte(uaecptr addr, uae_u8 val) REGPARAM;
 #define dfc060_put_word dfc_put_word
 #define dfc060_put_byte dfc_put_byte
 
-extern void uae_mmu_put_lrmw (uaecptr addr, uae_u32 v, int size, int type);
-extern uae_u32 uae_mmu_get_lrmw (uaecptr addr, int size, int type);
+void uae_mmu_put_lrmw (uaecptr addr, uae_u32 v, int size, int type);
+uae_u32 uae_mmu_get_lrmw (uaecptr addr, int size, int type);
 
-extern void REGPARAM3 mmu_flush_atc(uaecptr addr, bool super, bool global) REGPARAM;
-extern void REGPARAM3 mmu_flush_atc_all(bool global) REGPARAM;
-extern void REGPARAM3 mmu_op_real(uae_u32 opcode, uae_u16 extra) REGPARAM;
+void REGPARAM3 mmu_flush_atc(uaecptr addr, bool super, bool global) REGPARAM;
+void REGPARAM3 mmu_flush_atc_all(bool global) REGPARAM;
+void REGPARAM3 mmu_op_real(uae_u32 opcode, uae_u16 extra) REGPARAM;
 
-extern void REGPARAM3 mmu_reset(void) REGPARAM;
-extern void REGPARAM3 mmu_set_tc(uae_u16 tc) REGPARAM;
-extern void REGPARAM3 mmu_set_super(bool super) REGPARAM;
+void REGPARAM3 mmu_reset(void) REGPARAM;
+void REGPARAM3 mmu_set_tc(uae_u16 tc) REGPARAM;
+void REGPARAM3 mmu_set_super(bool super) REGPARAM;
 
 #define M68K_ICACHE_SZ (4 * 1024)
 extern uae_u16 icache_s[M68K_ICACHE_SZ];
@@ -391,8 +391,8 @@ static ALWAYS_INLINE uaecptr mmu_get_real_address(uaecptr addr, struct mmu_atc_l
     return cl->phys | (addr & mmu_pagemask);
 }
 
-extern void mmu_get_move16(uaecptr addr, uae_u32 *v, bool data, int size);
-extern void mmu_put_move16(uaecptr addr, uae_u32 *val, bool data, int size);
+void mmu_get_move16(uaecptr addr, uae_u32 *v, bool data, int size);
+void mmu_put_move16(uaecptr addr, uae_u32 *val, bool data, int size);
 
 static ALWAYS_INLINE uae_u32 mmu_get_long(uaecptr addr, bool data, int size, bool rmw)
 {
@@ -935,14 +935,14 @@ STATIC_INLINE uae_u32 next_ilong_mmu060 (void)
     return uae_mmu060_get_ilong (pc);
 }
 
-extern void flush_mmu040 (uaecptr, int);
-extern void m68k_do_rts_mmu040 (void);
-extern void m68k_do_rte_mmu040 (uaecptr a7);
-extern void m68k_do_bsr_mmu040 (uaecptr oldpc, uae_s32 offset);
+void flush_mmu040 (uaecptr, int);
+void m68k_do_rts_mmu040 (void);
+void m68k_do_rte_mmu040 (uaecptr a7);
+void m68k_do_bsr_mmu040 (uaecptr oldpc, uae_s32 offset);
 
-extern void flush_mmu060 (uaecptr, int);
-extern void m68k_do_rts_mmu060 (void);
-extern void m68k_do_rte_mmu060 (uaecptr a7);
-extern void m68k_do_bsr_mmu060 (uaecptr oldpc, uae_s32 offset);
+void flush_mmu060 (uaecptr, int);
+void m68k_do_rts_mmu060 (void);
+void m68k_do_rte_mmu060 (uaecptr a7);
+void m68k_do_bsr_mmu060 (uaecptr oldpc, uae_s32 offset);
 
 #endif /* CPUMMU_H */

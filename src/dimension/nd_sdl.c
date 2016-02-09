@@ -16,7 +16,7 @@ static SDL_Thread*   repaintThread = NULL;
 static SDL_Window*   ndWindow      = NULL;
 static SDL_Renderer* ndRenderer    = NULL;
 
-extern void blitDimension(SDL_Texture* tex);
+void blitDimension(SDL_Texture* tex);
 
 static int repainter(void* unused) {
     SDL_SetThreadPriority(SDL_THREAD_PRIORITY_NORMAL);

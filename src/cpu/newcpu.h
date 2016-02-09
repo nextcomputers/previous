@@ -96,8 +96,8 @@ struct comptbl {
 };
 #endif
 
-extern uae_u32 REGPARAM3 op_illg (uae_u32) REGPARAM;
-extern void REGPARAM3 op_unimpl (uae_u16) REGPARAM;
+uae_u32 REGPARAM3 op_illg (uae_u32) REGPARAM;
+void REGPARAM3 op_unimpl (uae_u16) REGPARAM;
 
 typedef uae_u8 flagtype;
 
@@ -392,11 +392,11 @@ extern uae_u32 (*x_get_ilong)(int);
 extern uae_u32 (*x_get_iword)(int);
 extern uae_u32 (*x_get_ibyte)(int);
 
-extern uae_u32 REGPARAM3 x_get_disp_ea_020 (uae_u32 base, int idx) REGPARAM;
-extern uae_u32 REGPARAM3 x_get_disp_ea_ce020 (uae_u32 base, int idx) REGPARAM;
-extern uae_u32 REGPARAM3 x_get_disp_ea_ce030 (uae_u32 base, int idx) REGPARAM;
-extern uae_u32 REGPARAM3 x_get_bitfield (uae_u32 src, uae_u32 bdata[2], uae_s32 offset, int width) REGPARAM;
-extern void REGPARAM3 x_put_bitfield (uae_u32 dst, uae_u32 bdata[2], uae_u32 val, uae_s32 offset, int width) REGPARAM;
+uae_u32 REGPARAM3 x_get_disp_ea_020 (uae_u32 base, int idx) REGPARAM;
+uae_u32 REGPARAM3 x_get_disp_ea_ce020 (uae_u32 base, int idx) REGPARAM;
+uae_u32 REGPARAM3 x_get_disp_ea_ce030 (uae_u32 base, int idx) REGPARAM;
+uae_u32 REGPARAM3 x_get_bitfield (uae_u32 src, uae_u32 bdata[2], uae_s32 offset, int width) REGPARAM;
+void REGPARAM3 x_put_bitfield (uae_u32 dst, uae_u32 bdata[2], uae_u32 val, uae_s32 offset, int width) REGPARAM;
 
 extern uae_u32 (*x_cp_get_byte)(uaecptr addr);
 extern uae_u32 (*x_cp_get_word)(uaecptr addr);
@@ -409,74 +409,71 @@ extern uae_u32 (*x_cp_next_ilong)(void);
 
 extern uae_u32 (REGPARAM3 *x_cp_get_disp_ea_020)(uae_u32 base, int idx) REGPARAM;
 
-extern void m68k_setstopped (void);
-extern void m68k_resumestopped (void);
+void m68k_setstopped (void);
+void m68k_resumestopped (void);
 
-extern uae_u32 REGPARAM3 get_disp_ea_020 (uae_u32 base, int idx) REGPARAM;
-extern uae_u32 REGPARAM3 get_bitfield (uae_u32 src, uae_u32 bdata[2], uae_s32 offset, int width) REGPARAM;
-extern void REGPARAM3 put_bitfield (uae_u32 dst, uae_u32 bdata[2], uae_u32 val, uae_s32 offset, int width) REGPARAM;
+uae_u32 REGPARAM3 get_disp_ea_020 (uae_u32 base, int idx) REGPARAM;
+uae_u32 REGPARAM3 get_bitfield (uae_u32 src, uae_u32 bdata[2], uae_s32 offset, int width) REGPARAM;
+void REGPARAM3 put_bitfield (uae_u32 dst, uae_u32 bdata[2], uae_u32 val, uae_s32 offset, int width) REGPARAM;
 
-extern void m68k_disasm_ea (FILE *f, uaecptr addr, uaecptr *nextpc, int cnt, uae_u32 *seaddr, uae_u32 *deaddr);
-extern void m68k_disasm (FILE *f, uaecptr addr, uaecptr *nextpc, int cnt);
-extern int get_cpu_model (void);
+void m68k_disasm_ea (FILE *f, uaecptr addr, uaecptr *nextpc, int cnt, uae_u32 *seaddr, uae_u32 *deaddr);
+void m68k_disasm (FILE *f, uaecptr addr, uaecptr *nextpc, int cnt);
+int get_cpu_model (void);
 
-extern void set_cpu_caches (bool flush);
-extern void REGPARAM3 MakeSR (void) REGPARAM;
-extern void REGPARAM3 MakeFromSR (void) REGPARAM;
-extern void MakeSR (void);
-extern void MakeFromSR (void);
-extern void REGPARAM3 Exception (int) REGPARAM;
-extern void REGPARAM3 ExceptionL (int/*, uaecptr*/) REGPARAM;
-//extern void REGPARAM3 Exception (int, uaecptr, int) REGPARAM;
-extern void NMI (void);
-extern void NMI_delayed (void);
-extern void prepare_interrupt (uae_u32);
-extern void doint (void);
-extern void dump_counts (void);
-extern int m68k_move2c (int, uae_u32 *);
-extern int m68k_movec2 (int, uae_u32 *);
-extern bool m68k_divl (uae_u32, uae_u32, uae_u16);
-extern bool m68k_mull (uae_u32, uae_u32, uae_u16);
-//extern void m68k_divl (uae_u32, uae_u32, uae_u16, uaecptr);
-//extern void m68k_mull (uae_u32, uae_u32, uae_u16);
-extern void init_m68k (void);
-extern void init_m68k_full (void);
-extern void m68k_go (int);
-extern void m68k_dumpstate (FILE *, uaecptr *);
-extern void m68k_disasm (FILE *, uaecptr, uaecptr *, int);
-extern void sm68k_disasm (TCHAR*, TCHAR*, uaecptr addr, uaecptr *nextpc);
-extern void m68k_reset (int);
-extern int getDivu68kCycles (uae_u32 dividend, uae_u16 divisor);
-extern int getDivs68kCycles (uae_s32 dividend, uae_s16 divisor);
-extern void divbyzero_special (bool issigned, uae_s32 dst);
-extern void m68k_do_rte (void);
+void set_cpu_caches (bool flush);
+void REGPARAM3 MakeSR (void) REGPARAM;
+void REGPARAM3 MakeFromSR (void) REGPARAM;
+void MakeSR (void);
+void MakeFromSR (void);
+void REGPARAM3 Exception (int) REGPARAM;
+void REGPARAM3 ExceptionL (int/*, uaecptr*/) REGPARAM;
 
-extern void mmu_op (uae_u32, uae_u32);
-extern void mmu_op30 (uaecptr, uae_u32, uae_u16, uaecptr);
+void NMI (void);
+void NMI_delayed (void);
+void prepare_interrupt (uae_u32);
+void doint (void);
+void dump_counts (void);
+int m68k_move2c (int, uae_u32 *);
+int m68k_movec2 (int, uae_u32 *);
+bool m68k_divl (uae_u32, uae_u32, uae_u16);
+bool m68k_mull (uae_u32, uae_u32, uae_u16);
 
-extern void fpuop_arithmetic(uae_u32, uae_u16);
-extern void fpuop_dbcc(uae_u32, uae_u16);
-extern void fpuop_scc(uae_u32, uae_u16);
-extern void fpuop_trapcc(uae_u32, uaecptr, uae_u16);
-extern void fpuop_bcc(uae_u32, uaecptr, uae_u32);
-extern void fpuop_save(uae_u32);
-extern void fpuop_restore(uae_u32);
-extern uae_u32 fpp_get_fpsr (void);
-extern void fpu_reset (void);
+void init_m68k (void);
+void init_m68k_full (void);
+void m68k_go (int);
+void m68k_dumpstate (FILE *, uaecptr *);
+void m68k_disasm (FILE *, uaecptr, uaecptr *, int);
+void sm68k_disasm (TCHAR*, TCHAR*, uaecptr addr, uaecptr *nextpc);
+void m68k_reset (int);
+int getDivu68kCycles (uae_u32 dividend, uae_u16 divisor);
+int getDivs68kCycles (uae_s32 dividend, uae_s16 divisor);
+void divbyzero_special (bool issigned, uae_s32 dst);
+void m68k_do_rte (void);
 
-extern void exception3 (uae_u32 opcode, uaecptr addr);
-extern void exception3i (uae_u32 opcode, uaecptr addr);
-extern void exception3b (uae_u32 opcode, uaecptr addr, bool w, bool i, uaecptr pc);
-extern void exception2 (uaecptr addr, bool read, int size, uae_u32 fc);
-//extern void exception3 (uae_u32 opcode, uaecptr addr, uaecptr fault);
-//extern void exception3i (uae_u32 opcode, uaecptr addr, uaecptr fault);
-//extern void exception2 (uaecptr addr, uaecptr fault);
-extern void cpureset (void);
-extern void cpu_halt (int id);
+void mmu_op (uae_u32, uae_u32);
+void mmu_op30 (uaecptr, uae_u32, uae_u16, uaecptr);
 
-extern void fill_prefetch (void);
-extern void fill_prefetch_020 (void);
-extern void fill_prefetch_030 (void);
+void fpuop_arithmetic(uae_u32, uae_u16);
+void fpuop_dbcc(uae_u32, uae_u16);
+void fpuop_scc(uae_u32, uae_u16);
+void fpuop_trapcc(uae_u32, uaecptr, uae_u16);
+void fpuop_bcc(uae_u32, uaecptr, uae_u32);
+void fpuop_save(uae_u32);
+void fpuop_restore(uae_u32);
+uae_u32 fpp_get_fpsr (void);
+void fpu_reset (void);
+
+void exception3 (uae_u32 opcode, uaecptr addr);
+void exception3i (uae_u32 opcode, uaecptr addr);
+void exception3b (uae_u32 opcode, uaecptr addr, bool w, bool i, uaecptr pc);
+void exception2 (uaecptr addr, bool read, int size, uae_u32 fc);
+
+void cpureset (void);
+void cpu_halt (int id);
+
+void fill_prefetch (void);
+void fill_prefetch_020 (void);
+void fill_prefetch_030 (void);
 
 #define CPU_OP_NAME(a) op ## a
 
@@ -508,21 +505,21 @@ extern const struct cputbl op_smalltbl_14_ff[]; // CE
 extern cpuop_func *cpufunctbl[65536] ASM_SYM_FOR_FUNC ("cpufunctbl");
 
 /* Added for hatari_glue.c */
-extern void build_cpufunctbl(void);
+void build_cpufunctbl(void);
 
 #ifdef JIT
-extern void flush_icache (uaecptr, int);
-extern void compemu_reset (void);
-extern bool check_prefs_changed_comp (void);
+void flush_icache (uaecptr, int);
+void compemu_reset (void);
+bool check_prefs_changed_comp (void);
 #else
-extern void flush_icache(uaecptr, int);
+void flush_icache(uaecptr, int);
 #endif
-extern void flush_dcache (uaecptr, int);
-extern void flush_mmu (uaecptr, int);
+void flush_dcache (uaecptr, int);
+void flush_mmu (uaecptr, int);
 
-extern int movec_illg (int regno);
-extern uae_u32 val_move2c (int regno);
-extern void val_move2c2 (int regno, uae_u32 val);
+int movec_illg (int regno);
+uae_u32 val_move2c (int regno);
+void val_move2c2 (int regno, uae_u32 val);
 struct cpum2c {
 	int regno;
 	const TCHAR *regname;

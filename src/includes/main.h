@@ -68,13 +68,13 @@ extern volatile int mainPauseEmulation;
 
 extern bool bQuitProgram;
 
-extern bool Main_PauseEmulation(bool visualize);
-extern bool Main_UnPauseEmulation();
-extern void Main_RequestQuit();
-extern void Main_WarpMouse(int x, int y);
-extern void Main_EventHandler();
-extern void Main_EventHandlerInterrupt();
-extern void Main_SetTitle(const char *title);
-extern const char* Main_SpeedMsg();
+bool Main_PauseEmulation(bool visualize);
+bool Main_UnPauseEmulation();
+void Main_RequestQuit();
+void Main_WarpMouse(int x, int y);
+void Main_EventHandler();
+void Main_EventHandlerInterrupt();
+void Main_SetTitle(const char *title);
+const char* Main_SpeedMsg();
 
 #endif /* ifndef HATARI_MAIN_H */
