@@ -253,10 +253,6 @@ void nd_slot_bput(Uint32 addr, Uint8 b) {
     }
 }
 
-bool nd_use_threads() {
-    return host_num_cpus() > 4;
-}
-
 /* Reset function */
 
 void dimension_init(void) {

@@ -202,6 +202,7 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
     
     /* Did we change NeXTdimension? */
     if (current->Dimension.bEnabled != changed->Dimension.bEnabled ||
+        current->Dimension.bI860Thread != changed->Dimension.bI860Thread ||
         strcmp(current->Dimension.szRomFileName, changed->Dimension.szRomFileName)) {
         printf("dimension reset\n");
 		return true;

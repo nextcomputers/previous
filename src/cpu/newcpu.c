@@ -88,7 +88,7 @@ extern uae_u32 get_fpsr (void);
 static struct cache020 caches020[CACHELINES020];
 static struct cache030 icaches030[CACHELINES030];
 static struct cache030 dcaches030[CACHELINES030];
-static struct cache040 caches040[CACHESETS040];
+//static struct cache040 caches040[CACHESETS040];
 static void InterruptAddJitter (int Level , int Pending);
 
 static void m68k_disasm_2 (FILE *f, uaecptr addr, uaecptr *nextpc, int cnt, uae_u32 *seaddr, uae_u32 *deaddr, int safemode);
@@ -121,25 +121,34 @@ static void set_x_funcs (void)
 {
 	if (currprefs.mmu_model) {
 		if (currprefs.cpu_model == 68060) {
-			x_prefetch = get_iword_mmu060;
-			x_get_ilong = get_ilong_mmu060;
-			x_get_iword = get_iword_mmu060;
-			x_get_ibyte = get_ibyte_mmu060;
+			x_prefetch   = get_iword_mmu060;
+			x_get_ilong  = get_ilong_mmu060;
+			x_get_iword  = get_iword_mmu060;
+			x_get_ibyte  = get_ibyte_mmu060;
 			x_next_iword = next_iword_mmu060;
 			x_next_ilong = next_ilong_mmu060;
-			x_put_long = put_long_mmu060;
-			x_put_word = put_word_mmu060;
-			x_put_byte = put_byte_mmu060;
-			x_get_long = get_long_mmu060;
-			x_get_word = get_word_mmu060;
-			x_get_byte = get_byte_mmu060;
+			x_put_long   = put_long_mmu060;
+			x_put_word   = put_word_mmu060;
+			x_put_byte   = put_byte_mmu060;
+			x_get_long   = get_long_mmu060;
+			x_get_word   = get_word_mmu060;
+			x_get_byte   = get_byte_mmu060;
 		} else if (currprefs.cpu_model == 68040) {
-			x_prefetch = get_iword_mmu040;
-			x_get_ilong = get_ilong_mmu040;
-			x_get_iword = get_iword_mmu040;
-			x_get_ibyte = get_ibyte_mmu040;
-			x_next_iword = next_iword_mmu040;
-			x_next_ilong = next_ilong_mmu040;
+            if(ConfigureParams.System.bRealtime) {
+                x_prefetch   = getc_iword_mmu040;
+                x_get_ilong  = getc_ilong_mmu040;
+                x_get_iword  = getc_iword_mmu040;
+                x_get_ibyte  = getc_ibyte_mmu040;
+                x_next_iword = nextc_iword_mmu040;
+                x_next_ilong = nextc_ilong_mmu040;
+            } else {
+                x_prefetch   = get_iword_mmu040;
+                x_get_ilong  = get_ilong_mmu040;
+                x_get_iword  = get_iword_mmu040;
+                x_get_ibyte  = get_ibyte_mmu040;
+                x_next_iword = next_iword_mmu040;
+                x_next_ilong = next_ilong_mmu040;
+            }
 			x_put_long = put_long_mmu040;
 			x_put_word = put_word_mmu040;
 			x_put_byte = put_byte_mmu040;
@@ -147,18 +156,18 @@ static void set_x_funcs (void)
 			x_get_word = get_word_mmu040;
 			x_get_byte = get_byte_mmu040;
 		} else {
-			x_prefetch = get_iword_mmu030;
-			x_get_ilong = get_ilong_mmu030;
-			x_get_iword = get_iword_mmu030;
-			x_get_ibyte = get_ibyte_mmu030;
+			x_prefetch   = get_iword_mmu030;
+			x_get_ilong  = get_ilong_mmu030;
+			x_get_iword  = get_iword_mmu030;
+			x_get_ibyte  = get_ibyte_mmu030;
 			x_next_iword = next_iword_mmu030;
 			x_next_ilong = next_ilong_mmu030;
-			x_put_long = put_long_mmu030;
-			x_put_word = put_word_mmu030;
-			x_put_byte = put_byte_mmu030;
-			x_get_long = get_long_mmu030;
-			x_get_word = get_word_mmu030;
-			x_get_byte = get_byte_mmu030;
+			x_put_long   = put_long_mmu030;
+			x_put_word   = put_word_mmu030;
+			x_put_byte   = put_byte_mmu030;
+			x_get_long   = get_long_mmu030;
+			x_get_word   = get_word_mmu030;
+			x_get_byte   = get_byte_mmu030;
 		}
 	}
 

@@ -27,8 +27,6 @@ static i860_cpu_device nd_i860;
 
 extern "C" {
 #include "configuration.h"
-
-    extern bool nd_use_threads();
     
     static void i860_run_nop(int nHostCycles) {}
     
@@ -54,7 +52,7 @@ extern "C" {
     }
     
     void nd_i860_init() {
-        i860_Run = nd_use_threads() ? i860_run_thread : i860_run_no_thread;
+        i860_Run = ConfigureParams.Dimension.bI860Thread ? i860_run_thread : i860_run_no_thread;
         nd_i860.init();
     }
 	
@@ -444,7 +442,9 @@ void i860_cpu_device::init() {
     CFGS[CONF_I860_SPEED]     = CONF_STR(CONF_I860_SPEED);
     CFGS[CONF_I860_DEV]       = CONF_STR(CONF_I860_DEV);
     CFGS[CONF_I860_NO_THREAD] = CONF_STR(CONF_I860_NO_THREAD);
-    Log_Printf(LOG_WARN, "[i860] Emulator configured for %s, %d logical cores detected, %s", CFGS[CONF_I860], host_num_cpus(), nd_use_threads() ? "using seperate thread for i860" : "i860 running on m68k thread. WARNING: expect slow emulation");
+    Log_Printf(LOG_WARN, "[i860] Emulator configured for %s, %d logical cores detected, %s",
+               CFGS[CONF_I860], host_num_cpus(),
+               ConfigureParams.Dimension.bI860Thread ? "using seperate thread for i860" : "i860 running on m68k thread. WARNING: expect slow emulation");
     
     m_single_stepping   = 0;
     m_lastcmd           = 0;
@@ -536,7 +536,7 @@ error:
     }
 
     send_msg(MSG_I860_RESET);
-    if(nd_use_threads())
+    if(ConfigureParams.Dimension.bI860Thread)
         m_thread = host_thread_create(i860_thread, this);
 }
 
@@ -545,7 +545,7 @@ void i860_cpu_device::uninit() {
     
 	halt(true);
     send_msg(MSG_I860_KILL);
-    if(nd_use_threads()) {
+    if(ConfigureParams.Dimension.bI860Thread) {
         if(m_thread) {
             host_thread_wait(m_thread);
             m_thread = NULL;
@@ -561,7 +561,7 @@ bool i860_cpu_device::handle_msgs() {
     m_port = 0;
     host_unlock(&m_port_lock);
     
-    if(nd_use_threads() && msg & MSG_I860_KILL)
+    if(ConfigureParams.Dimension.bI860Thread && msg & MSG_I860_KILL)
         return false;
     
     if(msg & MSG_I860_RESET)
