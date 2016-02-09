@@ -68,7 +68,7 @@ Uint8 ND_dmem[512];
 
 nd_addrbank *nd_mem_banks[65536];
 
-void nd_map_banks (nd_addrbank *bank, int start, int size)
+static void nd_map_banks (nd_addrbank *bank, int start, int size)
 {
 	int bnr;
 	

@@ -253,7 +253,7 @@ static int fromBCD(Uint8 bcd) {
     return ((bcd&0xF0)>>4)*10+(bcd&0xF);
 }
 
-void my_get_rtc_time(void) {
+static void my_get_rtc_time(void) {
     time_t tmp = host_unix_time();
     struct tm t =*gmtime(&tmp);
     
@@ -266,7 +266,7 @@ void my_get_rtc_time(void) {
     rtc.time.year  = toBCD(t.tm_year);
 }
 
-void my_set_rtc_time(int which,int val) {
+static void my_set_rtc_time(int which,int val) {
     static struct tm t;
     
     t.tm_sec  = fromBCD(rtc.time.sec);

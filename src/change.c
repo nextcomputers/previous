@@ -334,13 +334,8 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
 	/* Do we need to perform reset? */
 	if (NeedReset)
 	{
-		const char *err_msg;
 		Dprintf("- reset\n");
-		err_msg=Reset_Cold();
-//		if (err_msg!=NULL) {
-//			DlgAlert_Notice(err_msg);
-//			return false;
-//		}
+		Reset_Cold();
 	}
 
 	/* Go into/return from full screen if flagged */

@@ -135,7 +135,7 @@ int
 add_exec(ex_ptr, do_pty, exec, addr, port)
 	struct ex_list **ex_ptr;
 	int do_pty;
-	char *exec;
+	const char *exec;
 	int addr;
 	int port;
 {

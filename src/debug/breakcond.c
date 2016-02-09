@@ -395,13 +395,14 @@ typedef struct {
  */
 char *BreakCond_MatchCpuVariable(const char *text, int state)
 {
+	/*
 	static int i, len;
 	
 	if (!state) {
-		/* first match */
+		// first match
 		len = strlen(text);
 		i = 0;
-	}
+	}*/
 	/* next match */
 //	while (i < ARRAYSIZE(hatari_vars)) {
 //		name = hatari_vars[i++].name;
@@ -469,8 +470,10 @@ bool BreakCond_GetHatariVariable(const char *name, Uint32 *value)
 //    if (!BreakCond_ParseVariable(name, &bc_value)) {
 //        return false;
 //    }
-    bc_value.mask = 0xffffffff;
-    bc_value.is_indirect = false;
+    bc_value.mask         = 0xffffffff;
+    bc_value.is_indirect  = false;
+	bc_value.valuetype    = VALUE_TYPE_NUMBER;
+	bc_value.value.number = 0;
     *value = BreakCond_GetValue(&bc_value);
     return true;
 }

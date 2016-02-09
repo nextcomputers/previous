@@ -197,14 +197,6 @@ void Audio_Input_UnInit(void) {
 
 /*-----------------------------------------------------------------------*/
 /**
- * Unlock the audio sub system so that the callback function will be called again.
- */
-void Audio_Output_Unlock(void) {
-    SDL_UnlockAudioDevice(Audio_Output_Device);
-}
-
-/*-----------------------------------------------------------------------*/
-/**
  * Start/Stop sound buffer
  */
 void Audio_Output_Enable(bool bEnable) {

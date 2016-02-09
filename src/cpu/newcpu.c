@@ -1186,7 +1186,7 @@ static void Exception_mmu (int nr, uaecptr oldpc) {
 	exception_trace (nr);
 }
 
-void uae_reset (int hardreset) {    
+static void uae_reset (int hardreset) {    
     if (quit_program == 0) {
         quit_program = -2;
         if (hardreset)
@@ -1940,10 +1940,11 @@ static void m68k_run_mmu030 (void)
 	uae_u16 opcode;
 	uaecptr pc;
 	struct flag_struct f;
+	f.cznv = 0;
+	f.x    = 0;
 	m68k_exception save_except;
-    int intr = 0;
-    int lastintr = 0;
-
+    int intr             = 0;
+    int lastintr         = 0;
 	mmu030_opcode_stageb = -1;
 retry:
 	TRY (prb) {
@@ -1952,7 +1953,7 @@ retry:
 insretry:
 			pc = regs.instruction_pc = m68k_getpc ();
 			f.cznv = regflags.cznv;
-			f.x = regflags.x;
+			f.x    = regflags.x;
             
 			mmu030_state[0] = mmu030_state[1] = mmu030_state[2] = 0;
 			mmu030_opcode = -1;
@@ -2029,7 +2030,7 @@ insretry:
 		save_except = __exvalue;
 
 		regflags.cznv = f.cznv;
-		regflags.x = f.x;
+		regflags.x    = f.x;
 
 		m68k_setpc (regs.instruction_pc);
 
@@ -2057,6 +2058,8 @@ static void m68k_run_mmu040 (void)
 {
 	uae_u16 opcode;
 	struct flag_struct f;
+	f.cznv = 0;
+	f.x    = 0;
 	uaecptr pc;
 	m68k_exception save_except;
     int intr = 0;
@@ -2610,7 +2613,7 @@ void m68k_dumpstate (FILE *f, uaecptr *nextpc)
 	if (currprefs.fpu_model) {
 		uae_u32 fpsr;
 		for (i = 0; i < 8; i++){
-			f_out (f, "FP%d: %Lg ", i, regs.fp[i].fp);
+			f_out (f, "FP%d: %g ", i, (double)regs.fp[i].fp);
 			if ((i & 3) == 3)
 				f_out (f, "\n");
 		}
@@ -2623,7 +2626,7 @@ void m68k_dumpstate (FILE *f, uaecptr *nextpc)
 	}
 #endif
     if (currprefs.mmu_model == 68030) {
-        f_out (f, "SRP: %llX CRP: %llX\n", srp_030, crp_030);
+        f_out (f, "SRP: %"FMT_ll"X CRP: %"FMT_ll"X\n", srp_030, crp_030);
         f_out (f, "TT0: %08X TT1: %08X TC: %08X\n", tt0_030, tt1_030, tc_030);
     }
 	if (currprefs.cpu_compatible && currprefs.cpu_model == 68000) {
@@ -2928,19 +2931,6 @@ void exception2 (uaecptr addr, bool read, int size, uae_u32 fc)
 		// simple version
 		exception2_handle (addr, addr);
 	}
-}
-
-void exception2_fake (uaecptr addr)
-{
-	write_log ("delayed exception2!\n");
-	regs.panic_pc = m68k_getpc ();
-	regs.panic_addr = addr;
-	regs.panic = 2;
-	set_special (SPCFLAG_BRK);
-	m68k_setpc (0xf80000);
-#ifdef JIT
-	set_special (SPCFLAG_END_COMPILE);
-#endif
 }
 
 void cpureset (void) {

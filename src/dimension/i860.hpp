@@ -50,38 +50,7 @@ typedef int8_t  INT8;
 typedef int64_t offs_t;
 
 extern "C" {
-    UINT8  nd_board_cs8get(UINT32 addr);
-    UINT8  nd_board_bget(UINT32 addr);
-    void   nd_board_bput(UINT32 addr, UINT8 val);
-    UINT16 nd_board_wget(UINT32 addr);
-    void   nd_board_wput(UINT32 addr, UINT16 val);
-    UINT32 nd_board_lget(UINT32 addr);
-    void   nd_board_lput(UINT32 addr, UINT32 val);
-    void   nd_board_put (UINT32 addr, UINT32 val);
-    
-    void   nd_board_rd8_le  (UINT32 addr, UINT32* val);
-    void   nd_board_rd16_le (UINT32 addr, UINT32* val);
-    void   nd_board_rd32_le (UINT32 addr, UINT32* val);
-    void   nd_board_rd64_le (UINT32 addr, UINT32* val);
-    void   nd_board_rd128_le(UINT32 addr, UINT32* val);
-
-    void   nd_board_rd8_be  (UINT32 addr, UINT32* val);
-    void   nd_board_rd16_be (UINT32 addr, UINT32* val);
-    void   nd_board_rd32_be (UINT32 addr, UINT32* val);
-    void   nd_board_rd64_be (UINT32 addr, UINT32* val);
-    void   nd_board_rd128_be(UINT32 addr, UINT32* val);
-
-    void   nd_board_wr8_le  (UINT32 addr, const UINT32* val);
-    void   nd_board_wr16_le (UINT32 addr, const UINT32* val);
-    void   nd_board_wr32_le (UINT32 addr, const UINT32* val);
-    void   nd_board_wr64_le (UINT32 addr, const UINT32* val);
-    void   nd_board_wr128_le(UINT32 addr, const UINT32* val);
-    
-    void   nd_board_wr8_be  (UINT32 addr, const UINT32* val);
-    void   nd_board_wr16_be (UINT32 addr, const UINT32* val);
-    void   nd_board_wr32_be (UINT32 addr, const UINT32* val);
-    void   nd_board_wr64_be (UINT32 addr, const UINT32* val);
-    void   nd_board_wr128_be(UINT32 addr, const UINT32* val);
+#include "dimension.h"
 
     void   nd_nbic_interrupt(void);
     bool   nd_dbg_cmd(const char* cmd);
@@ -91,7 +60,6 @@ extern "C" {
 
     typedef void (*mem_rd_func)(UINT32, UINT32*);
     typedef void (*mem_wr_func)(UINT32, const UINT32*);
-    typedef void (*i860_run_func)(int);
 }
 
 

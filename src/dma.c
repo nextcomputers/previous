@@ -812,7 +812,7 @@ void dma_printer_read_memory(void) {
 
 Uint32 saved_next_turbo = 0;
 
-void dma_enet_interrupt(int channel) {
+static void dma_enet_interrupt(int channel) {
     int interrupt = get_interrupt_type(channel);
     
     dma[channel].csr |= DMA_COMPLETE;
@@ -828,15 +828,6 @@ void dma_enet_interrupt(int channel) {
         dma[channel].csr &= ~DMA_ENABLE; /* all done */
     }
     set_interrupt(interrupt, SET_INT);
-}
-
-/* This is done by hardware on ethernet transmitter error (coll, short, etc) */
-/* TODO: check if this is true and call from transmitter */
-void dma_enet_read_retry(void) {
-    dma[CHANNEL_EN_TX].next = dma[CHANNEL_EN_TX].saved_next;
-    dma[CHANNEL_EN_TX].limit = dma[CHANNEL_EN_TX].saved_limit;
-    dma[CHANNEL_EN_TX].start = dma[CHANNEL_EN_TX].saved_start;
-    dma[CHANNEL_EN_TX].stop = dma[CHANNEL_EN_TX].saved_stop;
 }
 
 void dma_enet_write_memory(bool eop) {

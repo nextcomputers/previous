@@ -152,7 +152,7 @@ static void CycInt_UpdateInterrupt(void) {
  * Check all microsecond interrupt timings
  */
 bool CycInt_SetNewInterruptUs(void) {
-    Uint64 now = host_time_us();
+    Sint64 now = host_time_us();
     for(int i = 0; i < MAX_INTERRUPTS; i++) {
         if (InterruptHandlers[i].type == CYC_INT_US && now > InterruptHandlers[i].time) {
             PendingInterrupt = InterruptHandlers[i];

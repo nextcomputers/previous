@@ -515,6 +515,10 @@ static void Main_StatusbarSetup(void) {
 	Statusbar_UpdateInfo();
 }
 
+#ifdef WIN32
+	extern void Win_OpenCon(void);
+#endif
+
 /*-----------------------------------------------------------------------*/
 /**
  * Main

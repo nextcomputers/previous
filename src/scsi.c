@@ -202,7 +202,7 @@ void SCSI_Reset(void) {
     SCSI_Init();
 }
 
-void SCSI_Eject(Uint8 target) {
+static void SCSI_Eject(Uint8 target) {
     ConfigureParams.SCSI.target[target].bDiskInserted = false;
     ConfigureParams.SCSI.target[target].szImageName[0] = '\0';
     SCSI_Reset();
@@ -410,7 +410,7 @@ int SCSI_GetCount(Uint8 opcode, Uint8 *cdb)
     COMMAND_ReadInt16(cdb, 7);
 }
 
-void SCSI_GuessGeometry(Uint32 size, Uint32 *cylinders, Uint32 *heads, Uint32 *sectors)
+static void SCSI_GuessGeometry(Uint32 size, Uint32 *cylinders, Uint32 *heads, Uint32 *sectors)
 {
     Uint32 c,h,s;
     

@@ -578,7 +578,7 @@ bool nd_dbg_cmd(const char* buf) {
             size        += ConfigureParams.Dimension.nMemoryBankSize[1];
             size        += ConfigureParams.Dimension.nMemoryBankSize[2];
             size        += ConfigureParams.Dimension.nMemoryBankSize[3];
-            fprintf(stderr, "Writing %zuMB to '%s'...", size, nd_dump_path);
+            fprintf(stderr, "Writing %"FMT_zu"MB to '%s'...", size, nd_dump_path);
             size <<= 20;
             fwrite(ND_ram, sizeof(Uint8), size, fp);
             fclose(fp);

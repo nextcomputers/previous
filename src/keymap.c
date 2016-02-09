@@ -38,7 +38,7 @@ void Keymap_Init(void) {
  * NeXT scancode values.
  */
 
-Uint8 Keymap_GetKeyFromScancode(SDL_Scancode sdlscancode) {
+static Uint8 Keymap_GetKeyFromScancode(SDL_Scancode sdlscancode) {
     Log_Printf(LOG_KEYMAP_LEVEL, "[Keymap] Scancode: %i (%s)\n", sdlscancode, SDL_GetScancodeName(sdlscancode));
 
     switch (sdlscancode) {
@@ -143,7 +143,7 @@ Uint8 Keymap_GetKeyFromScancode(SDL_Scancode sdlscancode) {
  * NeXT modifier bits.
  */
 
-Uint8 Keymap_Keydown_GetModFromScancode(SDL_Scancode sdlscancode) {
+static Uint8 Keymap_Keydown_GetModFromScancode(SDL_Scancode sdlscancode) {
     switch (sdlscancode) {
         case SDL_SCANCODE_LCTRL:
         case SDL_SCANCODE_RCTRL:
@@ -177,7 +177,7 @@ Uint8 Keymap_Keydown_GetModFromScancode(SDL_Scancode sdlscancode) {
     return modifiers|(capslock?0x02:0x00);
 }
 
-Uint8 Keymap_Keyup_GetModFromScancode(SDL_Scancode sdlscancode) {
+static Uint8 Keymap_Keyup_GetModFromScancode(SDL_Scancode sdlscancode) {
     
     switch (sdlscancode) {
         case SDL_SCANCODE_LCTRL:
@@ -217,7 +217,7 @@ Uint8 Keymap_Keyup_GetModFromScancode(SDL_Scancode sdlscancode) {
  * NeXT scancode values.
  */
 
-Uint8 Keymap_GetKeyFromSymbol(SDL_Keycode sdlkey) {
+static Uint8 Keymap_GetKeyFromSymbol(SDL_Keycode sdlkey) {
     Log_Printf(LOG_KEYMAP_LEVEL, "[Keymap] Symkey: %s\n", SDL_GetKeyName(sdlkey));
     
     switch (sdlkey) {
@@ -318,7 +318,7 @@ Uint8 Keymap_GetKeyFromSymbol(SDL_Keycode sdlkey) {
  * NeXT modifier bits.
  */
 
-Uint8 Keymap_Keydown_GetModFromSymbol(SDL_Keycode sdl_modifier) {
+static Uint8 Keymap_Keydown_GetModFromSymbol(SDL_Keycode sdl_modifier) {
     
     switch (sdl_modifier) {
         case SDLK_LCTRL:
@@ -353,7 +353,7 @@ Uint8 Keymap_Keydown_GetModFromSymbol(SDL_Keycode sdl_modifier) {
     return modifiers|(capslock?0x02:0x00);
 }
 
-Uint8 Keymap_Keyup_GetModFromSymbol(SDL_Keycode sdl_modifier) {
+static Uint8 Keymap_Keyup_GetModFromSymbol(SDL_Keycode sdl_modifier) {
     
     switch (sdl_modifier) {
         case SDLK_LCTRL:

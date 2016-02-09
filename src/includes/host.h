@@ -16,7 +16,15 @@
 extern "C" {
 #endif
 #define REALTIME_INT_LVL 1
-    
+
+#ifdef __MINGW32__
+#define FMT_ll "I64"
+#define FMT_zu "u"
+#else
+#define FMT_ll "ll"
+#define FMT_zu "zu"
+#endif
+
     enum {
         MAIN_DISPLAY,
         ND_DISPLAY,

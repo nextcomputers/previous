@@ -11,6 +11,7 @@
 const char Profile_fileid[] = "Hatari profile.c : " __DATE__ " " __TIME__;
 
 #include <stdio.h>
+#include "host.h"
 #include "main.h"
 #include "debug_priv.h"
 #include "m68000.h"
@@ -128,10 +129,10 @@ static void show_cpu_area_stats(profile_area_t *area)
 	fprintf(stderr, "- active instruction addresses:\n  %d (%.2f%% of all)\n",
 		area->active,
 		(float)area->active/cpu_profile.active*100);
-	fprintf(stderr, "- executed instructions:\n  %llu (%.2f%% of all)\n",
+	fprintf(stderr, "- executed instructions:\n  %"FMT_ll"d (%.2f%% of all)\n",
 		area->all_count,
 		(float)area->all_count/cpu_profile.all_count*100);
-	fprintf(stderr, "- used cycles:\n  %llu (%.2f%% of all)\n",
+	fprintf(stderr, "- used cycles:\n  %"FMT_ll"u (%.2f%% of all)\n",
 		area->all_cycles,
 		(float)area->all_cycles/cpu_profile.all_cycles*100);
 	fprintf(stderr, "- address with most cycles:\n  0x%06x, %d cycles (%.2f%% of all in area)\n",
@@ -518,9 +519,9 @@ void Profile_DspShowStats(void)
 		area->lowest, area->highest);
 	fprintf(stderr, "- active instruction addresses:\n  %d\n",
 		area->active);
-	fprintf(stderr, "- executed instructions:\n  %llu\n",
+	fprintf(stderr, "- executed instructions:\n  %"FMT_ll"u\n",
 		area->all_count);
-	fprintf(stderr, "- used cycles:\n  %llu\n",
+	fprintf(stderr, "- used cycles:\n  %"FMT_ll"u\n",
 		area->all_cycles);
 	fprintf(stderr, "- address with most cycles:\n  0x%04x, %d cycles (%.2f%% of all)\n",
 		area->max_cycles_addr,
