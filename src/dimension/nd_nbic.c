@@ -19,111 +19,111 @@ static volatile struct {
 } nd_nbic;
 
 
-Uint8 nd_nbic_control_read0(Uint32 addr) {
+static Uint8 nd_nbic_control_read0(Uint32 addr) {
     Log_Printf(ND_LOG_IO_RD, "[ND] NBIC Control (byte 0) read at %08X",addr);
     return (nd_nbic.control>>24);
 }
-Uint8 nd_nbic_control_read1(Uint32 addr) {
+static Uint8 nd_nbic_control_read1(Uint32 addr) {
     Log_Printf(ND_LOG_IO_RD, "[ND] NBIC Control (byte 1) read at %08X",addr);
     return (nd_nbic.control>>16);
 }
-Uint8 nd_nbic_control_read2(Uint32 addr) {
+static Uint8 nd_nbic_control_read2(Uint32 addr) {
     Log_Printf(ND_LOG_IO_RD, "[ND] NBIC Control (byte 2) read at %08X",addr);
     return (nd_nbic.control>>8);
 }
-Uint8 nd_nbic_control_read3(Uint32 addr) {
+static Uint8 nd_nbic_control_read3(Uint32 addr) {
     Log_Printf(ND_LOG_IO_RD, "[ND] NBIC Control (byte 3) read at %08X",addr);
     return nd_nbic.control;
 }
 
-void nd_nbic_control_write0(Uint32 addr, Uint8 val) {
+static void nd_nbic_control_write0(Uint32 addr, Uint8 val) {
     Log_Printf(ND_LOG_IO_WR, "[ND] NBIC Control (byte 0) write %02X at %08X",val,addr);
     nd_nbic.control &= 0x00FFFFFF;
     nd_nbic.control |= (val&0xFF)<<24;
 }
-void nd_nbic_control_write1(Uint32 addr, Uint8 val) {
+static void nd_nbic_control_write1(Uint32 addr, Uint8 val) {
     Log_Printf(ND_LOG_IO_WR, "[ND] NBIC Control (byte 1) write %02X at %08X",val,addr);
     nd_nbic.control &= 0xFF00FFFF;
     nd_nbic.control |= (val&0xFF)<<16;
 }
-void nd_nbic_control_write2(Uint32 addr, Uint8 val) {
+static void nd_nbic_control_write2(Uint32 addr, Uint8 val) {
     Log_Printf(ND_LOG_IO_WR, "[ND] NBIC Control (byte 2) write %02X at %08X",val,addr);
     nd_nbic.control &= 0xFFFF00FF;
     nd_nbic.control |= (val&0xFF)<<8;
 }
-void nd_nbic_control_write3(Uint32 addr, Uint8 val) {
+static void nd_nbic_control_write3(Uint32 addr, Uint8 val) {
     Log_Printf(ND_LOG_IO_WR, "[ND] NBIC Control (byte 3) write %02X at %08X",val,addr);
     nd_nbic.control &= 0xFFFFFF00;
     nd_nbic.control |= val&0xFF;
 }
 
 
-Uint8 nd_nbic_id_read0(Uint32 addr) {
+static Uint8 nd_nbic_id_read0(Uint32 addr) {
     Log_Printf(ND_LOG_IO_RD, "[ND] NBIC ID (byte 0) read at %08X",addr);
     return (nd_nbic.id>>24);
 }
-Uint8 nd_nbic_id_read1(Uint32 addr) {
+static Uint8 nd_nbic_id_read1(Uint32 addr) {
     Log_Printf(ND_LOG_IO_RD, "[ND] NBIC ID (byte 1) read at %08X",addr);
     return (nd_nbic.id>>16);
 }
-Uint8 nd_nbic_id_read2(Uint32 addr) {
+static Uint8 nd_nbic_id_read2(Uint32 addr) {
     Log_Printf(ND_LOG_IO_RD, "[ND] NBIC ID (byte 2) read at %08X",addr);
     return (nd_nbic.id>>8);
 }
-Uint8 nd_nbic_id_read3(Uint32 addr) {
+static Uint8 nd_nbic_id_read3(Uint32 addr) {
     Log_Printf(ND_LOG_IO_RD, "[ND] NBIC ID (byte 3) read at %08X",addr);
     return nd_nbic.id;
 }
 
-void nd_nbic_id_write0(Uint32 addr, Uint8 val) {
+static void nd_nbic_id_write0(Uint32 addr, Uint8 val) {
     Log_Printf(ND_LOG_IO_WR, "[ND] NBIC ID (byte 0) write %02X at %08X",val,addr);
     nd_nbic.id &= 0x00FFFFFF;
     nd_nbic.id |= (val&0xFF)<<24;
 }
-void nd_nbic_id_write1(Uint32 addr, Uint8 val) {
+static void nd_nbic_id_write1(Uint32 addr, Uint8 val) {
     Log_Printf(ND_LOG_IO_WR, "[ND] NBIC ID (byte 1) write %02X at %08X",val,addr);
     nd_nbic.id &= 0xFF00FFFF;
     nd_nbic.id |= (val&0xFF)<<16;
 }
-void nd_nbic_id_write2(Uint32 addr, Uint8 val) {
+static void nd_nbic_id_write2(Uint32 addr, Uint8 val) {
     Log_Printf(ND_LOG_IO_WR, "[ND] NBIC ID (byte 2) write %02X at %08X",val,addr);
     nd_nbic.id &= 0xFFFF00FF;
     nd_nbic.id |= (val&0xFF)<<8;
 }
-void nd_nbic_id_write3(Uint32 addr, Uint8 val) {
+static void nd_nbic_id_write3(Uint32 addr, Uint8 val) {
     Log_Printf(ND_LOG_IO_WR, "[ND] NBIC ID (byte 3) write %02X at %08X",val,addr);
     nd_nbic.id &= 0xFFFFFF00;
     nd_nbic.id |= val&0xFF;
 }
 
-Uint8 nd_nbic_intstatus_read(Uint32 addr) {
+static Uint8 nd_nbic_intstatus_read(Uint32 addr) {
     Log_Printf(ND_LOG_IO_RD, "[ND] NBIC Interrupt status read at %08X",addr);
     return nd_nbic.intstatus;
 }
 
-Uint8 nd_nbic_intmask_read(Uint32 addr) {
+static Uint8 nd_nbic_intmask_read(Uint32 addr) {
     Log_Printf(ND_LOG_IO_RD, "[ND] NBIC Interrupt mask read at %08X",addr);
     return nd_nbic.intmask;
 }
-void nd_nbic_intmask_write(Uint32 addr, Uint8 val) {
+static void nd_nbic_intmask_write(Uint32 addr, Uint8 val) {
     Log_Printf(ND_LOG_IO_WR, "[ND] NBIC Interrupt mask write %02X at %08X",val,addr);
     nd_nbic.intmask = val;
 }
 
-Uint8 nd_nbic_zero_read(Uint32 addr) {
+static Uint8 nd_nbic_zero_read(Uint32 addr) {
     Log_Printf(ND_LOG_IO_RD, "[ND] NBIC zero read at %08X",addr);
     return 0;
 }
-void nd_nbic_zero_write(Uint32 addr, Uint8 val) {
+static void nd_nbic_zero_write(Uint32 addr, Uint8 val) {
     Log_Printf(ND_LOG_IO_WR, "[ND] NBIC zero write %02X at %08X",val,addr);
 }
 
-Uint8 nd_nbic_bus_error_read(Uint32 addr) {
+static Uint8 nd_nbic_bus_error_read(Uint32 addr) {
     Log_Printf(ND_LOG_IO_RD, "[ND] NBIC bus error read at %08X",addr);
     M68000_BusError(addr, 1);
     return 0;
 }
-void nd_nbic_bus_error_write(Uint32 addr, Uint8 val) {
+static void nd_nbic_bus_error_write(Uint32 addr, Uint8 val) {
     Log_Printf(ND_LOG_IO_WR, "[ND] NBIC bus error write at %08X",addr);
     M68000_BusError(addr, 0);
 }

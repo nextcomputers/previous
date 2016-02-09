@@ -134,7 +134,7 @@ void DSP_SetIRQB(void)
 /**
  * Handling DMA transfers.
  */
-void DSP_HandleDMA(void)
+static void DSP_HandleDMA(void)
 {
 #if ENABLE_DSP_EMU
 	if (dsp_core.dma_mode && dsp_core.dma_request && dma_dsp_ready()) {

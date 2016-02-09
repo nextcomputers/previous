@@ -9,3 +9,5 @@ uae_u32 nd_ramdac_bget(uaecptr addr);
 void    nd_ramdac_bput(uaecptr addr, uae_u32 b);
 uae_u32 nd_dp_lget(uaecptr addr);
 void    nd_dp_lput(uaecptr addr, uae_u32 b);
+bool    nd_dbg_cmd(const char* buf);
+void    nd_set_blank_state(int src, bool state);
