@@ -396,12 +396,6 @@ void Statusbar_UpdateInfo(void)
 	
 	/* CPU MHz */
     end = Statusbar_AddString(end, Main_SpeedMsg());
-    
-	if (ConfigureParams.System.nCpuFreq > 9) {
-		*end++ = '0' + ConfigureParams.System.nCpuFreq / 10;
-	}
-	*end++ = '0' + ConfigureParams.System.nCpuFreq % 10;
-	end = Statusbar_AddString(end, "MHz/");
 
 	/* CPU type */
 	if(ConfigureParams.System.nCpuLevel > 0) {

@@ -284,12 +284,13 @@ static const struct Config_Tag configs_System[] =
 /* Used to load/save nextdimension options */
 static const struct Config_Tag configs_Dimension[] =
 {
-    { "bEnabled", Bool_Tag, &ConfigureParams.Dimension.bEnabled },
-    { "nMemoryBankSize0", Int_Tag, &ConfigureParams.Dimension.nMemoryBankSize[0] },
-    { "nMemoryBankSize1", Int_Tag, &ConfigureParams.Dimension.nMemoryBankSize[1] },
-    { "nMemoryBankSize2", Int_Tag, &ConfigureParams.Dimension.nMemoryBankSize[2] },
-    { "nMemoryBankSize3", Int_Tag, &ConfigureParams.Dimension.nMemoryBankSize[3] },
-    { "szRomFileName", String_Tag, ConfigureParams.Dimension.szRomFileName },
+    { "bEnabled",         Bool_Tag, &ConfigureParams.Dimension.bEnabled },
+    { "bI860Thread",      Bool_Tag, &ConfigureParams.Dimension.bI860Thread },
+    { "nMemoryBankSize0", Int_Tag,  &ConfigureParams.Dimension.nMemoryBankSize[0] },
+    { "nMemoryBankSize1", Int_Tag,  &ConfigureParams.Dimension.nMemoryBankSize[1] },
+    { "nMemoryBankSize2", Int_Tag,  &ConfigureParams.Dimension.nMemoryBankSize[2] },
+    { "nMemoryBankSize3", Int_Tag,  &ConfigureParams.Dimension.nMemoryBankSize[3] },
+    { "szRomFileName", String_Tag,  ConfigureParams.Dimension.szRomFileName },
     { NULL , Error_Tag, NULL }
 };
 
@@ -444,7 +445,8 @@ void Configuration_SetDefault(void)
     ConfigureParams.System.bMMU = true;
     
     /* Set defaults for Dimension */
-    ConfigureParams.Dimension.bEnabled = false;
+    ConfigureParams.Dimension.bI860Thread        = host_num_cpus() > 4;
+    ConfigureParams.Dimension.bEnabled           = false;
     ConfigureParams.Dimension.nMemoryBankSize[0] = 4;
     ConfigureParams.Dimension.nMemoryBankSize[1] = 4;
     ConfigureParams.Dimension.nMemoryBankSize[2] = 4;
@@ -486,13 +488,7 @@ void Configuration_CheckFloatMinMax(float *val, float min, float max)
  * Copy details from configuration structure into global variables for system,
  * clean file names, etc...  Called from main.c and dialog.c files.
  */
-void Configuration_Apply(bool bReset)
-{
-	if (bReset)
-	{
-		/* Set resolution change */
-	}
-    
+void Configuration_Apply(bool bReset) {
     /* Mouse settings */
     Configuration_CheckFloatMinMax(&ConfigureParams.Mouse.fLinSpeedNormal,MOUSE_LIN_MIN,MOUSE_LIN_MAX);
     Configuration_CheckFloatMinMax(&ConfigureParams.Mouse.fLinSpeedLocked,MOUSE_LIN_MIN,MOUSE_LIN_MAX);
@@ -530,7 +526,6 @@ void Configuration_Apply(bool bReset)
         File_MakeAbsoluteName(ConfigureParams.Floppy.drive[i].szImageName);
     }
     
-	
 	/* make path names absolute, but handle special file names */
 	File_MakeAbsoluteSpecialName(ConfigureParams.Log.sLogFileName);
 	File_MakeAbsoluteSpecialName(ConfigureParams.Log.sTraceFileName);

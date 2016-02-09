@@ -582,7 +582,7 @@ static ALWAYS_INLINE uae_u32 HWget_b(uaecptr addr)
     return get_byte (addr);
 }
 
-static ALWAYS_INLINE uae_u16 uae_mmu040_get_iword(uaecptr addr) {
+static ALWAYS_INLINE uae_u16 uae_mmu040_getc_iword(uaecptr addr) {
 	if (unlikely(is_unaligned(addr, 2)))
 		return mmu_get_word_unaligned(addr, false, false);
     
@@ -602,17 +602,34 @@ static ALWAYS_INLINE uae_u16 uae_mmu040_get_iword(uaecptr addr) {
     }
 }
 
-static ALWAYS_INLINE uae_u32 uae_mmu040_get_ilong(uaecptr addr) {
-    uae_u32 result = uae_mmu040_get_iword(addr);
+static ALWAYS_INLINE uae_u32 uae_mmu040_getc_ilong(uaecptr addr) {
+    uae_u32 result = uae_mmu040_getc_iword(addr);
     result <<= 16;
-    result |= uae_mmu040_get_iword(addr+2);
+    result |= uae_mmu040_getc_iword(addr+2);
     return result;
 }
 
+static ALWAYS_INLINE uae_u16 uae_mmu040_getc_ibyte(uaecptr addr) {
+    uae_u16 result = uae_mmu040_getc_iword(addr&~1);
+    return addr&1 ? result & 0xFF : result >> 16;
+}
+
+static ALWAYS_INLINE uae_u16 uae_mmu040_get_iword(uaecptr addr) {
+    if (unlikely(is_unaligned(addr, 2)))
+        return mmu_get_word_unaligned(addr, false, false);
+    return mmu_get_word(addr, false, sz_word, false);
+}
+
+static ALWAYS_INLINE uae_u32 uae_mmu040_get_ilong(uaecptr addr) {
+    if (unlikely(is_unaligned(addr, 4)))
+        return mmu_get_long_unaligned(addr, true, false);
+    return mmu_get_long(addr, true, sz_long, false);
+}
 
 static ALWAYS_INLINE uae_u16 uae_mmu040_get_ibyte(uaecptr addr) {
-	return mmu_get_byte(addr, false, sz_byte, false);
+    return mmu_get_byte(addr, false, sz_byte, false);
 }
+
 
 static ALWAYS_INLINE uae_u32 uae_mmu040_get_long(uaecptr addr)
 {
@@ -850,32 +867,44 @@ STATIC_INLINE uae_u32 get_lrmw_long_mmu040 (uaecptr addr)
     return uae_mmu_get_lrmw (addr, sz_long, 0);
 }
 
-STATIC_INLINE uae_u32 get_ibyte_mmu040 (int o)
-{
-    uae_u32 pc = m68k_getpc () + o;
-    return uae_mmu040_get_iword (pc);
+STATIC_INLINE uae_u32 get_ibyte_mmu040 (int o) {
+    return uae_mmu040_get_iword (m68k_getpc () + o);
 }
-STATIC_INLINE uae_u32 get_iword_mmu040 (int o)
-{
-    uae_u32 pc = m68k_getpc () + o;
-    return uae_mmu040_get_iword (pc);
+STATIC_INLINE uae_u32 get_iword_mmu040 (int o) {
+    return uae_mmu040_get_iword (m68k_getpc () + o);
 }
-STATIC_INLINE uae_u32 get_ilong_mmu040 (int o)
-{
-    uae_u32 pc = m68k_getpc () + o;
-    return uae_mmu040_get_ilong (pc);
+STATIC_INLINE uae_u32 get_ilong_mmu040 (int o) {
+    return uae_mmu040_get_ilong (m68k_getpc () + o);
 }
-STATIC_INLINE uae_u32 next_iword_mmu040 (void)
-{
+STATIC_INLINE uae_u32 next_iword_mmu040 (void) {
     uae_u32 pc = m68k_getpc ();
     m68k_incpci (2);
     return uae_mmu040_get_iword (pc);
 }
-STATIC_INLINE uae_u32 next_ilong_mmu040 (void)
-{
+STATIC_INLINE uae_u32 next_ilong_mmu040 (void) {
     uae_u32 pc = m68k_getpc ();
     m68k_incpci (4);
     return uae_mmu040_get_ilong (pc);
+}
+
+STATIC_INLINE uae_u32 getc_ibyte_mmu040 (int o) {
+    return uae_mmu040_getc_iword (m68k_getpc () + o);
+}
+STATIC_INLINE uae_u32 getc_iword_mmu040 (int o) {
+    return uae_mmu040_getc_iword (m68k_getpc () + o);
+}
+STATIC_INLINE uae_u32 getc_ilong_mmu040 (int o) {
+    return uae_mmu040_getc_ilong (m68k_getpc () + o);
+}
+STATIC_INLINE uae_u32 nextc_iword_mmu040 (void) {
+    uae_u32 pc = m68k_getpc ();
+    m68k_incpci (2);
+    return uae_mmu040_getc_iword (pc);
+}
+STATIC_INLINE uae_u32 nextc_ilong_mmu040 (void) {
+    uae_u32 pc = m68k_getpc ();
+    m68k_incpci (4);
+    return uae_mmu040_getc_ilong (pc);
 }
 
 STATIC_INLINE uae_u32 get_ibyte_mmu060 (int o)

@@ -305,7 +305,8 @@ typedef struct
 typedef struct
 {
     bool bEnabled;
-    int nMemoryBankSize[4];
+    bool bI860Thread;
+    int  nMemoryBankSize[4];
     char szRomFileName[FILENAME_MAX];
 } CNF_ND;
 
@@ -315,23 +316,23 @@ typedef struct
 {
   /* Configure */
   CNF_CONFIGDLG ConfigDialog;
-  CNF_LOG Log;
-  CNF_DEBUGGER Debugger;
-  CNF_SCREEN Screen;
-  CNF_KEYBOARD Keyboard;
-  CNF_SHORTCUT Shortcut;
-  CNF_MOUSE Mouse;
-  CNF_SOUND Sound;
-  CNF_MEMORY Memory;
-  CNF_BOOT Boot;
-  CNF_SCSI SCSI;
-  CNF_MO MO;
-  CNF_FLOPPY Floppy;
-  CNF_ENET Ethernet;
-  CNF_ROM Rom;
-  CNF_PRINTER Printer;
-  CNF_SYSTEM System;
-  CNF_ND Dimension;
+  CNF_LOG       Log;
+  CNF_DEBUGGER  Debugger;
+  CNF_SCREEN    Screen;
+  CNF_KEYBOARD  Keyboard;
+  CNF_SHORTCUT  Shortcut;
+  CNF_MOUSE     Mouse;
+  CNF_SOUND     Sound;
+  CNF_MEMORY    Memory;
+  CNF_BOOT      Boot;
+  CNF_SCSI      SCSI;
+  CNF_MO        MO;
+  CNF_FLOPPY    Floppy;
+  CNF_ENET      Ethernet;
+  CNF_ROM       Rom;
+  CNF_PRINTER   Printer;
+  CNF_SYSTEM    System;
+  CNF_ND        Dimension;
 } CNF_PARAMS;
 
 

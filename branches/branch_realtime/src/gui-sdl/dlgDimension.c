@@ -17,13 +17,14 @@ const char DlgDimension_fileid[] = "Previous dlgDimension.c : " __DATE__ " " __T
 
 #define DLGND_ENABLE        4
 #define DLGND_CUSTOMIZE     5
-#define DLGND_COLOR         7
-#define DLGND_MONOCHROME    8
-#define DLGND_BOTH          9
-#define DLGND_MEMSIZE       16
-#define DLGND_BROWSE        21
-#define DLGND_NAME          22
-#define DLGND_EXIT          24
+#define DLGND_I860THREAD    6
+#define DLGND_COLOR         8
+#define DLGND_MONOCHROME    9
+#define DLGND_BOTH          10
+#define DLGND_MEMSIZE       17
+#define DLGND_BROWSE        22
+#define DLGND_NAME          23
+#define DLGND_EXIT          25
 
 /* Variable strings */
 char dimension_memory[16] = "64 MB";
@@ -33,28 +34,21 @@ void print_nd_overview(void);
 void update_monitor_selection(void);
 void get_nd_default_values(void);
 
-#define ENABLE_DUAL_SCREEN  1
-
-
 static SGOBJ dimensiondlg[] =
 {
-    { SGBOX, 0, 0, 0,0, 58,26, NULL },
-    { SGTEXT, 0, 0, 18,1, 21,1, "NeXTdimension options" },
+    { SGBOX,      0, 0, 0,  0, 58, 26, NULL },
+    { SGTEXT,     0, 0, 18, 1, 21, 1, "NeXTdimension options" },
     
-    { SGBOX, 0, 0, 2,3, 26,10, NULL },
-    { SGTEXT, 0, 0, 3,4, 19,1, "NeXTdimension board" },
-    { SGCHECKBOX, 0, 0, 4,6, 9,1, "Enabled" },
-    { SGBUTTON, 0, 0, 15,6, 11,1, "Customize" },
+    { SGBOX,      0, 0, 2,  3, 26, 10, NULL },
+    { SGTEXT,     0, 0, 3,  4, 19, 1, "NeXTdimension board" },
+    { SGCHECKBOX, 0, 0, 4,  6, 9,  1, "Enabled" },
+    { SGBUTTON,   0, 0, 15, 6, 11, 1, "Customize" },
+    { SGCHECKBOX, 0, 0, 4,  7, 9,  1, "i860 Thread" },
     
-    { SGTEXT, 0, 0, 3,9, 7,1, "System display" },
-    { SGRADIOBUT, 0, 0, 4,11, 7,1, "Color" },
-#if ENABLE_DUAL_SCREEN
-    { SGRADIOBUT, 0, 0, 12,11, 6,1, "Mono" },
-    { SGRADIOBUT, 0, 0, 19,11, 6,1, "Both" },
-#else
-    { SGRADIOBUT, 0, 0, 12,11, 12,1, "Monochrome" },
-    { SGTEXT, 0, 0, 19,11, 6,1, "" },
-#endif
+    { SGTEXT,     0, 0, 3,  9,  7, 1, "System display" },
+    { SGRADIOBUT, 0, 0, 4,  11, 7, 1, "Color" },
+    { SGRADIOBUT, 0, 0, 12, 11, 6, 1, "Mono" },
+    { SGRADIOBUT, 0, 0, 19, 11, 6, 1, "Both" },
 
     { SGTEXT, 0, 0, 30,4, 13,1, "System overview:" },
     { SGTEXT, 0, 0, 30,6, 13,1, "CPU type:" },
@@ -117,22 +111,20 @@ void Dialog_DimensionDlg(void)
  
  	/* Set up dialog from actual values: */
     
-    if (ConfigureParams.Dimension.bEnabled) {
-        dimensiondlg[DLGND_ENABLE].state |= SG_SELECTED;
-    } else {
-        dimensiondlg[DLGND_ENABLE].state &= ~SG_SELECTED;
-    }
-    
-    dimensiondlg[DLGND_COLOR].state &= ~SG_SELECTED;
+    if (ConfigureParams.Dimension.bEnabled) dimensiondlg[DLGND_ENABLE].state |= SG_SELECTED;
+    else                                    dimensiondlg[DLGND_ENABLE].state &= ~SG_SELECTED;
+
+    if (ConfigureParams.Dimension.bI860Thread) dimensiondlg[DLGND_I860THREAD].state |= SG_SELECTED;
+    else                                       dimensiondlg[DLGND_I860THREAD].state &= ~SG_SELECTED;
+
+    dimensiondlg[DLGND_COLOR].state      &= ~SG_SELECTED;
     dimensiondlg[DLGND_MONOCHROME].state &= ~SG_SELECTED;
-    dimensiondlg[DLGND_BOTH].state &= ~SG_SELECTED;
+    dimensiondlg[DLGND_BOTH].state       &= ~SG_SELECTED;
     
     switch (ConfigureParams.Screen.nMonitorType) {
-#if ENABLE_DUAL_SCREEN
         case MONITOR_TYPE_DUAL:
             dimensiondlg[DLGND_BOTH].state |= SG_SELECTED;
             break;
-#endif
         case MONITOR_TYPE_CPU:
             dimensiondlg[DLGND_MONOCHROME].state |= SG_SELECTED;
             break;
@@ -150,12 +142,10 @@ void Dialog_DimensionDlg(void)
 
     /* System overview */
     print_nd_overview();
-     
- 		
+    
  	/* Draw and process the dialog: */
 
-    do
-	{
+    do{
         but = SDLGui_DoDialog(dimensiondlg, NULL);
         
         switch (but) {
@@ -179,20 +169,15 @@ void Dialog_DimensionDlg(void)
            && but != SDLGUI_ERROR && !bQuitProgram);
     
     /* Read values from dialog */
-    ConfigureParams.Dimension.bEnabled = (dimensiondlg[DLGND_ENABLE].state&SG_SELECTED)?true:false;
-    if (ConfigureParams.Dimension.bEnabled) {
-        ConfigureParams.System.bNBIC = true;
-    }
+    ConfigureParams.Dimension.bEnabled    = (dimensiondlg[DLGND_ENABLE].    state&SG_SELECTED) != 0;
+    ConfigureParams.Dimension.bI860Thread = (dimensiondlg[DLGND_I860THREAD].state&SG_SELECTED) != 0;
     
-    if (dimensiondlg[DLGND_COLOR].state&SG_SELECTED) {
-        ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_DIMENSION;
-#if ENABLE_DUAL_SCREEN
-    } else if (dimensiondlg[DLGND_BOTH].state&SG_SELECTED) {
-        ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_DUAL;
-#endif
-    } else {
-        ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_CPU;
-    }
+    if (ConfigureParams.Dimension.bEnabled)
+        ConfigureParams.System.bNBIC = true;
+    
+    if      (dimensiondlg[DLGND_COLOR].state&SG_SELECTED) ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_DIMENSION;
+    else if (dimensiondlg[DLGND_BOTH]. state&SG_SELECTED) ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_DUAL;
+    else                                                  ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_CPU;
 }
 
 

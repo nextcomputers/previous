@@ -79,10 +79,15 @@ static const char* Main_Speed(double realTime, double hostTime) {
 }
 
 const char* Main_SpeedMsg() {
-    if(speedFactor > 0  && (speedFactor < 0.8|| ConfigureParams.System.bRealtime))
-        sprintf(speedMsg, "%.1fx", speedFactor);
-    else
-        speedMsg[0] = 0;
+    speedMsg[0] = 0;
+    if(speedFactor > 0) {
+        if(ConfigureParams.System.bRealtime) {
+            sprintf(speedMsg, "%dMHz/", (int)(ConfigureParams.System.nCpuFreq * speedFactor));
+        } else {
+            if (speedFactor < 0.8) sprintf(speedMsg, "%.1fx%dMHz/", speedFactor, ConfigureParams.System.nCpuFreq);
+            else                   sprintf(speedMsg, "%dMHz/",                   ConfigureParams.System.nCpuFreq);
+        }
+    }
     return speedMsg;
 }
 
@@ -294,6 +299,11 @@ void Main_EventHandler(void) {
             continue;
         }
         switch (event.type) {
+            case SDL_WINDOWEVENT:
+                if(event.window.event == SDL_WINDOWEVENT_CLOSE)
+                    Main_RequestQuit();
+                break;
+
             case SDL_QUIT:
                 Main_RequestQuit();
                 break;
