@@ -300,9 +300,11 @@ void Main_EventHandler(void) {
         }
         switch (event.type) {
             case SDL_WINDOWEVENT:
-                if(event.window.event == SDL_WINDOWEVENT_CLOSE)
+                if(event.window.event == SDL_WINDOWEVENT_CLOSE) {
+                    SDL_WaitEventTimeout(&event, 100); // grab SDL_Quit if pending
                     Main_RequestQuit();
-                break;
+                }
+                continue;
 
             case SDL_QUIT:
                 Main_RequestQuit();
