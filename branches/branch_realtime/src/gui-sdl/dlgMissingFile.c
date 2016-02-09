@@ -82,7 +82,7 @@ static SGOBJ missingdiskdlg[] =
 /**
  * Show and process the Missing ROM dialog.
  */
-void DlgMissing_Rom(char type[], char *imgname, char *defname, bool *enabled) {
+void DlgMissing_Rom(const char* type, char *imgname, const char *defname, bool *enabled) {
     int but;
     
     char dlgname_missingrom[64];
@@ -151,7 +151,7 @@ void DlgMissing_Rom(char type[], char *imgname, char *defname, bool *enabled) {
 /**
  * Show and process the Missing Disk dialog.
  */
-void DlgMissing_Disk(char type[], int num, char *imgname, bool *inserted, bool *wp)
+void DlgMissing_Disk(const char* type, int num, char *imgname, bool *inserted, bool *wp)
 {
     int but;
     

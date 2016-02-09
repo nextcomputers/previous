@@ -19,7 +19,7 @@ static bool   sndin_inited;
 static bool   sound_input_active = false;
 static Uint8* snd_buffer = NULL;
 
-void sound_init(void) {
+static void sound_init(void) {
     if(snd_buffer)
         free(snd_buffer);
     snd_buffer = NULL;
@@ -30,7 +30,7 @@ void sound_init(void) {
     }
 }
 
-void sound_uninit(void) {
+static void sound_uninit(void) {
     if(snd_buffer)
         free(snd_buffer);
     snd_buffer = NULL;
@@ -123,7 +123,7 @@ void snd_stop_input(void) {
 
 /* Sound IO loops */
 
-static void do_dma_sndout_intr() {
+static void do_dma_sndout_intr(void) {
     if(snd_buffer) {
         dma_sndout_intr();
         free(snd_buffer);
@@ -296,7 +296,7 @@ Uint8 tmp_vol;
 Uint8 chan_lr;
 int bit_num;
 
-void snd_access_volume_reg(Uint8 databit) {
+static void snd_access_volume_reg(Uint8 databit) {
     Log_Printf(LOG_VOL_LEVEL, "[Sound] Interface shift bit %i (%i).",bit_num,databit?1:0);
     
     if (bit_num<3) {
@@ -309,7 +309,7 @@ void snd_access_volume_reg(Uint8 databit) {
     bit_num++;
 }
 
-void snd_volume_interface_reset(void) {
+static void snd_volume_interface_reset(void) {
     Log_Printf(LOG_VOL_LEVEL, "[Sound] Interface reset.");
     
     bit_num = 0;
@@ -317,7 +317,7 @@ void snd_volume_interface_reset(void) {
     tmp_vol = 0;
 }
 
-void snd_save_volume_reg(void) {
+static void snd_save_volume_reg(void) {
     if (bit_num!=11) {
         Log_Printf(LOG_WARN, "[Sound] Incomplete volume transfer (%i bits).",bit_num);
         return;

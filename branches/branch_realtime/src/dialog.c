@@ -85,7 +85,7 @@ bool Dialog_DoProperty(void)
 void Dialog_CheckFiles(void) {
     int i;
     
-    char *szMissingFile = "\0";
+    char *szMissingFile = strdup("");
     char szDefault[FILENAME_MAX];
     char szMachine[64];
     bool bEnable = false;

@@ -1,7 +1,11 @@
 #include "config.h"
 
 #if HAVE_NANOSLEEP
+#ifdef __MINGW32__
+#include <unistd.h>
+#else
 #include <sys/time.h>
+#endif
 #endif
 #include <errno.h>
 

@@ -128,7 +128,7 @@ void SCR_Reset(void) {
     }
     
     Uint8 cpu_speed;
-    Uint8 memory_speed;
+    Uint8 memory_speed = 0;
     
     if (ConfigureParams.System.nCpuFreq<20) {
         cpu_speed = 0;

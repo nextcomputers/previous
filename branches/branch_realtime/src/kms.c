@@ -145,7 +145,7 @@ void KMS_command(Uint8 command, Uint32 data);
 Uint32 km_address = 0;
 Uint32 km_dev_msk = 0;
 
-void access_km_reg(Uint32 data) {
+static void access_km_reg(Uint32 data) {
     Uint8 reg_addr = (data>>24)&0xFF;
     Uint8 reg_data = (data>>16)&0xFF;
     
@@ -414,7 +414,7 @@ void KMS_KM_Data_Read(void) {
     set_interrupt(INT_KEYMOUSE, RELEASE_INT);
 }
 
-void kms_interrupt(void) {
+static void kms_interrupt(void) {
     kms.status.cmd = KMSCMD_KBD_RECV;
     
     if (kms.status.km&KBD_RECEIVED) {
@@ -424,7 +424,7 @@ void kms_interrupt(void) {
     set_interrupt(INT_KEYMOUSE, SET_INT);
 }
 
-bool kms_device_enabled(int dev_addr) {
+static bool kms_device_enabled(int dev_addr) {
     int i,mask;
 
     for (i=28; i>4; i-=4) {

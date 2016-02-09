@@ -60,7 +60,7 @@ void slirp_output (const unsigned char *pkt, int pkt_len)
 
 //This function is to be periodically called
 //to keep the internal packet state flowing.
-void slirp_tick(void)
+static void slirp_tick(void)
 {
     int ret2,nfds;
     struct timeval tv;

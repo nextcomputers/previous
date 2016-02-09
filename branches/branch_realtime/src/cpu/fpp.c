@@ -10,6 +10,10 @@
 
 #define __USE_ISOC9X  /* We might be able to pick up a NaN */
 
+#ifdef __MINGW32__
+#define __USE_MINGW_ANSI_STDIO 1
+#endif
+
 #include <math.h>
 #include <float.h>
 #include <fenv.h>
@@ -184,7 +188,7 @@ static void normalize(uae_u32 *pwrd1, uae_u32 *pwrd2, uae_u32 *pwrd3)
 }
 #endif
 
-bool fpu_get_constant(fpdata *fp, int cr)
+static bool fpu_get_constant(fpdata *fp, int cr)
 {
 	fptype f;
 	switch (cr & 0x7f)
@@ -659,13 +663,13 @@ STATIC_INLINE tointtype toint (fptype src, fptype minval, fptype maxval)
 				result = (int)fp_round_to_zero (src);
 				break;
 			case FPCR_ROUND_MINF:
-				result = (int)fp_round_to_minus_infinity (src);
+				result = fp_round_to_minus_infinity (src);
 				break;
 			case FPCR_ROUND_NEAR:
 				result = fp_round_to_nearest (src);
 				break;
 			case FPCR_ROUND_PINF:
-				result = (int)fp_round_to_plus_infinity (src);
+				result = fp_round_to_plus_infinity (src);
 				break;
 		}
 		return result;
@@ -758,7 +762,7 @@ STATIC_INLINE void set_fpsr (uae_u32 x)
 		fpset (&regs.fp_result, 1);
 }
 
-uae_u32 get_ftag (uae_u32 w1, uae_u32 w2, uae_u32 w3)
+static uae_u32 get_ftag (uae_u32 w1, uae_u32 w2, uae_u32 w3)
 {
 	int exp = (w1 >> 16) & 0x7fff;
 	
@@ -822,14 +826,14 @@ static fptype to_pack (uae_u32 *wrd)
 	*cp++ = ((wrd[0] >> 16) & 0xf) + '0';
 	*cp = 0;
 #if USE_LONG_DOUBLE
-	sscanf (str, "%Le", &d);
+	d = strtold(str, NULL);
 #else
-	sscanf (str, "%le", &d);
+	d = strtod(str, NULL);
 #endif
 	return d;
 }
 
-void from_pack (fptype src, uae_u32 *wrd, int kfactor)
+static void from_pack (fptype src, uae_u32 *wrd, int kfactor)
 {
 	int i, j, t;
 	int exp;
@@ -974,7 +978,7 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fpdata *src, uaecptr old
 	uae_u32 ad = 0;
 	static const int sz1[8] = { 4, 4, 12, 12, 2, 8, 1, 0 };
 	static const int sz2[8] = { 4, 4, 12, 12, 2, 8, 2, 0 };
-	uae_u32 exts[3];
+	uae_u32 exts[3] = {0,0,0};
 	int doext = 0;
 
 	if (!(extra & 0x4000)) {
@@ -1358,7 +1362,7 @@ STATIC_INLINE int get_fp_ad (uae_u32 opcode, uae_u32 * ad)
 	return 1;
 }
 
-int fpp_cond (int condition)
+static int fpp_cond (int condition)
 {
 	int N = (regs.fp_result.fp < 0.0);
 	int Z = (regs.fp_result.fp == 0.0);

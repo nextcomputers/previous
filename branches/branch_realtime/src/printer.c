@@ -256,7 +256,7 @@ void lp_release_interrupt(void) {
 #define LP_GPO_CMD_BIT  0x02
 #define LP_GPO_BUSY     0x01
 
-void lp_gpo(Uint8 cmd) {
+static void lp_gpo(Uint8 cmd) {
     if (cmd&LP_GPO_DENSITY) {
         Log_Printf(LOG_LP_LEVEL,"[LP] Printer 300 DPI mode");
     }
@@ -283,7 +283,7 @@ void lp_gpo(Uint8 cmd) {
     lp_gpo_access(cmd);
 }
 
-void lp_gpi(void) {
+static void lp_gpi(void) {
     nlp.data = (~nlp.stat)<<24;
     
     nlp.csr.cmd = LP_RES_GPI;
@@ -472,16 +472,16 @@ Uint32 lp_data_read(void) {
 
 #define STAT15_NOTONER  0x04
 
-Uint8 lp_serial_status[16] = {
+static Uint8 lp_serial_status[16] = {
     0,0,0,0,
     0,STAT5_A4,0,0,
     0,0,0,0,
     0,0,0,0
 };
 
-Uint8 lp_serial_phase = 0;
+static Uint8 lp_serial_phase = 0;
 
-Uint8 lp_printer_status(Uint8 num) {
+static Uint8 lp_printer_status(Uint8 num) {
     int i;
     Uint8 val;
     
@@ -520,7 +520,7 @@ void lp_printer_reset(void) {
     lp_serial_phase = 0;
 }
 
-Uint8 lp_printer_command(Uint8 cmd) {
+static Uint8 lp_printer_command(Uint8 cmd) {
     switch (cmd) {
         case CMD_STATUS0:
             Log_Printf(LOG_LP_LEVEL, "[LP] Read status register 0");
@@ -648,8 +648,8 @@ void Printer_Reset(void) {
 
 
 /* Helper function for building path and filename of output file */
-char *lp_get_filename(void) {
-    static char *lp_outfile = NULL;
+static const char *lp_get_filename(void) {
+    static const char *lp_outfile = NULL;
     static char lp_filename[32];
     static char lp_extension[16];
     static int lp_pagecount = 0;
@@ -692,7 +692,7 @@ int         png_width;
 int         png_height;
 int         png_count;
 int         png_page_count   = 0;
-char*       png_path;
+const char* png_path;
 #endif
 
 void lp_png_setup(Uint32 data) {

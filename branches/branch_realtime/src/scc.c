@@ -193,7 +193,7 @@ void scc_data_write(Uint8 ch, Uint8 val) {
 
 
 /* Reset functions */
-void scc_channel_reset(Uint8 ch, bool hard) {
+static void scc_channel_reset(Uint8 ch, bool hard) {
 	
 	Log_Printf(LOG_SCC_LEVEL, "[SCC] Reset channel %c\n", ch?'B':'A');
 	

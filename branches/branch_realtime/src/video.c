@@ -59,7 +59,7 @@ void Video_StartInterrupts ( int PendingCyclesOver ) {
 /**
  * Generate vertical video retrace interrupt
  */
-void Video_InterruptHandler(void) {
+static void Video_InterruptHandler(void) {
 	if (ConfigureParams.System.bTurbo) {
 		tmc_video_interrupt();
 	} else if (ConfigureParams.System.bColor) {

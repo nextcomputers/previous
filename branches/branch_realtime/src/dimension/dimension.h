@@ -19,12 +19,38 @@ void   nd_board_lput(Uint32 addr, Uint32 l);
 void   nd_board_wput(Uint32 addr, Uint16 w);
 void   nd_board_bput(Uint32 addr, Uint8 b);
 Uint8  nd_board_cs8get(Uint32 addr);
+    
+void   nd_board_rd8_le  (Uint32 addr, Uint32* val);
+void   nd_board_rd16_le (Uint32 addr, Uint32* val);
+void   nd_board_rd32_le (Uint32 addr, Uint32* val);
+void   nd_board_rd64_le (Uint32 addr, Uint32* val);
+void   nd_board_rd128_le(Uint32 addr, Uint32* val);
 
-Uint8  ND_ram[64*1024*1024];
-Uint8  ND_rom[128*1024];
-Uint32 ND_vram_off;
-Uint8  ND_vram[4*1024*1024];
-void (*i860_Run)(int);
+void   nd_board_rd8_be  (Uint32 addr, Uint32* val);
+void   nd_board_rd16_be (Uint32 addr, Uint32* val);
+void   nd_board_rd32_be (Uint32 addr, Uint32* val);
+void   nd_board_rd64_be (Uint32 addr, Uint32* val);
+void   nd_board_rd128_be(Uint32 addr, Uint32* val);
+
+void   nd_board_wr8_le  (Uint32 addr, const Uint32* val);
+void   nd_board_wr16_le (Uint32 addr, const Uint32* val);
+void   nd_board_wr32_le (Uint32 addr, const Uint32* val);
+void   nd_board_wr64_le (Uint32 addr, const Uint32* val);
+void   nd_board_wr128_le(Uint32 addr, const Uint32* val);
+    
+void   nd_board_wr8_be  (Uint32 addr, const Uint32* val);
+void   nd_board_wr16_be (Uint32 addr, const Uint32* val);
+void   nd_board_wr32_be (Uint32 addr, const Uint32* val);
+void   nd_board_wr64_be (Uint32 addr, const Uint32* val);
+void   nd_board_wr128_be(Uint32 addr, const Uint32* val);
+
+extern Uint8  ND_ram[64*1024*1024];
+extern Uint8  ND_rom[128*1024];
+extern Uint32 ND_vram_off;
+extern Uint8  ND_vram[4*1024*1024];
+
+typedef void (*i860_run_func)(int);
+extern i860_run_func i860_Run;
 
 void dimension_init(void);
 void dimension_uninit(void);

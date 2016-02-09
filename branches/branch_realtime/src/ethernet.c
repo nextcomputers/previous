@@ -92,7 +92,6 @@ bool enet_stopped;
 
 void enet_reset(void);
 
-
 void EN_TX_Status_Read(void) { // 0x02006000
     IoMem[IoAccessCurrentAddress & IO_SEG_MASK] = enet.tx_status;
  	Log_Printf(LOG_EN_REG_LEVEL,"[EN] Transmitter status read at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
@@ -251,14 +250,14 @@ void EN_CounterHi_Read(void) { // 0x0200600f
  	Log_Printf(LOG_EN_REG_LEVEL,"[EN] Receiver mode read at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
 }
 
-void enet_tx_interrupt(Uint8 intr) {
+static void enet_tx_interrupt(Uint8 intr) {
     enet.tx_status|=intr;
     if (enet.tx_status&enet.tx_mask) {
         set_interrupt(INT_EN_TX, SET_INT);
     }
 }
 
-void enet_rx_interrupt(Uint8 intr) {
+static void enet_rx_interrupt(Uint8 intr) {
     enet.rx_status|=intr;
     if (enet.rx_status&enet.rx_mask) {
         set_interrupt(INT_EN_RX, SET_INT);
@@ -266,14 +265,14 @@ void enet_rx_interrupt(Uint8 intr) {
 }
 
 /* Functions to find out if we are intended to receive a packet */
-bool recv_multicast(Uint8 *packet) {
+static bool recv_multicast(Uint8 *packet) {
     if (packet[0]&0x01)
         return true;
     else
         return false;
 }
 
-bool recv_local_multicast(Uint8 *packet) {
+static bool recv_local_multicast(Uint8 *packet) {
     if (packet[0]&0x01 &&
         (packet[0]&0xFE) == enet.mac_addr[0] &&
         packet[1] == enet.mac_addr[1] &&
@@ -283,7 +282,7 @@ bool recv_local_multicast(Uint8 *packet) {
         return false;
 }
 
-bool recv_me(Uint8 *packet) {
+static bool recv_me(Uint8 *packet) {
     if (packet[0] == enet.mac_addr[0] &&
         packet[1] == enet.mac_addr[1] &&
         packet[2] == enet.mac_addr[2] &&
@@ -295,7 +294,7 @@ bool recv_me(Uint8 *packet) {
         return false;
 }
 
-bool recv_broadcast(Uint8 *packet) {
+static bool recv_broadcast(Uint8 *packet) {
     if (packet[0] == 0xFF &&
         packet[1] == 0xFF &&
         packet[2] == 0xFF &&
@@ -307,7 +306,7 @@ bool recv_broadcast(Uint8 *packet) {
         return false;
 }
 
-bool enet_packet_for_me(Uint8 *packet) {
+static bool enet_packet_for_me(Uint8 *packet) {
     switch (enet.rx_mode&RXMODE_MATCH_MODE) {
         case RX_NOPACKETS:
             return false;
@@ -331,7 +330,7 @@ bool enet_packet_for_me(Uint8 *packet) {
     }
 }
 
-bool enet_packet_from_me(Uint8 *packet) {
+static bool enet_packet_from_me(Uint8 *packet) {
     if (packet[6] == enet.mac_addr[0] &&
         packet[7] == enet.mac_addr[1] &&
         packet[8] == enet.mac_addr[2] &&
@@ -358,7 +357,7 @@ void enet_receive(Uint8 *pkt, int len) {
     }
 }
 
-void print_buf(Uint8 *buf, Uint32 size) {
+static void print_buf(Uint8 *buf, Uint32 size) {
 #if LOG_EN_DATA
     int i;
     for (i=0; i<size; i++) {
@@ -389,7 +388,7 @@ bool rx_chain;
 int old_size;
 
 /* Fujitsu ethernet controller */
-void enet_io(void) {
+static void enet_io(void) {
 	/* Receive packet */
 	switch (receiver_state) {
 		case RECV_STATE_WAITING:
@@ -499,7 +498,7 @@ void EN_Control_Write(void) {
 	enet_reset();
 }
 
-void new_enet_io(void) {
+static void new_enet_io(void) {
 	/* Receive packet */
 	switch (receiver_state) {
 		case RECV_STATE_WAITING:

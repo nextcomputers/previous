@@ -170,7 +170,7 @@ int dnum;
 #define MO_SECTORSIZE_DATA  1024 /* size of decoded sector, like handled by software */
 
 
-Uint32 get_logical_sector(Uint32 sector_id) {
+static Uint32 get_logical_sector(Uint32 sector_id) {
     Sint32 tracknum = (sector_id&0xFFFF00)>>8;
     Uint8 sectornum = sector_id&0x0F;
 
@@ -201,44 +201,56 @@ void MO_Uninit(void);
 #define SECTOR_IO_DELAY 2500
 #define CMD_DELAY       1000
 
-void mo_set_signals(bool complete, bool attn, int delay);
-void mo_push_signals(bool complete, bool attn, int drive);
-void osp_poll_mo_signals(void);
+static void mo_set_signals(bool complete, bool attn, int delay);
+static void mo_push_signals(bool complete, bool attn, int drive);
+static void osp_poll_mo_signals(void);
 
-void ecc_read(void);
-void ecc_write(void);
-void ecc_verify(void);
+static void ecc_read(void);
+static void ecc_write(void);
+static void ecc_verify(void);
 
-void mo_read_sector(Uint32 sector_id);
-void mo_write_sector(Uint32 sector_id);
-void mo_erase_sector(Uint32 sector_id);
-void mo_verify_sector(Uint32 sector_id);
+static void mo_read_sector(Uint32 sector_id);
+static void mo_write_sector(Uint32 sector_id);
+static void mo_erase_sector(Uint32 sector_id);
+static void mo_verify_sector(Uint32 sector_id);
 
-void mo_seek(Uint16 command);
-void mo_high_order_seek(Uint16 command);
-void mo_jump_head(Uint16 command);
-void mo_recalibrate(void);
-void mo_return_drive_status(void);
-void mo_return_track_addr(void);
-void mo_return_extended_status(void);
-void mo_return_hardware_status(void);
-void mo_return_version(void);
-void mo_select_head(int head);
-void mo_reset_attn_status(void);
-void mo_stop_spinning(void);
-void mo_start_spinning(void);
-void mo_eject_disk(int drv);
-void mo_start_spiraling(void);
-void mo_stop_spiraling(void);
-void mo_self_diagnostic(void);
+static void mo_seek(Uint16 command);
+static void mo_high_order_seek(Uint16 command);
+static void mo_jump_head(Uint16 command);
+static void mo_recalibrate(void);
+static void mo_return_drive_status(void);
+static void mo_return_track_addr(void);
+static void mo_return_extended_status(void);
+static void mo_return_hardware_status(void);
+static void mo_return_version(void);
+static void mo_select_head(int head);
+static void mo_reset_attn_status(void);
+static void mo_stop_spinning(void);
+static void mo_start_spinning(void);
+static void mo_eject_disk(int drv);
+static void mo_start_spiraling(void);
+static void mo_stop_spiraling(void);
+static void mo_self_diagnostic(void);
 
-void mo_unimplemented_cmd(void);
+static Uint32 get_logical_sector(Uint32 sector_id);
+static void fmt_sector_done(void);
+static bool fmt_match_id(Uint32 sector_id);
+static void fmt_io(Uint32 sector_id);
+static void ecc_toggle_buffer(void);
+static void ecc_clear_buffer(void);
+static void ecc_decode(void);
+static void ecc_encode(void);
+static void ecc_sequence_done(void);
+static bool mo_drive_empty(void);
+static bool mo_protected(void);
+static void mo_unimplemented_cmd(void);
+static void mo_spiraling_operation(void);
+static Uint32 get_logical_sector(Uint32 sector_id);
+static void mo_insert_disk(int drv);
 
-void mo_spiraling_operation(void);
+static int sector_increment = 0;
 
-int sector_increment = 0;
-
-void osp_interrupt(Uint8 interrupt);
+static void osp_interrupt(Uint8 interrupt);
 
 
 /* ------------------------ OPTICAL STORAGE PROCESSOR ------------------------ */
@@ -472,8 +484,9 @@ void MO_Flag6_Write(void) {
  	Log_Printf(LOG_MO_REG_LEVEL,"[MO] Flag 6 write at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
 }
 
+#if 0
 /* Register debugging */
-void print_regs(void) {
+static void print_regs(void) {
     int i;
     Log_Printf(LOG_WARN,"sector ID:  %02X%02X%02X",mo.tracknumh,mo.tracknuml,mo.sector_num);
     Log_Printf(LOG_WARN,"head pos:   %04X",modrv[dnum].head_pos);
@@ -493,6 +506,7 @@ void print_regs(void) {
         Log_Printf(LOG_WARN,"flag %i:     %02X",i+1,mo.flag[i]);
     }
 }
+#endif
 
 void osp_interrupt(Uint8 interrupt) {
     mo.intstatus|=interrupt;

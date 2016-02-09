@@ -11,6 +11,7 @@ const char DebugInfo_fileid[] = "Hatari debuginfo.c : " __DATE__ " " __TIME__;
 
 #include <stdio.h>
 #include <assert.h>
+#include <ctype.h>
 #include "main.h"
 #include "configuration.h"
 #include "debugInfo.h"
@@ -115,7 +116,7 @@ static void DebugInfo_OSHeader(Uint32 dummy)
  * Next HW information
  */
 
-extern char* get_rtc_ram_info();
+char* get_rtc_ram_info(void);
 
 /**
  * DebugInfo_Rtc : display the Videl registers values.

@@ -475,7 +475,7 @@ void Configuration_SetDefault(void)
  * Helper function for Configuration_Apply, check mouse speed settings
  * to be in the valid range between minimum and maximum value.
  */
-void Configuration_CheckFloatMinMax(float *val, float min, float max)
+static void Configuration_CheckFloatMinMax(float *val, float min, float max)
 {
     if (*val<min)
         *val=min;

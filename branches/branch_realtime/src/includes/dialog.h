@@ -36,8 +36,8 @@ void Dialog_AdvancedDlg(void);
 void Dialog_DimensionDlg(void);
 void DlgRom_Main(void);
 void DlgBoot_Main(void);
-void DlgMissing_Rom(char type[], char *imgname, char *defname, bool *enabled);
-void DlgMissing_Disk(char type[], int num, char *name, bool *ins, bool *wp);
+void DlgMissing_Rom(const char* type, char *imgname, const char *defname, bool *enabled);
+void DlgMissing_Disk(const char* type, int num, char *imgname, bool *ins, bool *wp);
 /* and dialog.c */
 bool Dialog_DoProperty(void);
 void Dialog_CheckFiles(void);

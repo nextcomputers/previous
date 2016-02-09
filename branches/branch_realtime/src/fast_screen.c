@@ -294,10 +294,9 @@ void Screen_Init(void) {
 
     int width  = 1120;
     int height = 832;
-    int sBarHeight, bitCount, maxW, maxH;
+    int bitCount, maxW, maxH;
     
     /* Statusbar height */
-    sBarHeight = Statusbar_GetHeightForSize(1120, 832);
     Resolution_GetLimits(&maxW, &maxH, &bitCount);
     height += Statusbar_SetHeight(width, height);
     
@@ -440,7 +439,7 @@ bool Screen_Draw(void) {
  Copy UI SDL surface to uiBuffer and replace mask pixels with transparent pixels for
  UI blending with framebuffer texture.
 */
-static void uiUpdate() {
+static void uiUpdate(void) {
     SDL_LockSurface(sdlscrn);
     int     count = sdlscrn->w * sdlscrn->h;
     Uint32* dst   = (Uint32*)uiBuffer;

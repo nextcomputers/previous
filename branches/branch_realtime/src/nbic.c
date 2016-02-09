@@ -40,111 +40,111 @@ struct {
 
 
 /* Register access functions */
-Uint8 nbic_control_read0(Uint32 addr) {
+static Uint8 nbic_control_read0(Uint32 addr) {
 	Log_Printf(LOG_WARN, "[NBIC] Control (byte 0) read at %08X",addr);
 	return (nbic.control>>24);
 }
-Uint8 nbic_control_read1(Uint32 addr) {
+static Uint8 nbic_control_read1(Uint32 addr) {
 	Log_Printf(LOG_WARN, "[NBIC] Control (byte 1) read at %08X",addr);
 	return (nbic.control>>16);
 }
-Uint8 nbic_control_read2(Uint32 addr) {
+static Uint8 nbic_control_read2(Uint32 addr) {
 	Log_Printf(LOG_WARN, "[NBIC] Control (byte 2) read at %08X",addr);
 	return (nbic.control>>8);
 }
-Uint8 nbic_control_read3(Uint32 addr) {
+static Uint8 nbic_control_read3(Uint32 addr) {
 	Log_Printf(LOG_WARN, "[NBIC] Control (byte 3) read at %08X",addr);
 	return nbic.control;
 }
 
-void nbic_control_write0(Uint32 addr, Uint8 val) {
+static void nbic_control_write0(Uint32 addr, Uint8 val) {
 	Log_Printf(LOG_WARN, "[NBIC] Control (byte 0) write %02X at %08X",val,addr);
 	nbic.control &= 0x00FFFFFF;
 	nbic.control |= (val&0xFF)<<24;
 }
-void nbic_control_write1(Uint32 addr, Uint8 val) {
+static void nbic_control_write1(Uint32 addr, Uint8 val) {
 	Log_Printf(LOG_WARN, "[NBIC] Control (byte 1) write %02X at %08X",val,addr);
 	nbic.control &= 0xFF00FFFF;
 	nbic.control |= (val&0xFF)<<16;
 }
-void nbic_control_write2(Uint32 addr, Uint8 val) {
+static void nbic_control_write2(Uint32 addr, Uint8 val) {
 	Log_Printf(LOG_WARN, "[NBIC] Control (byte 2) write %02X at %08X",val,addr);
 	nbic.control &= 0xFFFF00FF;
 	nbic.control |= (val&0xFF)<<8;
 }
-void nbic_control_write3(Uint32 addr, Uint8 val) {
+static void nbic_control_write3(Uint32 addr, Uint8 val) {
 	Log_Printf(LOG_WARN, "[NBIC] Control (byte 3) write %02X at %08X",val,addr);
 	nbic.control &= 0xFFFFFF00;
 	nbic.control |= val&0xFF;
 }
 
 
-Uint8 nbic_id_read0(Uint32 addr) {
+static Uint8 nbic_id_read0(Uint32 addr) {
 	Log_Printf(LOG_WARN, "[NBIC] ID (byte 0) read at %08X",addr);
 	return (nbic.id>>24);
 }
-Uint8 nbic_id_read1(Uint32 addr) {
+static Uint8 nbic_id_read1(Uint32 addr) {
 	Log_Printf(LOG_WARN, "[NBIC] ID (byte 1) read at %08X",addr);
 	return (nbic.id>>16);
 }
-Uint8 nbic_id_read2(Uint32 addr) {
+static Uint8 nbic_id_read2(Uint32 addr) {
 	Log_Printf(LOG_WARN, "[NBIC] ID (byte 2) read at %08X",addr);
 	return (nbic.id>>8);
 }
-Uint8 nbic_id_read3(Uint32 addr) {
+static Uint8 nbic_id_read3(Uint32 addr) {
 	Log_Printf(LOG_WARN, "[NBIC] ID (byte 3) read at %08X",addr);
 	return nbic.id;
 }
 
-void nbic_id_write0(Uint32 addr, Uint8 val) {
+static void nbic_id_write0(Uint32 addr, Uint8 val) {
 	Log_Printf(LOG_WARN, "[NBIC] ID (byte 0) write %02X at %08X",val,addr);
 	nbic.id &= 0x00FFFFFF;
 	nbic.id |= (val&0xFF)<<24;
 }
-void nbic_id_write1(Uint32 addr, Uint8 val) {
+static void nbic_id_write1(Uint32 addr, Uint8 val) {
 	Log_Printf(LOG_WARN, "[NBIC] ID (byte 1) write %02X at %08X",val,addr);
 	nbic.id &= 0xFF00FFFF;
 	nbic.id |= (val&0xFF)<<16;
 }
-void nbic_id_write2(Uint32 addr, Uint8 val) {
+static void nbic_id_write2(Uint32 addr, Uint8 val) {
 	Log_Printf(LOG_WARN, "[NBIC] ID (byte 2) write %02X at %08X",val,addr);
 	nbic.id &= 0xFFFF00FF;
 	nbic.id |= (val&0xFF)<<8;
 }
-void nbic_id_write3(Uint32 addr, Uint8 val) {
+static void nbic_id_write3(Uint32 addr, Uint8 val) {
 	Log_Printf(LOG_WARN, "[NBIC] ID (byte 3) write %02X at %08X",val,addr);
 	nbic.id &= 0xFFFFFF00;
 	nbic.id |= val&0xFF;
 }
 
-Uint8 nbic_intstatus_read(Uint32 addr) {
+static Uint8 nbic_intstatus_read(Uint32 addr) {
 	Log_Printf(LOG_WARN, "[NBIC] Interrupt status read at %08X",addr);
 	return nbic.intstatus;
 }
 
-Uint8 nbic_intmask_read(Uint32 addr) {
+static Uint8 nbic_intmask_read(Uint32 addr) {
 	Log_Printf(LOG_WARN, "[NBIC] Interrupt mask read at %08X",addr);
 	return nbic.intmask;
 }
-void nbic_intmask_write(Uint32 addr, Uint8 val) {
+static void nbic_intmask_write(Uint32 addr, Uint8 val) {
 	Log_Printf(LOG_WARN, "[NBIC] Interrupt mask write %02X at %08X",val,addr);
 	nbic.intmask = val;
 }
 
-Uint8 nbic_zero_read(Uint32 addr) {
+static Uint8 nbic_zero_read(Uint32 addr) {
 	Log_Printf(LOG_WARN, "[NBIC] zero read at %08X",addr);
 	return 0;
 }
-void nbic_zero_write(Uint32 addr, Uint8 val) {
+static void nbic_zero_write(Uint32 addr, Uint8 val) {
 	Log_Printf(LOG_WARN, "[NBIC] zero write %02X at %08X",val,addr);
 }
 
-Uint8 nbic_bus_error_read(Uint32 addr) {
+static Uint8 nbic_bus_error_read(Uint32 addr) {
 	Log_Printf(LOG_WARN, "[NBIC] bus error read at %08X",addr);
 	M68000_BusError(addr, 1);
 	return 0;
 }
-void nbic_bus_error_write(Uint32 addr, Uint8 val) {
+static void nbic_bus_error_write(Uint32 addr, Uint8 val) {
 	Log_Printf(LOG_WARN, "[NBIC] bus error write at %08X",addr);
 	M68000_BusError(addr, 0);
 }
@@ -272,7 +272,7 @@ static void (*nbic_write_cpu_slot[32])(Uint32, Uint8) = {
 	nbic_bus_error_write, nbic_bus_error_write, nbic_bus_error_write, nbic_bus_error_write
 };
 
-Uint32 nb_cpu_slot_lget(Uint32 addr) {
+static Uint32 nb_cpu_slot_lget(Uint32 addr) {
 	Uint32 val = 0;
 	
 	if (addr&3) {
@@ -292,7 +292,7 @@ Uint32 nb_cpu_slot_lget(Uint32 addr) {
 	return val;
 }
 
-Uint16 nb_cpu_slot_wget(Uint32 addr) {
+static Uint16 nb_cpu_slot_wget(Uint32 addr) {
 	Uint32 val = 0;
 	
 	if (addr&1) {
@@ -310,7 +310,7 @@ Uint16 nb_cpu_slot_wget(Uint32 addr) {
 	return val;
 }
 
-Uint8 nb_cpu_slot_bget(Uint32 addr) {
+static Uint8 nb_cpu_slot_bget(Uint32 addr) {
 	if ((addr&0x00FFFFFF)<0x00FFFFE8) {
 		return nbic_bus_error_read(addr);
 	} else {
@@ -318,7 +318,7 @@ Uint8 nb_cpu_slot_bget(Uint32 addr) {
 	}
 }
 
-void nb_cpu_slot_lput(Uint32 addr, Uint32 l) {
+static void nb_cpu_slot_lput(Uint32 addr, Uint32 l) {
 	if (addr&3) {
 		Log_Printf(LOG_WARN, "[NBIC] Unaligned access at %08X.",addr);
 		abort();
@@ -334,7 +334,7 @@ void nb_cpu_slot_lput(Uint32 addr, Uint32 l) {
 	}
 }
 
-void nb_cpu_slot_wput(Uint32 addr, Uint16 w) {
+static void nb_cpu_slot_wput(Uint32 addr, Uint16 w) {
 	if (addr&1) {
 		Log_Printf(LOG_WARN, "[NBIC] Unaligned access at %08X.",addr);
 		abort();
@@ -348,7 +348,7 @@ void nb_cpu_slot_wput(Uint32 addr, Uint16 w) {
 	}
 }
 
-void nb_cpu_slot_bput(Uint32 addr, Uint8 b) {
+static void nb_cpu_slot_bput(Uint32 addr, Uint8 b) {
 	if ((addr&0x00FFFFFF)<0x00FFFFE8) {
 		nbic_bus_error_write(addr,0);
 	} else {
@@ -358,40 +358,40 @@ void nb_cpu_slot_bput(Uint32 addr, Uint8 b) {
 
 
 /* NeXTbus timeout functions */
-Uint32 nb_timeout_lget(Uint32 addr) {
+static Uint32 nb_timeout_lget(Uint32 addr) {
 	Log_Printf(LOG_WARN, "[NextBus] Bus error lget at %08X",addr);
 	
 	M68000_BusError(addr, 1);
 	return 0;
 }
 
-Uint16 nb_timeout_wget(Uint32 addr) {
+static Uint16 nb_timeout_wget(Uint32 addr) {
 	Log_Printf(LOG_WARN, "[NextBus] Bus error wget at %08X",addr);
 	
 	M68000_BusError(addr, 1);
 	return 0;
 }
 
-Uint8 nb_timeout_bget(Uint32 addr) {
+static Uint8 nb_timeout_bget(Uint32 addr) {
 	Log_Printf(LOG_WARN, "[NextBus] Bus error bget at %08X",addr);
 	
 	M68000_BusError(addr, 1);
 	return 0;
 }
 
-void nb_timeout_lput(Uint32 addr, Uint32 l) {
+static void nb_timeout_lput(Uint32 addr, Uint32 l) {
 	Log_Printf(LOG_WARN, "[NextBus] Bus error lput at %08X",addr);
 	
 	M68000_BusError(addr, 0);
 }
 
-void nb_timeout_wput(Uint32 addr, Uint16 w) {
+static void nb_timeout_wput(Uint32 addr, Uint16 w) {
 	Log_Printf(LOG_WARN, "[NextBus] Bus error lput at %08X",addr);
 	
 	M68000_BusError(addr, 0);
 }
 
-void nb_timeout_bput(Uint32 addr, Uint8 b) {
+static void nb_timeout_bput(Uint32 addr, Uint8 b) {
 	Log_Printf(LOG_WARN, "[NextBus] Bus error lput at %08X",addr);
 	
 	M68000_BusError(addr, 0);

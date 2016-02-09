@@ -8,6 +8,11 @@
 #include "nd_nbic.h"
 #include "nd_sdl.h"
 
+Uint8  ND_ram[64*1024*1024];
+Uint8  ND_rom[128*1024];
+Uint32 ND_vram_off;
+Uint8  ND_vram[4*1024*1024];
+
 /* NeXTdimension board and slot memory */
 #define ND_BOARD_SIZE	0x10000000
 #define ND_BOARD_MASK	0x0FFFFFFF
@@ -52,12 +57,12 @@ void   nd_board_rd128_be(Uint32 addr, Uint32* val) {
 
 void   nd_board_wr8_be(Uint32 addr, const Uint32* val) {
     addr |= ND_BOARD_BITS;
-    nd_byteput(addr, *((Uint8*)val));
+    nd_byteput(addr, *((const Uint8*)val));
 }
 
 void   nd_board_wr16_be(Uint32 addr, const Uint32* val) {
     addr |= ND_BOARD_BITS;
-    nd_wordput(addr, *((Uint16*)val));
+    nd_wordput(addr, *((const Uint16*)val));
 }
 
 void   nd_board_wr32_be(Uint32 addr, const Uint32* val) {
@@ -110,12 +115,12 @@ void   nd_board_rd128_le(Uint32 addr, Uint32* val) {
 
 void   nd_board_wr8_le(Uint32 addr, const Uint32* val) {
     addr |= ND_BOARD_BITS;
-    nd_byteput(addr^7, *((Uint8*)val));
+    nd_byteput(addr^7, *((const Uint8*)val));
 }
 
 void   nd_board_wr16_le(Uint32 addr, const Uint32* val) {
     addr |= ND_BOARD_BITS;
-    nd_wordput(addr^6, *((Uint16*)val));
+    nd_wordput(addr^6, *((const Uint16*)val));
 }
 
 void   nd_board_wr32_le(Uint32 addr, const Uint32* val) {
@@ -161,20 +166,6 @@ inline Uint8 nd_board_bget(Uint32 addr) {
 inline void nd_board_lput(Uint32 addr, Uint32 l) {
     addr |= ND_BOARD_BITS;
     nd_longput(addr, l);
-}
-
-inline void nd_board_put64(Uint32 addr, Uint32 l0, Uint32 l1) {
-    addr |= ND_BOARD_BITS;
-    nd_longput(addr+4, l0);
-    nd_longput(addr+0, l1);
-}
-
-inline void nd_board_put128(Uint32 addr, Uint32 l0, Uint32 l1, Uint32 l2, Uint32 l3) {
-    addr |= ND_BOARD_BITS;
-    nd_longput(addr+4,  l0);
-    nd_longput(addr+0,  l1);
-    nd_longput(addr+12, l2);
-    nd_longput(addr+8,  l3);
 }
 
 inline void nd_board_wput(Uint32 addr, Uint16 w) {
