@@ -135,7 +135,7 @@ static SGOBJ scsidlg[] =
 
 /* Draw device type selector */
 
-void DlgSCSI_DrawDevtypeSelect(void) {
+static void DlgSCSI_DrawDevtypeSelect(void) {
     int i;
     
     for (i = 0; i < ESP_MAX_DEVS; i++) {

@@ -228,7 +228,7 @@ static const char* decodeBits(const char** bits, uae_u32 val) {
 static const char* MC_RD_FORMAT   = "[ND] Memory controller %s read %08X at %08X";
 static const char* MC_RD_FORMAT_S = "[ND] Memory controller %s read (%s) at %08X";
 
-uae_u32 nd_mc_read_register(uaecptr addr) {
+static uae_u32 nd_mc_read_register(uaecptr addr) {
 	switch (addr&0x3FFF) {
 		case 0x0000:
             Log_Printf(ND_LOG_IO_RD, MC_RD_FORMAT_S,"csr0", decodeBits(ND_CSR0_BITS, nd_mc.csr0),addr);
@@ -306,7 +306,7 @@ uae_u32 nd_mc_read_register(uaecptr addr) {
 static const char* MC_WR_FORMAT   = "[ND] Memory controller %s write %08X at %08X";
 static const char* MC_WR_FORMAT_S = "[ND] Memory controller %s write (%s) at %08X";
 
-void nd_mc_write_register(uaecptr addr, uae_u32 val) {
+static void nd_mc_write_register(uaecptr addr, uae_u32 val) {
     switch (addr&0x3FFF) {
         case 0x0000:
             Log_Printf(ND_LOG_IO_WR, MC_WR_FORMAT_S,"csr0", decodeBits(ND_CSR0_BITS, val), addr);
@@ -456,11 +456,11 @@ inline void nd_ramdac_bput(uaecptr addr, uae_u32 b) {
 
 /* NeXTdimension data path */
 
-static void nd_dp_iicmsg() {
+static void nd_dp_iicmsg(void) {
     Log_Printf(LOG_WARN, "[ND] data path IIC msg addr:%02X msg[%d]=%02X", nd_dp.iic_addr, nd_dp.iic_msgsz-1, nd_dp.iic_msg[nd_dp.iic_msgsz-1]);
 }
 
-inline uae_u32 nd_dp_lget(uaecptr addr) {
+uae_u32 nd_dp_lget(uaecptr addr) {
     switch(addr) {
         case 0x300: case 0x304: case 0x308: case 0x30C:
         case 0x310: case 0x314: case 0x318: case 0x31C:
@@ -495,7 +495,7 @@ inline uae_u32 nd_dp_lget(uaecptr addr) {
     return 0;
 }
 
-inline void nd_dp_lput(uaecptr addr, uae_u32 v) {
+void nd_dp_lput(uaecptr addr, uae_u32 v) {
     switch(addr) {
         case 0x300: case 0x304: case 0x308: case 0x30C:
         case 0x310: case 0x314: case 0x318: case 0x31C:
@@ -578,7 +578,7 @@ bool nd_dbg_cmd(const char* buf) {
             size        += ConfigureParams.Dimension.nMemoryBankSize[1];
             size        += ConfigureParams.Dimension.nMemoryBankSize[2];
             size        += ConfigureParams.Dimension.nMemoryBankSize[3];
-            fprintf(stderr, "Writing %luMB to '%s'...", size, nd_dump_path);
+            fprintf(stderr, "Writing %zuMB to '%s'...", size, nd_dump_path);
             size <<= 20;
             fwrite(ND_ram, sizeof(Uint8), size, fp);
             fclose(fp);
