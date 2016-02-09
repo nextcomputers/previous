@@ -267,6 +267,7 @@ static int repainter(void* unused) {
             // update UI texture
             SDL_AtomicLock(&uiBufferLock);
             if(blitUIlvl > 5) SDL_AtomicSet(&blitUI, 5);
+            else              SDL_AtomicDecRef(&blitUI);
             SDL_UpdateTexture(uiTexture, NULL, uiBuffer, sdlscrn->pitch);
             SDL_AtomicUnlock(&uiBufferLock);
         } else if(SDL_AtomicSet(&blitStatusBar, 0)) {
