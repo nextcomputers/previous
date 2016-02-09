@@ -36,7 +36,7 @@ volatile bool bInFullScreen = false; /* true if in full screen */
 static SDL_Thread*   repaintThread;
 static SDL_Renderer* sdlRenderer;
 static SDL_sem*      initLatch;
-static SDL_atomic_t  blitUI;           /* When value == 1, the repaint thread will blit the sldscrn surface to the screen on the next redraw */
+static SDL_atomic_t  blitUI;           /* When value > 1, the repaint thread will blit the sldscrn surface to the screen on the next redraw */
 static SDL_atomic_t  blitStatusBar;    /* When value == 1, the repaint thread will blit the sldscrn status bar on the next redraw */
 static bool          doUIblit;
 static SDL_Rect      saveWindowBounds; /* Window bounds before going fullscreen. Used to restore window size & position. */
@@ -262,9 +262,11 @@ static int repainter(void* unused) {
         SDL_RenderCopy(sdlRenderer, fbTexture, NULL, NULL);
         
         // Copy UI surface to texture
-        if(SDL_AtomicSet(&blitUI, 0)) {
+        int blitUIlvl = SDL_AtomicGet(&blitUI);
+        if(blitUIlvl) {
             // update UI texture
             SDL_AtomicLock(&uiBufferLock);
+            if(blitUIlvl > 5) SDL_AtomicSet(&blitUI, 5);
             SDL_UpdateTexture(uiTexture, NULL, uiBuffer, sdlscrn->pitch);
             SDL_AtomicUnlock(&uiBufferLock);
         } else if(SDL_AtomicSet(&blitStatusBar, 0)) {
@@ -450,7 +452,7 @@ static void uiUpdate(void) {
         *dst++ = *src == mask ? 0 : *src;
     SDL_AtomicUnlock(&uiBufferLock);
     SDL_UnlockSurface(sdlscrn);
-    SDL_AtomicSet(&blitUI, 1);
+    SDL_AtomicIncRef(&blitUI);
 }
 
 void SDL_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects) {
