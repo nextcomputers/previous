@@ -13,12 +13,12 @@ const char DlgAdvanced_fileid[] = "Hatari dlgAdvanced.c : " __DATE__ " " __TIME_
 #include "sdlgui.h"
 
 
-#define DLGADV_16MHZ      4
-#define DLGADV_20MHZ      5
-#define DLGADV_25MHZ      6
-#define DLGADV_33MHZ      7
-#define DLGADV_40MHZ      8
-#define DLGADV_REALTIME   9
+#define DLGADV_REALTIME   4
+#define DLGADV_16MHZ      5
+#define DLGADV_20MHZ      6
+#define DLGADV_25MHZ      7
+#define DLGADV_33MHZ      8
+#define DLGADV_40MHZ      9
 
 #define DLGADV_8MB        12
 #define DLGADV_16MB       13
@@ -56,12 +56,12 @@ static SGOBJ advanceddlg[] =
     
     { SGBOX, 0, 0, 2,3, 14,15, NULL },
     { SGTEXT, 0, 0, 3,4, 12,1, "CPU clock" },
+	{ SGRADIOBUT, 0, 0, 4,16, 10,1, "Variable" },
     { SGRADIOBUT, 0, 0, 4,6, 8,1, "16 MHz" },
     { SGRADIOBUT, 0, 0, 4,8, 8,1, "20 MHz" },
     { SGRADIOBUT, 0, 0, 4,10, 8,1, "25 MHz" },
     { SGRADIOBUT, 0, 0, 4,12, 8,1, "33 MHz" },
     { SGRADIOBUT, 0, 0, 4,14, 8,1, "40 MHz" },
-    { SGCHECKBOX, 0, 0, 4,16, 10,1, "Variable" },
 
     { SGBOX, 0, 0, 17,3, 14,15, NULL },
     { SGTEXT, 0, 0, 18,4, 12,1, "Memory size" },
@@ -231,30 +231,31 @@ void Dialog_AdvancedDlg(void) {
 		advanceddlg[DLGADV_40MHZ] = disable_40mhz_opt;
 	}
 
-	switch (ConfigureParams.System.nCpuFreq)
-	{
-        case 16:
-            advanceddlg[DLGADV_16MHZ].state |= SG_SELECTED;
-            break;
-        case 20:
-            advanceddlg[DLGADV_20MHZ].state |= SG_SELECTED;
-            break;
-        case 25:
-            advanceddlg[DLGADV_25MHZ].state |= SG_SELECTED;
-            break;
-        case 33:
-            advanceddlg[DLGADV_33MHZ].state |= SG_SELECTED;
-            break;
-        case 40:
-            advanceddlg[DLGADV_40MHZ].state |= SG_SELECTED;
-            break;
-        default:
-            break;
-	}
-    if(ConfigureParams.System.bRealtime)
+	if (ConfigureParams.System.bRealtime) {
         advanceddlg[DLGADV_REALTIME].state |= SG_SELECTED;
-    else
+	} else {
         advanceddlg[DLGADV_REALTIME].state &= ~SG_SELECTED;
+		switch (ConfigureParams.System.nCpuFreq)
+		{
+			case 16:
+				advanceddlg[DLGADV_16MHZ].state |= SG_SELECTED;
+				break;
+			case 20:
+				advanceddlg[DLGADV_20MHZ].state |= SG_SELECTED;
+				break;
+			case 25:
+				advanceddlg[DLGADV_25MHZ].state |= SG_SELECTED;
+				break;
+			case 33:
+				advanceddlg[DLGADV_33MHZ].state |= SG_SELECTED;
+				break;
+			case 40:
+				advanceddlg[DLGADV_40MHZ].state |= SG_SELECTED;
+				break;
+			default:
+				break;
+		}
+	}
 	
     /* Remove 64 and 128MB option if system is non-Turbo Slab,
      * remove 128MB option if system is not Turbo */
@@ -413,23 +414,23 @@ void Dialog_AdvancedDlg(void) {
     
  
  	/* Read values from dialog: */
-    
-    if (advanceddlg[DLGADV_16MHZ].state & SG_SELECTED)
-        ConfigureParams.System.nCpuFreq = 16;
-    else if (advanceddlg[DLGADV_20MHZ].state & SG_SELECTED)
-        ConfigureParams.System.nCpuFreq = 20;
-    else if (advanceddlg[DLGADV_25MHZ].state & SG_SELECTED)
-        ConfigureParams.System.nCpuFreq = 25;
-    else if (advanceddlg[DLGADV_33MHZ].state & SG_SELECTED)
-        ConfigureParams.System.nCpuFreq = 33;
-    else
-        ConfigureParams.System.nCpuFreq = 40;
-
-    ConfigureParams.System.bRealtime = (advanceddlg[DLGADV_REALTIME].state & SG_SELECTED) != 0;
-    
-    for(int i = 0; i < MO_MAX_DRIVES; i++)
-        if(ConfigureParams.MO.drive[i].bDriveConnected)
-            ConfigureParams.System.bRealtime = false;
+	
+	if (advanceddlg[DLGADV_REALTIME].state & SG_SELECTED) {
+		ConfigureParams.System.bRealtime = true;
+	} else {
+		ConfigureParams.System.bRealtime = false;
+		
+		if (advanceddlg[DLGADV_16MHZ].state & SG_SELECTED)
+			ConfigureParams.System.nCpuFreq = 16;
+		else if (advanceddlg[DLGADV_20MHZ].state & SG_SELECTED)
+			ConfigureParams.System.nCpuFreq = 20;
+		else if (advanceddlg[DLGADV_25MHZ].state & SG_SELECTED)
+			ConfigureParams.System.nCpuFreq = 25;
+		else if (advanceddlg[DLGADV_33MHZ].state & SG_SELECTED)
+			ConfigureParams.System.nCpuFreq = 33;
+		else
+			ConfigureParams.System.nCpuFreq = 40;
+	}
 
     if (advanceddlg[DLGADV_120NS].state & SG_SELECTED)
         ConfigureParams.Memory.nMemorySpeed = MEMORY_120NS;
@@ -466,5 +467,11 @@ void Dialog_AdvancedDlg(void) {
         ConfigureParams.System.nRTC = MC68HC68T1;
     else
         ConfigureParams.System.nRTC = MCCS1850;
+	
+	/* MO drives do not work with realtime mode */
+	for (i = 0; i < MO_MAX_DRIVES; i++)
+		if (ConfigureParams.MO.drive[i].bDriveConnected)
+			ConfigureParams.System.bRealtime = false;
+	
 }
 
