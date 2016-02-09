@@ -39,10 +39,11 @@ this program; if not, write to the
  2) About Previous
  -----------------
 
-Previous is a NeXT Computer emulator based on the Atari emulator Hatari. It uses
-the latest CPU emulation core from WinUAE. Previous is confirmed to compile and 
-run on Linux, Mac OS X and Windows. It may also work on other Systems which are 
-supported by the SDL library, like FreeBSD, NetBSD and BeOS.
+Previous is a NeXT Computer emulator based on the Atari emulator Hatari. It uses 
+the latest m68k emulation core from WinUAE and the i860 emulator from Jason Eckhardt. 
+Previous is confirmed to compile and run on Linux, Mac OS X and Windows. It may also 
+work on other Systems which are supported by the SDL library, like FreeBSD, NetBSD 
+and BeOS.
 
 Previous emulates the following machines:
  NeXT Computer (original 68030 Cube)
@@ -101,14 +102,14 @@ Previous is still work in progress. Some hardware is not yet emulated:
 CPU		good
 MMU		good
 FPU		good
-DSP		buggy
+DSP		good
 DMA		good
 NextBus		good
 Memory		good
 2-bit graphics	good
 Color graphics	good
 RTC		good
-Timers		good
+Timers		buggy (not cycle-exact)
 SCSI drive	good
 MO drive	good (single drive)
 Floppy drive	good
@@ -133,6 +134,9 @@ input devices.
 - Un-emulated hardware may cause problems in certain situations (see above).
 - The MO drive causes problems (mainly hangs) when both drives are used (disabled).
 - Variable CPU speed mode does not work if an MO drive is connected.
+- DSP sound has timing related issues. DSPmusic under NeXTstep 0.9 sometimes produces 
+  bad audio or hangs in variable speed mode. ScorePlayer under NeXTstep 2.x produces 
+  distorted sound in normal CPU mode.
 - Shortcuts do not work properly or overlap with host commands on some platforms.
 - CPU timings are not correct. You may experience performance differences compared 
   to real hardware.
