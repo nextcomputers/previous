@@ -1,4 +1,4 @@
-void    nd_devs_init();
+void    nd_devs_init(void);
 uae_u32 nd_io_lget(uaecptr addr);
 uae_u32 nd_io_wget(uaecptr addr);
 uae_u32 nd_io_bget(uaecptr addr);
