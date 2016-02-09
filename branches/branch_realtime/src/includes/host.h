@@ -27,23 +27,23 @@ extern "C" {
     typedef SDL_Thread         thread_t;
     typedef SDL_ThreadFunction thread_func_t;
 
-    void        host_reset();
+    void        host_reset(void);
     void        host_realtime(bool state);
-    bool        host_is_realtime();
+    bool        host_is_realtime(void);
     void        host_blank(int slot, int src, bool state);
     bool        host_blank_state(int slot, int src);
-    Uint64      host_time_us();
-    Uint32      host_time_ms();
-    double      host_time_sec();
+    Uint64      host_time_us(void);
+    Uint32      host_time_ms(void);
+    double      host_time_sec(void);
     void        host_time(double* realTime, double* hostTime);
-    time_t      host_unix_time();
+    time_t      host_unix_time(void);
     void        host_set_unix_time(time_t now);
     void        host_sleep_sec(double sec);
     void        host_sleep_ms(Uint32 ms);
     void        host_sleep_us(Uint64 us);
-    int         host_num_cpus();
+    int         host_num_cpus(void);
     void        host_hardclock(int expected, int actual);
-    double      host_real_time_offset();
+    double      host_real_time_offset(void);
     void        host_pause_time(bool pausing);
     const char* host_report(double realTime, double hostTime);
     

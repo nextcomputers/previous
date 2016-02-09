@@ -10,6 +10,6 @@ void snd_start_output(Uint8 mode);
 void snd_stop_output(void);
 void snd_start_input(Uint8 mode);
 void snd_stop_input(void);
-bool snd_output_active();
-bool snd_input_active();
+bool snd_output_active(void);
+bool snd_input_active(void);
 void snd_gpo_access(Uint8 data);
