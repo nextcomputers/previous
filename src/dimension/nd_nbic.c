@@ -18,7 +18,7 @@ static volatile struct {
     Uint8  intmask;
 } nd_nbic;
 
-#if 0 // in case registers are accessible
+#if 0 // We keep this code around in case registers turn out to be accessible. For now, just for reference.
 static Uint8 nd_nbic_control_read0(Uint32 addr) {
     Log_Printf(ND_LOG_IO_RD, "[ND] NBIC Control (byte 0) read at %08X",addr);
     return (nd_nbic.control>>24);
