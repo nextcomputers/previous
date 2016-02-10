@@ -58,7 +58,6 @@ static const struct Config_Tag configs_Debugger[] =
 static const struct Config_Tag configs_Screen[] =
 {
 	{ "nMonitorType", Int_Tag, &ConfigureParams.Screen.nMonitorType },
-//	{ "nFrameSkips", Int_Tag, &ConfigureParams.Screen.nFrameSkips },
 	{ "bFullScreen", Bool_Tag, &ConfigureParams.Screen.bFullScreen },
 	{ "bShowStatusbar", Bool_Tag, &ConfigureParams.Screen.bShowStatusbar },
 	{ "bShowDriveLed", Bool_Tag, &ConfigureParams.Screen.bShowDriveLed },

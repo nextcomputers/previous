@@ -111,8 +111,8 @@ double host_time_sec() {
 }
 
 void host_time(double* realTime, double* hostTime) {
-
     host_lock(&timeLock);
+    
     *realTime  = (SDL_GetPerformanceCounter() - perfCounterStart);
     *realTime /= perfFrequency;
     
@@ -126,8 +126,22 @@ void host_time(double* realTime, double* hostTime) {
     bool state = isRealtime;
     if(oldIsRealtime != state) {
         if(oldIsRealtime) {
+            // switching from real-time to cycle-time
             cycleSecsStart = *realTime;
             cycleCounterStart = nCyclesMainCounter;
+        } else {
+            // switching from cycle-time to real-time
+            realTimeOffset = *hostTime - *realTime;
+            if(realTimeOffset > 0) {
+                // if hostTime is in the future, wait until realTime is there as well
+                if(realTimeOffset > 0.01)
+                    host_sleep_sec(realTimeOffset);
+                else
+                    while(*realTime < *hostTime) {
+                        *realTime  = (SDL_GetPerformanceCounter() - perfCounterStart);
+                        *realTime /= perfFrequency;
+                    }
+            }
         }
         oldIsRealtime = state;
     }
