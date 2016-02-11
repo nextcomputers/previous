@@ -135,7 +135,7 @@ int defmemsizecount=0; /* Compare defsizes up to this value */
 /**
  * Draw the memory options.
  */
-void Dialog_AdvancedDlg_MemDraw(void) {
+static void Dialog_AdvancedDlg_MemDraw(void) {
     int i;
     int memsum, memsize;
     
