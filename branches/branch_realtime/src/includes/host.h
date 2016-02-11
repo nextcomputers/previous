@@ -37,7 +37,6 @@ extern "C" {
 
     void        host_reset(void);
     void        host_realtime(bool state);
-    bool        host_is_realtime(void);
     void        host_blank(int slot, int src, bool state);
     bool        host_blank_state(int slot, int src);
     Uint64      host_time_us(void);
@@ -54,6 +53,7 @@ extern "C" {
     double      host_real_time_offset(void);
     void        host_pause_time(bool pausing);
     const char* host_report(double realTime, double hostTime);
+    void        host_darkmatter(bool state);
     
     void        host_lock(lock_t* lock);
     void        host_unlock(lock_t* lock);

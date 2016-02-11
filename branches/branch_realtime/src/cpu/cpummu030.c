@@ -36,6 +36,7 @@
 #include "newcpu.h"
 #include "cpummu030.h"
 #include "hatari-glue.h"
+#include "host.h"
 
 #define MMU030_OP_DBG_MSG 0
 #define MMU030_ATC_DBG_MSG 0
@@ -236,6 +237,7 @@ void mmu_op30_pmove (uaecptr pc, uae_u32 opcode, uae_u16 next, uaecptr extra)
                 srp_030 = (uae_u64)x_get_long (extra) << 32;
                 srp_030 |= x_get_long (extra + 4);
                 mmu030_decode_rp(srp_030);
+                host_darkmatter(srp_030 == crp_030);
             }
             break;
         case 0x13: // CRP
