@@ -20,10 +20,10 @@ const char DlgAdvanced_fileid[] = "Hatari dlgAdvanced.c : " __DATE__ " " __TIME_
 #define DLGADV_33MHZ      8
 #define DLGADV_40MHZ      9
 
-#define DLGADV_8MB        12
-#define DLGADV_16MB       13
-#define DLGADV_32MB       14
-#define DLGADV_CUSTOM     15
+#define DLGADV_CUSTOM     12
+#define DLGADV_8MB        13
+#define DLGADV_16MB       14
+#define DLGADV_32MB       15
 #define DLGADV_64MB       16
 #define DLGADV_128MB      17
 
@@ -49,6 +49,9 @@ const char DlgAdvanced_fileid[] = "Hatari dlgAdvanced.c : " __DATE__ " " __TIME_
 
 char custom_memory[16] = "Customize";
 
+#define DLG_VAR_Y         16
+#define DLG_MEM_Y         16
+
 static SGOBJ advanceddlg[] =
 {
     { SGBOX, 0, 0, 0,0, 63,31, NULL },
@@ -56,7 +59,7 @@ static SGOBJ advanceddlg[] =
     
     { SGBOX, 0, 0, 2,3, 14,15, NULL },
     { SGTEXT, 0, 0, 3,4, 12,1, "CPU clock" },
-	{ SGCHECKBOX, 0, 0, 4,16, 10,1, "Variable" },
+	{ SGRADIOBUT, 0, 0, 4,DLG_VAR_Y, 10,1, "Variable" },
     { SGRADIOBUT, 0, 0, 4,6, 8,1, "16 MHz" },
     { SGRADIOBUT, 0, 0, 4,8, 8,1, "20 MHz" },
     { SGRADIOBUT, 0, 0, 4,10, 8,1, "25 MHz" },
@@ -65,10 +68,10 @@ static SGOBJ advanceddlg[] =
 
     { SGBOX, 0, 0, 17,3, 14,15, NULL },
     { SGTEXT, 0, 0, 18,4, 12,1, "Memory size" },
+	{ SGRADIOBUT, 0, 0, 19,DLG_MEM_Y, 7,1, custom_memory },
     { SGRADIOBUT, 0, 0, 19,6, 6,1, "8 MB" },
     { SGRADIOBUT, 0, 0, 19,8, 7,1, "16 MB" },
     { SGRADIOBUT, 0, 0, 19,10, 7,1, "32 MB" },
-    { SGRADIOBUT, 0, 0, 19,16, 7,1, custom_memory },
     { SGRADIOBUT, 0, 0, 19,12, 7,1, "64 MB" },
     { SGRADIOBUT, 0, 0, 19,14, 8,1, "128 MB" },
 
@@ -132,13 +135,13 @@ int defmemsizecount=0; /* Compare defsizes up to this value */
 /**
  * Draw the memory options.
  */
-static void Dialog_AdvancedDlg_MemDraw(void) {
+void Dialog_AdvancedDlg_MemDraw(void) {
     int i;
     int memsum, memsize;
     
     sprintf(custom_memory, "Customize");
     
-    for (i = DLGADV_8MB; i <= DLGADV_128MB; i++)
+    for (i = DLGADV_CUSTOM; i <= DLGADV_128MB; i++)
     {
         advanceddlg[i].state &= ~SG_SELECTED;
     }
@@ -227,50 +230,55 @@ void Dialog_AdvancedDlg(void) {
 	/* Remove 40 MHz option if system is non-Turbo */
 	if (ConfigureParams.System.bTurbo) {
 		advanceddlg[DLGADV_40MHZ] = enable_40mhz_opt;
+		advanceddlg[DLGADV_REALTIME].y = DLG_VAR_Y;
 	} else {
 		advanceddlg[DLGADV_40MHZ] = disable_40mhz_opt;
+		advanceddlg[DLGADV_REALTIME].y = DLG_VAR_Y-2;
 	}
 
 	if (ConfigureParams.System.bRealtime) {
         advanceddlg[DLGADV_REALTIME].state |= SG_SELECTED;
 	} else {
         advanceddlg[DLGADV_REALTIME].state &= ~SG_SELECTED;
-    }
-    switch (ConfigureParams.System.nCpuFreq)
-    {
-        case 16:
-            advanceddlg[DLGADV_16MHZ].state |= SG_SELECTED;
-            break;
-        case 20:
-            advanceddlg[DLGADV_20MHZ].state |= SG_SELECTED;
-            break;
-        case 25:
-            advanceddlg[DLGADV_25MHZ].state |= SG_SELECTED;
-            break;
-        case 33:
-            advanceddlg[DLGADV_33MHZ].state |= SG_SELECTED;
-            break;
-        case 40:
-            advanceddlg[DLGADV_40MHZ].state |= SG_SELECTED;
-            break;
-        default:
-            break;
-    }
+		switch (ConfigureParams.System.nCpuFreq)
+		{
+			case 16:
+				advanceddlg[DLGADV_16MHZ].state |= SG_SELECTED;
+				break;
+			case 20:
+				advanceddlg[DLGADV_20MHZ].state |= SG_SELECTED;
+				break;
+			case 25:
+				advanceddlg[DLGADV_25MHZ].state |= SG_SELECTED;
+				break;
+			case 33:
+				advanceddlg[DLGADV_33MHZ].state |= SG_SELECTED;
+				break;
+			case 40:
+				advanceddlg[DLGADV_40MHZ].state |= SG_SELECTED;
+				break;
+			default:
+				break;
+		}
+	}
 	
     /* Remove 64 and 128MB option if system is non-Turbo Slab,
      * remove 128MB option if system is not Turbo */
     if (ConfigureParams.System.bTurbo) {
         advanceddlg[DLGADV_64MB] = enable_64mb_opt;
         advanceddlg[DLGADV_128MB] = enable_128mb_opt;
+		advanceddlg[DLGADV_CUSTOM].y = DLG_MEM_Y;
         defmemsizecount = 9;
     } else if (ConfigureParams.System.bColor ||
                ConfigureParams.System.nMachineType == NEXT_STATION) {
         advanceddlg[DLGADV_64MB] = disable_64mb_opt;
         advanceddlg[DLGADV_128MB] = disable_128mb_opt;
+		advanceddlg[DLGADV_CUSTOM].y = DLG_MEM_Y-4;
         defmemsizecount = 6;
     } else {
         advanceddlg[DLGADV_64MB] = enable_64mb_opt;
         advanceddlg[DLGADV_128MB] = disable_128mb_opt;
+		advanceddlg[DLGADV_CUSTOM].y = DLG_MEM_Y-2;
         defmemsizecount = 8;
     }
     
@@ -417,20 +425,21 @@ void Dialog_AdvancedDlg(void) {
 	
 	if (advanceddlg[DLGADV_REALTIME].state & SG_SELECTED) {
 		ConfigureParams.System.bRealtime = true;
+		ConfigureParams.System.nCpuFreq = ConfigureParams.System.bTurbo ? 33 : 25;
 	} else {
 		ConfigureParams.System.bRealtime = false;
-    }
-    
-    if (advanceddlg[DLGADV_16MHZ].state & SG_SELECTED)
-        ConfigureParams.System.nCpuFreq = 16;
-    else if (advanceddlg[DLGADV_20MHZ].state & SG_SELECTED)
-        ConfigureParams.System.nCpuFreq = 20;
-    else if (advanceddlg[DLGADV_25MHZ].state & SG_SELECTED)
-        ConfigureParams.System.nCpuFreq = 25;
-    else if (advanceddlg[DLGADV_33MHZ].state & SG_SELECTED)
-        ConfigureParams.System.nCpuFreq = 33;
-    else
-        ConfigureParams.System.nCpuFreq = 40;
+		
+		if (advanceddlg[DLGADV_16MHZ].state & SG_SELECTED)
+			ConfigureParams.System.nCpuFreq = 16;
+		else if (advanceddlg[DLGADV_20MHZ].state & SG_SELECTED)
+			ConfigureParams.System.nCpuFreq = 20;
+		else if (advanceddlg[DLGADV_25MHZ].state & SG_SELECTED)
+			ConfigureParams.System.nCpuFreq = 25;
+		else if (advanceddlg[DLGADV_33MHZ].state & SG_SELECTED)
+			ConfigureParams.System.nCpuFreq = 33;
+		else
+			ConfigureParams.System.nCpuFreq = 40;
+	}
 
     if (advanceddlg[DLGADV_120NS].state & SG_SELECTED)
         ConfigureParams.Memory.nMemorySpeed = MEMORY_120NS;
