@@ -309,6 +309,7 @@ void Dialog_SystemDlg(void)
                 break;
                 
             case DLGSYS_RESET:
+				ConfigureParams.System.bRealtime = false;
                 get_default_values();
                 break;
 
