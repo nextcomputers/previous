@@ -40,6 +40,7 @@ static double       unixTimeOffset = 0;
 static double       perfFrequency;
 static double       realTimeOffset;
 static Uint64       pauseTimeStamp;
+static bool         osDarkmatter;
 
 void host_reset() {
     perfCounterStart  = SDL_GetPerformanceCounter();
@@ -54,6 +55,7 @@ void host_reset() {
     hardClockActual   = 0;
     enableRealtime    = ConfigureParams.System.bRealtime;
     realTimeOffset    = 0;
+    osDarkmatter      = false;
     
     for(int i = NUM_BLANKS; --i >= 0;) {
         vblCounter[i] = 0;
@@ -96,11 +98,7 @@ void host_hardclock(int expected, int actual) {
 extern Sint64 nCyclesMainCounter;
 
 void host_realtime(bool state) {
-    isRealtime = state & enableRealtime;
-}
-
-bool host_is_realtime() {
-    return isRealtime;
+    isRealtime = state;
 }
 
 double host_time_sec() {
@@ -123,7 +121,7 @@ void host_time(double* realTime, double* hostTime) {
         *hostTime /= cycleDivisor;
         *hostTime += cycleSecsStart;
     }
-    bool state = isRealtime;
+    bool state = (isRealtime || osDarkmatter) && enableRealtime;
     if(oldIsRealtime != state) {
         if(oldIsRealtime) {
             // switching from real-time to cycle-time
@@ -244,6 +242,10 @@ int host_num_cpus() {
   return  SDL_GetCPUCount();
 }
  
+void host_darkmatter(bool state) {
+    osDarkmatter = state;
+}
+                  
 static double lastVT;
 static char   report[512];
 
