@@ -68,7 +68,7 @@ static SGOBJ advanceddlg[] =
 
     { SGBOX, 0, 0, 17,3, 14,15, NULL },
     { SGTEXT, 0, 0, 18,4, 12,1, "Memory size" },
-	{ SGRADIOBUT, 0, 0, 19,DLG_MEM_Y, 7,1, custom_memory },
+	{ SGRADIOBUT, 0, 0, 19,DLG_MEM_Y, 8,1, custom_memory },
     { SGRADIOBUT, 0, 0, 19,6, 6,1, "8 MB" },
     { SGRADIOBUT, 0, 0, 19,8, 7,1, "16 MB" },
     { SGRADIOBUT, 0, 0, 19,10, 7,1, "32 MB" },
@@ -110,11 +110,11 @@ static SGOBJ advanceddlg[] =
 
 
 /* Variable objects */
-SGOBJ disable_128mb_opt = { SGTEXT, 0, 0, 19,14, 8,1, " " };
+SGOBJ disable_128mb_opt = { SGTEXT, 0, 0, 19,14, 0,1, "" };
 SGOBJ enable_128mb_opt = { SGRADIOBUT, 0, 0, 19,14, 8,1, "128 MB" };
-SGOBJ disable_64mb_opt = { SGTEXT, 0, 0, 19,12, 7,1, " " };
+SGOBJ disable_64mb_opt = { SGTEXT, 0, 0, 19,12, 0,1, "" };
 SGOBJ enable_64mb_opt = { SGRADIOBUT, 0, 0, 19,12, 7,1, "64 MB" };
-SGOBJ disable_40mhz_opt = { SGTEXT, 0, 0, 4,14, 8,1, " " };
+SGOBJ disable_40mhz_opt = { SGTEXT, 0, 0, 4,14, 0,1, "" };
 SGOBJ enable_40mhz_opt = { SGRADIOBUT, 0, 0, 4,14, 8,1, "40 MHz" };
 
 /* Default configuration constants */
