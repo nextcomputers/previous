@@ -33,6 +33,9 @@ int nScreenZoomX, nScreenZoomY; /* Zooming factors, used for scaling mouse motio
 volatile bool bGrabMouse    = false; /* Grab the mouse cursor in the window */
 volatile bool bInFullScreen = false; /* true if in full screen */
 
+static const int NeXT_SCRN_WIDTH  = 1120;
+static const int NeXT_SCRN_HEIGHT = 832;
+
 static SDL_Thread*   repaintThread;
 static SDL_Renderer* sdlRenderer;
 static SDL_sem*      initLatch;
@@ -45,9 +48,8 @@ static void*         uiBufferTmp;      /* Temporary uiBuffer used by repainter *
 static SDL_SpinLock  uiBufferLock;     /* Lock for concurrent access to UI buffer between m68k thread and repainter */
 static Uint32        mask;             /* green screen mask for transparent UI areas */
 static volatile bool doRepaint  = true; /* Repaint thread runs while true */
+static SDL_Rect      statusBar;
 
-static const int NeXT_SCRN_WIDTH  = 1120;
-static const int NeXT_SCRN_HEIGHT = 832;
 
 static Uint32 BW2RGB[0x400];
 static Uint32 COL2RGB[0x10000];
@@ -196,9 +198,13 @@ static int repainter(void* unused) {
     SDL_SetThreadPriority(SDL_THREAD_PRIORITY_NORMAL);
     SDL_GetWindowSize(sdlWindow, &width, &height);
     
+    statusBar.x = 0;
+    statusBar.y = NeXT_SCRN_HEIGHT;
+    statusBar.w = width;
+    statusBar.h = height - NeXT_SCRN_HEIGHT;
+    
     SDL_Texture*  uiTexture;
     SDL_Texture*  fbTexture;
-    SDL_Rect      statusBar = {0,NeXT_SCRN_HEIGHT,width,height-NeXT_SCRN_HEIGHT};
     
     Uint32 r, g, b, a;
     
@@ -266,7 +272,8 @@ static int repainter(void* unused) {
         // Render NeXT framebuffer texture
         SDL_RenderCopy(sdlRenderer, fbTexture, NULL, NULL);
         
-        bool updateTexture = false;
+        bool updateTexture   = false;
+        bool updateStatusBar = false;
         // Copy UI surface to texture
         SDL_AtomicLock(&uiBufferLock);
         if(SDL_AtomicSet(&blitUI, 0)) {
@@ -275,14 +282,14 @@ static int repainter(void* unused) {
             updateTexture = true;
         } else if(SDL_AtomicSet(&blitStatusBar, 0)) {
             // update only status bar (optimization)
-            SDL_LockSurface(sdlscrn);
-            SDL_UpdateTexture(uiTexture, &statusBar, &((Uint8*)sdlscrn->pixels)[statusBar.y*sdlscrn->pitch], sdlscrn->pitch);
-            SDL_UnlockSurface(sdlscrn);
+            memcpy(&((Uint8*)uiBufferTmp)[statusBar.y*sdlscrn->pitch], &((Uint8*)uiBuffer)[statusBar.y*sdlscrn->pitch], statusBar.h * sdlscrn->pitch);
+            updateStatusBar = true;
         }
         SDL_AtomicUnlock(&uiBufferLock);
         
         // Update and render UI texture
-        if(updateTexture) SDL_UpdateTexture(uiTexture, NULL, uiBufferTmp, sdlscrn->pitch);
+        if(updateTexture)        SDL_UpdateTexture(uiTexture, NULL,       uiBufferTmp, sdlscrn->pitch);
+        else if(updateStatusBar) SDL_UpdateTexture(uiTexture, &statusBar, &((Uint8*)uiBufferTmp)[statusBar.y*sdlscrn->pitch], sdlscrn->pitch);
         SDL_RenderCopy(sdlRenderer, uiTexture, NULL, NULL);
         
         // SDL_RenderPresent sleeps until next VSYNC because of SDL_RENDERER_PRESENTVSYNC in ScreenInit
@@ -462,6 +469,15 @@ static void uiUpdate(void) {
     SDL_UnlockSurface(sdlscrn);
 }
 
+static void statusBarUpdate(void) {
+    SDL_LockSurface(sdlscrn);
+    SDL_AtomicLock(&uiBufferLock);
+    memcpy(&((Uint8*)uiBuffer)[statusBar.y*sdlscrn->pitch], &((Uint8*)sdlscrn->pixels)[statusBar.y*sdlscrn->pitch], statusBar.h * sdlscrn->pitch);
+    SDL_AtomicSet(&blitUI, 1);
+    SDL_AtomicUnlock(&uiBufferLock);
+    SDL_UnlockSurface(sdlscrn);
+}
+
 void SDL_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects) {
     while(numrects--) {
         if(rects->y < NeXT_SCRN_HEIGHT) {
@@ -472,7 +488,7 @@ void SDL_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects) {
                 uiUpdate();
                 doUIblit = false;
             } else {
-                SDL_AtomicSet(&blitStatusBar, 1);
+                statusBarUpdate();
             }
         }
     }
