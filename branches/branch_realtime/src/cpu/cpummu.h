@@ -583,18 +583,19 @@ static ALWAYS_INLINE uae_u32 HWget_b(uaecptr addr)
 }
 
 static ALWAYS_INLINE uae_u16 uae_mmu040_getc_iword(uaecptr addr) {
-	if (unlikely(is_unaligned(addr, 2)))
-		return mmu_get_word_unaligned(addr, false, false);
-    
     int icidx = (addr >> 1) & (M68K_ICACHE_SZ  - 1);
     if(regs.s) {
         if(addr != icache_saddr[icidx]) {
+            if (unlikely(is_unaligned(addr, 2)))
+                return mmu_get_word_unaligned(addr, false, false);
             icache_saddr[icidx] = addr;
             icache_s[icidx]     = mmu_get_word(addr, false, sz_word, false);
         }
         return icache_s[icidx];
     } else {
         if(addr != icache_uaddr[icidx]) {
+            if (unlikely(is_unaligned(addr, 2)))
+                return mmu_get_word_unaligned(addr, false, false);
             icache_uaddr[icidx] = addr;
             icache_u[icidx]     = mmu_get_word(addr, false, sz_word, false);
         }

@@ -81,8 +81,6 @@ enum {
 #define  EXCEPTION_TRACE      0x00000024
 #define  EXCEPTION_LINE_A     0x00000028
 #define  EXCEPTION_LINE_F     0x0000002c
-#define  EXCEPTION_HBLANK     0x00000068
-#define  EXCEPTION_VBLANK     0x00000070
 #define  EXCEPTION_TRAP0      0x00000080
 #define  EXCEPTION_TRAP1      0x00000084
 #define  EXCEPTION_TRAP2      0x00000088
@@ -136,7 +134,6 @@ static inline void M68000_SetSR(Uint16 v)
 extern Uint32 BusErrorAddress;
 extern Uint32 BusErrorPC;
 extern bool bBusErrorReadWrite;
-extern int nWaitStateCycles;
 extern int BusMode;
 
 extern int	LastOpcodeFamily;
@@ -169,6 +166,5 @@ void M68000_Start(void);
 void M68000_CheckCpuSettings(void);
 void M68000_BusError(Uint32 addr, bool bReadWrite);
 void M68000_Exception(Uint32 ExceptionVector , int ExceptionSource);
-void M68000_WaitState(int nCycles);
 
 #endif

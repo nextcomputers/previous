@@ -236,7 +236,7 @@ void CycInt_AddRelativeInterruptUs(Sint64 us, interrupt_id Handler) {
  */
 void CycInt_RemovePendingInterrupt(interrupt_id Handler) {
 	/* Update list cycle counts, including the handler we want to remove */
-	/* to be able to resume it later (for MFP timers) */
+	/* to be able to resume it later */
 	CycInt_UpdateInterrupt();
 
 	/* Stop interrupt after CycInt_UpdateInterrupt */

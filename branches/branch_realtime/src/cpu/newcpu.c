@@ -89,7 +89,6 @@ static struct cache020 caches020[CACHELINES020];
 static struct cache030 icaches030[CACHELINES030];
 static struct cache030 dcaches030[CACHELINES030];
 //static struct cache040 caches040[CACHESETS040];
-static void InterruptAddJitter (int Level , int Pending);
 
 static void m68k_disasm_2 (FILE *f, uaecptr addr, uaecptr *nextpc, int cnt, uae_u32 *seaddr, uae_u32 *deaddr, int safemode);
 
@@ -1194,9 +1193,7 @@ static void uae_reset (int hardreset) {
     }
 }
 
-/* Handle exceptions. We need a special case to handle MFP exceptions */
-/* on Atari ST, because it's possible to change the MFP's vector base */
-/* and get a conflict with 'normal' cpu exceptions. */
+/* Handle exceptions. */
 static void Exception_normal (int nr, uaecptr oldpc, int ExceptionSource)
 {
 	uae_u32 currpc = m68k_getpc (), newpc;
@@ -1220,8 +1217,6 @@ static void Exception_normal (int nr, uaecptr oldpc, int ExceptionSource)
 	}
 	if (currprefs.cpu_model > 68000) {
 		/* Build additional exception stack frame for 68010 and higher */
-		/* (special case for MFP) */
-		
 		if (nr == 2 || nr == 3) {
 			int i;
 			if (currprefs.cpu_model >= 68040) {
@@ -1391,7 +1386,6 @@ kludge_me_do:
       if ( nr == 26 )				/* HBL */
       {
         /* store current cycle pos when then interrupt was received (see video.c) */
-  //      LastCycleHblException = Cycles_GetCounter(CYCLES_COUNTER_VIDEO);
         M68000_AddCycles(44+12);		/* Video Interrupt */
       }
       else if ( nr == 28 ) 			/* VBL */
@@ -1416,19 +1410,16 @@ kludge_me_do:
       case 10: M68000_AddCycles(34); break;	/* Line-A - probably wrong */
       case 11: M68000_AddCycles(34); break;	/* Line-F - probably wrong */
       default:
-        /* FIXME: Add right cycles value for MFP interrupts and copro exceptions ... */
         if(nr < 64)
           M68000_AddCycles(4);			/* Coprocessor and unassigned exceptions (???) */
         else
-          M68000_AddCycles(44+12);		/* Must be a MFP or DSP interrupt */
+          M68000_AddCycles(44+12);		/* Must be a DSP interrupt */
         break;
 }
 
 }
 
-/* Handle exceptions. We need a special case to handle MFP exceptions */
-/* on Atari ST, because it's possible to change the MFP's vector base */
-/* and get a conflict with 'normal' cpu exceptions. */
+/* Handle exceptions. */
 void REGPARAM2 ExceptionL (int nr/*, int ExceptionSource*/)
 {
     int ExceptionSource = 0;
@@ -1458,8 +1449,6 @@ STATIC_INLINE void do_interrupt (int nr, int Pending)
 	doint ();
 
 	set_special (SPCFLAG_INT);
-	/* Handle Atari ST's specific jitter for hbl/vbl */
-	InterruptAddJitter (nr , Pending);
 }
 
 
@@ -1661,22 +1650,8 @@ void doint (void)
 #define IDLETIME (currprefs.cpu_idle * sleep_resolution / 700)
 
 /*
- * Compute the number of jitter cycles to add when a video interrupt occurs
- * (this is specific to the Atari ST)
- */
-STATIC_INLINE void InterruptAddJitter (int Level , int Pending)
-{
-	}
-
-
-/*
  * Handle special flags
  */
-
-static bool do_specialties_interrupt (int Pending)
-{
-    return false;					/* no interrupt was found */
-}
 
 STATIC_INLINE int do_specialties (int cycles)
 {
@@ -1690,75 +1665,54 @@ STATIC_INLINE int do_specialties (int cycles)
     }
 #endif
     
-	if(regs.spcflags & SPCFLAG_EXTRA_CYCLES) {
-		/* Add some extra cycles to simulate a wait state */
-		unset_special(SPCFLAG_EXTRA_CYCLES);
-		M68000_AddCycles(nWaitStateCycles);
-		nWaitStateCycles = 0;
-	}
-
 	if (regs.spcflags & SPCFLAG_DOTRACE)
 		Exception (9);
 
     /* Handle the STOP instruction */
     if ( regs.spcflags & SPCFLAG_STOP ) {
-        /* We first test if there's a pending interrupt that would */
-        /* allow to immediatly leave the STOP state */
-        if ( do_specialties_interrupt(true) ) {		/* test if there's an interrupt and add pending jitter */
-            regs.stopped = 0;
-            unset_special (SPCFLAG_STOP);
-	}
+        while (regs.spcflags & SPCFLAG_STOP) {
 
-	while (regs.spcflags & SPCFLAG_STOP) {
+            /* Take care of quit event if needed */
+            if (regs.spcflags & SPCFLAG_BRK)
+                return 1;
+        
+            M68000_AddCycles(cpu_cycles);
 
-	    /* Take care of quit event if needed */
-	    if (regs.spcflags & SPCFLAG_BRK)
-			return 1;
-	
-		M68000_AddCycles(cpu_cycles);
+            /* It is possible one or more ints happen at the same time */
+            /* We must process them during the same cpu cycle until the special INT flag is set */
+            while (PendingInterrupt.time <=0 && PendingInterrupt.pFunction) {
+                /* 1st, we call the interrupt handler */
+                CALL_VAR(PendingInterrupt.pFunction);
+                
+                if ((regs.spcflags & (SPCFLAG_BRK | SPCFLAG_MODE_CHANGE))) {
+                    unset_special (SPCFLAG_BRK | SPCFLAG_MODE_CHANGE);
+                    // SPCFLAG_BRK breaks STOP condition, need to prefetch
+                    m68k_resumestopped ();
+                    return 1;
+                }
 
-	    /* It is possible one or more ints happen at the same time */
-	    /* We must process them during the same cpu cycle until the special INT flag is set */
-		while (PendingInterrupt.time <=0 && PendingInterrupt.pFunction) {
-			/* 1st, we call the interrupt handler */
-			CALL_VAR(PendingInterrupt.pFunction);
-		
-			/* Then we check if this handler triggered an interrupt to process */
-			if ( do_specialties_interrupt(false) ) {	/* test if there's an interrupt and add non pending jitter */
-				regs.stopped = 0;
-				unset_special (SPCFLAG_STOP);
-				break;
-			}
-		
-		if ((regs.spcflags & (SPCFLAG_BRK | SPCFLAG_MODE_CHANGE))) {
-			unset_special (SPCFLAG_BRK | SPCFLAG_MODE_CHANGE);
-			// SPCFLAG_BRK breaks STOP condition, need to prefetch
-			m68k_resumestopped ();
-			return 1;
-		}
-
-		if (currprefs.cpu_idle && ((regs.spcflags & SPCFLAG_STOP)) == SPCFLAG_STOP) {
-			/* sleep 1ms if STOP-instruction is executed */
-			if (1) {
-				static int sleepcnt, lvpos;
-				if (vpos != lvpos) {
-					sleepcnt--;
-#ifdef JIT
-					if (pissoff == 0 && currprefs.cachesize && --zerocnt < 0) {
-						sleepcnt = -1;
-						zerocnt = IDLETIME / 4;
-					}
-#endif
-					lvpos = vpos;
-					if (sleepcnt < 0) {
-							/*sleepcnt = IDLETIME / 2; */  /* Laurent : badly removed for now */
-						host_sleep_ms(1);
-					}
-				}
-			}
-		}
-	}
-	}
+                if (currprefs.cpu_idle && ((regs.spcflags & SPCFLAG_STOP)) == SPCFLAG_STOP) {
+                    /* sleep 1ms if STOP-instruction is executed */
+                    if (1) {
+                        static int sleepcnt, lvpos;
+                        if (vpos != lvpos) {
+                            sleepcnt--;
+        #ifdef JIT
+                            if (pissoff == 0 && currprefs.cachesize && --zerocnt < 0) {
+                                sleepcnt = -1;
+                                zerocnt = IDLETIME / 4;
+                            }
+        #endif
+                            lvpos = vpos;
+                            if (sleepcnt < 0) {
+                                    /*sleepcnt = IDLETIME / 2; */  /* Laurent : badly removed for now */
+                                host_sleep_ms(1);
+                            }
+                        }
+                    }
+                }
+            }
+        }
 	}
 
 	if (regs.spcflags & SPCFLAG_TRACE)
@@ -1769,11 +1723,6 @@ STATIC_INLINE int do_specialties (int cycles)
 		set_special (SPCFLAG_INT);
 	}
 
-	if ( do_specialties_interrupt(false) ) {	/* test if there's an interrupt and add non pending jitter */
-		/* TODO: Always do do_specialties_interrupt() in m68k_run_x instead? */
-		regs.stopped = 0;
-	}
-
     if (regs.spcflags & SPCFLAG_DEBUGGER)
 		DebugCpu_Check();
 
@@ -1781,6 +1730,7 @@ STATIC_INLINE int do_specialties (int cycles)
 		unset_special(SPCFLAG_MODE_CHANGE);
 		return 1;
 	}
+    
 	return 0;
 }
 
@@ -1867,7 +1817,7 @@ static void m68k_run_jit (void)
 			INTREQ_f (0x8008);
 			set_special (SPCFLAG_INT);
 		}
-		if (regs.spcflags) {
+        if (regs.spcflags & ~SPCFLAG_INT) {
 			if (do_specialties (0)) {
 				return;
 			}
@@ -1912,6 +1862,7 @@ static void opcodedebug (uae_u32 pc, uae_u16 opcode)
 }
 #endif
 
+static int lastRegsS = 0;
 
 // Previous MMU 68030
 static void m68k_run_mmu030 (void)
@@ -1972,13 +1923,6 @@ insretry:
 			DSP_Run(cpu_cycles);
             i860_Run(cpu_cycles);
 
-			if (regs.spcflags & SPCFLAG_EXTRA_CYCLES) {
-				/* Add some extra cycles to simulate a wait state */
-				unset_special(SPCFLAG_EXTRA_CYCLES);
-				M68000_AddCycles(nWaitStateCycles);
-				nWaitStateCycles = 0;
-			}
-
 			/* We can have several interrupts at the same time before the next CPU instruction */
 			/* We must check for pending interrupt and call do_specialties_interrupt() only */
 			/* if the cpu is not in the STOP state. Else, the int could be acknowledged now */
@@ -1986,7 +1930,6 @@ insretry:
 			/* For performance, we first test PendingInterruptCount, then regs.spcflags */
 			while ( ( PendingInterrupt.time <= 0 ) && ( PendingInterrupt.pFunction ) && ( ( regs.spcflags & SPCFLAG_STOP ) == 0 ) ) {
 				CALL_VAR(PendingInterrupt.pFunction);		/* call the interrupt handler */
-				do_specialties_interrupt(false);		/* test if there's an mfp/video interrupt and add non pending jitter */
 			}
 
             /* Previous: for now we poll the interrupt pins with every instruction.
@@ -1994,13 +1937,16 @@ insretry:
              * unneccessarily slow down emulation.
              */
             intr = intlev ();
-            if (intr>regs.intmask || (intr==7 && intr>lastintr)) {
+            if (intr>regs.intmask || (intr==7 && intr>lastintr))
                 do_interrupt (intr, false);
-            }
-            host_realtime(!(regs.s));
             lastintr = intr;
+            
+            if(lastRegsS != regs.s) {
+                host_realtime(!(regs.s));
+                lastRegsS = regs.s;
+            }
 
-			if (regs.spcflags) {
+            if (regs.spcflags & ~SPCFLAG_INT) {
 				if (do_specialties (cpu_cycles))
 					return;
 			}
@@ -2063,13 +2009,6 @@ static void m68k_run_mmu040 (void)
 			DSP_Run(cpu_cycles);
             i860_Run(cpu_cycles);
 
-			if (regs.spcflags & SPCFLAG_EXTRA_CYCLES) {
-				/* Add some extra cycles to simulate a wait state */
-				unset_special(SPCFLAG_EXTRA_CYCLES);
-				M68000_AddCycles(nWaitStateCycles);
-				nWaitStateCycles = 0;
-			}
-
 			/* We can have several interrupts at the same time before the next CPU instruction */
 			/* We must check for pending interrupt and call do_specialties_interrupt() only */
 			/* if the cpu is not in the STOP state. Else, the int could be acknowledged now */
@@ -2077,7 +2016,6 @@ static void m68k_run_mmu040 (void)
 			/* For performance, we first test PendingInterruptCount, then regs.spcflags */
 			while ( ( PendingInterrupt.time <= 0 ) && ( PendingInterrupt.pFunction ) && ( ( regs.spcflags & SPCFLAG_STOP ) == 0 ) ) {
 				CALL_VAR(PendingInterrupt.pFunction);		/* call the interrupt handler */
-				do_specialties_interrupt(false);		/* test if there's an mfp/video interrupt and add non pending jitter */
 			}
 
             /* Previous: for now we poll the interrupt pins with every instruction.
@@ -2085,14 +2023,16 @@ static void m68k_run_mmu040 (void)
              * unneccessarily slow down emulation.
              */
             intr = intlev ();
-            if (intr>regs.intmask || (intr==7 && intr>lastintr)) {
+            if (intr>regs.intmask || (intr==7 && intr>lastintr))
                 do_interrupt (intr, false);
-            }
-            host_realtime(!(regs.s));
             lastintr = intr;
             
+            if(lastRegsS != regs.s) {
+                host_realtime(!(regs.s));
+                lastRegsS = regs.s;
+            }
             
-			if (regs.spcflags) {
+			if (regs.spcflags & ~SPCFLAG_INT) {
 				if (do_specialties (cpu_cycles))
 					return;
 			}
@@ -2198,7 +2138,7 @@ static void m68k_run_mmu (void)
 		cpu_cycles = (*cpufunctbl[opcode])(opcode);
 		if (mmu_triggered)
 			mmu_do_hit ();
-		if (regs.spcflags) {
+        if (regs.spcflags & ~SPCFLAG_INT) {
 			if (do_specialties (cpu_cycles))
 				return;
 		}

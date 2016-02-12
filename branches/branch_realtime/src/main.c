@@ -354,6 +354,10 @@ void Main_EventHandler(void) {
                 }
                 break;
                 
+            case SDL_MOUSEWHEEL:
+                Keymap_MouseWheel(&event.wheel);
+                break;
+                
             case SDL_KEYDOWN:
                 if (ConfigureParams.Keyboard.bDisableKeyRepeat && event.key.repeat)
                     break;

@@ -63,8 +63,8 @@ uae_u32 mmu040_move16[4];
 
 uae_u16 icache_s[M68K_ICACHE_SZ];
 uae_u16 icache_u[M68K_ICACHE_SZ];
-uae_u32 icache_saddr[M68K_ICACHE_SZ];
-uae_u32 icache_uaddr[M68K_ICACHE_SZ];
+uaecptr icache_saddr[M68K_ICACHE_SZ];
+uaecptr icache_uaddr[M68K_ICACHE_SZ];
 
 void flush_icache(uaecptr addr, int n) {
     memset(icache_saddr, 0xFF, sizeof(icache_saddr));
