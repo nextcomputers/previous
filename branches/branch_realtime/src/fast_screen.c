@@ -439,15 +439,32 @@ void Screen_ModeChanged(void) {
     }
 }
 
+
 /*-----------------------------------------------------------------------*/
 /**
  * Draw screen to window/full-screen - (SC) Just status bar updates. Screen redraw is done in repaint thread.
  */
+
+static bool shieldStatusBarUpdate;
+
+static void statusBarUpdate(void) {
+    if(shieldStatusBarUpdate) return;
+    SDL_LockSurface(sdlscrn);
+    SDL_AtomicLock(&uiBufferLock);
+    memcpy(&((Uint8*)uiBuffer)[statusBar.y*sdlscrn->pitch], &((Uint8*)sdlscrn->pixels)[statusBar.y*sdlscrn->pitch], statusBar.h * sdlscrn->pitch);
+    SDL_AtomicSet(&blitUI, 1);
+    SDL_AtomicUnlock(&uiBufferLock);
+    SDL_UnlockSurface(sdlscrn);
+}
+
 bool Screen_Draw(void) {
-    
+    shieldStatusBarUpdate = true;
     Statusbar_OverlayBackup(sdlscrn);
     Statusbar_Update(sdlscrn);
+    shieldStatusBarUpdate = false;
 
+    statusBarUpdate();
+    
     return !bQuitProgram;
 }
 
@@ -464,15 +481,6 @@ static void uiUpdate(void) {
     // poor man's green-screen - would be nice if SDL had more blending modes...
     for(int i = count; --i >= 0; src++)
         *dst++ = *src == mask ? 0 : *src;
-    SDL_AtomicSet(&blitUI, 1);
-    SDL_AtomicUnlock(&uiBufferLock);
-    SDL_UnlockSurface(sdlscrn);
-}
-
-static void statusBarUpdate(void) {
-    SDL_LockSurface(sdlscrn);
-    SDL_AtomicLock(&uiBufferLock);
-    memcpy(&((Uint8*)uiBuffer)[statusBar.y*sdlscrn->pitch], &((Uint8*)sdlscrn->pixels)[statusBar.y*sdlscrn->pitch], statusBar.h * sdlscrn->pitch);
     SDL_AtomicSet(&blitUI, 1);
     SDL_AtomicUnlock(&uiBufferLock);
     SDL_UnlockSurface(sdlscrn);
