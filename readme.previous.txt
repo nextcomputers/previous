@@ -99,7 +99,7 @@ the src/ subdirectory of the build tree.
  ---------
 
 Previous is still work in progress. Some hardware is not yet emulated:
-CPU		good
+CPU		good (but not cycle-exact)
 MMU		good
 FPU		good
 DSP		good
@@ -109,7 +109,7 @@ Memory		good
 2-bit graphics	good
 Color graphics	good
 RTC		good
-Timers		buggy (not cycle-exact)
+Timers		good
 SCSI drive	good
 MO drive	good (single drive)
 Floppy drive	good
@@ -121,7 +121,7 @@ Keyboard	good
 Mouse		good
 ADB		dummy
 Nitro		dummy
-Dimension	good
+Dimension	partial (no video I/O)
 
 
 There are remaining problems with the host to emulated machine interface for
@@ -140,7 +140,7 @@ input devices.
 - Shortcuts do not work properly or overlap with host commands on some platforms.
 - CPU timings are not correct. You may experience performance differences compared 
   to real hardware.
-- There is a lot of instability when running Mac OS via Daydream.
+- There is some instability when running Mac OS via Daydream.
 - FPU only works on x86 hosts.
 - Slirp: In certain rare conditions Slirp may crash.
 
@@ -172,6 +172,7 @@ input devices.
   > Improves timings and adds a mode for higher than real speed.
   > Improves emulator efficiency through optimizations and threads.
   > Improves mouse movement handling.
+  > Improves Real Time Clock. Time is now handled correctly.
 
 
  7) Running Previous
