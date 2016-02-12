@@ -1,6 +1,6 @@
 /***************************************************************************
 
-    i860dec.inc
+    i860dec.cpp
 
     Execution engine for the Intel i860 emulator.
 

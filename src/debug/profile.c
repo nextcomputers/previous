@@ -348,7 +348,7 @@ void Profile_CpuUpdate(void)
 	}
 	
 	opcode = get_iword_prefetch (0);
-	cycles = (*cpufunctbl[opcode])(opcode) + nWaitStateCycles;
+	cycles = (*cpufunctbl[opcode])(opcode);
 	
 	if (likely(cpu_profile.data[idx].cycles < MAX_PROFILE_VALUE - cycles)) {
 			cpu_profile.data[idx].cycles += cycles;

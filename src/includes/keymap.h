@@ -17,6 +17,7 @@ char Keymap_RemapKeyToSTScanCode(SDL_Keysym* pKeySym);
 void Keymap_LoadRemapFile(char *pszFileName);
 void Keymap_DebounceAllKeys(void);
 void Keymap_KeyDown(SDL_Keysym *sdlkey);
+void Keymap_MouseWheel(SDL_MouseWheelEvent* event);
 void Keymap_KeyUp(SDL_Keysym *sdlkey);
 void Keymap_SimulateCharacter(char asckey, bool press);
 

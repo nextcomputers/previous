@@ -391,6 +391,41 @@ static Uint8 Keymap_Keyup_GetModFromSymbol(SDL_Keycode sdl_modifier) {
 
 /*-----------------------------------------------------------------------*/
 /**
+ * Mouse wheel mapped to cursor keys (currently disabled)
+ */
+
+static bool pendingX = true;
+static bool pendingY = true;
+
+static void post_key_event(int sym, int scan) {
+    SDL_Event sdlevent;
+    sdlevent.type = SDL_KEYDOWN;
+    sdlevent.key.keysym.sym      = sym;
+    sdlevent.key.keysym.scancode = scan;
+    SDL_PushEvent(&sdlevent);
+    sdlevent.type = SDL_KEYUP;
+    sdlevent.key.keysym.sym      = sym;
+    sdlevent.key.keysym.scancode = scan;
+    SDL_PushEvent(&sdlevent);
+}
+
+void Keymap_MouseWheel(SDL_MouseWheelEvent* event) {
+    if(!(pendingX)) {
+        pendingX = true;
+        if     (event->x > 0) post_key_event(SDLK_LEFT,  SDL_SCANCODE_LEFT);
+        else if(event->x < 0) post_key_event(SDLK_RIGHT, SDL_SCANCODE_RIGHT);
+    }
+    
+    if(!(pendingY)) {
+        pendingY = true;
+        if     (event->y < 0) post_key_event(SDLK_UP,   SDL_SCANCODE_UP);
+        else if(event->y > 0) post_key_event(SDLK_DOWN, SDL_SCANCODE_DOWN);
+    }
+}
+
+
+/*-----------------------------------------------------------------------*/
+/**
  * User pressed key down
  */
 void Keymap_KeyDown(SDL_Keysym *sdlkey)
@@ -420,8 +455,7 @@ void Keymap_KeyDown(SDL_Keysym *sdlkey)
 /**
  * User released key
  */
-void Keymap_KeyUp(SDL_Keysym *sdlkey)
-{
+void Keymap_KeyUp(SDL_Keysym *sdlkey) {
     Uint8 next_mod, next_key;
 
     if (ShortCut_CheckKeys(sdlkey->mod, sdlkey->sym, 0))

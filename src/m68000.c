@@ -22,7 +22,6 @@ const char M68000_fileid[] = "Hatari m68000.c : " __DATE__ " " __TIME__;
 Uint32 BusErrorAddress;         /* Stores the offending address for bus-/address errors */
 Uint32 BusErrorPC;              /* Value of the PC when bus error occurs */
 bool bBusErrorReadWrite;        /* 0 for write error, 1 for read error */
-int nWaitStateCycles;           /* Used to emulate the wait state cycles of certain IO registers */
 int BusMode = BUS_MODE_CPU;	/* Used to tell which part is owning the bus (cpu, blitter, ...) */
 
 int LastOpcodeFamily = i_NOP;	/* see the enum in readcpu.h i_XXX */
@@ -303,13 +302,12 @@ void M68000_Exception(Uint32 ExceptionVector , int ExceptionSource)
 	{
 		/* Handle autovector interrupts the UAE's way
 		 * (see intlev() and do_specialties() in UAE CPU core) */
-		/* In our case, this part is only called for HBL and VBL interrupts */
 		int intnr = exceptionNr - 24;
 		pendingInterrupts |= (1 << intnr);
 		M68000_SetSpecial(SPCFLAG_INT);
 	}
 
-	else							/* MFP or direct CPU exceptions */
+	else							/* direct CPU exceptions */
 	{
 		Uint16 SR;
 
@@ -332,20 +330,4 @@ void M68000_Exception(Uint32 ExceptionVector , int ExceptionSource)
         
         M68000_SetSR(SR);
 	}
-}
-
-
-/*-----------------------------------------------------------------------*/
-/**
- * There seem to be wait states when a program accesses certain hardware
- * registers on the ST. Use this function to simulate these wait states.
- * [NP] with some instructions like CLR, we have a read then a write at the
- * same location, so we may have 2 wait states (read and write) to add
- * (nWaitStateCycles should be reset to 0 after the cycles were added).
- */
-void M68000_WaitState(int nCycles)
-{
-	M68000_SetSpecial(SPCFLAG_EXTRA_CYCLES);
-
-	nWaitStateCycles += nCycles;	/* add all the wait states for this instruction */
 }
