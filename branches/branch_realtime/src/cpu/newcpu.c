@@ -472,9 +472,9 @@ struct regstruct regs, mmu_backup_regs;
 struct flag_struct regflags;
 static long int m68kpc_offset;
 
-#define get_ibyte_1(o) get_byte (regs.pc + (regs.pc_p - regs.pc_oldp) + (o) + 1)
-#define get_iword_1(o) get_word (regs.pc + (regs.pc_p - regs.pc_oldp) + (o))
-#define get_ilong_1(o) get_long (regs.pc + (regs.pc_p - regs.pc_oldp) + (o))
+#define get_ibyte_1(o) DBGMemory_ReadByte (regs.pc + (regs.pc_p - regs.pc_oldp) + (o) + 1)
+#define get_iword_1(o) DBGMemory_ReadWord (regs.pc + (regs.pc_p - regs.pc_oldp) + (o))
+#define get_ilong_1(o) DBGMemory_ReadLong (regs.pc + (regs.pc_p - regs.pc_oldp) + (o))
 
 static uae_s32 ShowEA (FILE *f, uae_u16 opcode, int reg, amodes mode, wordsizes size, TCHAR *buf, uae_u32 *eaddr, int safemode)
 {

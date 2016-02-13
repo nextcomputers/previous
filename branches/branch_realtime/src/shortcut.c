@@ -87,7 +87,7 @@ static void ShortCut_SoundOnOff(void)
 /**
  * Shorcut to M68K debug interface
  */
-static void ShortCut_Debug_M68K(void)
+void ShortCut_Debug_M68K(void)
 {
 	int running;
 
@@ -102,7 +102,7 @@ static void ShortCut_Debug_M68K(void)
 /**
  * Shorcut to I860 debug interface
  */
-static void ShortCut_Debug_I860(void) {
+void ShortCut_Debug_I860(void) {
     int running;
     
     if (bInFullScreen)

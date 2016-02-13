@@ -13,3 +13,6 @@ int ShortCut_CheckKeys(int modkey, int symkey, bool press);
 bool Shortcut_Invoke(const char *shortcut);
 /* Act on the stored keypress (in VBL) */
 void ShortCut_ActKey(void);
+/* Debugger invocations */
+void ShortCut_Debug_M68K(void);
+void ShortCut_Debug_I860(void);

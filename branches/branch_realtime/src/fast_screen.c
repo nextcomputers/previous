@@ -21,7 +21,6 @@ const char Screen_fileid[] = "Previous fast_screen.c : " __DATE__ " " __TIME__;
 #include "paths.h"
 #include "screen.h"
 #include "control.h"
-#include "resolution.h"
 #include "statusbar.h"
 #include "video.h"
 
@@ -310,10 +309,8 @@ void Screen_Init(void) {
 
     int width  = NeXT_SCRN_WIDTH;
     int height = NeXT_SCRN_HEIGHT;
-    int bitCount, maxW, maxH;
     
     /* Statusbar height */
-    Resolution_GetLimits(&maxW, &maxH, &bitCount);
     height += Statusbar_SetHeight(width, height);
     
     if (bInFullScreen) {
@@ -324,7 +321,7 @@ void Screen_Init(void) {
     /* Set new video mode */
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
     
-    fprintf(stderr, "SDL screen request: %d x %d @ %d (%s)\n", width, height, bitCount, bInFullScreen ? "fullscreen" : "windowed");
+    fprintf(stderr, "SDL screen request: %d x %d (%s)\n", width, height, bInFullScreen ? "fullscreen" : "windowed");
     
     int x = SDL_WINDOWPOS_UNDEFINED;
     if(ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_DUAL) {
@@ -457,7 +454,7 @@ static void statusBarUpdate(void) {
     SDL_UnlockSurface(sdlscrn);
 }
 
-bool Screen_Draw(void) {
+bool Update_StatusBar(void) {
     shieldStatusBarUpdate = true;
     Statusbar_OverlayBackup(sdlscrn);
     Statusbar_Update(sdlscrn);

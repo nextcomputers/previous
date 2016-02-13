@@ -22,7 +22,6 @@ const char Main_fileid[] = "Hatari main.c : " __DATE__ " " __TIME__;
 #include "m68000.h"
 #include "paths.h"
 #include "reset.h"
-#include "resolution.h"
 #include "screen.h"
 #include "sdlgui.h"
 #include "shortcut.h"
@@ -415,7 +414,6 @@ static void Main_Init(void) {
 		fprintf(stderr, "Could not initialize the SDL library:\n %s\n", SDL_GetError() );
 		exit(-1);
 	}
-	Resolution_Init();
 	SDLGui_Init();
 	Screen_Init();
 	Main_SetTitle(NULL);

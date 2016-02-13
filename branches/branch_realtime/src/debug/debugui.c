@@ -42,7 +42,7 @@ const char DebugUI_fileid[] = "Hatari debugui.c : " __DATE__ " " __TIME__;
 
 int bExceptionDebugging;
 
-FILE *debugOutput;
+FILE *debugOutput = NULL;
 
 static dbgcommand_t *debugCommand;
 static int debugCommands;
@@ -813,6 +813,9 @@ void DebugUI_Init(void)
     const dbgcommand_t *cpucmd;
     int cpucmds;
 
+    if(!(debugOutput))
+        debugOutput = stderr;
+        
 	/* already intialized? */
 	if (debugCommands)
 		return;
