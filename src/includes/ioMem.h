@@ -85,7 +85,6 @@ static inline void IoMem_WriteByte(Uint32 Address, Uint8 Var)
 
 void IoMem_Init(void);
 void IoMem_UnInit(void);
-void IoMem_Init_FalconInSTeBuscompatibilityMode(Uint8 value);
 
 uae_u32 IoMem_bget(uaecptr addr);
 uae_u32 IoMem_wget(uaecptr addr);
@@ -106,7 +105,6 @@ void IoMem_WriteWithoutInterception(void);
 void IoMem_ReadWithoutInterception(void);
 void IoMem_WriteWithoutInterceptionButTrace(void);
 void IoMem_ReadWithoutInterceptionButTrace(void);
-
-void IoMem_MemorySnapShot_Capture(bool bSave);
+void IoMem_Debug(void);
 
 #endif

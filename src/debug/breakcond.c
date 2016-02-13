@@ -19,7 +19,6 @@ const char BreakCond_fileid[] = "Hatari breakcond.c : " __DATE__ " " __TIME__;
 #include "main.h"
 #include "file.h"
 #include "m68000.h"
-#include "nextMemory.h"
 #include "str.h"
 #include "screen.h" /* for defines needed by video.h */
 #include "video.h"	/* for Hatari video variable addresses */
@@ -32,7 +31,6 @@ const char BreakCond_fileid[] = "Hatari breakcond.c : " __DATE__ " " __TIME__;
 #include "evaluate.h"
 #include "symbols.h"
 #include "68kDisass.h"
-
 
 /* set to 1 to enable parsing function tracing / debug output */
 #define DEBUG 0
@@ -171,17 +169,17 @@ static void _spaces(void)
 /**
  * Return value of given size read from given ST memory address
  */
-static Uint32 BreakCond_ReadSTMemory(Uint32 addr, const bc_value_t *bc_value)
+static Uint32 BreakCond_ReadNeXTMemory(Uint32 addr, const bc_value_t *bc_value)
 {
 	switch (bc_value->bits) {
 	case 32:
-		return NEXTMemory_ReadLong(addr);
+		return DBGMemory_ReadLong(addr);
 	case 16:
-		return NEXTMemory_ReadWord(addr);
+		return DBGMemory_ReadWord(addr);
 	case 8:
-		return NEXTMemory_ReadByte(addr);
+		return DBGMemory_ReadByte(addr);
 	default:
-		fprintf(stderr, "ERROR: unknown ST address size %d!\n", bc_value->bits);
+		fprintf(stderr, "ERROR: unknown address size %d!\n", bc_value->bits);
 		abort();
 	}
 }
@@ -213,7 +211,7 @@ static Uint32 BreakCond_GetValue(const bc_value_t *bc_value)
 		abort();
 	}
 	if (bc_value->is_indirect) {
-			value = BreakCond_ReadSTMemory(value, bc_value);
+			value = BreakCond_ReadNeXTMemory(value, bc_value);
 	}
 	return (value & bc_value->mask);
 }

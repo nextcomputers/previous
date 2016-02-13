@@ -709,7 +709,7 @@ static long long close_bracket (long long value)
 			operation (value, LOWEST_PREDECENCE);
             /* fetch the indirect ST RAM value */
             addr = val.buf[val.idx];
-            value = NEXTMemory_ReadLong(addr);
+            value = DBGMemory_ReadLong(addr);
             fprintf(stderr, "  value in RAM at ($%x).l = $%"FMT_ll"x\n", addr, value);
             /* restore state before parenthesis */
             op.idx = par.opx[par.idx] - 1;

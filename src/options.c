@@ -121,14 +121,6 @@ static const opt_t HatariOptions[] = {
 	{ OPT_DRIVE_LED,   NULL, "--drive-led",
 	  "<bool>", "Show overlay drive led when statusbar isn't shown" },
 
-	{ OPT_HEADER, NULL, NULL, NULL, "ST/STE specific display" },
-
-	{ OPT_HEADER, NULL, NULL, NULL, "Falcon/TT specific display" },
-
-	{ OPT_HEADER, NULL, NULL, NULL, "VDI" },
-
-	{ OPT_HEADER, NULL, NULL, NULL, "Screen capture" },
-
 	{ OPT_HEADER, NULL, NULL, NULL, "Devices" },
 	{ OPT_PRINTER,   NULL, "--printer",
 	  "<file>", "Enable printer support and write data to <file>" },
@@ -164,14 +156,12 @@ static const opt_t HatariOptions[] = {
 	  "<bool>", "Use MMU emulation" },
 
 	{ OPT_HEADER, NULL, NULL, NULL, "Misc system" },
-	{ OPT_MACHINE,   NULL, "--machine",
-	  "<x>", "Select machine type (x = st/ste/tt/falcon)" },
 	{ OPT_REALTIME,   NULL, "--realtime",
 	  "<bool>", "Use host realtime sources" },
 	{ OPT_DSP,       NULL, "--dsp",
-	  "<x>", "DSP emulation (x = none/dummy/emu, Falcon only)" },
+	  "<x>", "DSP emulation (x = none/dummy/emu)" },
 	{ OPT_MICROPHONE,   NULL, "--mic",
-	  "<bool>", "Enable/disable (Falcon only) microphone" },
+	  "<bool>", "Enable/disable microphone" },
 	{ OPT_SOUND,   NULL, "--sound",
 	  "<x>", "Sound frequency (x=off/6000-50066, off=fastest)" },
 	{ OPT_SOUNDBUFFERSIZE,   NULL, "--sound-buffer-size",
@@ -213,8 +203,8 @@ static const opt_t HatariOptions[] = {
 static void Opt_ShowVersion(void)
 {
 	printf("\n" PROG_NAME
-	       " - the Atari ST, STE, TT and Falcon emulator.\n\n");
-	printf("Hatari is free software licensed under the GNU General"
+	       " - the NeXT emulator.\n\n");
+	printf(PROG_NAME " is free software licensed under the GNU General"
 	       " Public License.\n\n");
 }
 
@@ -320,7 +310,7 @@ static void Opt_ShowHelp(void)
 	const opt_t *opt = HatariOptions;
 
 	Opt_ShowVersion();
-	printf("Usage:\n hatari [options] [directory|disk image|Atari program]\n");
+	printf("Usage:\n previous [options] [directory|disk image|Atari program]\n");
 
 	while(opt->id != OPT_ERROR)
 	{
@@ -804,19 +794,16 @@ bool Opt_ParseParameters(int argc, const char * const argv[])
 			i += 1;
 			if (strcasecmp(argv[i], "st") == 0)
 			{
-//				ConfigureParams.System.nMachineType = MACHINE_ST;
 				ConfigureParams.System.nCpuLevel = 0;
 				ConfigureParams.System.nCpuFreq = 8;
 			}
 			else if (strcasecmp(argv[i], "ste") == 0)
 			{
-//				ConfigureParams.System.nMachineType = MACHINE_STE;
 				ConfigureParams.System.nCpuLevel = 0;
 				ConfigureParams.System.nCpuFreq = 8;
 			}
 			else if (strcasecmp(argv[i], "tt") == 0)
 			{
-//				ConfigureParams.System.nMachineType = MACHINE_TT;
 				ConfigureParams.System.nCpuLevel = 3;
 				ConfigureParams.System.nCpuFreq = 32;
 			}
@@ -825,7 +812,6 @@ bool Opt_ParseParameters(int argc, const char * const argv[])
 #if ENABLE_DSP_EMU
 		ConfigureParams.System.nDSPType = DSP_TYPE_EMU;
 #endif
-//				ConfigureParams.System.nMachineType = MACHINE_FALCON;
 				ConfigureParams.System.nCpuLevel = 3;
 				ConfigureParams.System.nCpuFreq = 16;
 			}

@@ -24,6 +24,5 @@ char *Str_ToUpper(char *pString);
 char *Str_ToLower(char *pString);
 char *Str_Trunc(char *str);
 bool Str_IsHex(const char *str);
-void Str_Filename2TOSname(const char *src, char *dst);
 
 #endif  /* HATARI_STR_H */

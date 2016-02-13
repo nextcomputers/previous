@@ -83,20 +83,7 @@ static bool Control_InsertKey(const char *event)
 				key, keycode);
 			return false;
 		}
-		if (down) {
-//			IKBD_PressSTKey(keycode, true);
-		}
-		if (up) {
-//			IKBD_PressSTKey(keycode, false);
-		}
-	} else {
-		if (down) {
-//			Keymap_SimulateCharacter(key[0], true);
-		}
-		if (up) {
-//			Keymap_SimulateCharacter(key[0], false);
-		}
-	}
+    }
 #if 0
 	fprintf(stderr, "Simulated key %s of %d\n",
 		(down? (up? "press":"down") :"up"), key);

@@ -37,16 +37,6 @@ void Video_Reset(void) {
     nd_start_interrupts();
 }
 
-/*-----------------------------------------------------------------------*/
-/**
- * Draw screen (either with ST/STE shifter drawing functions or with
- * Videl drawing functions)
- */
-static void Video_DrawScreen(void) {
-    Screen_Draw();
-}
-
-
 #define NEXT_VBL_FREQ 68
 
 /**
@@ -75,10 +65,12 @@ static void Video_InterruptHandler(void) {
  * VBL interrupt : set new interrupts, draw screen, generate sound,
  * reset counters, ...
  */
+static bool statusBarToggle;
 void Video_InterruptHandler_VBL ( void ) {
 	CycInt_AcknowledgeInterrupt();
     host_blank(0, MAIN_DISPLAY, true);
-	Video_DrawScreen();
+    if(statusBarToggle) Update_StatusBar();
+    statusBarToggle = !statusBarToggle;
     Video_InterruptHandler();
     CycInt_AddRelativeInterruptUs((1000*1000)/NEXT_VBL_FREQ, INTERRUPT_VIDEO_VBL);
 }

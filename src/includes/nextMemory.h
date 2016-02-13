@@ -19,29 +19,11 @@ extern Uint8 NEXTRam[128*1024*1024];
 extern Uint8 NEXTRom[0x20000];
 extern Uint8 NEXTIo[0x20000];
 
-
-
 /* Offset NEXT address to PC pointer: */
 // # define NEXTRAM_ADDR(Var)  ((unsigned long)NEXTRam+((Uint32)(Var) & 0x03ffffff))
 
-
 /**
- * Check whether given memory address and size are within
- * valid memory area (i.e. read/write from/to there doesn't
- * overwrite Hatari's own memory & cause potential segfaults)
- * and that the size is positive.
- * 
- * If they are; return true, otherwise false.
- */
-static inline bool NEXTMemory_ValidArea(Uint32 addr, int size)
-{
-	// we are a bit optimistic...
-		return true;
-}
-
-
-/**
- * Write 32-bit word into ST memory space.
+ * Write 32-bit word into NeXT memory space.
  * NOTE - value will be convert to 68000 endian
  */
 static inline void NEXTMemory_WriteLong(Uint32 Address, Uint32 Var)
@@ -51,7 +33,7 @@ static inline void NEXTMemory_WriteLong(Uint32 Address, Uint32 Var)
 
 
 /**
- * Write 16-bit word into ST memory space.
+ * Write 16-bit word into NeXT memory space.
  * NOTE - value will be convert to 68000 endian.
  */
 static inline void NEXTMemory_WriteWord(Uint32 Address, Uint16 Var)
@@ -60,7 +42,7 @@ static inline void NEXTMemory_WriteWord(Uint32 Address, Uint16 Var)
 }
 
 /**
- * Write 8-bit byte into ST memory space.
+ * Write 8-bit byte into NeXT memory space.
  */
 static inline void NEXTMemory_WriteByte(Uint32 Address, Uint8 Var)
 {
@@ -69,7 +51,7 @@ static inline void NEXTMemory_WriteByte(Uint32 Address, Uint8 Var)
 
 
 /**
- * Read 32-bit word from ST memory space.
+ * Read 32-bit word from NeXT memory space.
  * NOTE - value will be converted to PC endian.
  */
 static inline Uint32 NEXTMemory_ReadLong(Uint32 Address)
@@ -79,7 +61,7 @@ static inline Uint32 NEXTMemory_ReadLong(Uint32 Address)
 
 
 /**
- * Read 16-bit word from ST memory space.
+ * Read 16-bit word from NeXT memory space.
  * NOTE - value will be converted to PC endian.
  */
 static inline Uint16 NEXTMemory_ReadWord(Uint32 Address)
@@ -89,15 +71,11 @@ static inline Uint16 NEXTMemory_ReadWord(Uint32 Address)
 
 
 /**
- * Read 8-bit byte from ST memory space
+ * Read 8-bit byte from NeXT memory space
  */
 static inline Uint8 NEXTMemory_ReadByte(Uint32 Address)
 {
 	return get_byte(Address);
 }
-
-
-void NEXTMemory_Clear(Uint32 StartAddress, Uint32 EndAddress);
-void NEXTMemory_SetDefaultConfig(void);
 
 #endif
