@@ -628,7 +628,7 @@ void Printer_IO_Handler(void) {
         
         lp_buffer.size = 0;
         
-        CycInt_AddRelativeInterruptTicks(200000, INTERRUPT_LP_IO);
+        CycInt_AddRelativeInterruptTicks(100000, INTERRUPT_LP_IO);
     }
 }
 
