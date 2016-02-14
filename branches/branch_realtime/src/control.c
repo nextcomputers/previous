@@ -55,19 +55,13 @@ static bool bRemotePaused;
 static bool Control_InsertKey(const char *event)
 {
 	const char *key = NULL;
-	bool up, down;
 
 	if (strncmp(event, "keypress ", 9) == 0) {
 		key = &event[9];
-		down = up = true;
 	} else if (strncmp(event, "keydown ", 8) == 0) {
 		key = &event[8];
-		down = true;
-		up = false;
 	} else if (strncmp(event, "keyup ", 6) == 0) {
 		key = &event[6];
-		down = false;
-		up = true;
 	}
 	if (!(key && key[0])) {
 		fprintf(stderr, "ERROR: '%s' contains no key press/down/up event\n", event);
