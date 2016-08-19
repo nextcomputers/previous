@@ -122,7 +122,7 @@ void scsi_write_sector(void);
 struct {
     SCSI_DEVTYPE devtype;
     FILE* dsk;
-    Uint32 size;
+    off_t size;
     bool readonly;
     Uint8 lun;
     Uint8 status;
@@ -601,7 +601,7 @@ void scsi_write_sector(void) {
                SCSIdisk[target].lba,SCSIdisk[target].blockcounter-1);
     
     /* seek to the position */
-    if ((SCSIdisk[target].dsk==NULL) || (fseek(SCSIdisk[target].dsk, SCSIdisk[target].lba*BLOCKSIZE, SEEK_SET) != 0)) {
+    if ((SCSIdisk[target].dsk==NULL) || (fseek(SCSIdisk[target].dsk, ((long)SCSIdisk[target].lba)*BLOCKSIZE, SEEK_SET) != 0)) {
         n = 0;
     } else {
         if(ConfigureParams.SCSI.nWriteProtection != WRITEPROT_ON)
@@ -684,7 +684,7 @@ void scsi_read_sector(void) {
                SCSIdisk[target].lba,SCSIdisk[target].blockcounter-1);
     
     /* seek to the position */
-    if ((SCSIdisk[target].dsk==NULL) || (fseek(SCSIdisk[target].dsk, SCSIdisk[target].lba*BLOCKSIZE, SEEK_SET) != 0)) {
+    if ((SCSIdisk[target].dsk==NULL) || (fseek(SCSIdisk[target].dsk, ((long)SCSIdisk[target].lba)*BLOCKSIZE, SEEK_SET) != 0)) {
         n = 0;
     } else {
         if(SCSIdisk[target].shadow && SCSIdisk[target].shadow[SCSIdisk[target].lba]) {
