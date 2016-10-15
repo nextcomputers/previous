@@ -249,6 +249,11 @@ static Uint8 toBCD(int val) {
     return (((val/10)%10)<<4)|(val%10);
 }
 
+/* Year is supported up to 2050 through overflow of decimal decade */
+static Uint8 toBCDyr(int val) {
+    return (((val/10)&0xF)<<4)|(val%10);
+}
+
 static int fromBCD(Uint8 bcd) {
     return ((bcd&0xF0)>>4)*10+(bcd&0xF);
 }
@@ -263,7 +268,7 @@ static void my_get_rtc_time(void) {
     rtc.time.wday  = toBCD(t.tm_wday+1);
     rtc.time.mday  = toBCD(t.tm_mday);
     rtc.time.month = toBCD(t.tm_mon+1);
-    rtc.time.year  = toBCD(t.tm_year);
+    rtc.time.year  = toBCDyr(t.tm_year);
 }
 
 static void my_set_rtc_time(int which,int val) {
@@ -275,7 +280,7 @@ static void my_set_rtc_time(int which,int val) {
     t.tm_wday = fromBCD(rtc.time.wday) - 1;
     t.tm_mday = fromBCD(rtc.time.mday);
     t.tm_mon  = fromBCD(rtc.time.month) - 1;
-    t.tm_year = 100 + fromBCD(rtc.time.year);
+    t.tm_year = fromBCD(rtc.time.year);
     
     val = fromBCD(val);
     

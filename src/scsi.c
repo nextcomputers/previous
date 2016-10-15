@@ -111,7 +111,7 @@ void SCSI_FormatDrive(Uint8 *cdb);
 /* Helpers */
 int SCSI_GetCommandLength(Uint8 opcode);
 int SCSI_GetTransferLength(Uint8 opcode, Uint8 *cdb);
-unsigned long SCSI_GetOffset(Uint8 opcode, Uint8 *cdb);
+Uint64 SCSI_GetOffset(Uint8 opcode, Uint8 *cdb);
 int SCSI_GetCount(Uint8 opcode, Uint8 *cdb);
 
 void scsi_read_sector(void);
@@ -122,7 +122,7 @@ void scsi_write_sector(void);
 struct {
     SCSI_DEVTYPE devtype;
     FILE* dsk;
-    off_t size;
+    Uint64 size;
     bool readonly;
     Uint8 lun;
     Uint8 status;
@@ -391,7 +391,7 @@ int SCSI_GetTransferLength(Uint8 opcode, Uint8 *cdb)
     COMMAND_ReadInt16(cdb, 7);
 }
 
-unsigned long SCSI_GetOffset(Uint8 opcode, Uint8 *cdb)
+Uint64 SCSI_GetOffset(Uint8 opcode, Uint8 *cdb)
 {
     return opcode < 0x20?
     // class 0
@@ -601,7 +601,7 @@ void scsi_write_sector(void) {
                SCSIdisk[target].lba,SCSIdisk[target].blockcounter-1);
     
     /* seek to the position */
-    if ((SCSIdisk[target].dsk==NULL) || (fseek(SCSIdisk[target].dsk, ((long)SCSIdisk[target].lba)*BLOCKSIZE, SEEK_SET) != 0)) {
+    if ((SCSIdisk[target].dsk==NULL) || (fseek(SCSIdisk[target].dsk, ((Uint64)SCSIdisk[target].lba)*BLOCKSIZE, SEEK_SET) != 0)) {
         n = 0;
     } else {
         if(ConfigureParams.SCSI.nWriteProtection != WRITEPROT_ON)
@@ -684,7 +684,7 @@ void scsi_read_sector(void) {
                SCSIdisk[target].lba,SCSIdisk[target].blockcounter-1);
     
     /* seek to the position */
-    if ((SCSIdisk[target].dsk==NULL) || (fseek(SCSIdisk[target].dsk, ((long)SCSIdisk[target].lba)*BLOCKSIZE, SEEK_SET) != 0)) {
+    if ((SCSIdisk[target].dsk==NULL) || (fseek(SCSIdisk[target].dsk, ((Uint64)SCSIdisk[target].lba)*BLOCKSIZE, SEEK_SET) != 0)) {
         n = 0;
     } else {
         if(SCSIdisk[target].shadow && SCSIdisk[target].shadow[SCSIdisk[target].lba]) {
