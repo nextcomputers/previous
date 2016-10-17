@@ -546,7 +546,7 @@ void SCSI_TestUnitReady(Uint8 *cdb) {
 void SCSI_ReadCapacity(Uint8 *cdb) {
     Uint8 target = SCSIbus.target;
     
-    Log_Printf(LOG_SCSI_LEVEL, "[SCSI] Read disk image: size = %i byte\n", SCSIdisk[target].size);
+    Log_Printf(LOG_SCSI_LEVEL, "[SCSI] Read disk image: size = %llu byte\n", SCSIdisk[target].size);
     
     Uint32 sectors = (SCSIdisk[target].size / BLOCKSIZE) - 1; /* last LBA */
     

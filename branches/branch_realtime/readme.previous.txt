@@ -174,6 +174,10 @@ input devices.
   > Improves mouse movement handling.
   > Improves Real Time Clock. Time is now handled correctly.
 
+  Previous v1.5 (unreleased):
+  > Fixes bug in SCSI code. Images greater than 4 GB are now supported.
+  > Fixes bug in Real Time Clock. Dates after 2000 are not accepted.
+
 
  7) Running Previous
  -------------------
