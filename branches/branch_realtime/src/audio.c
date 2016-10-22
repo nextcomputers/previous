@@ -62,6 +62,19 @@ void Audio_Input_Lock() {
     host_lock(&recBufferLock);
 }
 
+/* 
+ * Initialize recording buffer with silence to compensate for time gap
+ * between Audio_Input_Enable and first call of Audio_Input_CallBack.
+ */
+#define AUDIO_RECBUF_INIT	0 /* 16000 byte = 1 second */
+
+void Audio_Input_InitBuf() {
+	recBufferRd = 0;
+	for (recBufferWr = 0; recBufferWr < AUDIO_RECBUF_INIT; recBufferWr++) {
+		recBuffer[recBufferWr] = 0;
+	}
+}
+
 int Audio_Input_Read() {
 	Sint16 sample = 0;
 	
@@ -228,7 +241,7 @@ void Audio_Output_Enable(bool bEnable) {
 void Audio_Input_Enable(bool bEnable) {
     if (bEnable && !bRecordingBuffer) {
         /* Start recording */
-		recBufferRd = recBufferWr = 0; /* Flush residual samples from buffer */
+		Audio_Input_InitBuf();
         SDL_PauseAudioDevice(Audio_Input_Device, false);
         bRecordingBuffer = true;
     }

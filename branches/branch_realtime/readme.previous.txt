@@ -143,6 +143,8 @@ input devices.
 - There is some instability when running Mac OS via Daydream.
 - FPU only works on x86 hosts.
 - Slirp: In certain rare conditions Slirp may crash.
+- Starting sound output or sound input may cause short lags in emulation. This is most
+  likely caused by SDL or host audio hardware and drivers.
 
 
 
@@ -175,6 +177,7 @@ input devices.
   > Improves Real Time Clock. Time is now handled correctly.
 
   Previous v1.5 (unreleased):
+  > Adds emulation of soundbox microphone to enable sound recording.
   > Fixes bug in SCSI code. Images greater than 4 GB are now supported.
   > Fixes bug in Real Time Clock. Years after 1999 are now accepted.
 
