@@ -176,7 +176,7 @@ input devices.
 
   Previous v1.5 (unreleased):
   > Fixes bug in SCSI code. Images greater than 4 GB are now supported.
-  > Fixes bug in Real Time Clock. Dates after 2000 are now accepted.
+  > Fixes bug in Real Time Clock. Years after 1999 are now accepted.
 
 
  7) Running Previous

@@ -96,6 +96,10 @@ void snd_stop_output(void) {
 }
 
 void snd_start_input(Uint8 mode) {
+	if (!ConfigureParams.Sound.bEnableSound) {
+		return;
+	}
+	
     /* Starting SDL Audio */
     if (sndin_inited) {
         Audio_Input_Enable(true);
