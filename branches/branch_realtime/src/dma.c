@@ -747,22 +747,28 @@ void dma_sndout_intr() {
 
 int dma_sndin_write_memory() {
     int result = 0;
+	int value = 0;
+	
     if (dma[CHANNEL_SOUNDIN].csr&DMA_ENABLE) {
         Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel Sound In: Write to memory at $%08x, %i bytes",
                    dma[CHANNEL_SOUNDIN].next,dma[CHANNEL_SOUNDIN].limit-dma[CHANNEL_SOUNDIN].next);
-        
+#if 0
         if ((dma[CHANNEL_SOUNDIN].limit%4) || (dma[CHANNEL_SOUNDIN].next%4)) {
             Log_Printf(LOG_WARN, "[DMA] Channel Sound In: Error! Bad alignment! (Next: $%08X, Limit: $%08X)",
                        dma[CHANNEL_SOUNDIN].next, dma[CHANNEL_SOUNDIN].limit);
             abort();
         }
-        
+#endif
         TRY(prb) {
             Audio_Input_Lock();
-            for(; dma[CHANNEL_SOUNDIN].next<dma[CHANNEL_SOUNDIN].limit; dma[CHANNEL_SOUNDIN].next++, result++) {
-                int value = Audio_Input_Read();
-                if(value < 0) break;
-                NEXTMemory_WriteByte(dma[CHANNEL_SOUNDIN].next, value);
+            while (dma[CHANNEL_SOUNDIN].next<dma[CHANNEL_SOUNDIN].limit) {
+                value = Audio_Input_Read();
+				if (value < 0) {
+					break;
+				}
+				NEXTMemory_WriteByte(dma[CHANNEL_SOUNDIN].next, value);
+				dma[CHANNEL_SOUNDIN].next++;
+				result++;
             }
             Audio_Input_Unlock();
         } CATCH(prb) {
@@ -772,8 +778,10 @@ int dma_sndin_write_memory() {
         } ENDTRY
         
         dma_interrupt(CHANNEL_SOUNDIN);
+		
+		return (dma[CHANNEL_SOUNDIN].next==dma[CHANNEL_SOUNDIN].limit);
     }
-    return result;
+	return 1;
 }
 
 /* Channel Printer */
