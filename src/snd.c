@@ -172,23 +172,66 @@ bool snd_output_active() {
 void SND_In_Handler(void) {
     CycInt_AcknowledgeInterrupt();
     
-    int samples = dma_sndin_write_memory() / 2;
-
-    if(samples) {
-        Uint64 delay = samples;
-        delay       *= 1000 * 1000;
-        delay       /= AUDIO_IN_FREQUENCY;
-    
-        CycInt_AddRelativeInterruptUs(delay, INTERRUPT_SND_IN);
-    } else {
-        if(snd_input_active())
-            kms_sndin_overrun();
-    }
+    int dma_done = dma_sndin_write_memory();
+	
+	if (dma_done) {
+		if(snd_input_active()) {
+			kms_sndin_overrun();
+		}
+	} else {
+		CycInt_AddRelativeInterruptUs(10000, INTERRUPT_SND_IN);
+	}
 }
 
 bool snd_input_active() {
     return sound_input_active;
 }
+
+/* This functions generates 8-bit ulaw samples from 16 bit pcm audio */
+#define BIAS 0x84               /* define the add-in bias for 16 bit samples */
+#define CLIP 32635
+
+Uint8 snd_make_ulaw(Sint16 sample) {
+	static Sint16 exp_lut[256] = {
+		0, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
+		4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+		5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+		5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+		6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+		6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+		6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+		6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+	};
+	Sint16 sign, exponent, mantissa;
+	Uint8 ulawbyte;
+	
+	/** get the sample into sign-magnitude **/
+	sign = (sample >> 8) & 0x80;        /* set aside the sign */
+	if (sign != 0) {
+		sample = -sample;         /* get magnitude */
+	}
+	/* sample can be zero because we can overflow in the inversion,
+	 * checking against the unsigned version solves this */
+	if (((Uint16) sample) > CLIP)
+		sample = CLIP;            /* clip the magnitude */
+	
+	/** convert from 16 bit linear to ulaw **/
+	sample = sample + BIAS;
+	exponent = exp_lut[(sample >> 7) & 0xFF];
+	mantissa = (sample >> (exponent + 3)) & 0x0F;
+	ulawbyte = ~(sign | (exponent << 4) | mantissa);
+	
+	return ulawbyte;
+}
+
 
 /* These functions put samples to a buffer for further processing */
 void snd_make_double_samples(Uint8 *buffer, int len, bool repeat) {
