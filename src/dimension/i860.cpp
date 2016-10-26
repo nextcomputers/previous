@@ -544,14 +544,13 @@ void i860_cpu_device::uninit() {
     if(is_halted()) return;
     
 	halt(true);
-    send_msg(MSG_I860_KILL);
-    if(ConfigureParams.Dimension.bI860Thread) {
-        if(m_thread) {
-            host_thread_wait(m_thread);
-            m_thread = NULL;
-        }
-        send_msg(MSG_NONE);
+
+    if(m_thread) {
+        send_msg(MSG_I860_KILL);
+        host_thread_wait(m_thread);
+        m_thread = NULL;
     }
+    send_msg(MSG_NONE);
 }
 
 /* Message disaptcher - executed on i860 thread, safe to call i860 methods */
@@ -561,7 +560,7 @@ bool i860_cpu_device::handle_msgs() {
     m_port = 0;
     host_unlock(&m_port_lock);
     
-    if(ConfigureParams.Dimension.bI860Thread && msg & MSG_I860_KILL)
+    if(msg & MSG_I860_KILL)
         return false;
     
     if(msg & MSG_I860_RESET)
