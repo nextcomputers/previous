@@ -24,6 +24,14 @@ static int repainter(void* unused) {
     SDL_Texture*  ndTexture  = NULL;
     
     SDL_Rect r = {0,0,1120,832};
+    
+    ndRenderer = SDL_CreateRenderer(ndWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    
+    if (!ndRenderer) {
+        fprintf(stderr,"[ND] Failed to create renderer!\n");
+        exit(-1);
+    }
+    
     SDL_RenderSetLogicalSize(ndRenderer, r.w, r.h);
     ndTexture = SDL_CreateTexture(ndRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, r.w, r.h);
     
@@ -66,10 +74,9 @@ void nd_sdl_init() {
         SDL_GetWindowPosition(sdlWindow, &x, &y);
         SDL_GetWindowSize(sdlWindow, &w, &h);
         ndWindow   = SDL_CreateWindow("NeXTdimension",(x-w)+1, y, 1120, 832, SDL_WINDOW_HIDDEN);
-        ndRenderer = SDL_CreateRenderer(ndWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
         
-        if (!ndWindow || !ndRenderer) {
-            fprintf(stderr,"[ND] Failed to create renderer!\n");
+        if (!ndWindow) {
+            fprintf(stderr,"[ND] Failed to create window!\n");
             exit(-1);
         }
     }
