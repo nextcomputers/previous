@@ -54,6 +54,7 @@ static void Audio_Input_CallBack(void *userdata, Uint8 *stream, int len) {
     Audio_Input_Lock();
     while(len--)
         recBuffer[recBufferWr++&REC_BUFFER_MASK] = *stream++;
+	recBufferWr &= REC_BUFFER_MASK;
 	recBufferWr &= ~1; /* Just to be sure */
     Audio_Input_Unlock();
 }
@@ -84,6 +85,7 @@ int Audio_Input_Read() {
 		} else {
 			sample = ((recBuffer[recBufferRd&REC_BUFFER_MASK]<<8)|recBuffer[(recBufferRd&REC_BUFFER_MASK)+1]);
 			recBufferRd += 2;
+			recBufferRd &= REC_BUFFER_MASK;
 			return snd_make_ulaw(sample);
 		}
 	} else {

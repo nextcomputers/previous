@@ -1,6 +1,6 @@
 
 
-                                 Previous 1.4
+                                 Previous 1.5
 
 
                     http://previous.alternative-system.com/
@@ -62,7 +62,8 @@ Previous emulates the following machines:
 For using Previous, you need to have installed the following libraries:
 
 Required:
-- The SDL library v2.0.4 or later (http://www.libsdl.org)
+- The SDL library v2.0.5 or later (http://www.libsdl.org)
+- The libpng PNG reference library (http://www.libpng.org)
 - The zlib compression library (http://www.gzip.org/zlib/)
 
 
@@ -116,7 +117,7 @@ Floppy drive	good
 Ethernet	good
 Serial		dummy
 Printer		good
-Sound		partial (no microphone)
+Sound		good
 Keyboard	good
 Mouse		good
 ADB		dummy
@@ -176,10 +177,12 @@ input devices.
   > Improves mouse movement handling.
   > Improves Real Time Clock. Time is now handled correctly.
 
-  Previous v1.5 (unreleased):
+  Previous v1.5:
   > Adds emulation of soundbox microphone to enable sound recording.
   > Fixes bug in SCSI code. Images greater than 4 GB are now supported.
   > Fixes bug in Real Time Clock. Years after 1999 are now accepted.
+  > Fixes bug that prevented screen output on Linux.
+  > Fixes bug that caused NeXTdimension to fail after disabling thread.
 
 
  7) Running Previous
