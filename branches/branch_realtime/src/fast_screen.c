@@ -207,6 +207,9 @@ static int repainter(void* unused) {
     
     Uint32 r, g, b, a;
     
+    sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    SDL_RenderSetLogicalSize(sdlRenderer, width, height);
+    
     uiTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, width, height);
     SDL_SetTextureBlendMode(uiTexture, SDL_BLENDMODE_BLEND);
     
@@ -340,9 +343,6 @@ void Screen_Init(void) {
         fprintf(stderr,"Failed to create window: %s!\n", SDL_GetError());
         exit(-1);
     }
-
-    sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    SDL_RenderSetLogicalSize(sdlRenderer, width, height);
 
     initLatch     = SDL_CreateSemaphore(0);
     repaintThread = SDL_CreateThread(repainter, "[Previous] screen repaint", NULL);
