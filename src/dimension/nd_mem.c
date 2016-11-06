@@ -64,6 +64,24 @@ Uint8 ND_dmem[512];
 #define ND_EEPROM2_SIZE 0x00080000
 #define ND_EEPROM2_MASK 0x0007FFFC
 
+/* NeXTdimension unknown registers */
+#define ND_UNKNWN_START 0xFF400000
+#define ND_UNKNWN_SIZE  0x00000200
+#define ND_UNKNWN_MASK  0x000001FF
+
+/* Function to fix address for ROM access */
+static uaecptr nd_rom_addr_fix(uaecptr addr)
+{
+#if ND_STEP
+    addr >>= 2;
+#else
+    addr &= ~3;
+    addr |= (addr>>17)&3;
+#endif
+    addr &= ND_EEPROM_MASK;
+    return addr;
+}
+
 /* Memory banks */
 
 nd_addrbank *nd_mem_banks[65536];
@@ -295,23 +313,23 @@ static void nd_vram_bput(uaecptr addr, uae_u32 b)
 /* NeXTdimension ROM */
 static uae_u32 nd_rom_lget(uaecptr addr)
 {
-	addr &= ND_EEPROM_MASK;
-    addr |= 3; /* byte lane at msb */
-	return (ND_rom[addr] << 24);
+    addr = nd_rom_addr_fix(addr);
+    
+	return (ND_rom[addr] << 24); /* byte lane at msb */
 }
 
 static uae_u32 nd_rom_wget(uaecptr addr)
 {
-	addr &= ND_EEPROM_MASK;
-    addr |= 3; /* byte lane at msb */
-	return (ND_rom[addr] << 8);
+    addr = nd_rom_addr_fix(addr);
+    
+    return (ND_rom[addr] << 8); /* byte lane at msb */
 }
 
 static uae_u32 nd_rom_bget(uaecptr addr)
 {
-	addr &= ND_EEPROM_MASK;
-    addr |= 3; /* byte lane at msb */
-	return ND_rom[addr];
+    addr = nd_rom_addr_fix(addr);
+    
+    return ND_rom[addr];
 }
 
 static uae_u32 nd_rom_cs8get(uaecptr addr)
@@ -355,22 +373,54 @@ static void nd_illegal_bput(uaecptr addr, uae_u32 b)
     write_log("[ND] Illegal bput at %08X\n",addr);
 }
 
+/* Unknown register access functions (memory controller step 1) */
+#if ND_STEP
+static uae_u32 nd_unknown_lget(uaecptr addr)
+{
+    write_log("[ND] Unknown lget at %08X\n",addr);
+    return 0;
+}
 
+static uae_u32 nd_unknown_wget(uaecptr addr)
+{
+    write_log("[ND] Unknown wget at %08X\n",addr);
+    return 0;
+}
+
+static uae_u32 nd_unknown_bget(uaecptr addr)
+{
+    write_log("[ND] Unknown bget at %08X\n",addr);
+    return 0;
+}
+
+static void nd_unknown_lput(uaecptr addr, uae_u32 l)
+{
+    write_log("[ND] Unknown lput at %08X: %08X\n",addr,l);
+}
+
+static void nd_unknown_wput(uaecptr addr, uae_u32 w)
+{
+    write_log("[ND] Unknown wput at %08X: %04X\n",addr,w);
+}
+
+static void nd_unknown_bput(uaecptr addr, uae_u32 b)
+{
+    write_log("[ND] Unknown bput at %08X: %02X\n",addr,b);
+}
+#endif
 
 /* NeXTdimension ROM access */
 static uae_u32 nd_rom_access_bget(uaecptr addr)
 {
-    addr &= ND_EEPROM2_MASK;
-    addr |= (addr>>17)&3;
-    addr &= ~(3<<17);
+    addr = nd_rom_addr_fix(addr);
+    
     return nd_rom_read(addr);
 }
 
 static void nd_rom_access_bput(uaecptr addr, uae_u32 b)
 {
-    addr &= ND_EEPROM2_MASK;
-    addr |= (addr>>17)&3;
-    addr &= ~(3<<17);
+    addr = nd_rom_addr_fix(addr);
+    
     nd_rom_write(addr, b);
 }
 
@@ -506,6 +556,15 @@ static nd_addrbank nd_illegal_bank =
     nd_illegal_bget
 };
 
+#if ND_STEP
+static nd_addrbank nd_unknown_bank =
+{
+    nd_unknown_lget, nd_unknown_wget, nd_unknown_bget,
+    nd_unknown_lput, nd_unknown_wput, nd_unknown_bput,
+    nd_unknown_bget
+};
+#endif
+
 static void nd_init_mem_banks (void)
 {
     int i;
@@ -583,4 +642,8 @@ void nd_memory_init(void) {
     
     write_log("[ND] Mapping RAMDAC registers at $%08x\n", ND_RAMDAC_START);
     nd_map_banks(&nd_ramdac_bank, ND_RAMDAC_START>>16, 1);
+#if ND_STEP
+    write_log("[ND] Mapping Unknown register at $%08x\n", ND_UNKNWN_START);
+    nd_map_banks(&nd_unknown_bank, ND_UNKNWN_START>>16, 1);
+#endif
 }

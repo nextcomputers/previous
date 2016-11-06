@@ -114,7 +114,11 @@ static void blitColor(SDL_Texture* tex) {
  Dimension format is 8bit per pixel, big-endian: RRGGBBAA
  */
 void blitDimension(SDL_Texture* tex) {
+#if ND_STEP
+    Uint32* src = (Uint32*)&ND_vram[0];
+#else
     Uint32* src = (Uint32*)&ND_vram[ND_vram_off];
+#endif
     void*   pixels;
     int     d;
     Uint32  format;

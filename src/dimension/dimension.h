@@ -5,6 +5,9 @@
 
 #define ND_SLOT 2
 
+/* NeXTdimension memory controller revision (0 and 1 allowed) */
+#define ND_STEP 1
+
 Uint32 nd_slot_lget(Uint32 addr);
 Uint16 nd_slot_wget(Uint32 addr);
 Uint8  nd_slot_bget(Uint32 addr);
