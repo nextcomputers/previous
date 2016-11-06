@@ -48,6 +48,9 @@
 
 #define CSR2_GLOBAL_ACCESS  0x00000001
 
+#define SID_SID_MASK        0x0000000F
+#define SID_STEP_MASK       0x000000F0
+
 #define CSRDMA_VISIBLE_EN   0x00000001
 #define CSRDMA_BLANKED_EN   0x00000002
 #define CSRDMA_READ_EN      0x00000004
@@ -106,7 +109,7 @@ void nd_devs_init() {
     nd_mc.csr0          = CSR0_i860PIN_CS8;
     nd_mc.csr1          = 0;
     nd_mc.csr2          = 0;
-    nd_mc.sid           = ND_SLOT;
+    nd_mc.sid           = ND_SLOT|(ND_STEP<<4);
     nd_mc.dma_csr       = 0;
     nd_mc.dma_start     = 0;
     nd_mc.dma_width     = 0;

@@ -35,7 +35,7 @@ Uint8 nd_rom_read(Uint32 addr) {
             switch (addr) {
                 case 0: return ROM_ID_MFG;
                 case 1: return ROM_ID_DEV;
-                default: return 0;
+                default: return ROM_ID_DEV;
             }
         case (ROM_CMD_ERASE|ROM_CMD_VERIFY):
             nd_rom_command = ROM_CMD_READ;

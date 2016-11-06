@@ -3967,7 +3967,7 @@ void i860_cpu_device::reset() {
 	   Proc type: 1 = XR, 2 = XP   (XR has 8KB data cache -> DCS = 1).
 	   Steppings (XR): 3,4,5,6,7 = (B2, C0, B3, C1, D0 respectively).
 	   Steppings (XP): 0, 2, 3, 4 = (A0, B0, B1, B2) (any others?).  */
-	m_cregs[CR_EPSR] = 0x00040701;
+	m_cregs[CR_EPSR] = 0x00040601;
 
 	/* Set DPS, BL, ATE = 0 and the undefined parts also to 0. But CS8 mode to 1 */
 	m_cregs[CR_DIRBASE] = 0x00000080;
