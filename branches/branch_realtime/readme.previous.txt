@@ -184,6 +184,9 @@ input devices.
   > Fixes bug that prevented screen output on Linux.
   > Fixes bug that caused NeXTdimension to fail after disabling thread.
 
+  Previous v1.6 (unreleased):
+  > Fixes bug that prevented NeXTdimension from stopping in rare cases.
+
 
  7) Running Previous
  -------------------
