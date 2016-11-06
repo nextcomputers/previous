@@ -317,10 +317,10 @@ static void nd_mc_write_register(uaecptr addr, uae_u32 val) {
                 i860_reset();
                 val &= ~CSR0_i860PIN_RESET;
             }
-            if ((nd_mc.csr0 & CSR0_i860_INT) && (nd_mc.csr0 & CSR0_i860_IMASK))
+            if ((val & CSR0_i860_INT) && (val & CSR0_i860_IMASK))
                 i860_interrupt();
             
-            if((nd_mc.csr0 & CSR0_BE_INT) && (nd_mc.csr0 & CSR0_BE_IMASK))
+            if((val & CSR0_BE_INT) && (val & CSR0_BE_IMASK))
                 i860_interrupt();
             
             nd_mc.csr0 = val;
