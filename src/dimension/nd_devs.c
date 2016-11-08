@@ -449,8 +449,24 @@ inline void nd_io_bput(uaecptr addr, uae_u32 b) {
 
 bt463 nd_ramdac;
 
+inline uae_u32 nd_ramdac_lget(uaecptr addr) {
+    return bt463_bget(&nd_ramdac, addr) << 24;
+}
+
+inline uae_u32 nd_ramdac_wget(uaecptr addr) {
+    return bt463_bget(&nd_ramdac, addr) << 8;
+}
+
 inline uae_u32 nd_ramdac_bget(uaecptr addr) {
     return bt463_bget(&nd_ramdac, addr);
+}
+
+inline void nd_ramdac_lput(uaecptr addr, uae_u32 l) {
+    bt463_bput(&nd_ramdac, addr, l >> 24);
+}
+
+inline void nd_ramdac_wput(uaecptr addr, uae_u32 w) {
+    bt463_bput(&nd_ramdac, addr, w >> 8);
 }
 
 inline void nd_ramdac_bput(uaecptr addr, uae_u32 b) {

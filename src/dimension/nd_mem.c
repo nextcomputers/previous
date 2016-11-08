@@ -544,8 +544,8 @@ static nd_addrbank nd_io_bank =
 
 static nd_addrbank nd_ramdac_bank =
 {
-    nd_ramdac_bget, nd_ramdac_bget, nd_ramdac_bget,
-    nd_ramdac_bput, nd_ramdac_bput, nd_ramdac_bput,
+    nd_ramdac_lget, nd_ramdac_wget, nd_ramdac_bget,
+    nd_ramdac_lput, nd_ramdac_wput, nd_ramdac_bput,
     nd_ramdac_bget
 };
 
