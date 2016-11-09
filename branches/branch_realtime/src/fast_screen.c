@@ -117,7 +117,7 @@ void blitDimension(SDL_Texture* tex) {
 #if ND_STEP
     Uint32* src = (Uint32*)&ND_vram[0];
 #else
-    Uint32* src = (Uint32*)&ND_vram[ND_vram_off];
+    Uint32* src = (Uint32*)&ND_vram[16];
 #endif
     void*   pixels;
     int     d;

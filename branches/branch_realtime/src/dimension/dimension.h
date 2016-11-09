@@ -49,7 +49,6 @@ void   nd_board_wr128_be(Uint32 addr, const Uint32* val);
 
 extern Uint8  ND_ram[64*1024*1024];
 extern Uint8  ND_rom[128*1024];
-extern Uint32 ND_vram_off;
 extern Uint8  ND_vram[4*1024*1024];
 
 typedef void (*i860_run_func)(int);

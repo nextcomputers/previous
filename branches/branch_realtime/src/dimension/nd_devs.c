@@ -520,7 +520,6 @@ void nd_dp_lput(uaecptr addr, uae_u32 v) {
         case 0x310: case 0x314: case 0x318: case 0x31C:
         case 0x320: case 0x324: case 0x328: case 0x32C:
         case 0x330: case 0x334: case 0x338: case 0x33C:
-            ND_vram_off = v * 4;
             nd_dp.doff  = v;
             break;
         case 0x340:

@@ -78,6 +78,9 @@ void nd_rom_write(Uint32 addr, Uint8 val) {
 void nd_rom_load(void) {
     FILE* romfile;
     
+    nd_rom_command = ROM_CMD_READ;
+    nd_rom_last_addr = 0;
+    
     if (!File_Exists(ConfigureParams.Dimension.szRomFileName)) {
         Log_Printf(LOG_WARN, "[ND] Error: ROM file does not exist or is not readable");
         return;
