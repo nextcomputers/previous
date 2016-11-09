@@ -186,6 +186,8 @@ input devices.
 
   Previous v1.6 (unreleased):
   > Fixes bug that prevented NeXTdimension from stopping in rare cases.
+  > Fixes bug that caused external i860 interrupts to be delayed.
+  > Improves dummy RAMDAC emulation.
 
 
  7) Running Previous

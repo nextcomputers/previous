@@ -20,7 +20,7 @@
 #define ND_VRAM_SIZE	0x00400000
 #define ND_VRAM_MASK	0x003FFFFF
 
-#define ND_EEPROM_START	0xFFFE0000
+#define ND_EEPROM_START	0xFFF00000
 #define ND_EEPROM_SIZE	0x00020000
 #define ND_EEPROM_MASK	0x0001FFFF
 
@@ -33,7 +33,6 @@ uae_u32 ND_RAM_bankmask2;
 uae_u32 ND_RAM_bankmask3;
 
 Uint8  ND_ram[64*1024*1024];
-Uint32 ND_vram_off;
 Uint8  ND_vram[4*1024*1024];
 Uint8  ND_rom[128*1024];
 
@@ -58,11 +57,6 @@ Uint8 ND_dmem[512];
 #define ND_DP_START	0xF0000000
 #define ND_DP_SIZE  0x00001000
 #define ND_DP_MASK  0x00000FFF
-
-/* NeXTdimension EEPROM access */
-#define ND_EEPROM2_STRT 0xFFF00000
-#define ND_EEPROM2_SIZE 0x00080000
-#define ND_EEPROM2_MASK 0x0007FFFC
 
 /* NeXTdimension unknown registers */
 #define ND_UNKNWN_START 0xFF400000
@@ -315,21 +309,42 @@ static uae_u32 nd_rom_lget(uaecptr addr)
 {
     addr = nd_rom_addr_fix(addr);
     
-	return (ND_rom[addr] << 24); /* byte lane at msb */
+	return (nd_rom_read(addr) << 24); /* byte lane at msb */
 }
 
 static uae_u32 nd_rom_wget(uaecptr addr)
 {
     addr = nd_rom_addr_fix(addr);
     
-    return (ND_rom[addr] << 8); /* byte lane at msb */
+    return (nd_rom_read(addr) << 8); /* byte lane at msb */
 }
 
 static uae_u32 nd_rom_bget(uaecptr addr)
 {
     addr = nd_rom_addr_fix(addr);
     
-    return ND_rom[addr];
+    return nd_rom_read(addr);
+}
+
+static void nd_rom_lput(uaecptr addr, uae_u32 l)
+{
+    addr = nd_rom_addr_fix(addr);
+    
+    nd_rom_write(addr, l >> 24);
+}
+
+static void nd_rom_wput(uaecptr addr, uae_u32 w)
+{
+    addr = nd_rom_addr_fix(addr);
+    
+    nd_rom_write(addr, w >> 8);
+}
+
+static void nd_rom_bput(uaecptr addr, uae_u32 b)
+{
+    addr = nd_rom_addr_fix(addr);
+    
+    nd_rom_write(addr, b);
 }
 
 static uae_u32 nd_rom_cs8get(uaecptr addr)
@@ -408,21 +423,6 @@ static void nd_unknown_bput(uaecptr addr, uae_u32 b)
     write_log("[ND] Unknown bput at %08X: %02X\n",addr,b);
 }
 #endif
-
-/* NeXTdimension ROM access */
-static uae_u32 nd_rom_access_bget(uaecptr addr)
-{
-    addr = nd_rom_addr_fix(addr);
-    
-    return nd_rom_read(addr);
-}
-
-static void nd_rom_access_bput(uaecptr addr, uae_u32 b)
-{
-    addr = nd_rom_addr_fix(addr);
-    
-    nd_rom_write(addr, b);
-}
 
 /* NeXTdimension dither memory & datapath */
 
@@ -516,16 +516,9 @@ static nd_addrbank nd_vram_bank =
 static nd_addrbank nd_rom_bank =
 {
 	nd_rom_lget, nd_rom_wget, nd_rom_bget,
-    nd_illegal_lput, nd_illegal_wput, nd_illegal_bput,
+    nd_rom_lput, nd_rom_wput, nd_rom_bput,
     nd_rom_cs8get
 
-};
-
-static nd_addrbank nd_rom_access_bank =
-{
-    nd_illegal_lget, nd_illegal_wget, nd_rom_access_bget,
-    nd_illegal_lput, nd_illegal_wput, nd_rom_access_bput,
-    nd_illegal_bget
 };
 
 static nd_addrbank nd_dmem_bank =
@@ -627,11 +620,9 @@ void nd_memory_init(void) {
     
     write_log("[ND] Mapping video memory at $%08x: %iMB\n", ND_VRAM_START, ND_VRAM_SIZE/(1024*1024));
     nd_map_banks(&nd_vram_bank, ND_VRAM_START>>16, (4*ND_VRAM_SIZE)>>16);
-    ND_vram_off = 0;
     
 	write_log("[ND] Mapping ROM at $%08x: %ikB\n", ND_EEPROM_START, ND_EEPROM_SIZE/1024);
-	nd_map_banks(&nd_rom_bank, ND_EEPROM_START>>16, ND_EEPROM_SIZE>>16);
-    nd_map_banks(&nd_rom_access_bank, ND_EEPROM2_STRT>>16, ND_EEPROM2_SIZE>>16);
+	nd_map_banks(&nd_rom_bank, ND_EEPROM_START>>16, (ND_EEPROM_SIZE*8)>>16);
     nd_rom_load();
 	
     write_log("[ND] Mapping dither memory and data path at $%08x: %ibyte\n", ND_DMEM_START, ND_DMEM_SIZE);

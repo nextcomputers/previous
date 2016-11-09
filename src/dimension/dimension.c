@@ -10,7 +10,6 @@
 
 Uint8  ND_ram[64*1024*1024];
 Uint8  ND_rom[128*1024];
-Uint32 ND_vram_off;
 Uint8  ND_vram[4*1024*1024];
 
 /* NeXTdimension board and slot memory */
