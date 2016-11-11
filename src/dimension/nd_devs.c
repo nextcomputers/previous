@@ -7,6 +7,7 @@
 #include "m68000.h"
 #include "sysdeps.h"
 #include "dimension.h"
+#include "nd_vio.h"
 #include "nd_devs.h"
 #include "nd_nbic.h"
 #include "i860cfg.h"
@@ -88,9 +89,14 @@ static volatile struct {
 #define DP_IIC_MORE 0x20000000
 #define DP_IIC_BUSY 0x80000000
 
+#define DP_CSR_MASK_DIS     0x01
+#define DP_CSR_NTSC         0x02 /* 0 = NTSC, 1 = PAL */
+#define DP_CSR_JPEG_MASK    0xFC
+
+
 static struct {
     uae_u8  iic_addr;
-    uae_u8  iic_msg[4096];
+    uae_u8  iic_msg;
     uae_u32 iic_msgsz;
     int     iic_busy;
     uae_u32 doff; // (SC) wild guess - vram offset in pixels?
@@ -476,7 +482,9 @@ inline void nd_ramdac_bput(uaecptr addr, uae_u32 b) {
 /* NeXTdimension data path */
 
 static void nd_dp_iicmsg(void) {
-    Log_Printf(LOG_WARN, "[ND] data path IIC msg addr:%02X msg[%d]=%02X", nd_dp.iic_addr, nd_dp.iic_msgsz-1, nd_dp.iic_msg[nd_dp.iic_msgsz-1]);
+    Log_Printf(LOG_NONE, "[ND] data path IIC msg addr:%02X msg[%d]=%02X", nd_dp.iic_addr, nd_dp.iic_msgsz-1, nd_dp.iic_msg);
+    
+    nd_video_dev_write(nd_dp.iic_addr, nd_dp.iic_msgsz-1, nd_dp.iic_msg);
 }
 
 uae_u32 nd_dp_lget(uaecptr addr) {
@@ -545,14 +553,16 @@ void nd_dp_lput(uaecptr addr, uae_u32 v) {
             break;
         case 0x360:
             nd_dp.iic_msgsz = 0;
-            nd_dp.iic_addr  = v >> 8;
-            nd_dp.iic_msg[nd_dp.iic_msgsz++] = v;
+            nd_dp.iic_addr  = (v >> 8) & 0xFF;
+            nd_dp.iic_msg   = v;
+            nd_dp.iic_msgsz++;
             nd_dp.iic_stat_addr |= DP_IIC_BUSY;
             nd_dp.iic_busy       = 10;
             nd_dp_iicmsg();
             break;
         case 0x364:
-            nd_dp.iic_msg[nd_dp.iic_msgsz++] = v;
+            nd_dp.iic_msg = v;
+            nd_dp.iic_msgsz++;
             nd_dp.iic_stat_addr |= DP_IIC_BUSY;
             nd_dp.iic_busy       = 10;
             nd_dp_iicmsg();
