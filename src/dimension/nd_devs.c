@@ -575,16 +575,26 @@ void nd_dp_lput(uaecptr addr, uae_u32 v) {
 void nd_set_blank_state(int src, bool state) {
     switch (src) {
         case ND_DISPLAY:
-            if(state)   nd_mc.csr0 |= CSR0_VBL_INT | CSR0_VBLANK;
-            else        nd_mc.csr0 &= ~CSR0_VBLANK;
+            if(state) {
+                nd_mc.csr0 |= CSR0_VBL_INT | CSR0_VBLANK;
+                if (nd_mc.csr0 & CSR0_VBL_IMASK) {
+                    i860_interrupt();
+                }
+            } else {
+                nd_mc.csr0 &= ~CSR0_VBLANK;
+            }
             break;
         case ND_VIDEO:
-            if(state)   nd_mc.csr0 |= CSR0_VIOVBL_INT | CSR0_VIOBLANK;
-            else        nd_mc.csr0 &= ~CSR0_VIOBLANK;
+            if(state) {
+                nd_mc.csr0 |= CSR0_VIOVBL_INT | CSR0_VIOBLANK;
+                if (nd_mc.csr0 & CSR0_VIOVBL_IMASK) {
+                    i860_interrupt();
+                }
+            } else {
+                nd_mc.csr0 &= ~CSR0_VIOBLANK;
+            }
             break;
     }
-    if(nd_mc.csr0 & (CSR0_VBL_IMASK | CSR0_VIOVBL_IMASK))
-        i860_interrupt();
 }
 
 static const char* nd_dump_path = "nd_memory.bin";
