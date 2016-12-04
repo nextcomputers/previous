@@ -772,6 +772,7 @@ int dma_sndin_write_memory() {
 		
 		Audio_Input_Unlock();
 
+        dma[CHANNEL_SOUNDIN].saved_limit = dma[CHANNEL_SOUNDIN].next;
         dma_interrupt(CHANNEL_SOUNDIN);
 		
 		return (dma[CHANNEL_SOUNDIN].next==dma[CHANNEL_SOUNDIN].limit);

@@ -77,6 +77,10 @@ const INTERCEPT_ACCESS_FUNC IoMemTable_NEXT[] =
 	{ 0x02004250, SIZE_LONG, DMA_Init_Read, DMA_Init_Write },
 	
 	/* Channel Sound in */
+	{ 0x02004070, SIZE_LONG, DMA_Saved_Next_Read, DMA_Saved_Next_Write },
+	{ 0x02004074, SIZE_LONG, DMA_Saved_Limit_Read, DMA_Saved_Limit_Write },
+	{ 0x02004078, SIZE_LONG, DMA_Saved_Start_Read, DMA_Saved_Start_Write },
+	{ 0x0200407c, SIZE_LONG, DMA_Saved_Stop_Read, DMA_Saved_Stop_Write },
 	{ 0x02004080, SIZE_LONG, DMA_Next_Read, DMA_Next_Write },
 	{ 0x02004084, SIZE_LONG, DMA_Limit_Read, DMA_Limit_Write },
 	{ 0x02004088, SIZE_LONG, DMA_Start_Read, DMA_Start_Write },
