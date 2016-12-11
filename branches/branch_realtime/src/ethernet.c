@@ -82,11 +82,6 @@ bool enet_stopped;
 #define RXMODE_ENA_RST      0x04
 #define RXMODE_MATCH_MODE   0x03
 
-#define RX_NOPACKETS        0   // Accept no packets
-#define RX_LIMITED          1   // Accept broadcast/limited
-#define RX_NORMAL           2   // Accept broadcast/multicast
-#define RX_PROMISCUOUS      3   // Accept all packets
-
 #define EN_RESET            0x80    /* w */
 
 
@@ -265,6 +260,18 @@ static void enet_rx_interrupt(Uint8 intr) {
 }
 
 /* Functions to find out if we are intended to receive a packet */
+
+/* Non-turbo */
+#define RX_NOPACKETS        0   // Accept no packets
+#define RX_LIMITED          1   // Accept broadcast/limited
+#define RX_NORMAL           2   // Accept broadcast/multicast
+#define RX_PROMISCUOUS      3   // Accept all packets
+
+/* Turbo */
+#define RX_ENABLED      0x80    // Accept packets
+#define RX_ANY          0x01    // Accept any packets
+#define RX_OWN          0x02    // Accept own packets
+
 static bool recv_multicast(Uint8 *packet) {
     if (packet[0]&0x01)
         return true;
@@ -294,6 +301,18 @@ static bool recv_me(Uint8 *packet) {
         return false;
 }
 
+static bool recv_me_turbo(Uint8 *packet) {
+    if (packet[0] == enet.mac_addr[0] &&
+        packet[1] == enet.mac_addr[1] &&
+        packet[2] == enet.mac_addr[2] &&
+        packet[3] == enet.mac_addr[3] &&
+        packet[4] == enet.mac_addr[4] &&
+        packet[5] == enet.mac_addr[5])
+        return true;
+    else
+        return false;
+}
+
 static bool recv_broadcast(Uint8 *packet) {
     if (packet[0] == 0xFF &&
         packet[1] == 0xFF &&
@@ -307,6 +326,24 @@ static bool recv_broadcast(Uint8 *packet) {
 }
 
 static bool enet_packet_for_me(Uint8 *packet) {
+    
+    if (ConfigureParams.System.bTurbo) {
+        if (enet.rx_mode&RX_ENABLED) {
+            if (enet.rx_mode&RX_ANY) {
+                return true;
+            } else if (enet.rx_mode&RX_OWN) {
+                if (recv_broadcast(packet) || recv_me_turbo(packet)) {
+                    return true;
+                }
+            } else {
+                if (recv_broadcast(packet)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
     switch (enet.rx_mode&RXMODE_MATCH_MODE) {
         case RX_NOPACKETS:
             return false;
@@ -503,11 +540,6 @@ static void new_enet_io(void) {
 	switch (receiver_state) {
 		case RECV_STATE_WAITING:
 			if (enet_rx_buffer.size>0) {
-				if (!(enet.rx_mode&RXMODE_ENABLE)) {
-					Log_Printf(LOG_WARN, "[newEN] Receiver disabled. Discarding packet.");
-					enet_rx_buffer.size = 0;
-					break; /* Keep waiting until receiver is enabled */
-				}
 				Statusbar_BlinkLed(DEVICE_LED_ENET);
 				Log_Printf(LOG_EN_LEVEL, "[newEN] Receiving packet from %02X:%02X:%02X:%02X:%02X:%02X",
 						   enet_rx_buffer.data[6], enet_rx_buffer.data[7], enet_rx_buffer.data[8],
