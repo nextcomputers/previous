@@ -187,6 +187,8 @@ input devices.
   Previous v1.6 (unreleased):
   > Fixes bug that prevented NeXTdimension from stopping in rare cases.
   > Fixes bug that caused external i860 interrupts to be delayed.
+  > Fixes bug that prevented sound input in NeXTstep 0.8.
+  > Fixes bug that caused temporary speed anomalies after pausing.
   > Improves dummy RAMDAC emulation.
 
 
