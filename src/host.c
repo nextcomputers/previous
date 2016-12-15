@@ -44,6 +44,7 @@ static bool         osDarkmatter;
 
 void host_reset() {
     perfCounterStart  = SDL_GetPerformanceCounter();
+    pauseTimeStamp    = perfCounterStart;
     perfFrequency     = SDL_GetPerformanceFrequency();
     ticksStart        = SDL_GetTicks();
     unixTimeStart     = time(NULL);
@@ -178,7 +179,7 @@ void host_pause_time(bool pausing) {
     if(pausing) {
         pauseTimeStamp = SDL_GetPerformanceCounter();
     } else {
-        perfCounterStart -= SDL_GetPerformanceCounter() - pauseTimeStamp;
+        perfCounterStart += SDL_GetPerformanceCounter() - pauseTimeStamp;
     }
 }
 
