@@ -64,16 +64,21 @@ static Uint64 lastCycles;
 static double speedFactor;
 static char   speedMsg[32];
 
-static const char* Main_Speed(double realTime, double hostTime) {
+void Main_Speed(double realTime, double hostTime) {
     double dRT = realTime - lastRT;
     speedFactor = nCyclesMainCounter - lastCycles;
     speedFactor /= ConfigureParams.System.nCpuFreq;
     speedFactor /= 1000 * 1000;
     speedFactor /= dRT;
-    sprintf(speedMsg, "%.3f", speedFactor);
     lastRT     = realTime;
     lastCycles = nCyclesMainCounter;
-    return speedMsg;
+}
+
+void Main_SpeedReset(void) {
+    double realTime, hostTime;
+    host_time(&realTime, &hostTime);
+    lastRT     = realTime;
+    lastCycles = nCyclesMainCounter;
 }
 
 const char* Main_SpeedMsg() {

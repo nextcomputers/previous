@@ -47,6 +47,7 @@ static const char* Reset_NeXT(bool bCold)
     host_reset();                 /* Reset host related timing vars */
     
 	CycInt_Reset();               /* Reset interrupts */
+    Main_SpeedReset();            /* Reset speed reporting system */
 	Video_Reset();                /* Reset video */
 	TMC_Reset();				  /* Reset TMC Registers */
 	SCR_Reset();                  /* Reset System Control Registers */

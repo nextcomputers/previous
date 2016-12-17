@@ -75,6 +75,7 @@ void Main_WarpMouse(int x, int y);
 void Main_EventHandler(void);
 void Main_EventHandlerInterrupt(void);
 void Main_SetTitle(const char *title);
+void Main_SpeedReset(void);
 const char* Main_SpeedMsg(void);
 
 #endif /* ifndef HATARI_MAIN_H */
