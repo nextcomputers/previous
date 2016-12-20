@@ -87,8 +87,10 @@ const char* Main_SpeedMsg() {
         if(ConfigureParams.System.bRealtime) {
             sprintf(speedMsg, "%dMHz/", (int)(ConfigureParams.System.nCpuFreq * speedFactor + 0.5));
         } else {
-            if (speedFactor < 0.8) sprintf(speedMsg, "%.1fx%dMHz/", speedFactor, ConfigureParams.System.nCpuFreq);
-            else                   sprintf(speedMsg, "%dMHz/",                   ConfigureParams.System.nCpuFreq);
+            if ((speedFactor < 0.8) || (speedFactor > 1.1))
+                sprintf(speedMsg, "%.1fx%dMHz/", speedFactor, ConfigureParams.System.nCpuFreq);
+            else
+                sprintf(speedMsg, "%dMHz/",                   ConfigureParams.System.nCpuFreq);
         }
     }
     return speedMsg;
@@ -414,7 +416,7 @@ static void Main_Init(void) {
 
 	/* Init SDL's video subsystem. Note: Audio and joystick subsystems
 	   will be initialized later (failures there are not fatal). */
-	if (SDL_Init(SDL_INIT_VIDEO | Opt_GetNoParachuteFlag()) < 0)
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | Opt_GetNoParachuteFlag()) < 0)
 	{
 		fprintf(stderr, "Could not initialize the SDL library:\n %s\n", SDL_GetError() );
 		exit(-1);
