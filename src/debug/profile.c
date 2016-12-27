@@ -339,6 +339,7 @@ bool Profile_CpuStart(void)
  */
 void Profile_CpuUpdate(void)
 {
+#if 0
 	Uint32 idx, opcode, cycles;
 	
 	idx = address2index(M68000_GetPC());
@@ -353,6 +354,7 @@ void Profile_CpuUpdate(void)
 	if (likely(cpu_profile.data[idx].cycles < MAX_PROFILE_VALUE - cycles)) {
 			cpu_profile.data[idx].cycles += cycles;
 	}
+#endif
 }
 
 
