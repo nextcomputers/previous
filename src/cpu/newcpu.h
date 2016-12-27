@@ -9,13 +9,10 @@
 #ifndef UAE_NEWCPU_H
 #define UAE_NEWCPU_H
 
-//#include "uae/types.h"
 #include "readcpu.h"
 #include "compat.h"
 #include "maccess.h"
-//#include "events.h"
 #include "memory.h"
-//#include "custom.h"
 
 /* Possible exceptions sources for M68000_Exception() and Exception() */
 // TODO : remove when not used anymore in m68000.c
@@ -40,8 +37,10 @@
 #define SPCFLAG_MODE_CHANGE 0x800
 #define SPCFLAG_DSP 0x1000
 
+#define WITH_SOFTFLOAT
+
 #ifdef WITH_SOFTFLOAT
-#include <softfloat.h>
+#include "softfloat.h"
 #endif
 #if 0
 #ifndef SET_CFLG
@@ -660,9 +659,6 @@ extern void m68k_disasm (uaecptr addr, uaecptr *nextpc, int cnt);
 extern void m68k_disasm_2 (TCHAR *buf, int bufsize, uaecptr addr, uaecptr *nextpc, int cnt, uae_u32 *seaddr, uae_u32 *deaddr, int safemode);
 extern void sm68k_disasm (TCHAR*, TCHAR*, uaecptr addr, uaecptr *nextpc);
 extern int get_cpu_model (void);
-#ifdef WINUAE_FOR_HATARI
-extern void m68k_disasm_file (FILE *f, uaecptr addr, uaecptr *nextpc, int cnt);
-#endif
 
 extern void set_cpu_caches (bool flush);
 extern void flush_cpu_caches(bool flush);
@@ -732,10 +728,6 @@ extern void fill_prefetch (void);
 extern void fill_prefetch_020 (void);
 extern void fill_prefetch_030 (void);
 
-#ifdef WINUAE_FOR_HATARI
-//extern void m68k_reset (bool hardreset);	// TODO remove
-#endif
-
 #define CPU_OP_NAME(a) op ## a
 
 /* 68060 */
@@ -788,9 +780,6 @@ extern void compemu_reset(void);
 #endif
 bool check_prefs_changed_comp (bool);
 extern void flush_dcache (uaecptr, int);
-#ifdef WINUAE_FOR_HATARI
-extern void flush_instr_cache (uaecptr, int);
-#endif
 extern void flush_mmu (uaecptr, int);
 
 extern int movec_illg (int regno);
@@ -822,21 +811,5 @@ void cpu_semaphore_get(void);
 void cpu_semaphore_release(void);
 bool execute_other_cpu(int until);
 void execute_other_cpu_single(void);
-
-#ifdef WINUAE_FOR_HATARI
-/*** Hatari ***/
-
-/* Family of the latest instruction executed (to check for pairing) */
-extern int OpcodeFamily;			/* see instrmnem in readcpu.h */
-
-/* How many cycles to add to the current instruction in case a "misaligned" bus access is made */
-/* (e.g. used when addressing mode is d8(an,ix)) */
-extern int BusCyclePenalty;
-
-/* To redirect WinUAE's prints to our own file */
-extern FILE *console_out_FILE;
-
-/*** Hatari ***/
-#endif
 
 #endif /* UAE_NEWCPU_H */

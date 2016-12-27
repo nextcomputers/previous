@@ -28,8 +28,8 @@ endif(WIN32)
 
 	set(CPUDIR cpu)
 
-include_directories(${CMAKE_BINARY_DIR} includes debug ${CPUDIR} dsp dimension slirp
-		    ${SDL2_INCLUDE_DIR})
+include_directories(${CMAKE_BINARY_DIR} includes debug softfloat ${CPUDIR} 
+		    dsp dimension slirp ${SDL2_INCLUDE_DIR})
 
 if(ZLIB_FOUND)
 	include_directories(${ZLIB_INCLUDE_DIR})
@@ -44,9 +44,10 @@ if(X11_FOUND)
 endif(X11_FOUND)
 
 
-link_directories(${CMAKE_CURRENT_BINARY_DIR}/debug ${CMAKE_CURRENT_BINARY_DIR}/gui-sdl ${CMAKE_CURRENT_BINARY_DIR}/${CPUDIR} ${CMAKE_CURRENT_BINARY_DIR}/dsp ${CMAKE_CURRENT_BINARY_DIR}/dimension ${CMAKE_CURRENT_BINARY_DIR}/slirp) 
+link_directories(${CMAKE_CURRENT_BINARY_DIR}/debug ${CMAKE_CURRENT_BINARY_DIR}/softfloat ${CMAKE_CURRENT_BINARY_DIR}/gui-sdl ${CMAKE_CURRENT_BINARY_DIR}/${CPUDIR} ${CMAKE_CURRENT_BINARY_DIR}/dsp ${CMAKE_CURRENT_BINARY_DIR}/dimension ${CMAKE_CURRENT_BINARY_DIR}/slirp) 
 
 add_subdirectory(debug)
+add_subdirectory(softfloat)
 add_subdirectory(gui-sdl)
 add_subdirectory(${CPUDIR})
 add_subdirectory(dsp)
@@ -88,7 +89,7 @@ else()
 	add_executable(Previous ${SOURCES})
 endif(ENABLE_OSX_BUNDLE)
 
-target_link_libraries(Previous Debug GuiSdl UaeCpu DSP Dimension Slirp ${SDL2_LIBRARY})
+target_link_libraries(Previous Debug SoftFloat GuiSdl UaeCpu DSP Dimension Slirp ${SDL2_LIBRARY})
 
 if(MATH_FOUND AND NOT APPLE)
 	target_link_libraries(Previous ${MATH_LIBRARY})
