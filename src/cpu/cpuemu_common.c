@@ -153,7 +153,10 @@ int m68k_move2c (int regno, uae_u32 *regp)
 		case 0x805: regs.mmusr = *regp; break;
 			/* 68040/060 */
 		case 0x806: regs.urp = *regp & 0xfffffe00; break;
-		case 0x807: regs.srp = *regp & 0xfffffe00; break;
+		case 0x807:
+                regs.srp = *regp & 0xfffffe00;
+                host_darkmatter(regs.srp == regs.urp);
+                break;
 			/* 68060 only */
 		case 0x808:
 			{
