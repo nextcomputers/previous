@@ -1120,14 +1120,6 @@ uae_u32 mmu030_table_search(uaecptr addr, uae_u32 fc, bool write, int level) {
         bool early_termination = false;
         
         int i;
-#ifdef WINUAE_FOR_HATARI
-	/* NP TODO : phys_get_long / phys_put_long need supervisor bit to access */
-	/* the translation table at $700. Should it be automatically set by the MMU ? */
-	int old_regs_s;
-
-	old_regs_s = regs.s;
-	regs.s = 1;	/* needed for putlong / getlong */
-#endif
     
     TRY(prb) {
         /* Use super user root pointer if enabled in TC register and access is in
@@ -1464,10 +1456,6 @@ uae_u32 mmu030_table_search(uaecptr addr, uae_u32 fc, bool write, int level) {
         write_log(_T("MMU: Bus error while %s descriptor!\n"),
                   bBusErrorReadWrite?_T("reading"):_T("writing"));
     } ENDTRY
-
-#ifdef WINUAE_FOR_HATARI
-    regs.s = old_regs_s;
-#endif
 
     /* check if we have to handle ptest */
     if (level) {
