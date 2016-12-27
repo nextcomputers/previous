@@ -16,7 +16,7 @@ int dostats = 0;
 #endif
 int slirp_debug = 0;
 
-extern char *strerror _P((int));
+char *strerror _P((int));
 
 /* Carry over one item from main.c so that the tty's restored. 
  * Only done when the tty being used is /dev/tty --RedWolf */
@@ -50,11 +50,9 @@ debug_init(file, dbg)
 /*
  * Dump a packet in the same format as tcpdump -x
  */
+#if 0
 #ifdef DEBUG
-void
-dump_packet(dat, n)
-	void *dat;
-	int n;
+static void dump_packet(void *dat, int n)
 {
 	u_char *pptr = (u_char *)dat;
 	int j,k;
@@ -69,6 +67,7 @@ dump_packet(dat, n)
 		fflush(dfd);
 	}
 }
+#endif
 #endif
 
 #if 0

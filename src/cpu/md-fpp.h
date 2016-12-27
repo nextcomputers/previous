@@ -20,6 +20,8 @@
 #define	FPCR_PRECISION_DOUBLE	0x00000080
 #define FPCR_PRECISION_EXTENDED	0x00000000
 
+extern uae_u32 get_fpsr (void);
+
 STATIC_INLINE void exten_zeronormalize(uae_u32 *pwrd1, uae_u32 *pwrd2, uae_u32 *pwrd3)
 {
 	uae_u32 wrd1 = *pwrd1;

@@ -106,9 +106,9 @@ extern struct instr {
 	char head, tail, clocks, fetchmode;
 } *table68k;
 
-extern void read_table68k (void);
-extern void do_merges (void);
-extern int get_no_mismatches (void);
-extern int nr_cpuop_funcs;
+void read_table68k (void);
+void do_merges (void);
+int get_no_mismatches (void);
+int nr_cpuop_funcs;
 
 #define _T

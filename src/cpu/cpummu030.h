@@ -90,12 +90,12 @@ void uae_mmu030_put_lrmw(uaecptr addr, uae_u32 val, int size);
 
 uae_u32 mmu030_get_generic(uaecptr addr, uae_u32 fc, int size, int accesssize, int flags);
 
-extern uae_u16 REGPARAM3 mmu030_get_word_unaligned(uaecptr addr, uae_u32 fc, int flags) REGPARAM;
-extern uae_u32 REGPARAM3 mmu030_get_long_unaligned(uaecptr addr, uae_u32 fc, int flags) REGPARAM;
-extern uae_u16 REGPARAM3 mmu030_get_lrmw_word_unaligned(uaecptr addr, uae_u32 fc, int flags) REGPARAM;
-extern uae_u32 REGPARAM3 mmu030_get_lrmw_long_unaligned(uaecptr addr, uae_u32 fc, int flags) REGPARAM;
-extern void REGPARAM3 mmu030_put_word_unaligned(uaecptr addr, uae_u16 val, uae_u32 fc, int flags) REGPARAM;
-extern void REGPARAM3 mmu030_put_long_unaligned(uaecptr addr, uae_u32 val, uae_u32 fc, int flags) REGPARAM;
+uae_u16 REGPARAM3 mmu030_get_word_unaligned(uaecptr addr, uae_u32 fc, int flags) REGPARAM;
+uae_u32 REGPARAM3 mmu030_get_long_unaligned(uaecptr addr, uae_u32 fc, int flags) REGPARAM;
+uae_u16 REGPARAM3 mmu030_get_lrmw_word_unaligned(uaecptr addr, uae_u32 fc, int flags) REGPARAM;
+uae_u32 REGPARAM3 mmu030_get_lrmw_long_unaligned(uaecptr addr, uae_u32 fc, int flags) REGPARAM;
+void REGPARAM3 mmu030_put_word_unaligned(uaecptr addr, uae_u16 val, uae_u32 fc, int flags) REGPARAM;
+void REGPARAM3 mmu030_put_long_unaligned(uaecptr addr, uae_u32 val, uae_u32 fc, int flags) REGPARAM;
 
 static ALWAYS_INLINE uae_u32 uae_mmu030_get_ilong(uaecptr addr)
 {
@@ -457,9 +457,9 @@ STATIC_INLINE uae_u32 next_ilong_mmu030 (void)
 	return v;
 }
 
-extern void m68k_do_rts_mmu030 (void);
-extern void m68k_do_rte_mmu030 (uaecptr a7);
-extern void flush_mmu030 (uaecptr, int);
-extern void m68k_do_bsr_mmu030 (uaecptr oldpc, uae_s32 offset);
-extern void mmu030_page_fault(uaecptr addr, bool read, int flags, uae_u32 fc);
+void m68k_do_rts_mmu030 (void);
+void m68k_do_rte_mmu030 (uaecptr a7);
+void flush_mmu030 (uaecptr, int);
+void m68k_do_bsr_mmu030 (uaecptr oldpc, uae_s32 offset);
+void mmu030_page_fault(uaecptr addr, bool read, int flags, uae_u32 fc);
 #endif

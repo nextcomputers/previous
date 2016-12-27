@@ -121,7 +121,7 @@ static int get_dns_addr(struct in_addr *pdns_addr)
 #endif
 
 #ifdef _WIN32
-void slirp_cleanup(void)
+static void slirp_cleanup(void)
 {
     WSACleanup();
 }
@@ -424,7 +424,7 @@ void slirp_select_poll(fd_set *readfds, fd_set *writefds, fd_set *xfds)
 			    /* Connected */
 			    so->so_state &= ~SS_ISFCONNECTING;
 			    
-			    ret = send(so->s, &ret, 0, 0);
+			    ret = send(so->s, "", 0, 0);
 			    if (ret < 0) {
 			      /* XXXXX Must fix, zero bytes is a NOP */
 			      if (errno == EAGAIN || errno == EWOULDBLOCK ||
@@ -550,10 +550,10 @@ struct arphdr
 	unsigned char		ar_tip[4];		/* target IP address		*/
 };
 
-void arp_input(const uint8_t *pkt, int pkt_len)
+static void arp_input(const uint8_t *pkt, int pkt_len)
 {
-    struct ethhdr *eh = (struct ethhdr *)pkt;
-    struct arphdr *ah = (struct arphdr *)(pkt + ETH_HLEN);
+    const struct ethhdr *eh = (const struct ethhdr *)pkt;
+    const struct arphdr *ah = (const struct arphdr *)(pkt + ETH_HLEN);
     uint8_t arp_reply[ETH_HLEN + sizeof(struct arphdr)];
     struct ethhdr *reh = (struct ethhdr *)arp_reply;
     struct arphdr *rah = (struct arphdr *)(arp_reply + ETH_HLEN);
@@ -665,6 +665,6 @@ int slirp_redir(int is_udp, int host_port,
 int slirp_add_exec(int do_pty, const char *args, int addr_low_byte, 
                   int guest_port)
 {
-    return add_exec(&exec_list, do_pty, (char *)args, 
+    return add_exec(&exec_list, do_pty, args, 
                     addr_low_byte, htons(guest_port));
 }

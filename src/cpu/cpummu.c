@@ -61,6 +61,16 @@ int mmu040_movem;
 uaecptr mmu040_movem_ea;
 uae_u32 mmu040_move16[4];
 
+uae_u16 icache_s[M68K_ICACHE_SZ];
+uae_u16 icache_u[M68K_ICACHE_SZ];
+uaecptr icache_saddr[M68K_ICACHE_SZ];
+uaecptr icache_uaddr[M68K_ICACHE_SZ];
+
+void flush_icache(uaecptr addr, int n) {
+    memset(icache_saddr, 0xFF, sizeof(icache_saddr));
+    memset(icache_uaddr, 0xFF, sizeof(icache_uaddr));
+}
+
 static void mmu_dump_ttr(const TCHAR * label, uae_u32 ttr)
 {
 	DUNUSED(label);
@@ -232,7 +242,7 @@ static void mmu_dump_table(const char * label, uaecptr root_ptr)
 #endif
 
 /* {{{ mmu_dump_atc */
-void mmu_dump_atc(void)
+static void mmu_dump_atc(void)
 {
 
 }
@@ -387,15 +397,6 @@ void mmu_bus_error(uaecptr addr, int fc, bool write, int size, bool rmw, uae_u32
 
 	regs.mmu_fault_addr = addr;
 
-#if 0
-	if (m68k_getpc () == 0x0004B0AC) {
-		write_log (_T("*"));
-#if 0
-		extern void activate_debugger(void);
-		activate_debugger ();
-#endif
-	}
-#endif
 	THROW(2);
 }
 
@@ -668,7 +669,7 @@ uae_u32 REGPARAM2 mmu_get_long_unaligned(uaecptr addr, bool data, bool rmw)
 	return res;
 }
 
-uae_u16 REGPARAM2 mmu_get_lrmw_word_unaligned(uaecptr addr)
+static uae_u16 REGPARAM2 mmu_get_lrmw_word_unaligned(uaecptr addr)
 {
 	uae_u16 res;
 
@@ -686,7 +687,7 @@ uae_u16 REGPARAM2 mmu_get_lrmw_word_unaligned(uaecptr addr)
 	return res;
 }
 
-uae_u32 REGPARAM2 mmu_get_lrmw_long_unaligned(uaecptr addr)
+static uae_u32 REGPARAM2 mmu_get_lrmw_long_unaligned(uaecptr addr)
 {
 	uae_u32 res;
 

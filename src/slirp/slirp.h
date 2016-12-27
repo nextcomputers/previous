@@ -102,7 +102,7 @@ typedef u_int32_t uint32;
 #include <stdio.h>
 #include <errno.h>
 
-#ifndef HAVE_MEMMOVE
+#if HAVE_MEMMOVE == 1
 #define memmove(x, y, z) bcopy(y, x, z)
 #endif
 
@@ -257,19 +257,19 @@ void if_start _P((struct ttys *));
 #ifdef BAD_SPRINTF
 # define vsprintf vsprintf_len
 # define sprintf sprintf_len
- extern int vsprintf_len _P((char *, const char *, va_list));
- extern int sprintf_len _P((char *, const char *, ...));
+ int vsprintf_len _P((char *, const char *, va_list));
+ int sprintf_len _P((char *, const char *, ...));
 #endif
 
 #ifdef DECLARE_SPRINTF
 # ifndef BAD_SPRINTF
- extern int vsprintf _P((char *, const char *, va_list));
+ int vsprintf _P((char *, const char *, va_list));
 # endif
- extern int vfprintf _P((FILE *, const char *, va_list));
+ int vfprintf _P((FILE *, const char *, va_list));
 #endif
 
 #ifndef HAVE_STRERROR
- extern char *strerror _P((int error));
+ char *strerror _P((int error));
 #endif
 
 #ifndef HAVE_INDEX
@@ -300,8 +300,7 @@ void if_output _P((struct socket *, struct mbuf *));
 /* ip_input.c */
 void ip_init _P((void));
 void ip_input _P((struct mbuf *));
-static struct ip *
-ip_reass(register struct ip *ip, register struct ipq *);
+struct ip *ip_reass(register struct ip *ip, register struct ipq *);
 void ip_freef _P((struct ipq *));
 void ip_enq _P((register struct ipasfrag *, register struct ipasfrag *));
 void ip_deq _P((register struct ipasfrag *));

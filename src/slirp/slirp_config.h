@@ -107,9 +107,6 @@
 /* Define if you have drand48 */
 #undef HAVE_DRAND48
 
-/* Define if you have memmove */
-#define HAVE_MEMMOVE
-
 /* Define if you have gethostid */
 #undef HAVE_GETHOSTID
 

@@ -10,6 +10,10 @@
 
 #define __USE_ISOC9X  /* We might be able to pick up a NaN */
 
+#ifdef __MINGW32__
+#define __USE_MINGW_ANSI_STDIO 1
+#endif
+
 #include <math.h>
 #include <float.h>
 #include <fenv.h>
@@ -24,11 +28,8 @@
 
 #include "options_cpu.h"
 #include "memory.h"
-#include "custom.h"
-#include "events.h"
 #include "newcpu.h"
 #include "md-fpp.h"
-#include "savestate.h"
 #include "cpu_prefetch.h"
 #include "cpummu.h"
 #include "cpummu030.h"
@@ -43,11 +44,6 @@
 
 #define DEBUG_FPP 0
 #define EXCEPTION_FPP 0
-
-STATIC_INLINE int isinrom (void)
-{
-	return (munge24 (m68k_getpc ()) & 0xFFF80000) == 0xF80000 && !currprefs.mmu_model;
-}
 
 static uae_u32 xhex_pi[]    ={0x2168c235, 0xc90fdaa2, 0x4000};
 uae_u32 xhex_exp_1[] ={0xa2bb4a9a, 0xadf85458, 0x4000};
@@ -65,7 +61,6 @@ uae_u32 xhex_1e512[] ={0xa60e91c7, 0xe319a0ae, 0x46a3};
 uae_u32 xhex_1e1024[]={0x81750c17, 0xc9767586, 0x4d48};
 uae_u32 xhex_1e2048[]={0xc53d5de5, 0x9e8b3b5d, 0x5a92};
 uae_u32 xhex_1e4096[]={0x8a20979b, 0xc4605202, 0x7525};
-static uae_u32 xhex_inf[]   ={0x00000000, 0x00000000, 0x7fff};
 static uae_u32 xhex_nan[]   ={0xffffffff, 0xffffffff, 0x7fff};
 #if USE_LONG_DOUBLE
 static long double *fp_pi     = (long double *)xhex_pi;
@@ -84,7 +79,6 @@ static long double *fp_1e512  = (long double *)xhex_1e512;
 static long double *fp_1e1024 = (long double *)xhex_1e1024;
 static long double *fp_1e2048 = (long double *)xhex_1e2048;
 static long double *fp_1e4096 = (long double *)xhex_1e4096;
-static long double *fp_inf    = (long double *)xhex_inf;
 static long double *fp_nan    = (long double *)xhex_nan;
 #else
 static uae_u32 dhex_pi[]    ={0x54442D18, 0x400921FB};
@@ -194,7 +188,7 @@ static void normalize(uae_u32 *pwrd1, uae_u32 *pwrd2, uae_u32 *pwrd3)
 }
 #endif
 
-bool fpu_get_constant(fpdata *fp, int cr)
+static bool fpu_get_constant(fpdata *fp, int cr)
 {
 	fptype f;
 	switch (cr & 0x7f)
@@ -315,40 +309,11 @@ typedef uae_s64 tointtype;
 typedef uae_s32 tointtype;
 #endif
 
-static void fpu_format_error (void)
-{
-	uaecptr newpc;
-	regs.t0 = regs.t1 = 0;
-	MakeSR ();
-	if (!regs.s) {
-		regs.usp = m68k_areg (regs, 7);
-		m68k_areg (regs, 7) = regs.isp;
-	}
-	regs.s = 1;
-	m68k_areg (regs, 7) -= 2;
-	x_put_long (m68k_areg (regs, 7), 0x0000 + 14 * 4);
-	m68k_areg (regs, 7) -= 4;
-	x_put_long (m68k_areg (regs, 7), m68k_getpc ());
-	m68k_areg (regs, 7) -= 2;
-	x_put_long (m68k_areg (regs, 7), regs.sr);
-	newpc = x_get_long (regs.vbr + 14 * 4);
-	m68k_setpc (newpc);
-#ifdef JIT
-	set_special (SPCFLAG_END_COMPILE);
-#endif
-	regs.fp_exception = true;
-}
-
 #define FPU_EXP_UNIMP_INS 0
 #define FPU_EXP_DISABLED 1
 #define FPU_EXP_UNIMP_DATATYPE_PACKED_PRE 2
 #define FPU_EXP_UNIMP_DATATYPE_PACKED_POST 3
 #define FPU_EXP_UNIMP_EA 4
-
-static void fpu_arithmetic_exception (uae_u16 opcode, uae_u16 extra, uae_u32 ea, uaecptr oldpc, int type, fpdata *src, int reg)
-{
-	// TODO
-}
 
 static void fpu_op_unimp (uae_u16 opcode, uae_u16 extra, uae_u32 ea, uaecptr oldpc, int type, fpdata *src, int reg)
 {
@@ -698,13 +663,13 @@ STATIC_INLINE tointtype toint (fptype src, fptype minval, fptype maxval)
 				result = (int)fp_round_to_zero (src);
 				break;
 			case FPCR_ROUND_MINF:
-				result = (int)fp_round_to_minus_infinity (src);
+				result = fp_round_to_minus_infinity (src);
 				break;
 			case FPCR_ROUND_NEAR:
 				result = fp_round_to_nearest (src);
 				break;
 			case FPCR_ROUND_PINF:
-				result = (int)fp_round_to_plus_infinity (src);
+				result = fp_round_to_plus_infinity (src);
 				break;
 		}
 		return result;
@@ -797,7 +762,7 @@ STATIC_INLINE void set_fpsr (uae_u32 x)
 		fpset (&regs.fp_result, 1);
 }
 
-uae_u32 get_ftag (uae_u32 w1, uae_u32 w2, uae_u32 w3)
+static uae_u32 get_ftag (uae_u32 w1, uae_u32 w2, uae_u32 w3)
 {
 	int exp = (w1 >> 16) & 0x7fff;
 	
@@ -861,14 +826,14 @@ static fptype to_pack (uae_u32 *wrd)
 	*cp++ = ((wrd[0] >> 16) & 0xf) + '0';
 	*cp = 0;
 #if USE_LONG_DOUBLE
-	sscanf (str, "%Le", &d);
+	d = strtold(str, NULL);
 #else
-	sscanf (str, "%le", &d);
+	d = strtod(str, NULL);
 #endif
 	return d;
 }
 
-void from_pack (fptype src, uae_u32 *wrd, int kfactor)
+static void from_pack (fptype src, uae_u32 *wrd, int kfactor)
 {
 	int i, j, t;
 	int exp;
@@ -1013,7 +978,7 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fpdata *src, uaecptr old
 	uae_u32 ad = 0;
 	static const int sz1[8] = { 4, 4, 12, 12, 2, 8, 1, 0 };
 	static const int sz2[8] = { 4, 4, 12, 12, 2, 8, 2, 0 };
-	uae_u32 exts[3];
+	uae_u32 exts[3] = {0,0,0};
 	int doext = 0;
 
 	if (!(extra & 0x4000)) {
@@ -1397,7 +1362,7 @@ STATIC_INLINE int get_fp_ad (uae_u32 opcode, uae_u32 * ad)
 	return 1;
 }
 
-int fpp_cond (int condition)
+static int fpp_cond (int condition)
 {
 	int N = (regs.fp_result.fp < 0.0);
 	int Z = (regs.fp_result.fp == 0.0);
@@ -1844,7 +1809,6 @@ void fpuop_save (uae_u32 opcode)
 
 void fpuop_restore (uae_u32 opcode)
 {
-	int fpu_version = get_fpu_version ();
 	uaecptr pc = m68k_getpc () - 2;
 	uae_u32 ad;
 	uae_u32 d;
@@ -1868,7 +1832,6 @@ void fpuop_restore (uae_u32 opcode)
 		return;
 	regs.fpiar = pc;
 
-	uae_u32 pad = ad;
 	if (incr < 0) {
 		ad -= 4;
 		d = x_get_long (ad);
@@ -2566,100 +2529,6 @@ void fpu_reset (void)
 	regs.fpu_exp_state = 0;
 	fpset (&regs.fp_result, 1);
 	native_set_fpucw (regs.fpcr);
-	fpux_restore (NULL);
-}
-
-uae_u8 *restore_fpu (uae_u8 *src)
-{
-	uae_u32 w1, w2, w3;
-	int i;
-	uae_u32 flags;
-
-	changed_prefs.fpu_model = currprefs.fpu_model = restore_u32 ();
-	flags = restore_u32 ();
-	for (i = 0; i < 8; i++) {
-		w1 = restore_u32 ();
-		w2 = restore_u32 ();
-		w3 = restore_u16 ();
-		to_exten (&regs.fp[i], w1, w2, w3);
-	}
-	regs.fpcr = restore_u32 ();
-	native_set_fpucw (regs.fpcr);
-	regs.fpsr = restore_u32 ();
-	regs.fpiar = restore_u32 ();
-	if (flags & 0x80000000) {
-		restore_u32 ();
-		restore_u32 ();
-	}
-	if (flags & 0x40000000) {
-		w1 = restore_u32();
-		w2 = restore_u32();
-		w3 = restore_u16();
-		to_exten(&regs.exp_src1, w1, w2, w3);
-		w1 = restore_u32();
-		w2 = restore_u32();
-		w3 = restore_u16();
-		to_exten(&regs.exp_src2, w1, w2, w3);
-		regs.exp_pack[0] = restore_u32();
-		regs.exp_pack[1] = restore_u32();
-		regs.exp_pack[2] = restore_u32();
-		regs.exp_opcode = restore_u16();
-		regs.exp_extra = restore_u16();
-		regs.exp_type = restore_u16();
-	}
-	regs.fpu_state = (flags & 1) ? 0 : 1;
-	regs.fpu_exp_state = (flags & 2) ? 1 : 0;
-	if (flags & 4)
-		regs.fpu_exp_state = 2;
-	write_log(_T("FPU: %d\n"), currprefs.fpu_model);
-	return src;
-}
-
-uae_u8 *save_fpu (int *len, uae_u8 *dstptr)
-{
-	uae_u32 w1, w2, w3;
-	uae_u8 *dstbak, *dst;
-	int i;
-
-	*len = 0;
-	if (currprefs.fpu_model == 0)
-		return 0;
-	if (dstptr)
-		dstbak = dst = dstptr;
-	else
-		dstbak = dst = xmalloc (uae_u8, 4+4+8*10+4+4+4+4+4+2*10+3*(4+2));
-	save_u32 (currprefs.fpu_model);
-	save_u32 (0x80000000 | 0x40000000 | (regs.fpu_state == 0 ? 1 : 0) | (regs.fpu_exp_state ? 2 : 0) | (regs.fpu_exp_state > 1 ? 4 : 0));
-	for (i = 0; i < 8; i++) {
-		from_exten (&regs.fp[i], &w1, &w2, &w3);
-		save_u32 (w1);
-		save_u32 (w2);
-		save_u16 (w3);
-	}
-	save_u32 (regs.fpcr);
-	save_u32 (regs.fpsr);
-	save_u32 (regs.fpiar);
-
-	save_u32 (-1);
-	save_u32 (0);
-
-	from_exten(&regs.exp_src1, &w1, &w2, &w3);
-	save_u32(w1);
-	save_u32(w2);
-	save_u16(w3);
-	from_exten(&regs.exp_src2, &w1, &w2, &w3);
-	save_u32(w1);
-	save_u32(w2);
-	save_u16(w3);
-	save_u32(regs.exp_pack[0]);
-	save_u32(regs.exp_pack[1]);
-	save_u32(regs.exp_pack[2]);
-	save_u16(regs.exp_opcode);
-	save_u16(regs.exp_extra);
-	save_u16(regs.exp_type);
-
-	*len = dst - dstbak;
-	return dstbak;
 }
 
 #ifdef _MSC_VER
