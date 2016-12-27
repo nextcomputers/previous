@@ -350,7 +350,7 @@ int DebugCpu_Register(int nArgc, char *psArgs[])
 	{
 		uaecptr nextpc;
 		/* use the UAE function instead */
-		m68k_dumpstate(debugOutput, &nextpc);
+		m68k_dumpstate(&nextpc);
 		fflush(debugOutput);
 		return DEBUGGER_CMDDONE;
 	}

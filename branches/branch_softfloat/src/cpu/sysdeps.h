@@ -474,12 +474,9 @@ void flush_log (void);
 void close_console (void);
 void reopen_console (void);
 void console_out (const TCHAR *);
-void console_out_f (const TCHAR *, ...);
 void console_flush (void);
 int console_get (TCHAR *, int);
 TCHAR console_getch (void);
-/*extern void f_out (void *, const TCHAR *, ...);*/
-TCHAR* buf_out (TCHAR *buffer, int *bufsize, const TCHAR *format, ...);
 void gui_message (const TCHAR *,...);
 int gui_message_multibutton (int flags, const TCHAR *format,...);
 #define write_log_err write_log
