@@ -13,6 +13,7 @@
 #include "newcpu.h"
 #include "cpummu.h"
 #include "cpummu030.h"
+#include "host.h"
 
 void val_move2c2 (int regno, uae_u32 val)
 {
