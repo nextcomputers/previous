@@ -272,6 +272,75 @@ flag floatx80_is_signaling_nan( floatx80 a )
 
 }
 
+// 28-12-2016: Added for Previous:
+
+/*----------------------------------------------------------------------------
+ | Returns 1 if the extended double-precision floating-point value `a' is
+ | zero; otherwise returns 0.
+ *----------------------------------------------------------------------------*/
+
+flag floatx80_is_zero( floatx80 a )
+{
+    
+    return ( ( a.high & 0x7FFF ) == 0 ) && ( a.low == 0 );
+    
+}
+
+/*----------------------------------------------------------------------------
+ | Returns 1 if the extended double-precision floating-point value `a' is
+ | infinity; otherwise returns 0.
+ *----------------------------------------------------------------------------*/
+
+flag floatx80_is_infinity( floatx80 a )
+{
+    
+    return ( ( a.high & 0x7FFF ) == 0x7FFF ) && ( (bits64) ( a.low<<1 ) == 0 );
+    
+}
+
+/*----------------------------------------------------------------------------
+ | Returns 1 if the extended double-precision floating-point value `a' is
+ | negative; otherwise returns 0.
+ *----------------------------------------------------------------------------*/
+
+flag floatx80_is_negative( floatx80 a )
+{
+    
+    return ( ( a.high & 0x8000 ) == 0x8000 );
+    
+}
+
+/*----------------------------------------------------------------------------
+ | Returns 1 if the extended double-precision floating-point value `a' is
+ | denormal; otherwise returns 0.
+ *----------------------------------------------------------------------------*/
+
+flag floatx80_is_denormal( floatx80 a )
+{
+    
+    return
+           ( ( a.high & 0x7FFF ) == 0 )
+        && ( (bits64) ( a.low & LIT64( 0x8000000000000000 ) ) == LIT64( 0x0000000000000000 ) )
+        && (bits64) ( a.low<<1 );
+    
+}
+
+/*----------------------------------------------------------------------------
+ | Returns 1 if the extended double-precision floating-point value `a' is
+ | normal; otherwise returns 0.
+ *----------------------------------------------------------------------------*/
+
+flag floatx80_is_normal( floatx80 a )
+{
+    
+    return
+           ( ( a.high & 0x7FFF ) < 0x7FFF )
+        && ( (bits64) ( a.low & LIT64( 0x8000000000000000 ) ) == LIT64( 0x8000000000000000 ) );
+    
+}
+
+// End of addition for Previous
+
 /*----------------------------------------------------------------------------
 | Returns the result of converting the extended double-precision floating-
 | point NaN `a' to the canonical NaN format.  If `a' is a signaling NaN, the
