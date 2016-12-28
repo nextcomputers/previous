@@ -245,8 +245,14 @@ flag floatx80_lt( floatx80, floatx80 );
 flag floatx80_eq_signaling( floatx80, floatx80 );
 flag floatx80_le_quiet( floatx80, floatx80 );
 flag floatx80_lt_quiet( floatx80, floatx80 );
+
 flag floatx80_is_signaling_nan( floatx80 );
 flag floatx80_is_nan( floatx80 );
+flag floatx80_is_zero( floatx80 a );
+flag floatx80_is_infinity( floatx80 a );
+flag floatx80_is_negative( floatx80 a );
+flag floatx80_is_denormal( floatx80 a );
+flag floatx80_is_normal( floatx80 a );
 
 int floatx80_fsincos(floatx80 a, floatx80 *sin_a, floatx80 *cos_a);
 int floatx80_fsin(floatx80 *a);

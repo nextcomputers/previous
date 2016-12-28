@@ -819,25 +819,15 @@ static bool fp_is_nan (fpdata *fpd)
 }
 static bool fp_is_infinity (fpdata *fpd)
 {
-    if (((fpd->fpx.high & 0x7fff) == 0x7fff) && ((fpd->fpx.low<<1) == 0)) {
-        return 1;
-    }
-    //float_class_t fc = floatx80_class(fpd->fpx);
-    return 0; //fc == float_negative_inf || fc == float_positive_inf;
+    return floatx80_is_infinity(fpd->fpx) != 0;
 }
 static bool fp_is_zero(fpdata *fpd)
 {
-    if (((fpd->fpx.high & 0x7fff) == 0) && ((fpd->fpx.low<<1) == 0)) {
-        return 1;
-    }
-    return 0; //floatx80_compare_quiet(fpd->fpx, fxzero, fxstatus) == float_relation_equal;
+    return floatx80_is_zero(fpd->fpx) != 0;
 }
 static bool fp_is_neg(fpdata *fpd)
 {
-    if (fpd->fpx.high & 0x8000) {
-        return 1;
-    }
-    return 0; //extractFloatx80Sign(fpd->fpx) != 0;
+    return floatx80_is_negative(fpd->fpx) != 0;
 }
 
 uae_u32 fpp_get_fpsr (void)
