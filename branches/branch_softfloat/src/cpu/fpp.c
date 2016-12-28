@@ -84,22 +84,87 @@ double fp_1e8 = 1.0e8;
 float  fp_1e0 = 1, fp_1e1 = 10, fp_1e2 = 100, fp_1e4 = 10000;
 static bool fpu_mmu_fixup;
 
-#define FFLAG_Z	    0x4000
-#define FFLAG_N	    0x0100
-#define FFLAG_NAN   0x0400
-
-
 static floatx80 fxsizes[6] = { {0} };
 
-//struct float_status_t fxstatus;
 
-#define FP_INEXACT (1 << 9)
-#define FP_DIVBYZERO (1 << 10)
-#define FP_UNDERFLOW (1 << 11)
-#define FP_OVERFLOW (1 << 12)
-#define FP_OPERAND (1 << 13)
-#define FP_SIGNAN (1 << 14)
-#define FP_BSUN (1 << 15)
+/* Floating Point Control Register (FPCR)
+ *
+ * Exception Enable Byte
+ * x--- ---- ---- ----  bit 15: BSUN (branch/set on unordered)
+ * -x-- ---- ---- ----  bit 14: SNAN (signaling not a number)
+ * --x- ---- ---- ----  bit 13: OPERR (operand error)
+ * ---x ---- ---- ----  bit 12: OVFL (overflow)
+ * ---- x--- ---- ----  bit 11: UNFL (underflow)
+ * ---- -x-- ---- ----  bit 10: DZ (divide by zero)
+ * ---- --x- ---- ----  bit 9: INEX 2 (inexact operation)
+ * ---- ---x ---- ----  bit 8: INEX 1 (inexact decimal input)
+ *
+ * Mode Control Byte
+ * ---- ---- xx-- ----  bits 7 and 6: PREC (rounding precision)
+ * ---- ---- --xx ----  bits 5 and 4: RND (rounding mode)
+ * ---- ---- ---- xxxx  bits 3 to 0: all 0
+ */
+
+#define FPCR_PREC   0x00C0
+#define FPCR_RND    0x0030
+
+/* Floating Point Status Register (FPSR)
+ *
+ * Condition Code Byte
+ * xxxx ---- ---- ---- ---- ---- ---- ----  bits 31 to 28: all 0
+ * ---- x--- ---- ---- ---- ---- ---- ----  bit 27: N (negative)
+ * ---- -x-- ---- ---- ---- ---- ---- ----  bit 26: Z (zero)
+ * ---- --x- ---- ---- ---- ---- ---- ----  bit 25: I (infinity)
+ * ---- ---x ---- ---- ---- ---- ---- ----  bit 24: NAN (not a number or unordered)
+ *
+ * Quotient Byte (set and reset only by FMOD and FREM)
+ * ---- ---- x--- ---- ---- ---- ---- ----  bit 23: sign of quotient
+ * ---- ---- -xxx xxxx ---- ---- ---- ----  bits 22 to 16: 7 least significant bits of quotient
+ *
+ * Exception Status Byte
+ * ---- ---- ---- ---- x--- ---- ---- ----  bit 15: BSUN (branch/set on unordered)
+ * ---- ---- ---- ---- -x-- ---- ---- ----  bit 14: SNAN (signaling not a number)
+ * ---- ---- ---- ---- --x- ---- ---- ----  bit 13: OPERR (operand error)
+ * ---- ---- ---- ---- ---x ---- ---- ----  bit 12: OVFL (overflow)
+ * ---- ---- ---- ---- ---- x--- ---- ----  bit 11: UNFL (underflow)
+ * ---- ---- ---- ---- ---- -x-- ---- ----  bit 10: DZ (divide by zero)
+ * ---- ---- ---- ---- ---- --x- ---- ----  bit 9: INEX 2 (inexact operation)
+ * ---- ---- ---- ---- ---- ---x ---- ----  bit 8: INEX 1 (inexact decimal input)
+ *
+ * Accrued Exception Byte
+ * ---- ---- ---- ---- ---- ---- x--- ----  bit 7: IOP (invalid operation)
+ * ---- ---- ---- ---- ---- ---- -x-- ----  bit 6: OVFL (overflow)
+ * ---- ---- ---- ---- ---- ---- --x- ----  bit 5: UNFL (underflow)
+ * ---- ---- ---- ---- ---- ---- ---x ----  bit 4: DZ (divide by zero)
+ * ---- ---- ---- ---- ---- ---- ---- x---  bit 3: INEX (inexact)
+ * ---- ---- ---- ---- ---- ---- ---- -xxx  bits 2 to 0: all 0
+ */
+
+#define FPSR_ZEROBITS   0xF0000007
+
+#define FPSR_CC_N       0x08000000
+#define FPSR_CC_Z       0x04000000
+#define FPSR_CC_I       0x02000000
+#define FPSR_CC_NAN     0x01000000
+
+#define FPSR_QUOT_SIGN  0x00800000
+#define FPSR_QUOT_LSB   0x007F0000
+
+#define FPSR_BSUN       0x00008000
+#define FPSR_SNAN       0x00004000
+#define FPSR_OPERR      0x00002000
+#define FPSR_OVFL       0x00001000
+#define FPSR_UNFL       0x00000800
+#define FPSR_DZ         0x00000400
+#define FPSR_INEX2      0x00000200
+#define FPSR_INEX1      0x00000100
+
+#define FPSR_AE_IOP     0x00000080
+#define FPSR_AE_OVFL    0x00000040
+#define FPSR_AE_UNFL    0x00000020
+#define FPSR_AE_DZ      0x00000010
+#define FPSR_AE_INEX    0x00000008
+
 
 STATIC_INLINE void MAKE_FPSR (fptype *fp)
 {
@@ -108,15 +173,15 @@ STATIC_INLINE void MAKE_FPSR (fptype *fp)
 STATIC_INLINE void MAKE_FPSR_SOFTFLOAT(floatx80 fx)
 {
     if (float_exception_flags & float_flag_invalid)
-        regs.fp_result_status |= FP_OPERAND;
+        regs.fp_result_status |= FPSR_OPERR;
     if (float_exception_flags & float_flag_divbyzero)
-        regs.fp_result_status |= FP_DIVBYZERO;
+        regs.fp_result_status |= FPSR_DZ;
     if (float_exception_flags & float_flag_overflow)
-        regs.fp_result_status |= FP_OVERFLOW;
+        regs.fp_result_status |= FPSR_OVFL;
     if (float_exception_flags & float_flag_underflow)
-        regs.fp_result_status |= FP_UNDERFLOW;
+        regs.fp_result_status |= FPSR_UNFL;
     if (float_exception_flags & float_flag_inexact)
-        regs.fp_result_status |= FP_INEXACT;
+        regs.fp_result_status |= FPSR_INEX2;
     regs.fp_result.fpx = fx;
 }
 
@@ -344,98 +409,6 @@ static inline void set_fpucw_softfloat(uae_u32 m68k_cw)
     return;
 }
 
-
-#ifndef WINUAE_FOR_HATARI
-// TODO [NP] enable this part later for faster fpu (need vm.cpp and mmap.cpp too)
-#if defined(CPU_i386) || defined(CPU_x86_64)
-
-/* The main motivation for dynamically creating an x86(-64) function in
- * memory is because MSVC (x64) does not allow you to use inline assembly,
- * and the x86-64 versions of _control87/_controlfp functions only modifies
- * SSE2 registers. */
-
-static uae_u16 x87_cw = 0;
-static uae_u8 *x87_fldcw_code = NULL;
-typedef void (uae_cdecl *x87_fldcw_function)(void);
-
-static void init_fpucw_x87(void)
-{
-    if (x87_fldcw_code) {
-        return;
-    }
-    x87_fldcw_code = (uae_u8 *) uae_vm_alloc(
-                                             uae_vm_page_size(), UAE_VM_32BIT, UAE_VM_READ_WRITE_EXECUTE);
-    uae_u8 *c = x87_fldcw_code;
-    /* mov eax,0x0 */
-    *(c++) = 0xb8;
-    *(c++) = 0x00;
-    *(c++) = 0x00;
-    *(c++) = 0x00;
-    *(c++) = 0x00;
-#ifdef CPU_x86_64
-    /* Address override prefix */
-    *(c++) = 0x67;
-#endif
-    /* fldcw WORD PTR [eax+addr] */
-    *(c++) = 0xd9;
-    *(c++) = 0xa8;
-    *(c++) = (((uintptr_t) &x87_cw)      ) & 0xff;
-    *(c++) = (((uintptr_t) &x87_cw) >>  8) & 0xff;
-    *(c++) = (((uintptr_t) &x87_cw) >> 16) & 0xff;
-    *(c++) = (((uintptr_t) &x87_cw) >> 24) & 0xff;
-    /* ret */
-    *(c++) = 0xc3;
-    /* Write-protect the function */
-    uae_vm_protect(x87_fldcw_code, uae_vm_page_size(), UAE_VM_READ_EXECUTE);
-}
-
-static inline void set_fpucw_x87(uae_u32 m68k_cw)
-{
-#ifdef _MSC_VER
-    static int ex = 0;
-    // RN, RZ, RM, RP
-    static const unsigned int fp87_round[4] = { _RC_NEAR, _RC_CHOP, _RC_DOWN, _RC_UP };
-    // Extend X, Single S, Double D, Undefined
-    static const unsigned int fp87_prec[4] = { _PC_64, _PC_24, _PC_53, 0 };
-    int round = (m68k_cw >> 4) & 3;
-#ifdef WIN64
-    // x64 only sets SSE2, must also call x87_fldcw_code() to set FPU rounding mode.
-    _controlfp(ex | fp87_round[round], _MCW_RC);
-#else
-    int prec = (m68k_cw >> 6) & 3;
-    // x86 sets both FPU and SSE2 rounding mode, don't need x87_fldcw_code()
-    _control87(ex | fp87_round[round] | fp87_prec[prec], _MCW_RC | _MCW_PC);
-    return;
-#endif
-#endif
-    static const uae_u16 x87_cw_tab[] = {
-        0x137f, 0x1f7f, 0x177f, 0x1b7f,	/* Extended */
-        0x107f, 0x1c7f, 0x147f, 0x187f,	/* Single */
-        0x127f, 0x1e7f, 0x167f, 0x1a7f,	/* Double */
-        0x137f, 0x1f7f, 0x177f, 0x1b7f	/* undefined */
-    };
-    x87_cw = x87_cw_tab[(m68k_cw >> 4) & 0xf];
-#if defined(X86_MSVC_ASSEMBLY) && 0
-    __asm { fldcw word ptr x87_cw }
-#elif defined(__GNUC__) && 0
-    __asm__("fldcw %0" : : "m" (*&x87_cw));
-#else
-    ((x87_fldcw_function) x87_fldcw_code)();
-#endif
-}
-
-#endif /* defined(CPU_i386) || defined(CPU_x86_64) */
-#endif /* ! WINUAE_FOR_HATARI */
-
-static void native_set_fpucw(uae_u32 m68k_cw)
-{
-    set_fpucw_softfloat(m68k_cw);
-#ifndef WINUAE_FOR_HATARI
-#if defined(CPU_i386) || defined(CPU_x86_64)
-    set_fpucw_x87(m68k_cw);
-#endif
-#endif /* ! WINUAE_FOR_HATARI */
-}
 
 typedef uae_s64 tointtype;
 
@@ -837,33 +810,34 @@ uae_u32 fpp_get_fpsr (void)
     // exception status byte
     answer |= regs.fp_result_status;
     if (fp_is_snan(&regs.fp_result))
-        answer |= 1 << 14;
+        answer |= FPSR_SNAN;
     
     // accrued exception byte
-    if (answer & ((1 << 14)  | (1 << 13)))
-        answer |= 0x80; // IOP = SNAN | OPERR
-    if (answer & (1 << 12))
-        answer |= 0x40; // OVFL = OVFL
-    if (answer & ((1 << 11) | (1 << 9)))
-        answer |= 0x20; // UNFL = UNFL | INEX2
-    if (answer & (1 << 10))
-        answer |= 0x10; // DZ = DZ
-    if (answer & ((1 << 12) | (1 << 9) | (1 << 8)))
-        answer |= 0x08; // INEX = INEX1 | INEX2 | OVFL
+    if (answer & (FPSR_SNAN | FPSR_OPERR))
+        answer |= FPSR_AE_IOP;  // IOP = SNAN || OPERR
+    if (answer & FPSR_OVFL)
+        answer |= FPSR_AE_OVFL; // OVFL = OVFL
+    if ((answer & FPSR_UNFL) && (answer & FPSR_INEX2))
+        answer |= FPSR_AE_UNFL; // UNFL = UNFL && INEX2
+    if (answer & FPSR_DZ)
+        answer |= FPSR_AE_DZ;   // DZ = DZ
+    if (answer & (FPSR_OVFL | FPSR_INEX2 | FPSR_INEX1))
+        answer |= FPSR_AE_INEX; // INEX = INEX1 | INEX2 | OVFL
     
     regs.fpsr = answer;
     
     // condition code byte
     if (fp_is_nan (&regs.fp_result)) {
-        answer |= 1 << 24;
+        answer |= FPSR_CC_NAN;
     } else {
         if (fp_is_zero(&regs.fp_result))
-            answer |= 1 << 26;
+            answer |= FPSR_CC_Z;
         if (fp_is_infinity (&regs.fp_result))
-            answer |= 1 << 25;
+            answer |= FPSR_CC_I;
     }
     if (fp_is_neg(&regs.fp_result))
-        answer |= 1 << 27;
+        answer |= FPSR_CC_N;
+    
     return answer;
 }
 
@@ -1556,7 +1530,7 @@ int fpp_cond (int condition)
     Z = fp_is_zero(&regs.fp_result);
     
     if ((condition & 0x10) && NotANumber)
-        regs.fp_result_status |= FP_BSUN;
+        regs.fp_result_status |= FPSR_BSUN;
     
     switch (condition)
     {
@@ -2624,7 +2598,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                 } else {
                     if (extra & 0x1000) {
                         regs.fpcr = m68k_dreg (regs, opcode & 7);
-                        native_set_fpucw (regs.fpcr);
+                        set_fpucw_softfloat (regs.fpcr);
                     }
                     if (extra & 0x0800)
                         set_fpsr (m68k_dreg (regs, opcode & 7));
@@ -2644,7 +2618,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                 } else {
                     if (extra & 0x1000) {
                         regs.fpcr = m68k_areg (regs, opcode & 7);
-                        native_set_fpucw (regs.fpcr);
+                        set_fpucw_softfloat (regs.fpcr);
                     }
                     if (extra & 0x0800)
                         set_fpsr (m68k_areg (regs, opcode & 7));
@@ -2672,7 +2646,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                         ext[2] = x_cp_next_ilong ();
                     if (extra & 0x1000) {
                         regs.fpcr = ext[0];
-                        native_set_fpucw (regs.fpcr);
+                        set_fpucw_softfloat (regs.fpcr);
                     }
                     if (extra & 0x0800)
                         set_fpsr (ext[1]);
@@ -2740,7 +2714,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                 }
                 if (extra & 0x1000) {
                     regs.fpcr = x_cp_get_long (ad);
-                    native_set_fpucw (regs.fpcr);
+                    set_fpucw_softfloat (regs.fpcr);
                     ad += 4;
                 }
                 if (extra & 0x0800) {
@@ -2862,19 +2836,20 @@ void fpuop_arithmetic (uae_u32 opcode, uae_u16 extra)
         mmufixup[0].reg = -1;
     }
     // Any exception status bit and matching exception enable bits set?
-    if ((regs.fpcr >> 8) & (regs.fpsr >> 8)) {
-        uae_u32 mask = regs.fpcr >> 8;
+    uae_u32 exception = (regs.fpsr >> 8) & (regs.fpcr >> 8);
+    
+    if (exception) {
         int vector = 0;
-        for (int i = 7; i >= 0; i--) {
-            if (mask & (1 << i)) {
-                if (i > 0)
-                    i--;
-                vector = i + 48;
+        int vtable[8] = { 49, 49, 50, 51, 53, 52, 54, 48 };
+        int i;
+        for (i = 7; i >= 0; i--) {
+            if (exception & (1 << i)) {
+                vector = vtable[i];
                 break;
             }
         }
         // logging only so far
-        write_log (_T("FPU exception: %08x %d!\n"), regs.fpsr, vector);
+        write_log (_T("FPU exception: FPSR: %08x, FPCR: %04x (vector: %d)!\n"), regs.fpsr, regs.fpcr, vector);
     }
 }
 
@@ -2889,7 +2864,7 @@ void fpu_reset (void)
     regs.fpcr = regs.fpsr = regs.fpiar = 0;
     regs.fpu_exp_state = 0;
     fpset (&regs.fp_result, 1);
-    native_set_fpucw (regs.fpcr);
+    set_fpucw_softfloat (regs.fpcr);
     //	fpux_restore (NULL);
     
     fxsizes[0] = int32_to_floatx80(-128);
