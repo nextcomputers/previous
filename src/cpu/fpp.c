@@ -12,7 +12,6 @@
 
 #include <math.h>
 #include <float.h>
-#include <fenv.h>
 
 #include "main.h"
 #include "hatari-glue.h"
@@ -21,9 +20,6 @@
 #include "sysconfig.h"
 #include "sysdeps.h"
 
-#ifdef _MSC_VER
-#pragma fenv_access(on)
-#endif
 
 #include "options_cpu.h"
 #include "memory.h"
@@ -61,9 +57,9 @@ uae_u32 xhex_1e512[] ={0xa60e91c7, 0xe319a0ae, 0x46a30000};
 uae_u32 xhex_1e1024[]={0x81750c17, 0xc9767586, 0x4d480000};
 uae_u32 xhex_1e2048[]={0xc53d5de5, 0x9e8b3b5d, 0x5a920000};
 uae_u32 xhex_1e4096[]={0x8a20979b, 0xc4605202, 0x75250000};
-//static uae_u32 xhex_inf[]   ={0x00000000, 0x00000000, 0x7fff0000};
 uae_u32 xhex_nan[]   ={0xffffffff, 0xffffffff, 0x7fff0000};
-//static uae_u32 xhex_snan[]  ={0xffffffff, 0xbfffffff, 0x7fff0000};
+uae_u32 xhex_snan[]  ={0xffffffff, 0xbfffffff, 0x7fff0000};
+uae_u32 xhex_inf[]   ={0x00000000, 0x00000000, 0x7fff0000};
 
 #if USE_LONG_DOUBLE
 static uae_u32 ldhex_l2_e[]  ={0x5c17f0bc, 0xb8aa3b29, 0x3fff};
@@ -80,8 +76,6 @@ static double *fp_l2_e   = (double *)dhex_l2_e;
 static double *fp_ln_2   = (double *)dhex_ln_2;
 static double *fp_nan    = (double *)dhex_nan;
 #endif
-double fp_1e8 = 1.0e8;
-float  fp_1e0 = 1, fp_1e1 = 10, fp_1e2 = 100, fp_1e4 = 10000;
 static bool fpu_mmu_fixup;
 
 static floatx80 fxsizes[6] = { {0} };
@@ -243,8 +237,8 @@ static void from_double(fpdata *fpd, uae_u32 *wrd1, uae_u32 *wrd2)
 }
 void to_exten(fpdata *fpd, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
 {
-    fpd->fpx.high = wrd1 >> 16;
-    fpd->fpx.low = ((uae_u64)wrd2 << 32) | wrd3;
+    uae_u32 wrd[3] = { wrd3, wrd2, wrd1 };
+    softfloat_set(&fpd->fpx, wrd);
 #if 0
     if ((currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882) || currprefs.fpu_no_unimplemented) {
         // automatically fix denormals if 6888x or no implemented emulation
@@ -257,9 +251,11 @@ void to_exten(fpdata *fpd, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
 }
 static void from_exten(fpdata *fpd, uae_u32 * wrd1, uae_u32 * wrd2, uae_u32 * wrd3)
 {
-    *wrd1 = fpd->fpx.high << 16;
-    *wrd2 = fpd->fpx.low >> 32;
-    *wrd3 = (uae_u32)fpd->fpx.low;
+    uae_u32 wrd[3];
+    softfloat_get(&fpd->fpx, wrd);
+    *wrd1 = wrd[2];
+    *wrd2 = wrd[1];
+    *wrd3 = wrd[0];
 }
 
 
@@ -293,7 +289,6 @@ static void normalize(uae_u32 *pwrd1, uae_u32 *pwrd2, uae_u32 *pwrd3)
 static bool fpu_get_constant_softfloat(fpdata *fp, int cr)
 {
     uae_u32 *f = NULL;
-    floatx80 fx;
     
     switch (cr & 0x7f)
     {
@@ -366,10 +361,9 @@ static bool fpu_get_constant_softfloat(fpdata *fp, int cr)
         default:
             return false;
     }
-    if (f)
-        softfloat_set(&fp->fpx, f);
-    else
-        fp->fpx = fx;
+
+    softfloat_set(&fp->fpx, f);
+
     return true;
 }
 
@@ -822,7 +816,7 @@ uae_u32 fpp_get_fpsr (void)
     if (answer & FPSR_DZ)
         answer |= FPSR_AE_DZ;   // DZ = DZ
     if (answer & (FPSR_OVFL | FPSR_INEX2 | FPSR_INEX1))
-        answer |= FPSR_AE_INEX; // INEX = INEX1 | INEX2 | OVFL
+        answer |= FPSR_AE_INEX; // INEX = INEX1 || INEX2 || OVFL
     
     regs.fpsr = answer;
     
@@ -997,7 +991,7 @@ static void from_pack (fpdata *src, uae_u32 *wrd, int kfactor)
     } else {
         if (kfactor > 17) {
             kfactor = 17;
-            update_fpsr (FE_INVALID);
+            update_fpsr (0); // FIXME
         }
         ndigits = kfactor;
     }
@@ -1065,7 +1059,7 @@ static void from_pack (fpdata *src, uae_u32 *wrd, int kfactor)
         int d = exp / 1000;
         wrd[0] |= d << 12;
         exp -= d * 1000;
-        update_fpsr (FE_INVALID);
+        update_fpsr (0); // FIXME
     }
     i = 100;
     t = 0;
@@ -1113,11 +1107,7 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fpdata *src, uaecptr old
     uae_u32 ad = 0;
     static const int sz1[8] = { 4, 4, 12, 12, 2, 8, 1, 0 };
     static const int sz2[8] = { 4, 4, 12, 12, 2, 8, 2, 0 };
-#ifndef WINUAE_FOR_HATARI
     uae_u32 exts[3];
-#else
-    uae_u32 exts[3] = { 0 };
-#endif
     int doext = 0;
     
     if (!(extra & 0x4000)) {
@@ -2405,7 +2395,7 @@ static bool arithmetic_softfloat(floatx80 *srcd, int reg, int extra)
     
     // SNAN -> QNAN if SNAN interrupt is not enabled
     if (floatx80_is_signaling_nan(fx) && !(regs.fpcr & 0x4000)) {
-        fx.low |= 0x40000000;
+        softfloat_set(&fx, xhex_nan);
     }
     
     switch (extra & 0x7f)
@@ -2855,17 +2845,10 @@ void fpuop_arithmetic (uae_u32 opcode, uae_u16 extra)
 
 void fpu_reset (void)
 {
-#ifndef WINUAE_FOR_HATARI
-#if defined(CPU_i386) || defined(CPU_x86_64)
-    init_fpucw_x87();
-#endif
-#endif /* ! WINUAE_FOR_HATARI */
-    
     regs.fpcr = regs.fpsr = regs.fpiar = 0;
     regs.fpu_exp_state = 0;
     fpset (&regs.fp_result, 1);
     set_fpucw_softfloat (regs.fpcr);
-    //	fpux_restore (NULL);
     
     fxsizes[0] = int32_to_floatx80(-128);
     fxsizes[1] = int32_to_floatx80(127);
@@ -2971,8 +2954,4 @@ uae_u8 *save_fpu (int *len, uae_u8 *dstptr)
     *len = dst - dstbak;
     return dstbak;
 }
-#endif
-
-#ifdef _MSC_VER
-#pragma fenv_access(off)
 #endif
