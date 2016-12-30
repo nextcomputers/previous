@@ -233,6 +233,7 @@ extern int8 floatx80_rounding_precision;
 | Software IEC/IEEE extended double-precision operations.
 *----------------------------------------------------------------------------*/
 floatx80 floatx80_round_to_int( floatx80 );
+floatx80 floatx80_normalize( floatx80 );
 floatx80 floatx80_add( floatx80, floatx80 );
 floatx80 floatx80_sub( floatx80, floatx80 );
 floatx80 floatx80_mul( floatx80, floatx80 );
@@ -248,11 +249,12 @@ flag floatx80_lt_quiet( floatx80, floatx80 );
 
 flag floatx80_is_signaling_nan( floatx80 );
 flag floatx80_is_nan( floatx80 );
-flag floatx80_is_zero( floatx80 a );
-flag floatx80_is_infinity( floatx80 a );
-flag floatx80_is_negative( floatx80 a );
-flag floatx80_is_denormal( floatx80 a );
-flag floatx80_is_normal( floatx80 a );
+flag floatx80_is_zero( floatx80 );
+flag floatx80_is_infinity( floatx80 );
+flag floatx80_is_negative( floatx80 );
+flag floatx80_is_denormal( floatx80 );
+flag floatx80_is_unnormal( floatx80 );
+flag floatx80_is_normal( floatx80 );
 
 int floatx80_fsincos(floatx80 a, floatx80 *sin_a, floatx80 *cos_a);
 int floatx80_fsin(floatx80 *a);

@@ -327,6 +327,21 @@ flag floatx80_is_denormal( floatx80 a )
 
 /*----------------------------------------------------------------------------
  | Returns 1 if the extended double-precision floating-point value `a' is
+ | unnormal; otherwise returns 0.
+ *----------------------------------------------------------------------------*/
+
+flag floatx80_is_unnormal( floatx80 a )
+{
+    
+    return
+           ( ( a.high & 0x7FFF ) > 0 )
+        && ( ( a.high & 0x7FFF ) < 0x7FFF)
+        && ( (bits64) ( a.low & LIT64( 0x8000000000000000 ) ) == LIT64( 0x0000000000000000 ) );
+    
+}
+
+/*----------------------------------------------------------------------------
+ | Returns 1 if the extended double-precision floating-point value `a' is
  | normal; otherwise returns 0.
  *----------------------------------------------------------------------------*/
 
