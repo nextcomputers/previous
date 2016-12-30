@@ -28,6 +28,8 @@ extern void to_single(fpdata *fpd, uae_u32 value);
 extern void to_double(fpdata *fpd, uae_u32 wrd1, uae_u32 wrd2);
 extern void to_exten(fpdata *fpd, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3);
 
+extern const char *fp_print(fpdata *fpd);
+
 STATIC_INLINE void exten_zeronormalize(uae_u32 *pwrd1, uae_u32 *pwrd2, uae_u32 *pwrd3)
 {
 	uae_u32 wrd1 = *pwrd1;

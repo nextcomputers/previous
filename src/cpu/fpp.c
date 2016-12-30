@@ -184,6 +184,43 @@ STATIC_INLINE void CLEAR_STATUS (void)
     float_exception_flags = 0;
 }
 
+const char *softfloat_print(floatx80 fx)
+{
+    static char fs[32];
+    bool n, u, d;
+    long double result = 0.0;
+    int i;
+    
+    n = floatx80_is_negative(fx);
+    u = floatx80_is_unnormal(fx);
+    d = floatx80_is_denormal(fx);
+    
+    if (floatx80_is_zero(fx)) {
+        sprintf(fs, "%c%#.17Le%s%s", n?'-':'+', (long double) 0.0, u?"U":"", d?"D":"");
+    } else if (floatx80_is_infinity(fx)) {
+        sprintf(fs, "%c%s", n?'-':'+', "inf");
+    } else if (floatx80_is_signaling_nan(fx)) {
+        sprintf(fs, "%c%s", n?'-':'+', "snan");
+    } else if (floatx80_is_nan(fx)) {
+        sprintf(fs, "%c%s", n?'-':'+', "nan");
+    } else {
+        for (i = 63; i >= 0; i--) {
+            if (fx.low & (((uae_u64)1)<<i)) {
+                result += (long double) 1.0 / (((uae_u64)1)<<(63-i));
+            }
+        }
+        result *= powl(2.0, (fx.high&0x7FFF) - 0x3FFF);
+        sprintf(fs, "%c%#.17Le%s%s", n?'-':'+', result, u?"U":"", d?"D":"");
+    }
+    
+    return fs;
+}
+
+const char *fp_print(fpdata *fpd)
+{
+    return softfloat_print(fpd->fpx);
+}
+
 static void softfloat_set(floatx80 *fx, uae_u32 *f)
 {
     fx->high = (uae_u16)(f[2] >> 16);
@@ -219,10 +256,39 @@ static void fpset (fpdata *fpd, uae_s32 val)
     fpd->fpx = int32_to_floatx80(val);
 }
 
+static bool fp_is_snan(fpdata *fpd)
+{
+    return floatx80_is_signaling_nan(fpd->fpx) != 0;
+}
+static bool fp_is_nan (fpdata *fpd)
+{
+    return floatx80_is_nan(fpd->fpx) != 0;
+}
+static bool fp_is_infinity (fpdata *fpd)
+{
+    return floatx80_is_infinity(fpd->fpx) != 0;
+}
+static bool fp_is_zero(fpdata *fpd)
+{
+    return floatx80_is_zero(fpd->fpx) != 0;
+}
+static bool fp_is_neg(fpdata *fpd)
+{
+    return floatx80_is_negative(fpd->fpx) != 0;
+}
+static bool fp_is_denormal(fpdata *fpd)
+{
+    return floatx80_is_denormal(fpd->fpx) != 0;
+}
+static bool fp_is_unnormal(fpdata *fpd)
+{
+    return floatx80_is_unnormal(fpd->fpx) != 0;
+}
+
 void to_single(fpdata *fpd, uae_u32 value)
 {
     float32 f = value;
-    fpd->fpx = float32_to_floatx80(f);
+    fpd->fpx = float32_to_floatx80(f); // FIXME: unnormals are automatically fixed
 }
 static uae_u32 from_single(fpdata *fpd)
 {
@@ -232,7 +298,7 @@ static uae_u32 from_single(fpdata *fpd)
 void to_double(fpdata *fpd, uae_u32 wrd1, uae_u32 wrd2)
 {
     float64 f = ((float64)wrd1 << 32) | wrd2;
-    fpd->fpx = float64_to_floatx80(f);
+    fpd->fpx = float64_to_floatx80(f);  // FIXME: unnormals are automatically fixed
 }
 static void from_double(fpdata *fpd, uae_u32 *wrd1, uae_u32 *wrd2)
 {
@@ -245,12 +311,10 @@ void to_exten(fpdata *fpd, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
     uae_u32 wrd[3] = { wrd3, wrd2, wrd1 };
     softfloat_set(&fpd->fpx, wrd);
 #if 0
-    if ((currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882) || currprefs.fpu_no_unimplemented) {
-        // automatically fix denormals if 6888x or no implemented emulation
-        bits64 Sig = extractFloatx80Frac(fpd->fpx);
-        sbits32 Exp = extractFloatx80Exp(fpd->fpx);
-        if (Exp == 0 && Sig != 0)
-            normalizeFloatx80Subnormal(Sig, &Exp, &Sig);
+    if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882) {
+        // automatically fix unnormals if 6888x or no implemented emulation
+        if (fp_is_unnormal(fpd))
+            floatx80_normalize(fpd->fpx);
     }
 #endif
 }
@@ -781,27 +845,6 @@ static tointtype toint(fpdata *src, int size)
     return floatx80_to_int32(src->fpx);
 }
 
-static bool fp_is_snan(fpdata *fpd)
-{
-    return floatx80_is_signaling_nan(fpd->fpx) != 0;
-}
-static bool fp_is_nan (fpdata *fpd)
-{
-    return floatx80_is_nan(fpd->fpx) != 0;
-}
-static bool fp_is_infinity (fpdata *fpd)
-{
-    return floatx80_is_infinity(fpd->fpx) != 0;
-}
-static bool fp_is_zero(fpdata *fpd)
-{
-    return floatx80_is_zero(fpd->fpx) != 0;
-}
-static bool fp_is_neg(fpdata *fpd)
-{
-    return floatx80_is_negative(fpd->fpx) != 0;
-}
-
 uae_u32 fpp_get_fpsr (void)
 {
     uae_u32 answer = regs.fpsr & 0x00ff00f8;
@@ -1082,9 +1125,7 @@ static void from_pack (fpdata *src, uae_u32 *wrd, int kfactor)
 static bool fault_if_no_denormal_support_pre(uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fpdata *fpd, int size)
 {
     if (currprefs.cpu_model >= 68040 && currprefs.fpu_model) {
-        bits64 Sig = extractFloatx80Frac(fpd->fpx);
-        sbits32 Exp = extractFloatx80Exp(fpd->fpx);
-        if (Exp == 0 && Sig != 0) {
+        if (fp_is_unnormal(fpd) || fp_is_denormal(fpd)) {
             fpu_op_unimp(opcode, extra, ea, oldpc, FPU_EXP_UNIMP_DATATYPE_PRE, fpd, -1, size);
             return true;
         }
@@ -1095,9 +1136,7 @@ static bool fault_if_no_denormal_support_pre(uae_u16 opcode, uae_u16 extra, uaec
 static bool fault_if_no_denormal_support_post(uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fpdata *fpd, int size)
 {
     if (currprefs.cpu_model >= 68040 && currprefs.fpu_model) {
-        bits64 Sig = extractFloatx80Frac(fpd->fpx);
-        sbits32 Exp = extractFloatx80Exp(fpd->fpx);
-        if (Exp == 0 && Sig != 0) {
+        if (fp_is_unnormal(fpd) || fp_is_denormal(fpd)) {
             fpu_op_unimp(opcode, extra, ea, oldpc, FPU_EXP_UNIMP_DATATYPE_POST, fpd, -1, size);
             return true;
         }
@@ -1761,11 +1800,7 @@ void fpuop_save (uae_u32 opcode)
             frame_v2 = src1[2];
             
 #if EXCEPTION_FPP
-#if USE_LONG_DOUBLE
-            write_log(_T("68060 FSAVE EXCP %Le\n"), regs.exp_src1.fp);
-#else
-            write_log(_T("68060 FSAVE EXCP %e\n"), regs.exp_src1.fp);
-#endif
+            write_log(_T("68060 FSAVE EXCP %s\n"), fp_print(&regs.exp_src1));
 #endif
             
         } else {
@@ -1815,11 +1850,10 @@ void fpuop_save (uae_u32 opcode)
             if (regs.exp_type == FPU_EXP_UNIMP_DATATYPE_PACKED_PRE) {
                 write_log(_T(" PACKED %08x-%08x-%08x"), regs.exp_pack[0], regs.exp_pack[1], regs.exp_pack[2]);
             } else if (regs.exp_type == FPU_EXP_UNIMP_DATATYPE_PACKED_POST) {
-#if USE_LONG_DOUBLE
-                write_log(_T(" SRC=%Le (%08x-%08x-%08x %d), DST=%Le (%08x-%08x-%08x %d)"), regs.exp_src1.fp, src1[0], src1[1], src1[2], stag, regs.exp_src2.fp, src2[0], src2[1], src2[2], dtag);
-#else
-                write_log(_T(" SRC=%e (%08x-%08x-%08x %d), DST=%e (%08x-%08x-%08x %d)"), regs.exp_src1.fp, src1[0], src1[1], src1[2], stag, regs.exp_src2.fp, src2[0], src2[1], src2[2], dtag);
-#endif
+                write_log(_T(" SRC=%s (%08x-%08x-%08x %d)"),
+                          fp_print(&regs.exp_src1), src1[0], src1[1], src1[2], stag);
+                write_log(_T(" DST=%s (%08x-%08x-%08x %d)"),
+                          fp_print(&regs.exp_src2), src2[0], src2[1], src2[2], dtag);
             }
             write_log(_T("\n"));
 #endif
@@ -2552,7 +2586,7 @@ static bool arithmetic_softfloat(floatx80 *srcd, int reg, int extra)
         fround (reg);
     
     MAKE_FPSR_SOFTFLOAT(regs.fp[reg].fpx);
-
+    
     return true;
 }
 

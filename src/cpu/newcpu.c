@@ -520,11 +520,7 @@ static uaecptr ShowEA (void *f, uaecptr pc, uae_u16 opcode, int reg, amodes mode
                 {
                     fpdata fp;
                     to_single(&fp, get_ilong_debug(pc));
-#if USE_LONG_DOUBLE
-                    _stprintf(buffer, _T("#%Le"), fp.fp);
-#else
-                    _stprintf(buffer, _T("#%e"), fp.fp);
-#endif
+                    _stprintf(buffer, _T("#%s"), fp_print(&fp));
                     pc += 4;
                 }
                     break;
@@ -532,11 +528,7 @@ static uaecptr ShowEA (void *f, uaecptr pc, uae_u16 opcode, int reg, amodes mode
                 {
                     fpdata fp;
                     to_double(&fp, get_ilong_debug(pc), get_ilong_debug(pc + 4));
-#if USE_LONG_DOUBLE
-                    _stprintf(buffer, _T("#%Le"), fp.fp);
-#else
-                    _stprintf(buffer, _T("#%e"), fp.fp);
-#endif
+                    _stprintf(buffer, _T("#%s"), fp_print(&fp));
                     pc += 8;
                 }
                     break;
@@ -544,11 +536,7 @@ static uaecptr ShowEA (void *f, uaecptr pc, uae_u16 opcode, int reg, amodes mode
                 {
                     fpdata fp;
                     to_exten(&fp, get_ilong_debug(pc), get_ilong_debug(pc + 4), get_ilong_debug(pc + 8));
-#if USE_LONG_DOUBLE
-                    _stprintf(buffer, _T("#%Le"), fp.fp);
-#else
-                    _stprintf(buffer, _T("#%e"), fp.fp);
-#endif
+                    _stprintf(buffer, _T("#%s"), fp_print(&fp));
                     pc += 12;
                     break;
                 }
@@ -1939,11 +1927,7 @@ void m68k_disasm_2 (TCHAR *buf, int bufsize, uaecptr pc, uaecptr *nextpc, int cn
             if ((extra & 0xfc00) == 0x5c00) { // FMOVECR (=i_FPP with source specifier = 7)
                 fpdata fp;
                 if (fpu_get_constant(&fp, extra))
-#if USE_LONG_DOUBLE
-                    _stprintf(instrname, _T("FMOVECR.X #%Le,FP%d"), fp.fp, (extra >> 7) & 7);
-#else
-                _stprintf(instrname, _T("FMOVECR.X #%e,FP%d"), fp.fp, (extra >> 7) & 7);
-#endif
+                    _stprintf(instrname, _T("FMOVECR.X #%s,FP%d"), fp_print(&fp), (extra >> 7) & 7);
                 else
                     _stprintf(instrname, _T("FMOVECR.X #?,FP%d"), (extra >> 7) & 7);
             } else if ((extra & 0x8000) == 0x8000) { // FMOVEM
@@ -2223,16 +2207,12 @@ void m68k_dumpstate_2 (uaecptr pc, uaecptr *nextpc)
     if (currprefs.fpu_model) {
         uae_u32 fpsr;
         for (i = 0; i < 8; i++){
-#if USE_LONG_DOUBLE
-            printf (_T("FP%d: %Lg "), i, regs.fp[i].fp);
-#else
-            printf (_T("FP%d: %g "), i, regs.fp[i].fp);
-#endif
+            printf (_T("FP%d: %s "), i, fp_print(&regs.fp[i]));
             if ((i & 3) == 3)
                 printf (_T("\n"));
         }
         fpsr = fpp_get_fpsr ();
-        printf (_T("FPSR: %04X FPCR: %08x FPIAR: %08x N=%d Z=%d I=%d NAN=%d\n"),
+        printf (_T("FPSR: %08X FPCR: %04x FPIAR: %08x N=%d Z=%d I=%d NAN=%d\n"),
                        fpsr, regs.fpcr, regs.fpiar,
                        (fpsr & 0x8000000) != 0,
                        (fpsr & 0x4000000) != 0,
