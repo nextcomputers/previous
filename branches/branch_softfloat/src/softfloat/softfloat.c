@@ -3079,13 +3079,6 @@ float128 floatx80_to_float128( floatx80 a )
 
 // 30-01-2016: Added for Previous
 
-/*----------------------------------------------------------------------------
- | Returns the result of converting the extended double-precision floating-
- | point value `a' to the quadruple-precision floating-point format.  The
- | conversion is performed according to the IEC/IEEE Standard for Binary
- | Floating-Point Arithmetic.
- *----------------------------------------------------------------------------*/
-
 floatx80 floatx80_normalize( floatx80 a )
 {
     flag aSign;
@@ -3110,6 +3103,20 @@ floatx80 floatx80_normalize( floatx80 a )
     }
     return packFloatx80( aSign, aExp, aSig );
     
+}
+
+floatx80 floatx80_round32( floatx80 a )
+{
+    flag aSign;
+    int16 aExp;
+    bits64 aSig;
+    
+    aSig = extractFloatx80Frac( a );
+    aExp = extractFloatx80Exp( a );
+    aSign = extractFloatx80Sign( a );
+    
+    return roundAndPackFloatx80(32, aSign, aExp, aSig, 0);
+
 }
 // end of addition for Previous
 
