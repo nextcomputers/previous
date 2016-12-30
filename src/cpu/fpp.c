@@ -1345,8 +1345,7 @@ static int put_fp_value (fpdata *value, uae_u32 opcode, uae_u16 extra, uaecptr o
     static int sz2[8] = { 4, 4, 12, 12, 2, 8, 2, 0 };
     
 #if DEBUG_FPP
-    if (!isinrom ())
-        write_log (_T("PUTFP: %f %04X %04X\n"), value, opcode, extra);
+    write_log (_T("PUTFP: %f %04X %04X\n"), value, opcode, extra);
 #endif
     if (!(extra & 0x4000)) {
         if (fault_if_no_fpu (opcode, extra, 0, oldpc))
@@ -1652,8 +1651,7 @@ void fpuop_dbcc (uae_u32 opcode, uae_u16 extra)
     
     regs.fp_exception = false;
 #if DEBUG_FPP
-    if (!isinrom ())
-        write_log (_T("fdbcc_opp at %08x\n"), m68k_getpc ());
+    write_log (_T("fdbcc_opp at %08x\n"), m68k_getpc ());
 #endif
     if (fault_if_no_6888x (opcode, extra, pc - 4))
         return;
@@ -1686,8 +1684,7 @@ void fpuop_scc (uae_u32 opcode, uae_u16 extra)
     
     regs.fp_exception = false;
 #if DEBUG_FPP
-    if (!isinrom ())
-        write_log (_T("fscc_opp at %08x\n"), m68k_getpc ());
+    write_log (_T("fscc_opp at %08x\n"), m68k_getpc ());
 #endif
     
     if (fault_if_no_6888x (opcode, extra, pc))
@@ -1721,8 +1718,7 @@ void fpuop_trapcc (uae_u32 opcode, uaecptr oldpc, uae_u16 extra)
     
     regs.fp_exception = false;
 #if DEBUG_FPP
-    if (!isinrom ())
-        write_log (_T("ftrapcc_opp at %08x\n"), m68k_getpc ());
+    write_log (_T("ftrapcc_opp at %08x\n"), m68k_getpc ());
 #endif
     if (fault_if_no_fpu_u (opcode, extra, 0, oldpc))
         return;
@@ -1743,8 +1739,7 @@ void fpuop_bcc (uae_u32 opcode, uaecptr oldpc, uae_u32 extra)
     
     regs.fp_exception = false;
 #if DEBUG_FPP
-    if (!isinrom ())
-        write_log (_T("fbcc_opp at %08x\n"), m68k_getpc ());
+    write_log (_T("fbcc_opp at %08x\n"), m68k_getpc ());
 #endif
     if (fault_if_no_fpu (opcode, extra, 0, oldpc - 2))
         return;
@@ -1772,8 +1767,7 @@ void fpuop_save (uae_u32 opcode)
     
     regs.fp_exception = false;
 #if DEBUG_FPP
-    if (!isinrom ())
-        write_log (_T("fsave_opp at %08x\n"), m68k_getpc ());
+    write_log (_T("fsave_opp at %08x\n"), m68k_getpc ());
 #endif
     
     if (fault_if_no_6888x (opcode, 0, pc))
@@ -2200,11 +2194,25 @@ static uaecptr fmovem2fpp (uaecptr ad, uae_u32 list, int incr, int regdir)
     return ad;
 }
 
+// round to float with extended precision exponent
+static void froundsgl(int reg)
+{
+    floatx80 f = regs.fp[reg].fpx;
+    regs.fp[reg].fpx = floatx80_round32(f);
+}
+
 // round to float
-static void fround (int reg)
+static void fround32(int reg)
 {
     float32 f = floatx80_to_float32(regs.fp[reg].fpx);
     regs.fp[reg].fpx = float32_to_floatx80(f);
+}
+
+// round to double
+static void fround64(int reg)
+{
+    float64 f = floatx80_to_float64(regs.fp[reg].fpx);
+    regs.fp[reg].fpx = float64_to_floatx80(f);
 }
 
 static bool arithmetic_fp(fptype src, int reg, int extra)
@@ -2220,19 +2228,8 @@ static bool arithmetic_fp(fptype src, int reg, int extra)
             break;
         case 0x01: /* FINT */
             /* need to take the current rounding mode into account */
-#if defined(X86_MSVC_ASSEMBLY_FPU)
-        {
-            fptype tmp_fp;
-            __asm {
-                fld  LDPTR src
-                frndint
-                fstp LDPTR tmp_fp
-            }
-            regs.fp[reg].fp = tmp_fp;
-        }
-#else /* no X86_MSVC */
             switch (regs.fpcr & 0x30)
-        {
+            {
             case FPCR_ROUND_NEAR:
                 regs.fp[reg].fp = fp_round_to_nearest(src);
                 break;
@@ -2248,8 +2245,7 @@ static bool arithmetic_fp(fptype src, int reg, int extra)
             default: /* never reached */
                 regs.fp[reg].fp = src;
                 break;
-        }
-#endif /* X86_MSVC */
+            }
             break;
         case 0x02: /* FSINH */
             regs.fp[reg].fp = sinh (src);
@@ -2418,10 +2414,15 @@ static bool arithmetic_fp(fptype src, int reg, int extra)
         default:
             return false;
     }
+#if 0
     // round to float?
     if (sgl || (extra & 0x44) == 0x40 || ((regs.fpcr >> 6) & 3) == 1)
-        fround (reg);
+        fround32(reg);
+    if ((extra & 0x44) == 0x44 || ((regs.fpcr >> 6) & 3) == 2)
+        fround64(reg);
+    
     MAKE_FPSR (&regs.fp[reg].fp);
+#endif
     return true;
 }
 
@@ -2582,8 +2583,16 @@ static bool arithmetic_softfloat(floatx80 *srcd, int reg, int extra)
             return false;
     }
     
-    if (sgl || (extra & 0x44) == 0x40 || ((regs.fpcr >> 6) & 3) == 1)
-        fround (reg);
+    if (sgl)
+        froundsgl(reg);
+    else if ((extra & 0x44) == 0x40)
+        fround32(reg);
+    else if ((extra & 0x44) == 0x44)
+        fround64(reg);
+    else if (((regs.fpcr >> 6) & 3) == 1)
+        fround32(reg);
+    else if (((regs.fpcr >> 6) & 3) == 2)
+        fround64(reg);
     
     MAKE_FPSR_SOFTFLOAT(regs.fp[reg].fpx);
     
@@ -2599,8 +2608,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
     uaecptr ad = 0;
     
 #if DEBUG_FPP
-    if (!isinrom ())
-        write_log (_T("FPP %04x %04x at %08x\n"), opcode & 0xffff, extra, pc);
+    write_log (_T("FPP %04x %04x at %08x\n"), opcode & 0xffff, extra, pc);
 #endif
     if (fault_if_no_6888x (opcode, extra, pc))
         return;
