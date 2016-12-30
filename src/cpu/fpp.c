@@ -197,6 +197,11 @@ static void softfloat_get(floatx80 *fx, uae_u32 *f)
     f[0] = (uae_u32)fx->low;
 }
 
+static void softfloat_unset_snan(floatx80 *fx)
+{
+    fx->low |= LIT64(0x4000000000000000);
+}
+
 static void fpnan (fpdata *fpd)
 {
     fpd->fp = *fp_nan;
@@ -991,7 +996,7 @@ static void from_pack (fpdata *src, uae_u32 *wrd, int kfactor)
     } else {
         if (kfactor > 17) {
             kfactor = 17;
-            update_fpsr (0); // FIXME
+            update_fpsr (FPSR_OPERR);
         }
         ndigits = kfactor;
     }
@@ -1059,7 +1064,7 @@ static void from_pack (fpdata *src, uae_u32 *wrd, int kfactor)
         int d = exp / 1000;
         wrd[0] |= d << 12;
         exp -= d * 1000;
-        update_fpsr (0); // FIXME
+        update_fpsr (FPSR_OPERR);
     }
     i = 100;
     t = 0;
@@ -2395,7 +2400,7 @@ static bool arithmetic_softfloat(floatx80 *srcd, int reg, int extra)
     
     // SNAN -> QNAN if SNAN interrupt is not enabled
     if (floatx80_is_signaling_nan(fx) && !(regs.fpcr & 0x4000)) {
-        softfloat_set(&fx, xhex_nan);
+        softfloat_unset_snan(&fx);
     }
     
     switch (extra & 0x7f)
