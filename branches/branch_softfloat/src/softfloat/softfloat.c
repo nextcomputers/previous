@@ -1218,6 +1218,30 @@ floatx80 float32_to_floatx80( float32 a )
 
 }
 
+// 31-12-2016: Added for Previous
+floatx80 float32_to_floatx80_allowunnormal( float32 a )
+{
+    flag aSign;
+    int16 aExp;
+    bits32 aSig;
+    
+    aSig = extractFloat32Frac( a );
+    aExp = extractFloat32Exp( a );
+    aSign = extractFloat32Sign( a );
+    if ( aExp == 0xFF ) {
+        if ( aSig ) return commonNaNToFloatx80( float32ToCommonNaN( a ) );
+        return packFloatx80( aSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+    }
+    if ( aExp == 0 ) {
+        if ( aSig == 0 ) return packFloatx80( aSign, 0, 0 );
+        return packFloatx80( aSign, 0x3F81, ( (bits64) aSig )<<40 );
+    }
+    aSig |= 0x00800000;
+    return packFloatx80( aSign, aExp + 0x3F80, ( (bits64) aSig )<<40 );
+    
+}
+// end of addition for Previous
+
 #endif
 
 #ifdef FLOAT128
@@ -2145,6 +2169,31 @@ floatx80 float64_to_floatx80( float64 a )
 			aSign, aExp + 0x3C00, ( aSig | LIT64( 0x0010000000000000 ) )<<11 );
 
 }
+
+// 31-12-2016: Added for Previous
+floatx80 float64_to_floatx80_allowunnormal( float64 a )
+{
+    flag aSign;
+    int16 aExp;
+    bits64 aSig;
+    
+    aSig = extractFloat64Frac( a );
+    aExp = extractFloat64Exp( a );
+    aSign = extractFloat64Sign( a );
+    if ( aExp == 0x7FF ) {
+        if ( aSig ) return commonNaNToFloatx80( float64ToCommonNaN( a ) );
+        return packFloatx80( aSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+    }
+    if ( aExp == 0 ) {
+        if ( aSig == 0 ) return packFloatx80( aSign, 0, 0 );
+        return packFloatx80( aSign, 0x3C01, aSig<<11);
+    }
+    return
+    packFloatx80(
+                 aSign, aExp + 0x3C00, ( aSig | LIT64( 0x0010000000000000 ) )<<11 );
+    
+}
+// end of addition for Previous
 
 #endif
 

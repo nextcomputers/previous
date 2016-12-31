@@ -134,6 +134,7 @@ int64 float32_to_int64_round_to_zero( float32 );
 float64 float32_to_float64( float32 );
 #ifdef FLOATX80
 floatx80 float32_to_floatx80( float32 );
+floatx80 float32_to_floatx80_allowunnormal( float32 );
 #endif
 #ifdef FLOAT128
 float128 float32_to_float128( float32 );
@@ -167,6 +168,7 @@ int64 float64_to_int64_round_to_zero( float64 );
 float32 float64_to_float32( float64 );
 #ifdef FLOATX80
 floatx80 float64_to_floatx80( float64 );
+floatx80 float64_to_floatx80_allowunnormal( float64 );
 #endif
 #ifdef FLOAT128
 float128 float64_to_float128( float64 );

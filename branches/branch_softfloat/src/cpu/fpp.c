@@ -284,11 +284,58 @@ static bool fp_is_unnormal(fpdata *fpd)
 {
     return floatx80_is_unnormal(fpd->fpx) != 0;
 }
+#if 0
+bool float_is_denormal(uae_u32 wrd1)
+{
+    uae_u16 exp = (wrd1 >> 23) & 0xff;
+    
+    if (exp == 0 && (wrd1 & 0x007fffff)) {
+        return true;
+    }
+    return false;
+}
+bool double_is_denormal(uae_u32 wrd1, uae_u32 wrd2)
+{
+    uae_u16 exp = (wrd1 >> 20) & 0x7ff;
+    
+    if (exp == 0 && ((wrd1 & 0x000fffff) || wrd2)) {
+        return true;
+    }
+    return false;
+}
+#endif
+static void normalize_exten(uae_u32 *pwrd1, uae_u32 *pwrd2, uae_u32 *pwrd3)
+{
+    uae_u32 wrd1 = *pwrd1;
+    uae_u32 wrd2 = *pwrd2;
+    uae_u32 wrd3 = *pwrd3;
+    uae_u16 exp = (wrd1 >> 16) & 0x7fff;
+    // Normalize if unnormal.
+    if (exp != 0 && exp != 0x7fff && !(wrd2 & 0x80000000)) {
+        while (!(wrd2 & 0x80000000) && (wrd2 || wrd3)) {
+            if (exp == 0)
+                break; // Result is denormal
+            wrd2 <<= 1;
+            if (wrd3 & 0x80000000)
+                wrd2 |= 1;
+            wrd3 <<= 1;
+            exp--;
+        }
+        if (!wrd2 && !wrd3)
+            exp = 0;
+        *pwrd1 = (wrd1 & 0x80000000) | (exp << 16);
+        *pwrd2 = wrd2;
+        *pwrd3 = wrd3;
+    }
+}
 
 void to_single(fpdata *fpd, uae_u32 value)
 {
     float32 f = value;
-    fpd->fpx = float32_to_floatx80(f); // FIXME: unnormals are automatically fixed
+    if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882)
+        fpd->fpx = float32_to_floatx80(f); // automatically fix denormals if 6888x
+    else
+        fpd->fpx = float32_to_floatx80_allowunnormal(f);
 }
 static uae_u32 from_single(fpdata *fpd)
 {
@@ -298,7 +345,10 @@ static uae_u32 from_single(fpdata *fpd)
 void to_double(fpdata *fpd, uae_u32 wrd1, uae_u32 wrd2)
 {
     float64 f = ((float64)wrd1 << 32) | wrd2;
-    fpd->fpx = float64_to_floatx80(f);  // FIXME: unnormals are automatically fixed
+    if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882)
+        fpd->fpx = float64_to_floatx80(f); // automatically fix denormals if 6888x
+    else
+        fpd->fpx = float64_to_floatx80_allowunnormal(f);
 }
 static void from_double(fpdata *fpd, uae_u32 *wrd1, uae_u32 *wrd2)
 {
@@ -308,15 +358,17 @@ static void from_double(fpdata *fpd, uae_u32 *wrd1, uae_u32 *wrd2)
 }
 void to_exten(fpdata *fpd, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
 {
+    if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882) {
+        // automatically fix unnormals if 6888x
+        normalize_exten(&wrd1, &wrd2, &wrd3);
+    }
     uae_u32 wrd[3] = { wrd3, wrd2, wrd1 };
     softfloat_set(&fpd->fpx, wrd);
-#if 0
-    if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882) {
-        // automatically fix unnormals if 6888x or no implemented emulation
-        if (fp_is_unnormal(fpd))
-            floatx80_normalize(fpd->fpx);
-    }
-#endif
+}
+void to_exten_fmovem(fpdata *fpd, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
+{
+    uae_u32 wrd[3] = { wrd3, wrd2, wrd1 };
+    softfloat_set(&fpd->fpx, wrd);
 }
 static void from_exten(fpdata *fpd, uae_u32 * wrd1, uae_u32 * wrd2, uae_u32 * wrd3)
 {
@@ -327,33 +379,6 @@ static void from_exten(fpdata *fpd, uae_u32 * wrd1, uae_u32 * wrd2, uae_u32 * wr
     *wrd3 = wrd[0];
 }
 
-
-#if 0
-static void normalize(uae_u32 *pwrd1, uae_u32 *pwrd2, uae_u32 *pwrd3)
-{
-    uae_u32 wrd1 = *pwrd1;
-    uae_u32 wrd2 = *pwrd2;
-    uae_u32 wrd3 = *pwrd3;
-    int exp = (wrd1 >> 16) & 0x7fff;
-    // Normalize if unnormal.
-    if (exp != 0 && exp != 0x7fff && !(wrd2 & 0x80000000)) {
-        while (!(wrd2 & 0x80000000) && (wrd2 || wrd3)) {
-            wrd2 <<= 1;
-            if (wrd3 & 0x80000000)
-                wrd2 |= 1;
-            wrd3 <<= 1;
-            exp--;
-        }
-        if (exp < 0)
-            exp = 0;
-        if (!wrd2 && !wrd3)
-            exp = 0;
-        *pwrd1 = (wrd1 & 0x80000000) | (exp << 16);
-        *pwrd2 = wrd2;
-        *pwrd3 = wrd3;
-    }
-}
-#endif
 
 static bool fpu_get_constant_softfloat(fpdata *fp, int cr)
 {
@@ -2161,7 +2186,7 @@ static uaecptr fmovem2fpp (uaecptr ad, uae_u32 list, int incr, int regdir)
                             mmu030_fmovem_store[i] = wrd[i];
                         mmu030_state[0]++;
                         if (i == 2)
-                            to_exten (&regs.fp[reg], mmu030_fmovem_store[0], mmu030_fmovem_store[1], wrd[2]);
+                            to_exten_fmovem (&regs.fp[reg], mmu030_fmovem_store[0], mmu030_fmovem_store[1], wrd[2]);
                     }
                 }
                 if (incr > 0)
@@ -2186,7 +2211,7 @@ static uaecptr fmovem2fpp (uaecptr ad, uae_u32 list, int incr, int regdir)
                 wrd3 = x_get_long (ad + 8);
                 if (incr > 0)
                     ad += 3 * 4;
-                to_exten (&regs.fp[reg], wrd1, wrd2, wrd3);
+                to_exten_fmovem (&regs.fp[reg], wrd1, wrd2, wrd3);
             }
             list <<= 1;
         }
