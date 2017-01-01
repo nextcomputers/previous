@@ -252,3 +252,58 @@ STATIC_INLINE void from_exten_x(fptype fp, uae_u32 * wrd1, uae_u32 * wrd2, uae_u
 	*wrd3 = (uae_u32) ((frac * twoto32 - *wrd2) * twoto32);
 }
 #endif
+
+#ifndef HAVE_to_exten
+#define HAVE_to_exten
+STATIC_INLINE void to_exten_x(fptype *f, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
+{
+    int i;
+    fptype result = 0.0;
+    uae_u16 s = (wrd1 >> 16) & 0x8000;
+    uae_s32 e = (wrd1 >> 16) & 0x7fff;
+    uae_u64 m = ((uae_u64) wrd2 << 32) | wrd3;
+    for (i = 0; i < 64; i++) {
+        result /= 2.0;
+        if (m & 1)
+            result += 1.0;
+        m >>= 1;
+    }
+    result *= powl(2.0, (e - 0x3fff));
+    *f = s ? -result : result;
+}
+#endif
+
+#ifndef HAVE_from_exten
+#define HAVE_from_exten
+STATIC_INLINE void from_exten_x(fptype f, uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
+{
+    int i;
+    uae_u16 s = (f < 0.0) ? 1: 0;
+    uae_u64 m = 0;
+    uae_s32 e = (uae_s32)log2l(f);
+    f /= powl(2.0, e);
+    for (i = 0; i < 64; i++) {
+        m <<= 1;
+        if (f >= 1.0) {
+            m |= 1;
+            f -= 1.0;
+        }
+        f *= 2.0;
+    }
+    e += 0x3fff;
+    if (e > 0 && e < 0x7fff && !(m & 0x8000000000000000ULL)) {
+        while (!(m & 0x8000000000000000ULL) && m) {
+            if (e == 0)
+                break;
+            m <<= 1;
+            e--;
+        }
+    }
+    if (!m && e != 0x7fff)
+        e = 0;
+    e |= s ? 0x8000 : 0;
+    *wrd1 = ((uae_u16) e) << 16;
+    *wrd2 = ((m >> 32) & 0xffffffff);
+    *wrd3 = m & 0xffffffff;
+}
+#endif
