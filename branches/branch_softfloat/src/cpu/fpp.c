@@ -35,31 +35,30 @@
 #define DEBUG_FPP 0
 #define EXCEPTION_FPP 1
 
-uae_u32 xhex_pi[]    ={0x2168c235, 0xc90fdaa2, 0x40000000};
-uae_u32 xhex_exp_1[] ={0xa2bb4a9a, 0xadf85458, 0x40000000};
-uae_u32 xhex_l2_e[]  ={0x5c17f0bc, 0xb8aa3b29, 0x3fff0000};
-uae_u32 xhex_ln_2[]  ={0xd1cf79ac, 0xb17217f7, 0x3ffe0000};
-uae_u32 xhex_ln_10[] ={0xaaa8ac17, 0x935d8ddd, 0x40000000};
-uae_u32 xhex_l10_2[] ={0xfbcff798, 0x9a209a84, 0x3ffd0000};
-uae_u32 xhex_l10_e[] ={0x37287195, 0xde5bd8a9, 0x3ffd0000};
+uae_u32 xhex_pi[]    ={0x40000000, 0xc90fdaa2, 0x2168c235};
+uae_u32 xhex_exp_1[] ={0x40000000, 0xadf85458, 0xa2bb4a9a};
+uae_u32 xhex_l2_e[]  ={0x3fff0000, 0xb8aa3b29, 0x5c17f0bc};
+uae_u32 xhex_ln_2[]  ={0x3ffe0000, 0xb17217f7, 0xd1cf79ac};
+uae_u32 xhex_ln_10[] ={0x40000000, 0x935d8ddd, 0xaaa8ac17};
+uae_u32 xhex_l10_2[] ={0x3ffd0000, 0x9a209a84, 0xfbcff798};
+uae_u32 xhex_l10_e[] ={0x3ffd0000, 0xde5bd8a9, 0x37287195};
 uae_u32 xhex_zero[]  ={0x00000000, 0x00000000, 0x00000000};
-uae_u32 xhex_1e0[]   ={0x00000000, 0x80000000, 0x3fff0000};
-uae_u32 xhex_1e1[]   ={0x00000000, 0xa0000000, 0x40020000};
-uae_u32 xhex_1e2[]   ={0x00000000, 0xc8000000, 0x40050000};
-uae_u32 xhex_1e4[]   ={0x00000000, 0x9c400000, 0x400c0000};
-uae_u32 xhex_1e8[]   ={0x00000000, 0xbebc2000, 0x40190000};
-uae_u32 xhex_1e16[]  ={0x04000000, 0x8e1bc9bf, 0x40340000};
-uae_u32 xhex_1e32[]  ={0x2b70b59e, 0x9dc5ada8, 0x40690000};
-uae_u32 xhex_1e64[]  ={0xffcfa6d5, 0xc2781f49, 0x40d30000};
-uae_u32 xhex_1e128[] ={0x80e98ce0, 0x93ba47c9, 0x41a80000};
-uae_u32 xhex_1e256[] ={0x9df9de8e, 0xaa7eebfb, 0x43510000};
-uae_u32 xhex_1e512[] ={0xa60e91c7, 0xe319a0ae, 0x46a30000};
-uae_u32 xhex_1e1024[]={0x81750c17, 0xc9767586, 0x4d480000};
-uae_u32 xhex_1e2048[]={0xc53d5de5, 0x9e8b3b5d, 0x5a920000};
-uae_u32 xhex_1e4096[]={0x8a20979b, 0xc4605202, 0x75250000};
-uae_u32 xhex_nan[]   ={0xffffffff, 0xffffffff, 0x7fff0000};
-uae_u32 xhex_snan[]  ={0xffffffff, 0xbfffffff, 0x7fff0000};
-uae_u32 xhex_inf[]   ={0x00000000, 0x00000000, 0x7fff0000};
+uae_u32 xhex_1e0[]   ={0x3fff0000, 0x80000000, 0x00000000};
+uae_u32 xhex_1e1[]   ={0x40020000, 0xa0000000, 0x00000000};
+uae_u32 xhex_1e2[]   ={0x40050000, 0xc8000000, 0x00000000};
+uae_u32 xhex_1e4[]   ={0x400c0000, 0x9c400000, 0x00000000};
+uae_u32 xhex_1e8[]   ={0x40190000, 0xbebc2000, 0x00000000};
+uae_u32 xhex_1e16[]  ={0x40340000, 0x8e1bc9bf, 0x04000000};
+uae_u32 xhex_1e32[]  ={0x40690000, 0x9dc5ada8, 0x2b70b59e};
+uae_u32 xhex_1e64[]  ={0x40d30000, 0xc2781f49, 0xffcfa6d5};
+uae_u32 xhex_1e128[] ={0x41a80000, 0x93ba47c9, 0x80e98ce0};
+uae_u32 xhex_1e256[] ={0x43510000, 0xaa7eebfb, 0x9df9de8e};
+uae_u32 xhex_1e512[] ={0x46a30000, 0xe319a0ae, 0xa60e91c7};
+uae_u32 xhex_1e1024[]={0x4d480000, 0xc9767586, 0x81750c17};
+uae_u32 xhex_1e2048[]={0x5a920000, 0x9e8b3b5d, 0xc53d5de5};
+uae_u32 xhex_1e4096[]={0x75250000, 0xc4605202, 0x8a20979b};
+
+uae_u32 xhex_nan[]   ={0x7fff0000, 0xffffffff, 0xffffffff};
 
 #if USE_LONG_DOUBLE
 static uae_u32 ldhex_l2_e[]  ={0x5c17f0bc, 0xb8aa3b29, 0x3fff};
@@ -218,15 +217,15 @@ const char *fp_print(fpdata *fpd)
 
 static void softfloat_set(floatx80 *fx, uae_u32 *f)
 {
-    fx->high = (uae_u16)(f[2] >> 16);
-    fx->low = ((uae_u64)f[1] << 32) | f[0];
+    fx->high = (uae_u16)(f[0] >> 16);
+    fx->low = ((uae_u64)f[1] << 32) | f[2];
 }
 
 static void softfloat_get(floatx80 *fx, uae_u32 *f)
 {
-    f[2] = (uae_u32)(fx->high << 16);
+    f[0] = (uae_u32)(fx->high << 16);
     f[1] = fx->low >> 32;
-    f[0] = (uae_u32)fx->low;
+    f[2] = (uae_u32)fx->low;
 }
 
 static void softfloat_unset_snan(floatx80 *fx)
@@ -357,21 +356,21 @@ void to_exten(fpdata *fpd, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
         // automatically fix unnormals if 6888x
         normalize_exten(&wrd1, &wrd2, &wrd3);
     }
-    uae_u32 wrd[3] = { wrd3, wrd2, wrd1 };
+    uae_u32 wrd[3] = { wrd1, wrd2, wrd3 };
     softfloat_set(&fpd->fpx, wrd);
 }
 void to_exten_fmovem(fpdata *fpd, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
 {
-    uae_u32 wrd[3] = { wrd3, wrd2, wrd1 };
+    uae_u32 wrd[3] = { wrd1, wrd2, wrd3 };
     softfloat_set(&fpd->fpx, wrd);
 }
 static void from_exten(fpdata *fpd, uae_u32 * wrd1, uae_u32 * wrd2, uae_u32 * wrd3)
 {
     uae_u32 wrd[3];
     softfloat_get(&fpd->fpx, wrd);
-    *wrd1 = wrd[2];
+    *wrd1 = wrd[0];
     *wrd2 = wrd[1];
-    *wrd3 = wrd[0];
+    *wrd3 = wrd[2];
 }
 
 
@@ -1003,6 +1002,18 @@ static void to_pack (fpdata *fpd, uae_u32 *wrd)
     char *cp;
     char str[100];
     
+    if (((wrd[0] >> 16) & 0x7fff) == 0x7fff) {
+        // no conversion if nan or inifinity
+        softfloat_set(&fpd->fpx, wrd);
+        return;
+    }
+    if (!(wrd[0] & 0xF) && !wrd[1] && !wrd[2]) {
+        // exponent is not cared about, if mantissa is zero
+        wrd[0] &= 0x80000000;
+        softfloat_set(&fpd->fpx, wrd);
+        return;
+    }
+    
     cp = str;
     if (wrd[0] & 0x80000000)
         *cp++ = '-';
@@ -1036,7 +1047,8 @@ static void to_pack (fpdata *fpd, uae_u32 *wrd)
 #else
     sscanf (str, "%le", &d);
 #endif
-    from_exten_x(d, &wrd[2], &wrd[1], &wrd[0]);
+    from_exten_x(d, &wrd[0], &wrd[1], &wrd[2]);
+    normalize_exten(&wrd[0], &wrd[1], &wrd[2]);
     softfloat_set(&fpd->fpx, wrd);
 }
 
@@ -1049,18 +1061,16 @@ static void from_pack (fpdata *src, uae_u32 *wrd, int kfactor)
     char str[100];
     fptype fp;
     
-    wrd[0] = wrd[1] = wrd[2] = 0;
-    
     if (fp_is_nan (src) || fp_is_infinity (src)) {
-        wrd[0] |= (1 << 30) | (1 << 29) | (1 << 30); // YY=1
-        wrd[0] |= 0xfff << 16; // Exponent=FFF
-        // TODO: mantissa should be set if NAN
+        // copied bit by bit, no conversion
+        softfloat_get(&src->fpx, wrd);
         return;
     }
     
-    uae_u32 out[3];
-    softfloat_get(&src->fpx, out);
-    to_exten_x(&fp, out[2], out[1], out[0]);
+    softfloat_get(&src->fpx, wrd);
+    to_exten_x(&fp, wrd[0], wrd[1], wrd[2]);
+    
+    wrd[0] = wrd[1] = wrd[2] = 0;
     
 #if USE_LONG_DOUBLE
     sprintf (str, "%#.17Le", fp);
@@ -2637,12 +2647,12 @@ static bool arithmetic_softfloat(floatx80 *srcd, int reg, int extra)
             // convert softfloat to raw words
             softfloat_get(&fx, out);
             // convert to double/long double
-            to_exten_x(&fp, out[2], out[1], out[0]);
+            to_exten_x(&fp, out[0], out[1], out[2]);
             // emulate instruction using normal fpu code
             if (!arithmetic_fp(fp, reg, extra))
                 return false;
             // convert back to raw
-            from_exten_x(regs.fp[reg].fp, &out[2], &out[1], &out[0]);
+            from_exten_x(regs.fp[reg].fp, &out[0], &out[1], &out[2]);
             // convert to softfloat internal format
             softfloat_set(&regs.fp[reg].fpx, out);
         }
