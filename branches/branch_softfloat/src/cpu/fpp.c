@@ -924,8 +924,8 @@ void fpsr_make_status(void)
     get_softfloat_status(&regs.fpsr);
     
     // update accrued exception byte
-    if (regs.fpsr & (FPSR_SNAN | FPSR_OPERR))
-        regs.fpsr |= FPSR_AE_IOP;  // IOP = SNAN || OPERR
+    if (regs.fpsr & (FPSR_BSUN | FPSR_SNAN | FPSR_OPERR))
+        regs.fpsr |= FPSR_AE_IOP;  // IOP = BSUN || SNAN || OPERR
     if (regs.fpsr & FPSR_OVFL)
         regs.fpsr |= FPSR_AE_OVFL; // OVFL = OVFL
     if ((regs.fpsr & FPSR_UNFL) && (regs.fpsr & FPSR_INEX2))
@@ -934,6 +934,20 @@ void fpsr_make_status(void)
         regs.fpsr |= FPSR_AE_DZ;   // DZ = DZ
     if (regs.fpsr & (FPSR_OVFL | FPSR_INEX2 | FPSR_INEX1))
         regs.fpsr |= FPSR_AE_INEX; // INEX = INEX1 || INEX2 || OVFL
+    
+    fpsr_check_exception();
+}
+int fpsr_set_bsun(void)
+{
+    regs.fpsr |= FPSR_BSUN;
+    regs.fpsr |= FPSR_AE_IOP;
+    
+    if (regs.fpcr & FPSR_BSUN) {
+        // logging only so far
+        write_log (_T("FPU exception: BSUN! (FPSR: %08x, FPCR: %04x)\n"), regs.fpsr, regs.fpcr);
+        return 0; // return 1, once BSUN exception works
+    }
+    return 0;
 }
 
 uae_u32 fpp_get_fpsr (void)
@@ -1610,8 +1624,10 @@ int fpp_cond (int condition)
     N = (regs.fpsr & FPSR_CC_N) ? 1 : 0;
     Z = (regs.fpsr & FPSR_CC_Z) ? 1 : 0;
     
-    if ((condition & 0x10) && NotANumber)
-        fpsr_set_exception(FPSR_BSUN);
+    if ((condition & 0x10) && NotANumber) {
+        if (fpsr_set_bsun())
+            return -2;
+    }
     
     switch (condition)
     {
@@ -1711,7 +1727,10 @@ void fpuop_dbcc (uae_u32 opcode, uae_u16 extra)
     maybe_idle_state ();
     cc = fpp_cond (extra & 0x3f);
     if (cc < 0) {
-        fpu_op_illg (opcode, extra, regs.fpiar);
+        if (cc == -2)
+            return; // BSUN
+        else
+            fpu_op_illg (opcode, extra, regs.fpiar);
     } else if (!cc) {
         int reg = opcode & 0x7;
         
@@ -1722,7 +1741,6 @@ void fpuop_dbcc (uae_u32 opcode, uae_u16 extra)
             regs.fp_branch = true;
         }
     }
-    fpsr_check_exception();
 }
 
 void fpuop_scc (uae_u32 opcode, uae_u16 extra)
@@ -1753,13 +1771,15 @@ void fpuop_scc (uae_u32 opcode, uae_u16 extra)
     maybe_idle_state ();
     cc = fpp_cond (extra & 0x3f);
     if (cc < 0) {
-        fpu_op_illg (opcode, extra, regs.fpiar);
+        if (cc == -2)
+            return; // BSUN
+        else
+            fpu_op_illg (opcode, extra, regs.fpiar);
     } else if ((opcode & 0x38) == 0) {
         m68k_dreg (regs, opcode & 7) = (m68k_dreg (regs, opcode & 7) & ~0xff) | (cc ? 0xff : 0x00);
     } else {
         x_cp_put_byte (ad, cc ? 0xff : 0x00);
     }
-    fpsr_check_exception();
 }
 
 void fpuop_trapcc (uae_u32 opcode, uaecptr oldpc, uae_u16 extra)
@@ -1777,11 +1797,13 @@ void fpuop_trapcc (uae_u32 opcode, uaecptr oldpc, uae_u16 extra)
     maybe_idle_state ();
     cc = fpp_cond (extra & 0x3f);
     if (cc < 0) {
-        fpu_op_illg (opcode, extra, oldpc);
+        if (cc == -2)
+            return; // BSUN
+        else
+            fpu_op_illg (opcode, extra, regs.fpiar);
     } else if (cc) {
         Exception (7);
     }
-    fpsr_check_exception();
 }
 
 void fpuop_bcc (uae_u32 opcode, uaecptr oldpc, uae_u32 extra)
@@ -1799,14 +1821,16 @@ void fpuop_bcc (uae_u32 opcode, uaecptr oldpc, uae_u32 extra)
     maybe_idle_state ();
     cc = fpp_cond (opcode & 0x3f);
     if (cc < 0) {
-        fpu_op_illg (opcode, extra, oldpc - 2);
+        if (cc == -2)
+            return; // BSUN
+        else
+            fpu_op_illg (opcode, extra, regs.fpiar);
     } else if (cc) {
         if ((opcode & 0x40) == 0)
             extra = (uae_s32) (uae_s16) extra;
         m68k_setpc (oldpc + extra);
         regs.fp_branch = true;
     }
-    fpsr_check_exception();
 }
 
 void fpuop_save (uae_u32 opcode)
@@ -2665,7 +2689,6 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
             if (put_fp_value (&regs.fp[(extra >> 7) & 7], opcode, extra, pc) == 0)
                 fpu_noinst (opcode, pc);
             fpsr_make_status();
-            fpsr_check_exception();
             return;
             
         case 4:
@@ -2873,7 +2896,6 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                 }
                 fpsr_set_result(regs.fp[reg].fpx);
                 fpsr_make_status();
-                fpsr_check_exception();
                 return;
             }
             
@@ -2900,7 +2922,6 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
             if (!v)
                 fpu_noinst (opcode, pc);
             fpsr_make_status();
-            fpsr_check_exception();
             return;
         default:
             break;
