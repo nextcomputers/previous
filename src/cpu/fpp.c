@@ -1003,11 +1003,12 @@ static void to_pack (fpdata *fpd, uae_u32 *wrd)
     char str[100];
     
     if (((wrd[0] >> 16) & 0x7fff) == 0x7fff) {
-        // no conversion if nan or inifinity
+        // infinity has extended exponent and all 0 packed fraction
+        // nans are copies bit by bit
         softfloat_set(&fpd->fpx, wrd);
         return;
     }
-    if (!(wrd[0] & 0xF) && !wrd[1] && !wrd[2]) {
+    if (!(wrd[0] & 0xf) && !wrd[1] && !wrd[2]) {
         // exponent is not cared about, if mantissa is zero
         wrd[0] &= 0x80000000;
         softfloat_set(&fpd->fpx, wrd);
@@ -1061,9 +1062,15 @@ static void from_pack (fpdata *src, uae_u32 *wrd, int kfactor)
     char str[100];
     fptype fp;
     
-    if (fp_is_nan (src) || fp_is_infinity (src)) {
+    if (fp_is_nan (src)) {
         // copied bit by bit, no conversion
         softfloat_get(&src->fpx, wrd);
+        return;
+    }
+    if (fp_is_infinity (src)) {
+        // extended exponent and all 0 packed fraction
+        softfloat_get(&src->fpx, wrd);
+        wrd[1] = wrd[2] = 0;
         return;
     }
     
@@ -2513,7 +2520,11 @@ static bool arithmetic_softfloat(floatx80 *srcd, int reg, int extra)
     floatx80 fx = *srcd;
     floatx80 f = regs.fp[reg].fpx;
     int8 save_float_rounding_mode;
+    int8 save_float_rounding_prec = floatx80_rounding_precision;
     bool sgl = false;
+    
+    /* do calculations in extended precision and round the result */
+    floatx80_rounding_precision = 80;
     
     // SNAN -> QNAN if SNAN interrupt is not enabled
     if (floatx80_is_signaling_nan(fx) && !(regs.fpcr & 0x4000)) {
@@ -2618,6 +2629,8 @@ static bool arithmetic_softfloat(floatx80 *srcd, int reg, int extra)
         case 0x36:
         case 0x37:
             floatx80_fsincos(fx, &regs.fp[extra & 7].fpx, &regs.fp[reg].fpx);
+            if (((regs.fpcr >> 6) & 3) == 1) fround32(extra & 7);
+            else if (((regs.fpcr >> 6) & 3) == 2) fround64(extra & 7);
             break;
         case 0x38: /* FCMP */
             f = floatx80_sub(f, fx);
@@ -2672,6 +2685,8 @@ static bool arithmetic_softfloat(floatx80 *srcd, int reg, int extra)
         fround32(reg);
     else if (((regs.fpcr >> 6) & 3) == 2)
         fround64(reg);
+    
+    floatx80_rounding_precision = save_float_rounding_prec;
     
     fpsr_set_result(regs.fp[reg].fpx);
     
