@@ -366,8 +366,8 @@ int sf_fsincos(floatx80 a, floatx80 *sin_a, floatx80 *cos_a)
 	float128 r = normalizeRoundAndPackFloat128(0, zExp-0x10, aSig0, aSig1);
 
 	if (aSign) q = -q;
-	if (sin_a) *sin_a = sincos_approximation(zSign, r,   q);
 	if (cos_a) *cos_a = sincos_approximation(zSign, r, q+1);
+	if (sin_a) *sin_a = sincos_approximation(zSign, r,   q);
 
 	return 0;
 }
