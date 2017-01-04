@@ -464,16 +464,18 @@ static inline void set_softfloat_mode(uae_u32 mode_control)
 {
     switch(mode_control & FPCR_ROUNDING_PRECISION) {
         case FPCR_PRECISION_SINGLE:   // S
-            floatx80_rounding_precision = 32;
+            //floatx80_rounding_precision = 32;
             break;
         case FPCR_PRECISION_DOUBLE:   // D
-            floatx80_rounding_precision = 64;
+            //floatx80_rounding_precision = 64;
             break;
         case FPCR_PRECISION_EXTENDED: // X
         default:                      // undefined
-            floatx80_rounding_precision = 80;
+            //floatx80_rounding_precision = 80;
             break;
     }
+    floatx80_rounding_precision = 80;
+    
     switch(mode_control & FPCR_ROUNDING_MODE) {
         case FPCR_ROUND_NEAR: // to neareset
             float_rounding_mode = float_round_nearest_even;
@@ -2520,11 +2522,7 @@ static bool arithmetic_softfloat(floatx80 *srcd, int reg, int extra)
     floatx80 fx = *srcd;
     floatx80 f = regs.fp[reg].fpx;
     int8 save_float_rounding_mode;
-    int8 save_float_rounding_prec = floatx80_rounding_precision;
     bool sgl = false;
-    
-    /* do calculations in extended precision and round the result */
-    floatx80_rounding_precision = 80;
     
     // SNAN -> QNAN if SNAN interrupt is not enabled
     if (floatx80_is_signaling_nan(fx) && !(regs.fpcr & 0x4000)) {
@@ -2534,8 +2532,8 @@ static bool arithmetic_softfloat(floatx80 *srcd, int reg, int extra)
     switch (extra & 0x7f)
     {
         case 0x00: /* FMOVE */
-        case 0x40:
-        case 0x44:
+        case 0x40: /* FSMOVE */
+        case 0x44: /* FDMOVE */
             regs.fp[reg].fpx = fx;	
             break;
         case 0x01: /* FINT */
@@ -2628,9 +2626,9 @@ static bool arithmetic_softfloat(floatx80 *srcd, int reg, int extra)
         case 0x35:
         case 0x36:
         case 0x37:
-            floatx80_fsincos(fx, &regs.fp[extra & 7].fpx, &regs.fp[reg].fpx);
+            floatx80_fsincos(fx, &regs.fp[reg].fpx, &regs.fp[extra & 7].fpx);
             if (((regs.fpcr >> 6) & 3) == 1) fround32(extra & 7);
-            else if (((regs.fpcr >> 6) & 3) == 2) fround64(extra & 7);
+            if (((regs.fpcr >> 6) & 3) == 2) fround64(extra & 7);
             break;
         case 0x38: /* FCMP */
             f = floatx80_sub(f, fx);
@@ -2685,8 +2683,6 @@ static bool arithmetic_softfloat(floatx80 *srcd, int reg, int extra)
         fround32(reg);
     else if (((regs.fpcr >> 6) & 3) == 2)
         fround64(reg);
-    
-    floatx80_rounding_precision = save_float_rounding_prec;
     
     fpsr_set_result(regs.fp[reg].fpx);
     
