@@ -120,6 +120,9 @@ typedef uae_u8 flagtype;
 
 #define USE_LONG_DOUBLE 1
 
+#ifdef WITH_SOFTFLOAT
+typedef floatx80 fptype;
+#else // !WITH_SOFTFLOAT
 #ifdef USE_LONG_DOUBLE
 typedef long double fptype;
 #define LDPTR tbyte ptr
@@ -127,7 +130,9 @@ typedef long double fptype;
 typedef double fptype;
 #define LDPTR qword ptr
 #endif
-#endif
+#endif // !WITH_SOFTFLOAT
+
+#endif // FPUEMU
 
 #define MAX68020CYCLES 4
 
@@ -170,14 +175,6 @@ struct mmufixup
 };
 extern struct mmufixup mmufixup[2];
 
-typedef struct
-{
-	fptype fp;
-#ifdef WITH_SOFTFLOAT
-	floatx80 fpx;
-#endif
-} fpdata;
-
 struct regstruct
 {
 	uae_u32 regs[16];
@@ -211,13 +208,13 @@ struct regstruct
 	uae_u32 vbr, sfc, dfc;
 
 #ifdef FPUEMU
-	fpdata fp[8];
-	fpdata fp_result;
+	fptype fp[8];
+	fptype fp_result;
 	uae_u32 fp_result_status;
 	uae_u32 fpcr, fpsr, fpiar;
 	uae_u32 fpu_state;
 	uae_u32 fpu_exp_state;
-	fpdata exp_src1, exp_src2;
+	fptype exp_src1, exp_src2;
 	uae_u32 exp_pack[3];
 	uae_u16 exp_opcode, exp_extra, exp_type;
 	uae_u16 exp_size;
@@ -708,7 +705,7 @@ extern uae_u32 fpp_get_fpsr (void);
 extern void fpu_reset (void);
 extern void fpux_save (int*);
 extern void fpux_restore (int*);
-extern bool fpu_get_constant(fpdata *fp, int cr);
+extern bool fpu_get_constant(fptype *fp, int cr);
 extern int fpp_cond(int condition);
 
 extern void exception3_read(uae_u32 opcode, uaecptr addr);

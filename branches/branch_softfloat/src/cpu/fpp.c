@@ -8,11 +8,6 @@
  * 68040+ exceptions and more by Toni Wilen
  */
 
-#define __USE_ISOC9X  /* We might be able to pick up a NaN */
-
-#include <math.h>
-#include <float.h>
-
 #include "main.h"
 #include "hatari-glue.h"
 
@@ -24,12 +19,13 @@
 #include "options_cpu.h"
 #include "memory.h"
 #include "newcpu.h"
-#include "md-fpp.h"
 #include "cpummu.h"
 #include "cpummu030.h"
 
 #ifdef WITH_SOFTFLOAT
-#include "softfloat.h"
+#include "fpp-softfloat.h"
+#else
+#include "md-fpp.h"
 #endif
 
 #define DEBUG_FPP 0
@@ -60,24 +56,7 @@ uae_u32 xhex_1e4096[]={0x75250000, 0xc4605202, 0x8a20979b};
 
 uae_u32 xhex_nan[]   ={0x7fff0000, 0xffffffff, 0xffffffff};
 
-#if USE_LONG_DOUBLE
-static uae_u32 ldhex_l2_e[]  ={0x5c17f0bc, 0xb8aa3b29, 0x3fff};
-static uae_u32 ldhex_ln_2[]  ={0xd1cf79ac, 0xb17217f7, 0x3ffe};
-static uae_u32 ldhex_nan[]   ={0xffffffff, 0xffffffff, 0x7fff};
-static long double *fp_l2_e   = (long double *)ldhex_l2_e;
-static long double *fp_ln_2   = (long double *)ldhex_ln_2;
-static long double *fp_nan    = (long double *)ldhex_nan;
-#else
-static uae_u32 dhex_l2_e[]  ={0x652B82FE, 0x3FF71547};
-static uae_u32 dhex_ln_2[]  ={0xFEFA39EF, 0x3FE62E42};
-static uae_u32 dhex_nan[]   ={0xffffffff, 0x7fffffff};
-static double *fp_l2_e   = (double *)dhex_l2_e;
-static double *fp_ln_2   = (double *)dhex_ln_2;
-static double *fp_nan    = (double *)dhex_nan;
-#endif
 static bool fpu_mmu_fixup;
-
-static floatx80 fxsizes[6] = { {0} };
 
 
 /* Floating Point Control Register (FPCR)
@@ -159,125 +138,20 @@ static floatx80 fxsizes[6] = { {0} };
 #define FPSR_AE_INEX    0x00000008
 
 
-STATIC_INLINE void get_softfloat_status(uae_u32 *status)
+static void fpnan (fptype *fp)
 {
-    if (float_exception_flags & float_flag_invalid)
-        *status |= FPSR_OPERR;
-    if (float_exception_flags & float_flag_divbyzero)
-        *status |= FPSR_DZ;
-    if (float_exception_flags & float_flag_overflow)
-        *status |= FPSR_OVFL;
-    if (float_exception_flags & float_flag_underflow)
-        *status |= FPSR_UNFL;
-    if (float_exception_flags & float_flag_inexact)
-        *status |= FPSR_INEX2;
+    to_exten(fp, xhex_nan[0], xhex_nan[1], xhex_nan[2]);
 }
 
-STATIC_INLINE void clear_softfloat_status(void)
+static void fpclear (fptype *fp)
 {
-    float_exception_flags = 0;
+    *fp = from_int(0);
+}
+static void fpset (fptype *fp, uae_s32 val)
+{
+    *fp = from_int(val);
 }
 
-const char *softfloat_print(floatx80 fx)
-{
-    static char fs[32];
-    bool n, u, d;
-    long double result = 0.0;
-    int i;
-    
-    n = floatx80_is_negative(fx);
-    u = floatx80_is_unnormal(fx);
-    d = floatx80_is_denormal(fx);
-    
-    if (floatx80_is_zero(fx)) {
-        sprintf(fs, "%c%#.17Le%s%s", n?'-':'+', (long double) 0.0, u?"U":"", d?"D":"");
-    } else if (floatx80_is_infinity(fx)) {
-        sprintf(fs, "%c%s", n?'-':'+', "inf");
-    } else if (floatx80_is_signaling_nan(fx)) {
-        sprintf(fs, "%c%s", n?'-':'+', "snan");
-    } else if (floatx80_is_nan(fx)) {
-        sprintf(fs, "%c%s", n?'-':'+', "nan");
-    } else {
-        for (i = 63; i >= 0; i--) {
-            if (fx.low & (((uae_u64)1)<<i)) {
-                result += (long double) 1.0 / (((uae_u64)1)<<(63-i));
-            }
-        }
-        result *= powl(2.0, (fx.high&0x7FFF) - 0x3FFF);
-        sprintf(fs, "%c%#.17Le%s%s", n?'-':'+', result, u?"U":"", d?"D":"");
-    }
-    
-    return fs;
-}
-
-const char *fp_print(fpdata *fpd)
-{
-    return softfloat_print(fpd->fpx);
-}
-
-static void softfloat_set(floatx80 *fx, uae_u32 *f)
-{
-    fx->high = (uae_u16)(f[0] >> 16);
-    fx->low = ((uae_u64)f[1] << 32) | f[2];
-}
-
-static void softfloat_get(floatx80 *fx, uae_u32 *f)
-{
-    f[0] = (uae_u32)(fx->high << 16);
-    f[1] = fx->low >> 32;
-    f[2] = (uae_u32)fx->low;
-}
-
-static void softfloat_unset_snan(floatx80 *fx)
-{
-    fx->low |= LIT64(0x4000000000000000);
-}
-
-static void fpnan (fpdata *fpd)
-{
-    fpd->fp = *fp_nan;
-    softfloat_set(&fpd->fpx, xhex_nan);
-}
-
-static void fpclear (fpdata *fpd)
-{
-    fpd->fp = 0;
-    fpd->fpx = int32_to_floatx80(0);
-}
-static void fpset (fpdata *fpd, uae_s32 val)
-{
-    fpd->fp = (fptype)val;
-    fpd->fpx = int32_to_floatx80(val);
-}
-
-static bool fp_is_snan(fpdata *fpd)
-{
-    return floatx80_is_signaling_nan(fpd->fpx) != 0;
-}
-static bool fp_is_nan (fpdata *fpd)
-{
-    return floatx80_is_nan(fpd->fpx) != 0;
-}
-static bool fp_is_infinity (fpdata *fpd)
-{
-    return floatx80_is_infinity(fpd->fpx) != 0;
-}
-static bool fp_is_zero(fpdata *fpd)
-{
-    return floatx80_is_zero(fpd->fpx) != 0;
-}
-static bool fp_is_neg(fpdata *fpd)
-{
-    return floatx80_is_negative(fpd->fpx) != 0;
-}
-static bool fp_is_denormal(fpdata *fpd)
-{
-    return floatx80_is_denormal(fpd->fpx) != 0;
-}
-static bool fp_is_unnormal(fpdata *fpd)
-{
-    return floatx80_is_unnormal(fpd->fpx) != 0;
-}
 #if 0
 bool float_is_denormal(uae_u32 wrd1)
 {
@@ -298,7 +172,7 @@ bool double_is_denormal(uae_u32 wrd1, uae_u32 wrd2)
     return false;
 }
 #endif
-static void normalize_exten(uae_u32 *pwrd1, uae_u32 *pwrd2, uae_u32 *pwrd3)
+void normalize_exten(uae_u32 *pwrd1, uae_u32 *pwrd2, uae_u32 *pwrd3)
 {
     uae_u32 wrd1 = *pwrd1;
     uae_u32 wrd2 = *pwrd2;
@@ -323,58 +197,7 @@ static void normalize_exten(uae_u32 *pwrd1, uae_u32 *pwrd2, uae_u32 *pwrd3)
     }
 }
 
-void to_single(fpdata *fpd, uae_u32 value)
-{
-    float32 f = value;
-    if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882)
-        fpd->fpx = float32_to_floatx80(f); // automatically fix denormals if 6888x
-    else
-        fpd->fpx = float32_to_floatx80_allowunnormal(f);
-}
-static uae_u32 from_single(fpdata *fpd)
-{
-    float32 f = floatx80_to_float32(fpd->fpx);
-    return f;
-}
-void to_double(fpdata *fpd, uae_u32 wrd1, uae_u32 wrd2)
-{
-    float64 f = ((float64)wrd1 << 32) | wrd2;
-    if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882)
-        fpd->fpx = float64_to_floatx80(f); // automatically fix denormals if 6888x
-    else
-        fpd->fpx = float64_to_floatx80_allowunnormal(f);
-}
-static void from_double(fpdata *fpd, uae_u32 *wrd1, uae_u32 *wrd2)
-{
-        float64 f = floatx80_to_float64(fpd->fpx);
-        *wrd1 = f >> 32;
-        *wrd2 = (uae_u32)f;
-}
-void to_exten(fpdata *fpd, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
-{
-    if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882) {
-        // automatically fix unnormals if 6888x
-        normalize_exten(&wrd1, &wrd2, &wrd3);
-    }
-    uae_u32 wrd[3] = { wrd1, wrd2, wrd3 };
-    softfloat_set(&fpd->fpx, wrd);
-}
-void to_exten_fmovem(fpdata *fpd, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
-{
-    uae_u32 wrd[3] = { wrd1, wrd2, wrd3 };
-    softfloat_set(&fpd->fpx, wrd);
-}
-static void from_exten(fpdata *fpd, uae_u32 * wrd1, uae_u32 * wrd2, uae_u32 * wrd3)
-{
-    uae_u32 wrd[3];
-    softfloat_get(&fpd->fpx, wrd);
-    *wrd1 = wrd[0];
-    *wrd2 = wrd[1];
-    *wrd3 = wrd[2];
-}
-
-
-static bool fpu_get_constant_softfloat(fpdata *fp, int cr)
+bool fpu_get_constant(fptype *fp, int cr)
 {
     uae_u32 *f = NULL;
     
@@ -450,51 +273,10 @@ static bool fpu_get_constant_softfloat(fpdata *fp, int cr)
             return false;
     }
 
-    softfloat_set(&fp->fpx, f);
+    to_exten_fmovem(fp, f[0], f[1], f[2]);
 
     return true;
 }
-
-bool fpu_get_constant(fpdata *fp, int cr)
-{
-    return fpu_get_constant_softfloat(fp, cr);
-}
-
-static inline void set_softfloat_mode(uae_u32 mode_control)
-{
-    switch(mode_control & FPCR_ROUNDING_PRECISION) {
-        case FPCR_PRECISION_SINGLE:   // S
-            //floatx80_rounding_precision = 32;
-            break;
-        case FPCR_PRECISION_DOUBLE:   // D
-            //floatx80_rounding_precision = 64;
-            break;
-        case FPCR_PRECISION_EXTENDED: // X
-        default:                      // undefined
-            //floatx80_rounding_precision = 80;
-            break;
-    }
-    floatx80_rounding_precision = 80;
-    
-    switch(mode_control & FPCR_ROUNDING_MODE) {
-        case FPCR_ROUND_NEAR: // to neareset
-            float_rounding_mode = float_round_nearest_even;
-            break;
-        case FPCR_ROUND_ZERO: // to zero
-            float_rounding_mode = float_round_to_zero;
-            break;
-        case FPCR_ROUND_MINF: // to minus
-            float_rounding_mode = float_round_down;
-            break;
-        case FPCR_ROUND_PINF: // to plus
-            float_rounding_mode = float_round_up;
-            break;
-    }
-    return;
-}
-
-
-typedef uae_s64 tointtype;
 
 /*
  static void fpu_format_error (void)
@@ -531,7 +313,7 @@ typedef uae_s64 tointtype;
 #define FPU_EXP_UNIMP_EA 6
 
 
-static void fpu_op_unimp (uae_u16 opcode, uae_u16 extra, uae_u32 ea, uaecptr oldpc, int type, fpdata *src, int reg, int size)
+static void fpu_op_unimp (uae_u16 opcode, uae_u16 extra, uae_u32 ea, uaecptr oldpc, int type, fptype *src, int reg, int size)
 {
     /* 68040 unimplemented/68060 FPU disabled exception.
      * Line F exception with different stack frame.. */
@@ -680,7 +462,7 @@ static bool fault_if_no_fpu (uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr 
     return false;
 }
 
-static bool fault_if_unimplemented_680x0 (uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fpdata *src, int reg)
+static bool fault_if_unimplemented_680x0 (uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fptype *src, int reg)
 {
     if (fault_if_no_fpu (opcode, extra, ea, oldpc))
         return true;
@@ -776,7 +558,7 @@ static bool fault_if_60 (uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldp
     return false;
 }
 
-static bool fault_if_4060 (uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, int type, fpdata *src, uae_u32 *pack)
+static bool fault_if_4060 (uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, int type, fptype *src, uae_u32 *pack)
 {
     if (currprefs.cpu_model >= 68040 && currprefs.fpu_model) {
         if (pack) {
@@ -851,22 +633,6 @@ static void fpu_null (void)
         fpnan (&regs.fp[i]);
 }
 
-#define fp_round_to_minus_infinity(x) floor(x)
-#define fp_round_to_plus_infinity(x) ceil(x)
-#define fp_round_to_zero(x)	((x) >= 0.0 ? floor(x) : ceil(x))
-#define fp_round_to_nearest(x) ((x) >= 0.0 ? (int)((x) + 0.5) : (int)((x) - 0.5))
-
-static tointtype toint(fpdata *src, int size)
-{
-    if (floatx80_lt(src->fpx, fxsizes[size * 2 + 0])) {
-        return floatx80_to_int32(fxsizes[size * 2 + 0]);
-    }
-    if (floatx80_lt(fxsizes[size * 2 + 1], src->fpx)) {
-        return floatx80_to_int32(fxsizes[size * 2 + 1]);
-    }
-    return floatx80_to_int32(src->fpx);
-}
-
 void fpsr_set_exception(uae_u32 exception)
 {
     regs.fpsr |= exception;
@@ -890,9 +656,9 @@ void fpsr_check_exception(void)
         write_log (_T("FPU exception: FPSR: %08x, FPCR: %04x (vector: %d)!\n"), regs.fpsr, regs.fpcr, vector);
     }
 }
-void fpsr_set_result(floatx80 result)
+void fpsr_set_result(fptype result)
 {
-    regs.fp_result.fpx = result;
+    regs.fp_result = result;
     
     // condition code byte
     regs.fpsr &= 0x00fffff8; // clear cc
@@ -998,22 +764,22 @@ static uae_u32 get_ftag (uae_u32 w1, uae_u32 w2, uae_u32 w3, int size)
 /* E = MAX & F # 0 -> NotANumber */
 /* E = biased by 127 (single) ,1023 (double) ,16383 (extended) */
 
-static void to_pack (fpdata *fpd, uae_u32 *wrd)
+static void to_pack (fptype *fp, uae_u32 *wrd)
 {
-    fptype d;
+    long double d;
     char *cp;
     char str[100];
     
     if (((wrd[0] >> 16) & 0x7fff) == 0x7fff) {
         // infinity has extended exponent and all 0 packed fraction
         // nans are copies bit by bit
-        softfloat_set(&fpd->fpx, wrd);
+        to_exten_fmovem(fp, wrd[0], wrd[1], wrd[2]);
         return;
     }
     if (!(wrd[0] & 0xf) && !wrd[1] && !wrd[2]) {
         // exponent is not cared about, if mantissa is zero
         wrd[0] &= 0x80000000;
-        softfloat_set(&fpd->fpx, wrd);
+        to_exten_fmovem(fp, wrd[0], wrd[1], wrd[2]);
         return;
     }
     
@@ -1050,34 +816,31 @@ static void to_pack (fpdata *fpd, uae_u32 *wrd)
 #else
     sscanf (str, "%le", &d);
 #endif
-    from_exten_x(d, &wrd[0], &wrd[1], &wrd[2]);
-    normalize_exten(&wrd[0], &wrd[1], &wrd[2]);
-    softfloat_set(&fpd->fpx, wrd);
+    from_native(d, fp);
 }
 
-static void from_pack (fpdata *src, uae_u32 *wrd, int kfactor)
+static void from_pack (fptype *src, uae_u32 *wrd, int kfactor)
 {
     int i, j, t;
     int exp;
     int ndigits;
     char *cp, *strp;
     char str[100];
-    fptype fp;
+    long double fp;
     
     if (fp_is_nan (src)) {
         // copied bit by bit, no conversion
-        softfloat_get(&src->fpx, wrd);
+        from_exten(src, &wrd[0], &wrd[1], &wrd[2]);
         return;
     }
     if (fp_is_infinity (src)) {
         // extended exponent and all 0 packed fraction
-        softfloat_get(&src->fpx, wrd);
+        from_exten(src, &wrd[0], &wrd[1], &wrd[2]);
         wrd[1] = wrd[2] = 0;
         return;
     }
     
-    softfloat_get(&src->fpx, wrd);
-    to_exten_x(&fp, wrd[0], wrd[1], wrd[2]);
+    to_native(&fp, *src);
     
     wrd[0] = wrd[1] = wrd[2] = 0;
     
@@ -1203,7 +966,7 @@ static void from_pack (fpdata *src, uae_u32 *wrd, int kfactor)
 }
 
 // 68040/060 does not support denormals
-static bool fault_if_no_denormal_support_pre(uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fpdata *fpd, int size)
+static bool fault_if_no_denormal_support_pre(uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fptype *fpd, int size)
 {
     if (currprefs.cpu_model >= 68040 && currprefs.fpu_model) {
         if (fp_is_unnormal(fpd) || fp_is_denormal(fpd)) {
@@ -1214,7 +977,7 @@ static bool fault_if_no_denormal_support_pre(uae_u16 opcode, uae_u16 extra, uaec
 
     return false;
 }
-static bool fault_if_no_denormal_support_post(uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fpdata *fpd, int size)
+static bool fault_if_no_denormal_support_post(uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fptype *fpd, int size)
 {
     if (currprefs.cpu_model >= 68040 && currprefs.fpu_model) {
         if (fp_is_unnormal(fpd) || fp_is_denormal(fpd)) {
@@ -1226,7 +989,7 @@ static bool fault_if_no_denormal_support_post(uae_u16 opcode, uae_u16 extra, uae
     return false;
 }
 
-static int get_fp_value (uae_u32 opcode, uae_u16 extra, fpdata *src, uaecptr oldpc, uae_u32 *adp)
+static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr oldpc, uae_u32 *adp)
 {
     int size, mode, reg;
     uae_u32 ad = 0;
@@ -1418,7 +1181,7 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fpdata *src, uaecptr old
     return 1;
 }
 
-static int put_fp_value (fpdata *value, uae_u32 opcode, uae_u16 extra, uaecptr oldpc)
+static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr oldpc)
 {
     int size, mode, reg;
     uae_u32 ad = 0;
@@ -1444,15 +1207,15 @@ static int put_fp_value (fpdata *value, uae_u32 opcode, uae_u16 extra, uaecptr o
             switch (size)
         {
             case 6:
-                m68k_dreg (regs, reg) = (uae_u32)(((toint (value, 0) & 0xff)
+                m68k_dreg (regs, reg) = (uae_u32)(((to_int (value, 0) & 0xff)
                                                    | (m68k_dreg (regs, reg) & ~0xff)));
                 break;
             case 4:
-                m68k_dreg (regs, reg) = (uae_u32)(((toint (value, 1) & 0xffff)
+                m68k_dreg (regs, reg) = (uae_u32)(((to_int (value, 1) & 0xffff)
                                                    | (m68k_dreg (regs, reg) & ~0xffff)));
                 break;
             case 0:
-                m68k_dreg (regs, reg) = (uae_u32)toint (value, 2);
+                m68k_dreg (regs, reg) = (uae_u32)to_int (value, 2);
                 break;
             case 1:
                 m68k_dreg (regs, reg) = from_single (value);
@@ -1519,7 +1282,7 @@ static int put_fp_value (fpdata *value, uae_u32 opcode, uae_u16 extra, uaecptr o
         case 0:
             if (fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
                 return 1;
-            x_cp_put_long(ad, (uae_u32)toint(value, 2));
+            x_cp_put_long(ad, (uae_u32)to_int(value, 2));
             break;
         case 1:
             if (fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
@@ -1561,7 +1324,7 @@ static int put_fp_value (fpdata *value, uae_u32 opcode, uae_u16 extra, uaecptr o
         case 4:
             if (fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
                 return 1;
-            x_cp_put_word(ad, (uae_s16)toint(value, 1));
+            x_cp_put_word(ad, (uae_s16)to_int(value, 1));
             break;
         case 5:
         {
@@ -1577,7 +1340,7 @@ static int put_fp_value (fpdata *value, uae_u32 opcode, uae_u16 extra, uaecptr o
         case 6:
             if (fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
                 return 1;
-            x_cp_put_byte(ad, (uae_s8)toint(value, 0));
+            x_cp_put_byte(ad, (uae_s8)to_int(value, 0));
             break;
         default:
             return 0;
@@ -2289,244 +2052,14 @@ static uaecptr fmovem2fpp (uaecptr ad, uae_u32 list, int incr, int regdir)
     return ad;
 }
 
-// round to float with extended precision exponent
-static void froundsgl(int reg)
+static bool fp_arithmetic(fptype *srcd, int reg, int extra)
 {
-    floatx80 f = regs.fp[reg].fpx;
-    regs.fp[reg].fpx = floatx80_round32(f);
-}
-
-// round to float
-static void fround32(int reg)
-{
-    float32 f = floatx80_to_float32(regs.fp[reg].fpx);
-    regs.fp[reg].fpx = float32_to_floatx80(f);
-}
-
-// round to double
-static void fround64(int reg)
-{
-    float64 f = floatx80_to_float64(regs.fp[reg].fpx);
-    regs.fp[reg].fpx = float64_to_floatx80(f);
-}
-
-static bool arithmetic_fp(fptype src, int reg, int extra)
-{
-    bool sgl = false;
-    switch (extra & 0x7f)
-    {
-        case 0x00: /* FMOVE */
-        case 0x40: /* Explicit rounding. This is just a quick fix. */
-        case 0x44: /* Same for all other cases that have three choices */
-            regs.fp[reg].fp = src;        /* Brian King was here. */
-            /*<ea> to register needs FPSR updated. See Motorola 68K Manual. */
-            break;
-        case 0x01: /* FINT */
-            /* need to take the current rounding mode into account */
-            switch (regs.fpcr & 0x30)
-            {
-            case FPCR_ROUND_NEAR:
-                regs.fp[reg].fp = fp_round_to_nearest(src);
-                break;
-            case FPCR_ROUND_ZERO:
-                regs.fp[reg].fp = fp_round_to_zero(src);
-                break;
-            case FPCR_ROUND_MINF:
-                regs.fp[reg].fp = fp_round_to_minus_infinity(src);
-                break;
-            case FPCR_ROUND_PINF:
-                regs.fp[reg].fp = fp_round_to_plus_infinity(src);
-                break;
-            default: /* never reached */
-                regs.fp[reg].fp = src;
-                break;
-            }
-            break;
-        case 0x02: /* FSINH */
-            regs.fp[reg].fp = sinh (src);
-            break;
-        case 0x03: /* FINTRZ */
-            regs.fp[reg].fp = fp_round_to_zero (src);
-            break;
-        case 0x04: /* FSQRT */
-        case 0x41: /* FSSQRT */
-        case 0x45: /* FDSQRT */
-            regs.fp[reg].fp = sqrt (src);
-            break;
-        case 0x06: /* FLOGNP1 */
-            regs.fp[reg].fp = log (src + 1.0);
-            break;
-        case 0x08: /* FETOXM1 */
-            regs.fp[reg].fp = exp (src) - 1.0;
-            break;
-        case 0x09: /* FTANH */
-            regs.fp[reg].fp = tanh (src);
-            break;
-        case 0x0a: /* FATAN */
-            regs.fp[reg].fp = atan (src);
-            break;
-        case 0x0c: /* FASIN */
-            regs.fp[reg].fp = asin (src);
-            break;
-        case 0x0d: /* FATANH */
-            regs.fp[reg].fp = atanh (src);
-            break;
-        case 0x0e: /* FSIN */
-            regs.fp[reg].fp = sin (src);
-            break;
-        case 0x0f: /* FTAN */
-            regs.fp[reg].fp = tan (src);
-            break;
-        case 0x10: /* FETOX */
-            regs.fp[reg].fp = exp (src);
-            break;
-        case 0x11: /* FTWOTOX */
-            regs.fp[reg].fp = pow (2.0, src);
-            break;
-        case 0x12: /* FTENTOX */
-            regs.fp[reg].fp = pow (10.0, src);
-            break;
-        case 0x14: /* FLOGN */
-            regs.fp[reg].fp = log (src);
-            break;
-        case 0x15: /* FLOG10 */
-            regs.fp[reg].fp = log10 (src);
-            break;
-        case 0x16: /* FLOG2 */
-            regs.fp[reg].fp = *fp_l2_e * log (src);
-            break;
-        case 0x18: /* FABS */
-        case 0x58: /* FSABS */
-        case 0x5c: /* FDABS */
-            regs.fp[reg].fp = src < 0 ? -src : src;
-            break;
-        case 0x19: /* FCOSH */
-            regs.fp[reg].fp = cosh (src);
-            break;
-        case 0x1a: /* FNEG */
-        case 0x5a: /* FSNEG */
-        case 0x5e: /* FDNEG */
-            regs.fp[reg].fp = -src;
-            break;
-        case 0x1c: /* FACOS */
-            regs.fp[reg].fp = acos (src);
-            break;
-        case 0x1d: /* FCOS */
-            regs.fp[reg].fp = cos (src);
-            break;
-        case 0x1e: /* FGETEXP */
-        {
-            if (src == 0) {
-                regs.fp[reg].fp = 0;
-            } else {
-                int expon;
-                frexp (src, &expon);
-                regs.fp[reg].fp = (double) (expon - 1);
-            }
-        }
-            break;
-        case 0x1f: /* FGETMAN */
-        {
-            if (src == 0) {
-                regs.fp[reg].fp = 0;
-            } else {
-                int expon;
-                regs.fp[reg].fp = frexp (src, &expon) * 2.0;
-            }
-        }
-            break;
-        case 0x20: /* FDIV */
-        case 0x60: /* FSDIV */
-        case 0x64: /* FDDIV */
-            regs.fp[reg].fp /= src;
-            break;
-        case 0x21: /* FMOD */
-        {
-            fptype quot = fp_round_to_zero(regs.fp[reg].fp / src);
-            regs.fp[reg].fp = regs.fp[reg].fp - quot * src;
-        }
-            break;
-        case 0x22: /* FADD */
-        case 0x62: /* FSADD */
-        case 0x66: /* FDADD */
-            regs.fp[reg].fp += src;
-            break;
-        case 0x23: /* FMUL */
-        case 0x63: /* FSMUL */
-        case 0x67: /* FDMUL */
-            regs.fp[reg].fp *= src;
-            break;
-        case 0x24: /* FSGLDIV */
-            regs.fp[reg].fp /= src;
-            sgl = true;
-            break;
-        case 0x25: /* FREM */
-        {
-            fptype quot = fp_round_to_nearest(regs.fp[reg].fp / src);
-            regs.fp[reg].fp = regs.fp[reg].fp - quot * src;
-        }
-            break;
-        case 0x26: /* FSCALE */
-            if (src != 0) {
-#ifdef ldexp
-                regs.fp[reg] = ldexp (regs.fp[reg], (int) src);
-#else
-                regs.fp[reg].fp *= exp (*fp_ln_2 * (int) src);
-#endif
-            }
-            break;
-        case 0x27: /* FSGLMUL */
-            regs.fp[reg].fp *= src;
-            sgl = true;
-            break;
-        case 0x28: /* FSUB */
-        case 0x68: /* FSSUB */
-        case 0x6c: /* FDSUB */
-            regs.fp[reg].fp -= src;
-            break;
-        case 0x30: /* FSINCOS */
-        case 0x31:
-        case 0x32:
-        case 0x33:
-        case 0x34:
-        case 0x35:
-        case 0x36:
-        case 0x37:
-            regs.fp[extra & 7].fp = cos (src);
-            regs.fp[reg].fp = sin (src);
-            break;
-        case 0x38: /* FCMP */
-            src = regs.fp[reg].fp - src;
-            //MAKE_FPSR (&tmp);
-            return true;
-        case 0x3a: /* FTST */
-            //MAKE_FPSR (&src);
-            return true;
-        default:
-            return false;
-    }
-#if 0
-    // round to float?
-    if (sgl || (extra & 0x44) == 0x40 || ((regs.fpcr >> 6) & 3) == 1)
-        fround32(reg);
-    if ((extra & 0x44) == 0x44 || ((regs.fpcr >> 6) & 3) == 2)
-        fround64(reg);
-    
-    MAKE_FPSR (&regs.fp[reg].fp);
-#endif
-    return true;
-}
-
-static bool arithmetic_softfloat(floatx80 *srcd, int reg, int extra)
-{
-    floatx80 fx = *srcd;
-    floatx80 f = regs.fp[reg].fpx;
-    int8 save_float_rounding_mode;
+    fptype fp = *srcd;
     bool sgl = false;
     
     // SNAN -> QNAN if SNAN interrupt is not enabled
-    if (floatx80_is_signaling_nan(fx) && !(regs.fpcr & 0x4000)) {
-        softfloat_unset_snan(&fx);
+    if (fp_is_snan(srcd) && !(regs.fpcr & 0x4000)) {
+        fp_unset_snan(srcd);
     }
     
     switch (extra & 0x7f)
@@ -2534,89 +2067,125 @@ static bool arithmetic_softfloat(floatx80 *srcd, int reg, int extra)
         case 0x00: /* FMOVE */
         case 0x40: /* FSMOVE */
         case 0x44: /* FDMOVE */
-            regs.fp[reg].fpx = fx;	
+            regs.fp[reg] = fp;
             break;
         case 0x01: /* FINT */
-            regs.fp[reg].fpx = floatx80_round_to_int(fx);
+            regs.fp[reg] = fp_int(fp);
+            break;
+        case 0x02: /* FSINH */
+            regs.fp[reg] = fp_sinh(fp);
             break;
         case 0x03: /* FINTRZ */
-            save_float_rounding_mode = float_rounding_mode;
-            float_rounding_mode = float_round_to_zero;
-            regs.fp[reg].fpx = floatx80_round_to_int(fx);
-            float_rounding_mode = save_float_rounding_mode;
+            regs.fp[reg] = fp_intrz(fp);
             break;
         case 0x04: /* FSQRT */
         case 0x41: /* FSSQRT */
         case 0x45: /* FDSQRT */
-            regs.fp[reg].fpx = floatx80_sqrt(fx);
+            regs.fp[reg] = fp_sqrt(fp);
             break;
         case 0x06: /* FLOGNP1 */
-            regs.fp[reg].fpx = floatx80_flognp1(fx);
+            regs.fp[reg] = fp_lognp1(fp);
+            break;
+        case 0x08: /* FETOXM1 */
+            regs.fp[reg] = fp_etoxm1(fp);
+            break;
+        case 0x09: /* FTANH */
+            regs.fp[reg] = fp_tanh(fp);
+            break;
+        case 0x0a: /* FATAN */
+            regs.fp[reg] = fp_atan(fp);
+            break;
+        case 0x0c: /* FASIN */
+            regs.fp[reg] = fp_asin(fp);
+            break;
+        case 0x0d: /* FATANH */
+            regs.fp[reg] = fp_atanh(fp);
             break;
         case 0x0e: /* FSIN */
-            floatx80_fsin(&fx);
-            regs.fp[reg].fpx = fx;
+            regs.fp[reg] = fp_sin(fp);
             break;
         case 0x0f: /* FTAN */
-            floatx80_ftan(&fx);
-            regs.fp[reg].fpx = fx;
+            regs.fp[reg] = fp_tan(fp);
+            break;
+        case 0x10: /* FETOX */
+            regs.fp[reg] = fp_etox(fp);
+            break;
+        case 0x11: /* FTWOTOX */
+            regs.fp[reg] = fp_twotox(fp);
+            break;
+        case 0x12: /* FTENTOX */
+            regs.fp[reg] = fp_tentox(fp);
             break;
         case 0x14: /* FLOGN */
-            regs.fp[reg].fpx = floatx80_flogn(fx);
+            regs.fp[reg] = fp_logn(fp);
             break;
         case 0x15: /* FLOG10 */
-            regs.fp[reg].fpx = floatx80_flog10(fx);
+            regs.fp[reg] = fp_log10(fp);
             break;
         case 0x16: /* FLOG2 */
-            regs.fp[reg].fpx = floatx80_flog2(fx);
+            regs.fp[reg] = fp_log2(fp);
             break;
         case 0x18: /* FABS */
         case 0x58: /* FSABS */
         case 0x5c: /* FDABS */
-            regs.fp[reg].fpx = floatx80_abs(fx);
+            regs.fp[reg] = fp_abs(fp);
+            break;
+        case 0x19: /* FCOSH */
+            regs.fp[reg] = fp_cosh(fp);
             break;
         case 0x1a: /* FNEG */
         case 0x5a: /* FSNEG */
         case 0x5e: /* FDNEG */
-            regs.fp[reg].fpx = floatx80_chs(fx);
+            regs.fp[reg] = fp_neg(fp);
+            break;
+        case 0x1c: /* FACOS */
+            regs.fp[reg] = fp_acos(fp);
             break;
         case 0x1d: /* FCOS */
-            floatx80_fcos(&fx);
-            regs.fp[reg].fpx = fx;
+            regs.fp[reg] = fp_cos(fp);
+            break;
+        case 0x1e: /* FGETEXP */
+            regs.fp[reg] = fp_getexp(fp);
+            break;
+        case 0x1f: /* FGETMAN */
+            regs.fp[reg] = fp_getman(fp);
             break;
         case 0x20: /* FDIV */
         case 0x60: /* FSDIV */
         case 0x64: /* FDDIV */
-            regs.fp[reg].fpx = floatx80_div(f, fx);
+            regs.fp[reg] = fp_div(regs.fp[reg], fp);
+            break;
+        case 0x21: /* FMOD */
+            regs.fp[reg] = fp_mod(regs.fp[reg], fp);
             break;
         case 0x22: /* FADD */
         case 0x62: /* FSADD */
         case 0x66: /* FDADD */
-            regs.fp[reg].fpx = floatx80_add(f, fx);
+            regs.fp[reg] = fp_add(regs.fp[reg], fp);
             break;
         case 0x23: /* FMUL */
         case 0x63: /* FSMUL */
         case 0x67: /* FDMUL */
-            regs.fp[reg].fpx = floatx80_mul(f, fx);
+            regs.fp[reg] = fp_mul(regs.fp[reg], fp);
             break;
         case 0x24: /* FSGLDIV */
-            regs.fp[reg].fpx = floatx80_div(f, fx);
+            regs.fp[reg] = fp_div(regs.fp[reg], fp);
             sgl = true;
             break;
         case 0x25: /* FREM */
-            regs.fp[reg].fpx = floatx80_rem(f, fx);
+            regs.fp[reg] = fp_rem(regs.fp[reg], fp);
             break;
         case 0x26: /* FSCALE */
-            regs.fp[reg].fpx = floatx80_scale(f, fx);
+            regs.fp[reg] = fp_scale(regs.fp[reg], fp);
             break;
         case 0x27: /* FSGLMUL */
-            regs.fp[reg].fpx = floatx80_mul(f, fx);
+            regs.fp[reg] = fp_mul(regs.fp[reg], fp);
             sgl = true;
             break;
         case 0x28: /* FSUB */
         case 0x68: /* FSSUB */
         case 0x6c: /* FDSUB */
-            regs.fp[reg].fpx = floatx80_sub(f, fx);
+            regs.fp[reg] = fp_sub(regs.fp[reg], fp);
             break;
         case 0x30: /* FSINCOS */
         case 0x31:
@@ -2626,65 +2195,34 @@ static bool arithmetic_softfloat(floatx80 *srcd, int reg, int extra)
         case 0x35:
         case 0x36:
         case 0x37:
-            floatx80_fsincos(fx, &regs.fp[reg].fpx, &regs.fp[extra & 7].fpx);
-            if (((regs.fpcr >> 6) & 3) == 1) fround32(extra & 7);
-            if (((regs.fpcr >> 6) & 3) == 2) fround64(extra & 7);
+            regs.fp[extra & 7] = fp_cos(fp);
+            regs.fp[reg]       = fp_sin(fp);
+            if (((regs.fpcr >> 6) & 3) == 1) fp_round32(extra & 7);
+            if (((regs.fpcr >> 6) & 3) == 2) fp_round64(extra & 7);
             break;
         case 0x38: /* FCMP */
-            f = floatx80_sub(f, fx);
-            fpsr_set_result(f);
+            fpsr_set_result(fp_sub(regs.fp[reg], fp));
             return true;
         case 0x3a: /* FTST */
-            fpsr_set_result(fx);
+            fpsr_set_result(fp);
             return true;
-        case 0x02: /* FSINH */
-        case 0x08: /* FETOXM1 */
-        case 0x09: /* FTANH */
-        case 0x0a: /* FATAN */
-        case 0x0c: /* FASIN */
-        case 0x0d: /* FATANH */
-        case 0x10: /* FETOX */
-        case 0x11: /* FTWOTOX */
-        case 0x12: /* FTENTOX */
-        case 0x19: /* FCOSH */
-        case 0x1c: /* FACOS */
-        case 0x1e: /* FGETEXP */
-        case 0x1f: /* FGETMAN */
-        case 0x21: /* FMOD */
-        {
-            // This is horribly ineffective..
-            fptype fp;
-            uae_u32 out[3];
-            // convert softfloat to raw words
-            softfloat_get(&fx, out);
-            // convert to double/long double
-            to_exten_x(&fp, out[0], out[1], out[2]);
-            // emulate instruction using normal fpu code
-            if (!arithmetic_fp(fp, reg, extra))
-                return false;
-            // convert back to raw
-            from_exten_x(regs.fp[reg].fp, &out[0], &out[1], &out[2]);
-            // convert to softfloat internal format
-            softfloat_set(&regs.fp[reg].fpx, out);
-        }
-            break;
             
         default:
             return false;
     }
     
     if (sgl)
-        froundsgl(reg);
+        fp_roundsgl(reg);
     else if ((extra & 0x44) == 0x40)
-        fround32(reg);
+        fp_round32(reg);
     else if ((extra & 0x44) == 0x44)
-        fround64(reg);
+        fp_round64(reg);
     else if (((regs.fpcr >> 6) & 3) == 1)
-        fround32(reg);
+        fp_round32(reg);
     else if (((regs.fpcr >> 6) & 3) == 2)
-        fround64(reg);
+        fp_round64(reg);
     
-    fpsr_set_result(regs.fp[reg].fpx);
+    fpsr_set_result(regs.fp[reg]);
     
     return true;
 }
@@ -2693,7 +2231,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
 {
     int reg = -1;
     int v;
-    fpdata srcd;
+    fptype srcd;
     uaecptr pc = m68k_getpc () - 4;
     uaecptr ad = 0;
     
@@ -2915,7 +2453,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                     fpu_noinst(opcode, pc);
                     return;
                 }
-                fpsr_set_result(regs.fp[reg].fpx);
+                fpsr_set_result(regs.fp[reg]);
                 fpsr_make_status();
                 return;
             }
@@ -2939,7 +2477,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
             
             regs.fpiar =  pc;
             
-            v = arithmetic_softfloat(&srcd.fpx, reg, extra);
+            v = fp_arithmetic(&srcd, reg, extra);
             if (!v)
                 fpu_noinst (opcode, pc);
             fpsr_make_status();
@@ -2968,14 +2506,8 @@ void fpu_reset (void)
     fpp_set_fpcr (0);
     fpp_set_fpsr (0);
     fpset (&regs.fp_result, 1);
-    
-    fxsizes[0] = int32_to_floatx80(-128);
-    fxsizes[1] = int32_to_floatx80(127);
-    fxsizes[2] = int32_to_floatx80(-32768);
-    fxsizes[3] = int32_to_floatx80(32767);
-    fxsizes[4] = int32_to_floatx80(-2147483648);
-    fxsizes[5] = int32_to_floatx80(2147483647);
 }
+
 #if 0
 uae_u8 *restore_fpu (uae_u8 *src)
 {

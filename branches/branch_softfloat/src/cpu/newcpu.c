@@ -21,7 +21,11 @@
 #include "newcpu.h"
 #include "cpummu.h"
 #include "cpummu030.h"
+#ifdef WITH_SOFTFLOAT
+#include "fpp-softfloat.h"
+#else
 #include "md-fpp.h"
+#endif
 #include "main.h"
 #include "dsp.h"
 #include "dimension.h"
@@ -518,7 +522,7 @@ static uaecptr ShowEA (void *f, uaecptr pc, uae_u16 opcode, int reg, amodes mode
                     break;
                 case sz_single:
                 {
-                    fpdata fp;
+                    fptype fp;
                     to_single(&fp, get_ilong_debug(pc));
                     _stprintf(buffer, _T("#%s"), fp_print(&fp));
                     pc += 4;
@@ -526,7 +530,7 @@ static uaecptr ShowEA (void *f, uaecptr pc, uae_u16 opcode, int reg, amodes mode
                     break;
                 case sz_double:
                 {
-                    fpdata fp;
+                    fptype fp;
                     to_double(&fp, get_ilong_debug(pc), get_ilong_debug(pc + 4));
                     _stprintf(buffer, _T("#%s"), fp_print(&fp));
                     pc += 8;
@@ -534,7 +538,7 @@ static uaecptr ShowEA (void *f, uaecptr pc, uae_u16 opcode, int reg, amodes mode
                     break;
                 case sz_extended:
                 {
-                    fpdata fp;
+                    fptype fp;
                     to_exten(&fp, get_ilong_debug(pc), get_ilong_debug(pc + 4), get_ilong_debug(pc + 8));
                     _stprintf(buffer, _T("#%s"), fp_print(&fp));
                     pc += 12;
@@ -1925,7 +1929,7 @@ void m68k_disasm_2 (TCHAR *buf, int bufsize, uaecptr pc, uaecptr *nextpc, int cn
             
             pc += 2;
             if ((extra & 0xfc00) == 0x5c00) { // FMOVECR (=i_FPP with source specifier = 7)
-                fpdata fp;
+                fptype fp;
                 if (fpu_get_constant(&fp, extra))
                     _stprintf(instrname, _T("FMOVECR.X #%s,FP%d"), fp_print(&fp), (extra >> 7) & 7);
                 else
