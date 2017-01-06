@@ -177,7 +177,7 @@ STATIC_INLINE void to_native(long double *fp, fptype fpx)
     int expon;
     long double frac;
     
-    expon = fpx.high;
+    expon = fpx.high & 0x7fff;
     
     if (floatx80_is_zero(fpx)) {
         *fp = floatx80_is_negative(fpx) ? -0.0 : +0.0;
