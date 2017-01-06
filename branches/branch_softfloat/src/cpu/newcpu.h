@@ -37,11 +37,6 @@
 #define SPCFLAG_MODE_CHANGE 0x800
 #define SPCFLAG_DSP 0x1000
 
-#define WITH_SOFTFLOAT
-
-#ifdef WITH_SOFTFLOAT
-#include "softfloat.h"
-#endif
 #if 0
 #ifndef SET_CFLG
 
@@ -118,9 +113,11 @@ typedef uae_u8 flagtype;
 
 #ifdef FPUEMU
 
+#define WITH_SOFTFLOAT
 #define USE_LONG_DOUBLE 1
 
 #ifdef WITH_SOFTFLOAT
+#include <softfloat.h>
 typedef floatx80 fptype;
 #else // !WITH_SOFTFLOAT
 #ifdef USE_LONG_DOUBLE
