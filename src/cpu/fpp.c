@@ -88,10 +88,8 @@ void to_exten(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
     // automatically fix unnormals if 6888x
     if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882) {
         normalize_exten(&wrd1, &wrd2, &wrd3);
-        to_exten_x(fp, wrd1, wrd2, wrd3);
-    } else {
-        to_exten_x(fp, wrd1, wrd2, wrd3);
     }
+    to_exten_x(fp, wrd1, wrd2, wrd3);
 }
 void to_exten_fmovem(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
 {
