@@ -114,7 +114,7 @@ typedef uae_u8 flagtype;
 #ifdef FPUEMU
 
 #define WITH_SOFTFLOAT
-#define USE_LONG_DOUBLE 1
+#define USE_LONG_DOUBLE
 
 #ifdef WITH_SOFTFLOAT
 #include <softfloat.h>
