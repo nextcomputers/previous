@@ -1,4 +1,4 @@
- /*
+/*
   * UAE - The Un*x Amiga Emulator
   *
   * MC68881 emulation
@@ -9,7 +9,18 @@
   * Modified 2005 Peter Keunecke
   */
 
+#ifndef FPP_H
+#define FPP_H
+
+#define __USE_ISOC9X  /* We might be able to pick up a NaN */
+
 #include <math.h>
+#include <float.h>
+#include <fenv.h>
+
+//#pragma STDC FENV_ACCESS on
+
+#define USE_HOST_ROUNDING
 
 #define	FPCR_ROUNDING_MODE	0x00000030
 #define	FPCR_ROUND_NEAR		0x00000000
@@ -23,287 +34,644 @@
 #define FPCR_PRECISION_EXTENDED	0x00000000
 
 extern uae_u32 fpp_get_fpsr (void);
+extern void to_single(fptype *fp, uae_u32 wrd1);
+extern void to_double(fptype *fp, uae_u32 wrd1, uae_u32 wrd2);
+extern void to_exten(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3);
+extern void normalize_exten (uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3);
 
-extern void to_single(fpdata *fpd, uae_u32 value);
-extern void to_double(fpdata *fpd, uae_u32 wrd1, uae_u32 wrd2);
-extern void to_exten(fpdata *fpd, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3);
 
-extern const char *fp_print(fpdata *fpd);
-
-STATIC_INLINE void exten_zeronormalize(uae_u32 *pwrd1, uae_u32 *pwrd2, uae_u32 *pwrd3)
+/* Functions for setting host/library modes and getting status */
+STATIC_INLINE void set_fp_mode(uae_u32 mode_control)
 {
-	uae_u32 wrd1 = *pwrd1;
-	uae_u32 wrd2 = *pwrd2;
-	uae_u32 wrd3 = *pwrd3;
-	int exp = (wrd1 >> 16) & 0x7fff;
-	// Force zero if mantissa is zero but exponent is non-zero
-	// M68k FPU automatically convert them to plain zeros.
-	// x86 FPU considers them invalid values
-	if (exp != 0 && exp != 0x7fff && !wrd2 && !wrd3) {
-		*pwrd1 = (wrd1 & 0x80000000);
-	}
-}
-
-#if USE_LONG_DOUBLE
-STATIC_INLINE void to_exten_x(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
-{
-	// force correct long double alignment
-	union
-	{
-		long double lf;
-		uae_u32 longarray[3];
-	} uld;
-	exten_zeronormalize(&wrd1, &wrd2, &wrd3);
-	// little endian order
-	uld.longarray[0] = wrd3;
-	uld.longarray[1] = wrd2;
-	uld.longarray[2] = wrd1 >> 16;
-	long double *longdoublewords = (long double *)uld.longarray;
-	*fp = *longdoublewords;
-}
-#define HAVE_to_exten
-
-STATIC_INLINE void from_exten_x(fptype fp, uae_u32 * wrd1, uae_u32 * wrd2, uae_u32 * wrd3)
-{
-	uae_u32 *longarray = (uae_u32 *)&fp;
-	uae_u16 *finalword = (uae_u16 *)(((uae_u8*)&fp) + 8);
-
-	*wrd1 = finalword[0] << 16;
-	*wrd2 = longarray[1];
-	*wrd3 = longarray[0]; // little endian
-}
-#define HAVE_from_exten
-#endif /* USE_LONG_DOUBLE */
-
-#if defined(X86_MSVC_ASSEMBLY_FPU)
-#ifndef HAVE_to_single
-#define HAVE_to_single
-STATIC_INLINE double to_single_x (uae_u32 longvalue)
-{
-	double floatfake;
-
-	__asm {
-		fld dword ptr longvalue;
-		fstp qword ptr floatfake;
-	}
-	return floatfake;
-}
+    switch(mode_control & FPCR_ROUNDING_PRECISION) {
+        case FPCR_PRECISION_SINGLE:   // S
+            //floatx80_rounding_precision = 32;
+            break;
+        case FPCR_PRECISION_DOUBLE:   // D
+            //floatx80_rounding_precision = 64;
+            break;
+        case FPCR_PRECISION_EXTENDED: // X
+        default:                      // undefined
+            //floatx80_rounding_precision = 80;
+            break;
+    }
+#ifdef USE_HOST_ROUNDING
+    switch(mode_control & FPCR_ROUNDING_MODE) {
+        case FPCR_ROUND_NEAR: // to neareset
+            fesetround(FE_TONEAREST);
+            break;
+        case FPCR_ROUND_ZERO: // to zero
+            fesetround(FE_TOWARDZERO);
+            break;
+        case FPCR_ROUND_MINF: // to minus
+            fesetround(FE_DOWNWARD);
+            break;
+        case FPCR_ROUND_PINF: // to plus
+            fesetround(FE_UPWARD);
+            break;
+    }
+    return;
 #endif
-
-#ifndef HAVE_from_single
-#define HAVE_from_single
-STATIC_INLINE uae_u32 from_single_x (double floatfake)
-{
-	uae_u32 longvalue;
-
-	__asm {
-		fld qword ptr floatfake;
-		fstp dword ptr longvalue;
-	}
-	return longvalue;
 }
-#endif
-
-#ifndef HAVE_to_exten
-#define HAVE_to_exten
-STATIC_INLINE void to_exten_x(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
+STATIC_INLINE void get_fp_status(uae_u32 *status)
 {
-	uae_u32 longarray[3];
-	double  extenfake;
-
-	exten_normalize(&wrd1, &wrd2, &wrd3);
-	longarray[0] = wrd3; // littlen endian
-	longarray[1] = wrd2;
-	longarray[2] = wrd2 >> 16;
-
-	__asm {
-		fld tbyte ptr longarray;
-		fstp qword ptr extenfake;
-	}
-	*fp = extenfake;
+    int exp_flags = fetestexcept(FE_ALL_EXCEPT);
+    if (exp_flags) {
+        if (exp_flags & FE_INEXACT)
+            *status |= 0x0200;
+        if (exp_flags & FE_DIVBYZERO)
+            *status |= 0x0400;
+        if (exp_flags & FE_UNDERFLOW)
+            *status |= 0x0800;
+        if (exp_flags & FE_OVERFLOW)
+            *status |= 0x1000;
+        if (exp_flags & FE_INVALID)
+            *status |= 0x2000;
+    }
 }
-#endif
-
-#ifndef HAVE_from_exten
-#define HAVE_from_exten
-STATIC_INLINE void from_exten_x(fptype fp, uae_u32 * wrd1, uae_u32 * wrd2, uae_u32 * wrd3)
+STATIC_INLINE void clear_fp_status(void)
 {
-	fptype src = fp;
-	uae_u32 longarray[3], *srcarray = (uae_u32 *)&src;
-	__asm {
-		fld qword ptr src;
-		fstp tbyte ptr longarray;
-	}
-	*wrd1 = (longarray[2] & 0xffff) <<16;
-	*wrd2 =  longarray[1];
-	*wrd3 =  longarray[0]; // little endian
-	if (!srcarray[0] && (srcarray[1] == 0x7ff00000 || srcarray[1] == 0xfff00000))
-		*wrd2 = 0; // The MSB of the mantissa was set wrongly for infinity, causing a NaN
+    feclearexcept (FE_ALL_EXCEPT);
 }
-#endif
-#endif /* X86_MSVC_ASSEMBLY */
 
-#ifndef HAVE_to_single
-#define HAVE_to_single
-STATIC_INLINE double to_single_x (uae_u32 value)
+/* Helper functions */
+STATIC_INLINE const char *fp_print(fptype *fx)
 {
-	union {
-		float f;
-		uae_u32 u;
-	} val;
-
-	val.u = value;
-	return val.f;
-}
-#endif
-
-#ifndef HAVE_from_single
-#define HAVE_from_single
-STATIC_INLINE uae_u32 from_single_x (double src)
-{
-	union {
-		float f;
-		uae_u32 u;
-	} val;
-
-	val.f = (float) src;
-	return val.u;
-}
-#endif
-
-#ifndef HAVE_to_double
-#define HAVE_to_double
-STATIC_INLINE double to_double_x(uae_u32 wrd1, uae_u32 wrd2)
-{
-	union {
-		double d;
-		uae_u32 u[2];
-	} val;
-
-#ifdef WORDS_BIGENDIAN
-	val.u[0] = wrd1;
-	val.u[1] = wrd2;
+    static char fs[32];
+    bool n, d;
+    
+    n = signbit(*fx) ? 1 : 0;
+    d = isnormal(*fx) ? 0 : 1;
+    
+    if (isinf(*fx)) {
+        sprintf(fs, "%c%s", n?'-':'+', "inf");
+    } else if (isnan(*fx)) {
+        sprintf(fs, "%c%s", n?'-':'+', "nan");
+    } else {
+        if (n)
+            *fx *= -1.0;
+#ifdef USE_LONG_DOUBLE
+        sprintf(fs, "%c%#.17Le%s%s", n?'-':'+', *fx, "", d?"D":"");
 #else
-	val.u[1] = wrd1;
-	val.u[0] = wrd2;
+        sprintf(fs, "%c%#.17e%s%s", n?'-':'+', *fx, "", d?"D":"");
 #endif
-	return val.d;
+    }
+    
+    return fs;
 }
-#endif
 
-#ifndef HAVE_from_double
-#define HAVE_from_double
-STATIC_INLINE void from_double_x(double src, uae_u32 * wrd1, uae_u32 * wrd2)
+/* Functions for detecting float type */
+STATIC_INLINE bool fp_is_snan(fptype *fp)
 {
-	uae_u32 *longarray = (uae_u32 *)&src;
-
-	*wrd1 = longarray[1]; // little endian
-	*wrd2 = longarray[0];
+    return 0; /* FIXME: how to detect SNAN */
 }
-#endif
+STATIC_INLINE void fp_unset_snan(fptype *fp)
+{
+    /* FIXME: how to unset SNAN */
+}
+STATIC_INLINE bool fp_is_nan (fptype *fp)
+{
+    return isnan(*fp) != 0;
+}
+STATIC_INLINE bool fp_is_infinity (fptype *fp)
+{
+    return isinf(*fp) != 0;
+}
+STATIC_INLINE bool fp_is_zero(fptype *fp)
+{
+    return (*fp == 0.0);
+}
+STATIC_INLINE bool fp_is_neg(fptype *fp)
+{
+    return signbit(*fp) != 0;
+}
+STATIC_INLINE bool fp_is_denormal(fptype *fp)
+{
+    return (isnormal(*fp) == 0); /* FIXME: how to differ denormal/unnormal? */
+}
+STATIC_INLINE bool fp_is_unnormal(fptype *fp)
+{
+    return (isnormal(*fp) == 0); /* FIXME: how to differ denormal/unnormal? */
+}
 
-static const double twoto32 = 4294967296.0;
-#ifndef HAVE_to_exten
-#define HAVE_to_exten
+/* Functions for converting between float formats */
+/* FIXME: how to preserve/fix denormals and unnormals? */
+
+STATIC_INLINE void to_native(long double *fp, fptype fpx)
+{
+    *fp = fpx;
+}
+STATIC_INLINE void from_native(long double fp, fptype *fpx)
+{
+    *fpx = fp;
+}
+
+STATIC_INLINE void to_single_xn(fptype *fp, uae_u32 wrd1)
+{
+    union {
+        float f;
+        uae_u32 u;
+    } val;
+    
+    val.u = wrd1;
+    *fp = (fptype) val.f;
+}
+STATIC_INLINE void to_single_x(fptype *fp, uae_u32 wrd1)
+{
+    union {
+        float f;
+        uae_u32 u;
+    } val;
+    
+    val.u = wrd1;
+    *fp = (fptype) val.f;
+}
+STATIC_INLINE uae_u32 from_single_x(fptype *fp)
+{
+    union {
+        float f;
+        uae_u32 u;
+    } val;
+    
+    val.f = (float) *fp;
+    return val.u;
+}
+
+STATIC_INLINE void to_double_xn(fptype *fp, uae_u32 wrd1, uae_u32 wrd2)
+{
+    union {
+        double d;
+        uae_u32 u[2];
+    } val;
+    
+#ifdef WORDS_BIGENDIAN
+    val.u[0] = wrd1;
+    val.u[1] = wrd2;
+#else
+    val.u[1] = wrd1;
+    val.u[0] = wrd2;
+#endif
+    *fp = (fptype) val.d;
+}
+STATIC_INLINE void to_double_x(fptype *fp, uae_u32 wrd1, uae_u32 wrd2)
+{
+    union {
+        double d;
+        uae_u32 u[2];
+    } val;
+    
+#ifdef WORDS_BIGENDIAN
+    val.u[0] = wrd1;
+    val.u[1] = wrd2;
+#else
+    val.u[1] = wrd1;
+    val.u[0] = wrd2;
+#endif
+    *fp = (fptype) val.d;
+}
+STATIC_INLINE void from_double_x(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2)
+{
+    union {
+        double d;
+        uae_u32 u[2];
+    } val;
+    
+    val.d = (double) *fp;
+#ifdef WORDS_BIGENDIAN
+    *wrd1 = val.u[0];
+    *wrd2 = val.u[1];
+#else
+    *wrd1 = val.u[1];
+    *wrd2 = val.u[0];
+#endif
+}
+#ifdef USE_LONG_DOUBLE
 STATIC_INLINE void to_exten_x(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
 {
-	double frac;
-	exten_zeronormalize(&wrd1, &wrd2, &wrd3);
-	if ((wrd1 & 0x7fff0000) == 0 && wrd2 == 0 && wrd3 == 0) {
-		*fp = (wrd1 & 0x80000000) ? -0.0 : +0.0;
-		return;
-	}
-	frac = ((double)wrd2 + ((double)wrd3 / twoto32)) / 2147483648.0;
-	if (wrd1 & 0x80000000)
-		frac = -frac;
-	*fp = ldexp (frac, ((wrd1 >> 16) & 0x7fff) - 16383);
-}
+    union {
+        long double ld;
+        uae_u32 u[3];
+    } val;
+
+#if WORDS_BIGENDIAN
+    val.u[0] = (wrd1 & 0xffff0000) | ((wrd2 & 0xffff0000) >> 16);
+    val.u[1] = (wrd2 & 0x0000ffff) | ((wrd3 & 0xffff0000) >> 16);
+    val.u[2] = (wrd3 & 0x0000ffff) << 16;
+#else
+    val.u[0] = wrd3;
+    val.u[1] = wrd2;
+    val.u[2] = wrd1 >> 16;
 #endif
-
-#ifndef HAVE_from_exten
-#define HAVE_from_exten
-STATIC_INLINE void from_exten_x(fptype fp, uae_u32 * wrd1, uae_u32 * wrd2, uae_u32 * wrd3)
-{
-	int expon;
-	double frac;
-	fptype v;
-
-	v = fp;
-	if (v == 0.0) {
-		*wrd1 = signbit(v) ? 0x80000000 : 0;
-		*wrd2 = 0;
-		*wrd3 = 0;
-		return;
-	}
-	if (v < 0) {
-		*wrd1 = 0x80000000;
-		v = -v;
-	} else {
-		*wrd1 = 0;
-	}
-	frac = frexp (v, &expon);
-	frac += 0.5 / (twoto32 * twoto32);
-	if (frac >= 1.0) {
-		frac /= 2.0;
-		expon++;
-	}
-	*wrd1 |= (((expon + 16383 - 1) & 0x7fff) << 16);
-	*wrd2 = (uae_u32) (frac * twoto32);
-	*wrd3 = (uae_u32) ((frac * twoto32 - *wrd2) * twoto32);
+    *fp = val.ld;
 }
+STATIC_INLINE void from_exten_x(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
+{
+    union {
+        long double ld;
+        uae_u32 u[3];
+    } val;
+    
+    val.ld = *fp;
+#if WORDS_BIGENDIAN
+    *wrd1 = val.u[0] & 0xffff0000;
+    *wrd2 = ((val.u[0] & 0x0000ffff) << 16) | ((val.u[1] & 0xffff0000) >> 16);
+    *wrd3 = ((val.u[1] & 0x0000ffff) << 16) | ((val.u[2] & 0xffff0000) >> 16);
+#else
+    *wrd3 = val.u[0];
+    *wrd2 = val.u[1];
+    *wrd1 = val.u[2] << 16;
 #endif
-
-#ifndef HAVE_to_exten
-#define HAVE_to_exten
-STATIC_INLINE void to_exten_x(fptype *f, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
-{
-    int i;
-    fptype result = 0.0;
-    uae_u16 s = (wrd1 >> 16) & 0x8000;
-    uae_s32 e = (wrd1 >> 16) & 0x7fff;
-    uae_u64 m = ((uae_u64) wrd2 << 32) | wrd3;
-    for (i = 0; i < 64; i++) {
-        result /= 2.0;
-        if (m & 1)
-            result += 1.0;
-        m >>= 1;
-    }
-    result *= powl(2.0, (e - 0x3fff));
-    *f = s ? -result : result;
 }
+#else // if !USE_LONG_DOUBLE
+static const double twoto32 = 4294967296.0;
+STATIC_INLINE void to_exten_x(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
+{
+    double frac;
+    if ((wrd1 & 0x7fff0000) == 0 && wrd2 == 0 && wrd3 == 0) {
+        *fp = (wrd1 & 0x80000000) ? -0.0 : +0.0;
+        return;
+    }
+    frac = ((double)wrd2 + ((double)wrd3 / twoto32)) / 2147483648.0;
+    if (wrd1 & 0x80000000)
+        frac = -frac;
+    *fp = ldexp (frac, ((wrd1 >> 16) & 0x7fff) - 16383);
+}
+STATIC_INLINE void from_exten_x(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
+{
+    int expon;
+    double frac;
+    fptype v;
+    
+    v = *fp;
+    if (v == 0.0) {
+        *wrd1 = signbit(v) ? 0x80000000 : 0;
+        *wrd2 = 0;
+        *wrd3 = 0;
+        return;
+    }
+    if (v < 0) {
+        *wrd1 = 0x80000000;
+        v = -v;
+    } else {
+        *wrd1 = 0;
+    }
+    frac = frexp (v, &expon);
+    frac += 0.5 / (twoto32 * twoto32);
+    if (frac >= 1.0) {
+        frac /= 2.0;
+        expon++;
+    }
+    *wrd1 |= (((expon + 16383 - 1) & 0x7fff) << 16);
+    *wrd2 = (uae_u32) (frac * twoto32);
+    *wrd3 = (uae_u32) ((frac * twoto32 - *wrd2) * twoto32);
+}
+#endif // !USE_LONG_DOUBLE
+
+#ifndef USE_HOST_ROUNDING
+#ifdef USE_LONG_DOUBLE
+#define fp_round_to_minus_infinity(x) floorl(x)
+#define fp_round_to_plus_infinity(x) ceill(x)
+#define fp_round_to_zero(x)	((x) >= 0.0 ? floorl(x) : ceill(x))
+#define fp_round_to_nearest(x) roundl(x)
+#else // if !USE_LONG_DOUBLE
+#define fp_round_to_minus_infinity(x) floor(x)
+#define fp_round_to_plus_infinity(x) ceil(x)
+#define fp_round_to_zero(x)	((x) >= 0.0 ? floor(x) : ceil(x))
+#define fp_round_to_nearest(x) round(x)
+#endif // !USE_LONG_DOUBLE
+#endif // USE_HOST_ROUNDING
+
+STATIC_INLINE uae_s64 to_int(fptype *src, int size)
+{
+    static fptype fxsizes[6] =
+    {
+               -128.0,        127.0,
+             -32768.0,      32767.0,
+        -2147483648.0, 2147483647.0
+    };
+    
+    if (*src < fxsizes[size * 2 + 0])
+        *src = fxsizes[size * 2 + 0];
+    if (*src > fxsizes[size * 2 + 1])
+        *src = fxsizes[size * 2 + 1];
+#ifdef USE_HOST_ROUNDING
+#ifdef USE_LONG_DOUBLE
+    return lrintl(*src);
+#else
+    return lrint(*src);
 #endif
-
-#ifndef HAVE_from_exten
-#define HAVE_from_exten
-STATIC_INLINE void from_exten_x(fptype f, uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
-{
-    int i;
-    uae_u16 s = (f < 0.0) ? 1: 0;
-    uae_u64 m = 0;
-    uae_s32 e = (uae_s32)log2l(f);
-    f /= powl(2.0, e);
-    for (i = 0; i < 64; i++) {
-        m <<= 1;
-        if (f >= 1.0) {
-            m |= 1;
-            f -= 1.0;
-        }
-        f *= 2.0;
+#else
+    switch (regs.fpcr & FPCR_ROUNDING_MODE)
+    {
+        case FPCR_ROUND_ZERO:
+            return fp_round_to_zero (*src);
+        case FPCR_ROUND_MINF:
+            return fp_round_to_minus_infinity (*src);
+        case FPCR_ROUND_NEAR:
+            return fp_round_to_nearest (*src);
+        case FPCR_ROUND_PINF:
+            return fp_round_to_plus_infinity (*src);
+        default:
+            return (int) *src;
     }
-    e += 0x3fff;
-    if (e > 0 && e < 0x7fff && !(m & 0x8000000000000000ULL)) {
-        while (!(m & 0x8000000000000000ULL) && m) {
-            if (e == 0)
-                break;
-            m <<= 1;
-            e--;
-        }
-    }
-    if (!m && e != 0x7fff)
-        e = 0;
-    e |= s ? 0x8000 : 0;
-    *wrd1 = ((uae_u16) e) << 16;
-    *wrd2 = ((m >> 32) & 0xffffffff);
-    *wrd3 = m & 0xffffffff;
+#endif
 }
+STATIC_INLINE fptype from_int(uae_s32 src)
+{
+    return (fptype) src;
+}
+
+/* Functions for rounding */
+
+// round to float with extended precision exponent
+STATIC_INLINE void fp_roundsgl(fptype *fp)
+{
+    int expon;
+    float mant;
+#ifdef USE_LONG_DOUBLE
+    mant = (float)(frexpl(*fp, &expon) * 2.0);
+    *fp = ldexpl((fptype)mant, expon - 1);
+#else
+    mant = (float)(frexp(*fp, &expon) * 2.0);
+    *fp = ldexp((fptype)mant, expon - 1);
+#endif
+}
+
+// round to float
+STATIC_INLINE void fp_round32(fptype *fp)
+{
+    *fp = (float) *fp;
+}
+
+// round to double
+STATIC_INLINE void fp_round64(fptype *fp)
+{
+    *fp = (double) *fp;
+}
+
+/* Arithmetic functions */
+
+#ifdef USE_LONG_DOUBLE
+
+STATIC_INLINE fptype fp_int(fptype a)
+{
+#ifdef USE_HOST_ROUNDING
+    return rintl(a);
+#else
+    switch (regs.fpcr & FPCR_ROUNDING_MODE)
+    {
+        case FPCR_ROUND_NEAR:
+            return fp_round_to_nearest(a);
+        case FPCR_ROUND_ZERO:
+            return fp_round_to_zero(a);
+        case FPCR_ROUND_MINF:
+            return fp_round_to_minus_infinity(a);
+        case FPCR_ROUND_PINF:
+            return fp_round_to_plus_infinity(a);
+        default: /* never reached */
+            return a;
+    }
+#endif
+}
+STATIC_INLINE fptype fp_sinh(fptype a)
+{
+    return sinhl(a);
+}
+STATIC_INLINE fptype fp_intrz(fptype a)
+{
+#ifdef USE_HOST_ROUNDING
+    return truncl(a);
+#else
+    return fp_round_to_zero (a);
+#endif
+}
+STATIC_INLINE fptype fp_sqrt(fptype a)
+{
+    return sqrtl(a);
+}
+STATIC_INLINE fptype fp_lognp1(fptype a)
+{
+    return logl(a + 1.0);
+}
+STATIC_INLINE fptype fp_etoxm1(fptype a)
+{
+    return expl(a) - 1.0;
+}
+STATIC_INLINE fptype fp_tanh(fptype a)
+{
+    return tanhl(a);
+}
+STATIC_INLINE fptype fp_atan(fptype a)
+{
+    return atanl(a);
+}
+STATIC_INLINE fptype fp_asin(fptype a)
+{
+    return asinl(a);
+}
+STATIC_INLINE fptype fp_atanh(fptype a)
+{
+    return atanhl(a);
+}
+STATIC_INLINE fptype fp_sin(fptype a)
+{
+    return sinl(a);
+}
+STATIC_INLINE fptype fp_tan(fptype a)
+{
+    return tanl(a);
+}
+STATIC_INLINE fptype fp_etox(fptype a)
+{
+    return expl(a);
+}
+STATIC_INLINE fptype fp_twotox(fptype a)
+{
+    return powl(2.0, a);
+}
+STATIC_INLINE fptype fp_tentox(fptype a)
+{
+    return powl(10.0, a);
+}
+STATIC_INLINE fptype fp_logn(fptype a)
+{
+    return logl(a);
+}
+STATIC_INLINE fptype fp_log10(fptype a)
+{
+    return log10l(a);
+}
+STATIC_INLINE fptype fp_log2(fptype a)
+{
+    return log2l(a);
+}
+STATIC_INLINE fptype fp_abs(fptype a)
+{
+    return a < 0.0 ? -a : a;
+}
+STATIC_INLINE fptype fp_cosh(fptype a)
+{
+    return coshl(a);
+}
+STATIC_INLINE fptype fp_neg(fptype a)
+{
+    return -a;
+}
+STATIC_INLINE fptype fp_acos(fptype a)
+{
+    return acosl(a);
+}
+STATIC_INLINE fptype fp_cos(fptype a)
+{
+    return cosl(a);
+}
+STATIC_INLINE fptype fp_getexp(fptype a)
+{
+    int expon;
+    frexpl(a, &expon);
+    return (long double) (expon - 1);
+}
+STATIC_INLINE fptype fp_getman(fptype a)
+{
+    int expon;
+    return frexpl(a, &expon) * 2.0;
+}
+STATIC_INLINE fptype fp_div(fptype a, fptype b)
+{
+    return (a / b);
+}
+STATIC_INLINE fptype fp_mod(fptype a, fptype b)
+{
+    fptype quot;
+#ifdef USE_HOST_ROUNDING
+    quot = truncl(a / b);
+#else
+    quot = fp_round_to_zero(a / b);
+#endif
+    a -= quot * b;
+    return a;
+}
+STATIC_INLINE fptype fp_add(fptype a, fptype b)
+{
+    return (a + b);
+}
+STATIC_INLINE fptype fp_mul(fptype a, fptype b)
+{
+    return (a * b);
+}
+STATIC_INLINE fptype fp_rem(fptype a, fptype b)
+{
+    fptype quot;
+#ifdef USE_HOST_ROUNDING
+    quot = roundl(a / b);
+#else
+    quot = fp_round_to_nearest(a / b);
+#endif
+    a -= quot * b;
+    return a;
+}
+STATIC_INLINE fptype fp_scale(fptype a, fptype b)
+{
+    return ldexpl(a, (int) b);
+}
+STATIC_INLINE fptype fp_sub(fptype a, fptype b)
+{
+    return (a - b);
+}
+
+#else // if !USE_LONG_DOUBLE
+
+STATIC_INLINE fptype fp_int(fptype a)
+{
+#ifdef USE_HOST_ROUNDING
+    return rintl(a);
+#else
+    switch (regs.fpcr & FPCR_ROUNDING_MODE)
+    {
+        case FPCR_ROUND_NEAR:
+            return fp_round_to_nearest(a);
+        case FPCR_ROUND_ZERO:
+            return fp_round_to_zero(a);
+        case FPCR_ROUND_MINF:
+            return fp_round_to_minus_infinity(a);
+        case FPCR_ROUND_PINF:
+            return fp_round_to_plus_infinity(a);
+        default: /* never reached */
+            return a;
+    }
+#endif
+}
+#define fp_sinh(a) sinh(a)
+STATIC_INLINE fptype fp_intrz(fptype a)
+{
+#ifdef USE_HOST_ROUNDING
+    return trunc(a);
+#else
+    return fp_round_to_zero (a);
+#endif
+}
+#define fp_sqrt(a)      sqrt(a)
+#define fp_lognp1(a)    log((a) + 1.0)
+#define fp_etoxm1(a)    (exp(a) - 1.0)
+#define fp_tanh(a)      tanh(a)
+#define fp_atan(a)      atan(a)
+#define fp_asin(a)      asin(a)
+#define fp_atanh(a)     atanh(a)
+#define fp_sin(a)       sin(a)
+#define fp_tan(a)       tan(a)
+#define fp_etox(a)      exp(a)
+#define fp_twotox(a)    pow(2.0, a)
+#define fp_tentox(a)    pow(10.0, a)
+#define fp_logn(a)      log(a)
+#define fp_log10(a)     log10(a)
+#define fp_log2(a)      log2(a)
+#define fp_abs(a)       ((a) < 0.0 ? -(a) : (a))
+#define fp_cosh(a)      cosh(a)
+#define fp_neg(a)       (-(a))
+#define fp_acos(a)      acos(a)
+#define fp_cos(a)       cos(a)
+
+STATIC_INLINE fptype fp_getexp(fptype a)
+{
+    int expon;
+    frexp(a, &expon);
+    return (double) (expon - 1);
+}
+STATIC_INLINE fptype fp_getman(fptype a)
+{
+    int expon;
+    return frexp(a, &expon) * 2.0;
+}
+#define fp_div(a, b)    ((a) / (b))
+
+STATIC_INLINE fptype fp_mod(fptype a, fptype b)
+{
+    fptype quot;
+#ifdef USE_HOST_ROUNDING
+    quot = trunc(a / b);
+#else
+    quot = fp_round_to_zero(a / b);
+#endif
+    a -= quot * b;
+    return a;
+}
+#define fp_add(a, b)    ((a) + (b))
+#define fp_mul(a, b)    ((a) * (b))
+
+STATIC_INLINE fptype fp_rem(fptype a, fptype b)
+{
+    fptype quot;
+#ifdef USE_HOST_ROUNDING
+    quot = round(a / b);
+#else
+    quot = fp_round_to_nearest(a / b);
+#endif
+    a -= quot * b;
+    return a;
+}
+#define fp_scale(a, b)  ldexp(a, (int)(b))
+#define fp_sub(a, b)    ((a) - (b))
+
+#endif // !USE_LONG_DOUBLE
+
 #endif
