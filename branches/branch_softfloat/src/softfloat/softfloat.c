@@ -3724,6 +3724,67 @@ floatx80 floatx80_sqrt( floatx80 a )
 
 }
 
+// 07-01-2017: Added for Previous
+/*----------------------------------------------------------------------------
+ | Returns the mantissa of the extended double-precision floating-point
+ | value `a'.
+ *----------------------------------------------------------------------------*/
+
+floatx80 floatx80_getman( floatx80 a )
+{
+    flag aSign;
+    int32 aExp;
+    bits64 aSig;
+    
+    aSig = extractFloatx80Frac( a );
+    aExp = extractFloatx80Exp( a );
+    aSign = extractFloatx80Sign( a );
+    
+    if ( aExp == 0x7FFF ) {
+        if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaN( a, a );
+        float_raise( float_flag_invalid );
+        a.low = floatx80_default_nan_low;
+        a.high = floatx80_default_nan_high;
+        return a;
+    }
+    
+    if ( aExp == 0 ) {
+        if ( aSig == 0 ) return packFloatx80( aSign, 0, 0 );
+        normalizeFloatx80Subnormal( aSig, &aExp, &aSig );
+    }
+    
+    return roundAndPackFloatx80(floatx80_rounding_precision, aSign, 0x3FFF, aSig, 0);
+}
+
+/*----------------------------------------------------------------------------
+ | Returns the exponent of the extended double-precision floating-point
+ | value `a' as an extended double-precision value.
+ *----------------------------------------------------------------------------*/
+
+floatx80 floatx80_getexp( floatx80 a )
+{
+    flag aSign;
+    int32 aExp;
+    bits64 aSig;
+    
+    aSig = extractFloatx80Frac( a );
+    aExp = extractFloatx80Exp( a );
+    aSign = extractFloatx80Sign( a );
+    
+    if ( aExp == 0x7FFF ) {
+        if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaN( a, a );
+        float_raise( float_flag_invalid );
+        a.low = floatx80_default_nan_low;
+        a.high = floatx80_default_nan_high;
+        return a;
+    }
+    
+    if (aExp == 0 && aSig == 0) return packFloatx80(aSign, 0, 0);
+    
+    return int32_to_floatx80(aExp - 0x3FFF);
+}
+// End of addition for Previous
+
 /*----------------------------------------------------------------------------
 | Returns 1 if the extended double-precision floating-point value `a' is
 | equal to the corresponding value `b', and 0 otherwise.  The comparison is

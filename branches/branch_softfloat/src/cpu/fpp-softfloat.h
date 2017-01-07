@@ -399,6 +399,14 @@ STATIC_INLINE fptype fp_cos(fptype a)
     floatx80_fcos(&a);
     return a;
 }
+STATIC_INLINE fptype fp_getexp(fptype a)
+{
+    return floatx80_getexp(a);
+}
+STATIC_INLINE fptype fp_getman(fptype a)
+{
+    return floatx80_getman(a);
+}
 STATIC_INLINE fptype fp_div(fptype a, fptype b)
 {
     return floatx80_div(a, b);
@@ -515,26 +523,6 @@ STATIC_INLINE fptype fp_acos(fptype a)
     long double fpa;
     to_native(&fpa, a);
     fpa = acosl(fpa);
-    from_native(fpa, &a);
-    return a;
-}
-STATIC_INLINE fptype fp_getexp(fptype a)
-{
-    long double fpa;
-    int expon;
-    to_native(&fpa, a);
-    frexpl(fpa, &expon);
-    fpa = (long double) (expon - 1);
-    from_native(fpa, &a);
-    return a;
-}
-STATIC_INLINE fptype fp_getman(fptype a)
-{
-    long double fpa;
-    int expon;
-    to_native(&fpa, a);
-    frexpl(fpa, &expon);
-    fpa = frexpl(fpa, &expon) * 2.0;
     from_native(fpa, &a);
     return a;
 }
