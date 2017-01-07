@@ -584,7 +584,7 @@ STATIC_INLINE fptype fp_sub(fptype a, fptype b)
 STATIC_INLINE fptype fp_int(fptype a)
 {
 #ifdef USE_HOST_ROUNDING
-    return rintl(a);
+    return rint(a);
 #else
     switch (regs.fpcr & FPCR_ROUNDING_MODE)
     {
