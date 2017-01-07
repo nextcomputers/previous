@@ -852,11 +852,9 @@ static void to_pack (fptype *fp, uae_u32 *wrd)
     *cp++ = ((wrd[0] >> 20) & 0xf) + '0';
     *cp++ = ((wrd[0] >> 16) & 0xf) + '0';
     *cp = 0;
-#if USE_LONG_DOUBLE
+
     sscanf (str, "%Le", &d);
-#else
-    sscanf (str, "%le", &d);
-#endif
+
     from_native(d, fp);
 }
 
@@ -885,11 +883,7 @@ static void from_pack (fptype *src, uae_u32 *wrd, int kfactor)
     
     wrd[0] = wrd[1] = wrd[2] = 0;
     
-#if USE_LONG_DOUBLE
     sprintf (str, "%#.17Le", fp);
-#else
-    sprintf (str, "%#.17e", fp);
-#endif
     
     // get exponent
     cp = str;
