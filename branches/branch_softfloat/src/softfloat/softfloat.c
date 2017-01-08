@@ -3654,6 +3654,95 @@ floatx80 floatx80_rem( floatx80 a, floatx80 b )
 
 }
 
+// 08-01-2017: Added for Previous
+/*----------------------------------------------------------------------------
+ | Returns the modulo remainder of the extended double-precision floating-point
+ | value `a' with respect to the corresponding value `b'.
+ *----------------------------------------------------------------------------*/
+
+floatx80 floatx80_mod( floatx80 a, floatx80 b )
+{
+    flag aSign, zSign;
+    int32 aExp, bExp, expDiff;
+    bits64 aSig0, aSig1, bSig;
+    bits64 q, term0, term1;
+    floatx80 z;
+    
+    aSig0 = extractFloatx80Frac( a );
+    aExp = extractFloatx80Exp( a );
+    aSign = extractFloatx80Sign( a );
+    bSig = extractFloatx80Frac( b );
+    bExp = extractFloatx80Exp( b );
+    //    bSign = extractFloatx80Sign( b );
+    if ( aExp == 0x7FFF ) {
+        if (    (bits64) ( aSig0<<1 )
+            || ( ( bExp == 0x7FFF ) && (bits64) ( bSig<<1 ) ) ) {
+            return propagateFloatx80NaN( a, b );
+        }
+        goto invalid;
+    }
+    if ( bExp == 0x7FFF ) {
+        if ( (bits64) ( bSig<<1 ) ) return propagateFloatx80NaN( a, b );
+        return a;
+    }
+    if ( bExp == 0 ) {
+        if ( bSig == 0 ) {
+        invalid:
+            float_raise( float_flag_invalid );
+            z.low = floatx80_default_nan_low;
+            z.high = floatx80_default_nan_high;
+            return z;
+        }
+        normalizeFloatx80Subnormal( bSig, &bExp, &bSig );
+    }
+    if ( aExp == 0 ) {
+        if ( (bits64) ( aSig0<<1 ) == 0 ) return a;
+        normalizeFloatx80Subnormal( aSig0, &aExp, &aSig0 );
+    }
+    bSig |= LIT64( 0x8000000000000000 );
+    zSign = aSign;
+    expDiff = aExp - bExp;
+    aSig1 = 0;
+    if ( expDiff < 0 ) {
+        if ( expDiff < -1 ) return a;
+        shift128Right( aSig0, 0, 1, &aSig0, &aSig1 );
+        expDiff = 0;
+    }
+    q = ( bSig <= aSig0 );
+    if ( q ) aSig0 -= bSig;
+    expDiff -= 64;
+    while ( 0 < expDiff ) {
+        q = estimateDiv128To64( aSig0, aSig1, bSig );
+        q = ( 2 < q ) ? q - 2 : 0;
+        mul64To128( bSig, q, &term0, &term1 );
+        sub128( aSig0, aSig1, term0, term1, &aSig0, &aSig1 );
+        shortShift128Left( aSig0, aSig1, 62, &aSig0, &aSig1 );
+        expDiff -= 62;
+    }
+    expDiff += 64;
+    if ( 0 < expDiff ) {
+        q = estimateDiv128To64( aSig0, aSig1, bSig );
+        q = ( 2 < q ) ? q - 2 : 0;
+        q >>= 64 - expDiff;
+        mul64To128( bSig, q<<( 64 - expDiff ), &term0, &term1 );
+        sub128( aSig0, aSig1, term0, term1, &aSig0, &aSig1 );
+        shortShift128Left( 0, bSig, 64 - expDiff, &term0, &term1 );
+        while ( le128( term0, term1, aSig0, aSig1 ) ) {
+            ++q;
+            sub128( aSig0, aSig1, term0, term1, &aSig0, &aSig1 );
+        }
+    }
+    else {
+        term1 = 0;
+        term0 = bSig;
+    }
+    return
+        normalizeRoundAndPackFloatx80(
+            80, zSign, bExp + expDiff, aSig0, aSig1 );
+    
+}
+// end of addition for Previous
+
 /*----------------------------------------------------------------------------
 | Returns the square root of the extended double-precision floating-point
 | value `a'.  The operation is performed according to the IEC/IEEE Standard
