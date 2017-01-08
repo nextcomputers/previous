@@ -271,6 +271,7 @@ floatx80 floatx80_flog10(floatx80 a);
 
 floatx80 floatx80_getman( floatx80 a );
 floatx80 floatx80_getexp( floatx80 a );
+floatx80 floatx80_mod( floatx80 a, floatx80 b );
 
 // roundAndPackFloatx80 used to be in softfloat-round-pack, is now in softfloat.c
 floatx80 roundAndPackFloatx80(int8 roundingPrecision, flag zSign, int32 zExp, bits64 zSig0, bits64 zSig1);

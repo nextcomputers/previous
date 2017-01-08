@@ -411,6 +411,10 @@ STATIC_INLINE fptype fp_div(fptype a, fptype b)
 {
     return floatx80_div(a, b);
 }
+STATIC_INLINE fptype fp_mod(fptype a, fptype b)
+{
+    return floatx80_mod(a, b);
+}
 STATIC_INLINE fptype fp_add(fptype a, fptype b)
 {
     return floatx80_add(a, b);
@@ -523,17 +527,6 @@ STATIC_INLINE fptype fp_acos(fptype a)
     long double fpa;
     to_native(&fpa, a);
     fpa = acosl(fpa);
-    from_native(fpa, &a);
-    return a;
-}
-STATIC_INLINE fptype fp_mod(fptype a, fptype b)
-{
-    long double fpa, fpb;
-    long double quot;
-    to_native(&fpa, a);
-    to_native(&fpb, a);
-    quot = fp_round_to_zero(fpa / fpb);
-    fpa -= quot * fpb;
     from_native(fpa, &a);
     return a;
 }
