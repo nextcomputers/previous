@@ -3242,6 +3242,45 @@ floatx80 floatx80_round_to_int( floatx80 a )
 
 }
 
+// 09-01-2017: Added for Previous
+floatx80 floatx80_round_to_int_toward_zero( floatx80 a )
+{
+    flag aSign;
+    int32 aExp;
+    bits64 lastBitMask, roundBitsMask;
+    floatx80 z;
+    
+    aExp = extractFloatx80Exp( a );
+    if ( 0x403E <= aExp ) {
+        if ( ( aExp == 0x7FFF ) && (bits64) ( extractFloatx80Frac( a )<<1 ) ) {
+            return propagateFloatx80NaN( a, a );
+        }
+        return a;
+    }
+    if ( aExp < 0x3FFF ) {
+        if (    ( aExp == 0 )
+            && ( (bits64) ( extractFloatx80Frac( a )<<1 ) == 0 ) ) {
+            return a;
+        }
+        float_exception_flags |= float_flag_inexact;
+        aSign = extractFloatx80Sign( a );
+        return packFloatx80( aSign, 0, 0 );
+    }
+    lastBitMask = 1;
+    lastBitMask <<= 0x403E - aExp;
+    roundBitsMask = lastBitMask - 1;
+    z = a;
+    z.low &= ~ roundBitsMask;
+    if ( z.low == 0 ) {
+        ++z.high;
+        z.low = LIT64( 0x8000000000000000 );
+    }
+    if ( z.low != a.low ) float_exception_flags |= float_flag_inexact;
+    return z;
+    
+}
+// End of addition for Previous
+
 /*----------------------------------------------------------------------------
 | Returns the result of adding the absolute values of the extended double-
 | precision floating-point values `a' and `b'.  If `zSign' is 1, the sum is
@@ -3703,11 +3742,7 @@ floatx80 floatx80_mod( floatx80 a, floatx80 b )
     zSign = aSign;
     expDiff = aExp - bExp;
     aSig1 = 0;
-    if ( expDiff < 0 ) {
-        if ( expDiff < -1 ) return a;
-        shift128Right( aSig0, 0, 1, &aSig0, &aSig1 );
-        expDiff = 0;
-    }
+    if ( expDiff < 0 ) return a;
     q = ( bSig <= aSig0 );
     if ( q ) aSig0 -= bSig;
     expDiff -= 64;
@@ -3731,10 +3766,6 @@ floatx80 floatx80_mod( floatx80 a, floatx80 b )
             ++q;
             sub128( aSig0, aSig1, term0, term1, &aSig0, &aSig1 );
         }
-    }
-    else {
-        term1 = 0;
-        term0 = bSig;
     }
     return
         normalizeRoundAndPackFloatx80(
