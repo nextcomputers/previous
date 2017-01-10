@@ -348,13 +348,7 @@ STATIC_INLINE fptype fp_int(fptype a)
 }
 STATIC_INLINE fptype fp_intrz(fptype a)
 {
-    int8 save_rm;
-    fptype b;
-    save_rm = float_rounding_mode;
-    float_rounding_mode = float_round_to_zero;
-    b = floatx80_round_to_int(a);
-    float_rounding_mode = save_rm;
-    return b;
+    return floatx80_round_to_int_toward_zero(a);
 }
 STATIC_INLINE fptype fp_sqrt(fptype a)
 {
