@@ -757,6 +757,12 @@ int fpsr_set_bsun(void)
     }
     return 0;
 }
+void fpsr_set_quotient(uae_u64 quot, uae_s8 sign)
+{
+    regs.fpsr &= 0x0f00fff8;
+    regs.fpsr |= (quot << 16) & FPSR_QUOT_LSB;
+    regs.fpsr |= sign ? FPSR_QUOT_SIGN : 0;
+}
 
 uae_u32 fpp_get_fpsr (void)
 {
@@ -2091,6 +2097,8 @@ static bool fp_arithmetic(fptype *srcd, int reg, int extra)
 {
     fptype fp = *srcd;
     bool sgl = false;
+    uae_u64 q = 0;
+    uae_s8 s = 0;
     
     // SNAN -> QNAN if SNAN interrupt is not enabled
     if (fp_is_snan(srcd) && !(regs.fpcr & 0x4000)) {
@@ -2191,7 +2199,8 @@ static bool fp_arithmetic(fptype *srcd, int reg, int extra)
             regs.fp[reg] = fp_div(regs.fp[reg], fp);
             break;
         case 0x21: /* FMOD */
-            regs.fp[reg] = fp_mod(regs.fp[reg], fp);
+            regs.fp[reg] = fp_mod(regs.fp[reg], fp, &q, &s);
+            fpsr_set_quotient(q, s);
             break;
         case 0x22: /* FADD */
         case 0x62: /* FSADD */
@@ -2208,7 +2217,8 @@ static bool fp_arithmetic(fptype *srcd, int reg, int extra)
             sgl = true;
             break;
         case 0x25: /* FREM */
-            regs.fp[reg] = fp_rem(regs.fp[reg], fp);
+            regs.fp[reg] = fp_rem(regs.fp[reg], fp, &q, &s);
+            fpsr_set_quotient(q, s);
             break;
         case 0x26: /* FSCALE */
             regs.fp[reg] = fp_scale(regs.fp[reg], fp);
