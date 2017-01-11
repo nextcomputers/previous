@@ -540,7 +540,7 @@ STATIC_INLINE fptype fp_div(fptype a, fptype b)
 {
     return (a / b);
 }
-STATIC_INLINE fptype fp_mod(fptype a, fptype b)
+STATIC_INLINE fptype fp_mod(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
 {
     fptype quot;
 #ifdef USE_HOST_ROUNDING
@@ -548,8 +548,14 @@ STATIC_INLINE fptype fp_mod(fptype a, fptype b)
 #else
     quot = fp_round_to_zero(a / b);
 #endif
-    a -= quot * b;
-    return a;
+    if (quot < 0.0) {
+        *s = 1;
+        quot = -quot;
+    } else {
+        *s = 0;
+    }
+    *q = (uae_u64)quot;
+    return fmodl(a, b);
 }
 STATIC_INLINE fptype fp_add(fptype a, fptype b)
 {
@@ -559,7 +565,7 @@ STATIC_INLINE fptype fp_mul(fptype a, fptype b)
 {
     return (a * b);
 }
-STATIC_INLINE fptype fp_rem(fptype a, fptype b)
+STATIC_INLINE fptype fp_rem(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
 {
     fptype quot;
 #ifdef USE_HOST_ROUNDING
@@ -567,8 +573,14 @@ STATIC_INLINE fptype fp_rem(fptype a, fptype b)
 #else
     quot = fp_round_to_nearest(a / b);
 #endif
-    a -= quot * b;
-    return a;
+    if (quot < 0.0) {
+        *s = 1;
+        quot = -quot;
+    } else {
+        *s = 0;
+    }
+    *q = (uae_u64)quot;
+    return remainderl(a, b);
 }
 STATIC_INLINE fptype fp_scale(fptype a, fptype b)
 {
@@ -644,7 +656,7 @@ STATIC_INLINE fptype fp_getman(fptype a)
 }
 #define fp_div(a, b)    ((a) / (b))
 
-STATIC_INLINE fptype fp_mod(fptype a, fptype b)
+STATIC_INLINE fptype fp_mod(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
 {
     fptype quot;
 #ifdef USE_HOST_ROUNDING
@@ -652,13 +664,19 @@ STATIC_INLINE fptype fp_mod(fptype a, fptype b)
 #else
     quot = fp_round_to_zero(a / b);
 #endif
-    a -= quot * b;
-    return a;
+    if (quot < 0.0) {
+        *s = 1;
+        quot = -quot;
+    } else {
+        *s = 0;
+    }
+    *q = (uae_u64)quot;
+    return fmod(a, b);
 }
 #define fp_add(a, b)    ((a) + (b))
 #define fp_mul(a, b)    ((a) * (b))
 
-STATIC_INLINE fptype fp_rem(fptype a, fptype b)
+STATIC_INLINE fptype fp_rem(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
 {
     fptype quot;
 #ifdef USE_HOST_ROUNDING
@@ -666,8 +684,14 @@ STATIC_INLINE fptype fp_rem(fptype a, fptype b)
 #else
     quot = fp_round_to_nearest(a / b);
 #endif
-    a -= quot * b;
-    return a;
+    if (quot < 0.0) {
+        *s = 1;
+        quot = -quot;
+    } else {
+        *s = 0;
+    }
+    *q = (uae_u64)quot;
+    return remainder(a, b);
 }
 #define fp_scale(a, b)  ldexp(a, (int)(b))
 #define fp_sub(a, b)    ((a) - (b))
