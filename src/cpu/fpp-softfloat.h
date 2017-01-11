@@ -431,10 +431,6 @@ STATIC_INLINE fptype fp_sub(fptype a, fptype b)
 }
 
 /* FIXME: create softfloat functions for following arithmetics */
-#define fp_round_to_minus_infinity(x) floor(x)
-#define fp_round_to_plus_infinity(x) ceil(x)
-#define fp_round_to_zero(x)	((x) >= 0.0 ? floor(x) : ceil(x))
-#define fp_round_to_nearest(x) ((x) >= 0.0 ? (int)((x) + 0.5) : (int)((x) - 0.5))
 
 STATIC_INLINE fptype fp_sinh(fptype a)
 {
