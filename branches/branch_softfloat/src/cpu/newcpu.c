@@ -1258,7 +1258,6 @@ static void m68k_run_mmu030 (void)
 	struct flag_struct f;
 	f.cznv = 0;
 	f.x    = 0;
-	m68k_exception save_except;
     int intr             = 0;
     int lastintr         = 0;
 	mmu030_opcode_stageb = -1;
@@ -1338,12 +1337,11 @@ insretry:
 			}
 		}
 	} CATCH (prb) {
-		save_except = __exvalue;
 
 		regflags.cznv = f.cznv;
 		regflags.x    = f.x;
 
-		m68k_setpc (regs.instruction_pc);
+		m68k_setpci (regs.instruction_pc);
 
 		if (mmufixup[0].reg >= 0) {
 			m68k_areg (regs, mmufixup[0].reg) = mmufixup[0].value;
@@ -1355,7 +1353,7 @@ insretry:
 		}
 
 		TRY (prb2) {
-			Exception (save_except);
+			Exception (prb);
 		} CATCH (prb2) {
 			cpu_halt (1);
 			return;
@@ -1372,7 +1370,6 @@ static void m68k_run_mmu040 (void)
 	f.cznv = 0;
 	f.x    = 0;
 	uaecptr pc;
-	m68k_exception save_except;
     int intr = 0;
     int lastintr = 0;
 	
@@ -1424,13 +1421,12 @@ static void m68k_run_mmu040 (void)
 			}
 		} // end of for(;;)
 	} CATCH (prb) {
-		save_except = __exvalue;
 
 		if (mmu_restart) {
 			/* restore state if instruction restart */
 			regflags.cznv = f.cznv;
 			regflags.x = f.x;
-			m68k_setpc (regs.instruction_pc);
+			m68k_setpci (regs.instruction_pc);
 		}
 
 		if (mmufixup[0].reg >= 0) {
@@ -1438,9 +1434,9 @@ static void m68k_run_mmu040 (void)
 			mmufixup[0].reg = -1;
 		}
 
-		TRY (prb) {
-			Exception (save_except);
-		} CATCH (prb) {
+		TRY (prb2) {
+			Exception (prb);
+		} CATCH (prb2) {
             Log_Printf(LOG_WARN, "[FATAL] double fault");
             DebugUI();
 		} ENDTRY
