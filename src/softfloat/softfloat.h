@@ -237,6 +237,7 @@ extern int8 floatx80_rounding_precision;
 floatx80 floatx80_round_to_int( floatx80 );
 floatx80 floatx80_round_to_int_toward_zero( floatx80 );
 floatx80 floatx80_round32( floatx80 );
+floatx80 floatx80_round64( floatx80 );
 floatx80 floatx80_normalize( floatx80 );
 floatx80 floatx80_add( floatx80, floatx80 );
 floatx80 floatx80_sub( floatx80, floatx80 );

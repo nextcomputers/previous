@@ -397,6 +397,20 @@ STATIC_INLINE void fp_roundsgl(fptype *fp)
 #endif
 }
 
+// round to double with extended precision exponent
+STATIC_INLINE void fp_rounddbl(fptype *fp)
+{
+    int expon;
+    double mant;
+#ifdef USE_LONG_DOUBLE
+    mant = (double)(frexpl(*fp, &expon) * 2.0);
+    *fp = ldexpl((fptype)mant, expon - 1);
+#else
+    mant = (double)(frexp(*fp, &expon) * 2.0);
+    *fp = ldexp((fptype)mant, expon - 1);
+#endif
+}
+
 // round to float
 STATIC_INLINE void fp_round32(fptype *fp)
 {
