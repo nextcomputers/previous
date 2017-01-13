@@ -326,6 +326,12 @@ STATIC_INLINE void fp_roundsgl(fptype *fp)
     *fp = floatx80_round32(*fp);
 }
 
+// round to double with extended precision exponent
+STATIC_INLINE void fp_rounddbl(fptype *fp)
+{
+    *fp = floatx80_round64(*fp);
+}
+
 // round to float
 STATIC_INLINE void fp_round32(fptype *fp)
 {

@@ -3167,6 +3167,20 @@ floatx80 floatx80_round32( floatx80 a )
     return roundAndPackFloatx80(32, aSign, aExp, aSig, 0);
 
 }
+
+floatx80 floatx80_round64( floatx80 a )
+{
+    flag aSign;
+    int16 aExp;
+    bits64 aSig;
+    
+    aSig = extractFloatx80Frac( a );
+    aExp = extractFloatx80Exp( a );
+    aSign = extractFloatx80Sign( a );
+    
+    return roundAndPackFloatx80(64, aSign, aExp, aSig, 0);
+    
+}
 // end of addition for Previous
 
 /*----------------------------------------------------------------------------

@@ -32,13 +32,13 @@
 #define EXCEPTION_FPP 1
 
 uae_u32 xhex_pi[]    ={0x40000000, 0xc90fdaa2, 0x2168c235};
+uae_u32 xhex_l10_2[] ={0x3ffd0000, 0x9a209a84, 0xfbcff798};
 uae_u32 xhex_exp_1[] ={0x40000000, 0xadf85458, 0xa2bb4a9a};
 uae_u32 xhex_l2_e[]  ={0x3fff0000, 0xb8aa3b29, 0x5c17f0bc};
-uae_u32 xhex_ln_2[]  ={0x3ffe0000, 0xb17217f7, 0xd1cf79ac};
-uae_u32 xhex_ln_10[] ={0x40000000, 0x935d8ddd, 0xaaa8ac17};
-uae_u32 xhex_l10_2[] ={0x3ffd0000, 0x9a209a84, 0xfbcff798};
 uae_u32 xhex_l10_e[] ={0x3ffd0000, 0xde5bd8a9, 0x37287195};
 uae_u32 xhex_zero[]  ={0x00000000, 0x00000000, 0x00000000};
+uae_u32 xhex_ln_2[]  ={0x3ffe0000, 0xb17217f7, 0xd1cf79ac};
+uae_u32 xhex_ln_10[] ={0x40000000, 0x935d8ddd, 0xaaa8ac17};
 uae_u32 xhex_1e0[]   ={0x3fff0000, 0x80000000, 0x00000000};
 uae_u32 xhex_1e1[]   ={0x40020000, 0xa0000000, 0x00000000};
 uae_u32 xhex_1e2[]   ={0x40050000, 0xc8000000, 0x00000000};
@@ -311,10 +311,14 @@ bool fpu_get_constant(fptype *fp, int cr)
             f = xhex_1e4096;
             break;
         default:
+            f = xhex_zero;
             return false;
     }
 
     to_exten_fmovem(fp, f[0], f[1], f[2]);
+    
+    if (((regs.fpcr >> 6) & 3) == 1) fp_roundsgl(fp);
+    if (((regs.fpcr >> 6) & 3) == 2) fp_rounddbl(fp);
 
     return true;
 }
@@ -2494,10 +2498,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                 if (fault_if_unimplemented_680x0 (opcode, extra, ad, pc, &srcd, reg))
                     return;
                 fpsr_clear_status();
-                if (!fpu_get_constant(&regs.fp[reg], extra)) {
-                    fpu_noinst(opcode, pc);
-                    return;
-                }
+                fpu_get_constant(&regs.fp[reg], extra);
                 fpsr_set_result(regs.fp[reg]);
                 fpsr_make_status();
                 return;
