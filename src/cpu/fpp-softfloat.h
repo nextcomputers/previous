@@ -42,15 +42,15 @@ extern void normalize_exten (uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3);
 STATIC_INLINE void set_fp_mode(uae_u32 mode_control)
 {
     switch(mode_control & FPCR_ROUNDING_PRECISION) {
+        case FPCR_PRECISION_EXTENDED: // X
+            //floatx80_rounding_precision = 80;
+            break;
         case FPCR_PRECISION_SINGLE:   // S
             //floatx80_rounding_precision = 32;
             break;
         case FPCR_PRECISION_DOUBLE:   // D
-            //floatx80_rounding_precision = 64;
-            break;
-        case FPCR_PRECISION_EXTENDED: // X
         default:                      // undefined
-            //floatx80_rounding_precision = 80;
+            //floatx80_rounding_precision = 64;
             break;
     }
     floatx80_rounding_precision = 80;
