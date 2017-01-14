@@ -31,28 +31,59 @@
 #define DEBUG_FPP 0
 #define EXCEPTION_FPP 1
 
-uae_u32 xhex_pi[]    ={0x40000000, 0xc90fdaa2, 0x2168c235};
-uae_u32 xhex_l10_2[] ={0x3ffd0000, 0x9a209a84, 0xfbcff798};
-uae_u32 xhex_exp_1[] ={0x40000000, 0xadf85458, 0xa2bb4a9a};
-uae_u32 xhex_l2_e[]  ={0x3fff0000, 0xb8aa3b29, 0x5c17f0bc};
-uae_u32 xhex_l10_e[] ={0x3ffd0000, 0xde5bd8a9, 0x37287195};
-uae_u32 xhex_zero[]  ={0x00000000, 0x00000000, 0x00000000};
-uae_u32 xhex_ln_2[]  ={0x3ffe0000, 0xb17217f7, 0xd1cf79ac};
-uae_u32 xhex_ln_10[] ={0x40000000, 0x935d8ddd, 0xaaa8ac17};
-uae_u32 xhex_1e0[]   ={0x3fff0000, 0x80000000, 0x00000000};
-uae_u32 xhex_1e1[]   ={0x40020000, 0xa0000000, 0x00000000};
-uae_u32 xhex_1e2[]   ={0x40050000, 0xc8000000, 0x00000000};
-uae_u32 xhex_1e4[]   ={0x400c0000, 0x9c400000, 0x00000000};
-uae_u32 xhex_1e8[]   ={0x40190000, 0xbebc2000, 0x00000000};
-uae_u32 xhex_1e16[]  ={0x40340000, 0x8e1bc9bf, 0x04000000};
-uae_u32 xhex_1e32[]  ={0x40690000, 0x9dc5ada8, 0x2b70b59e};
-uae_u32 xhex_1e64[]  ={0x40d30000, 0xc2781f49, 0xffcfa6d5};
-uae_u32 xhex_1e128[] ={0x41a80000, 0x93ba47c9, 0x80e98ce0};
-uae_u32 xhex_1e256[] ={0x43510000, 0xaa7eebfb, 0x9df9de8e};
-uae_u32 xhex_1e512[] ={0x46a30000, 0xe319a0ae, 0xa60e91c7};
-uae_u32 xhex_1e1024[]={0x4d480000, 0xc9767586, 0x81750c17};
-uae_u32 xhex_1e2048[]={0x5a920000, 0x9e8b3b5d, 0xc53d5de5};
-uae_u32 xhex_1e4096[]={0x75250000, 0xc4605202, 0x8a20979b};
+struct fpp_cr_entry {
+    uae_u32 val[3];
+    uae_u8 inexact;
+    uae_s8 rndoff[4];
+};
+
+struct fpp_cr_entry fpp_cr[22] = {
+    { {0x40000000, 0xc90fdaa2, 0x2168c235}, 1, {0,-1,-1, 0} }, //  0 = pi
+    { {0x3ffd0000, 0x9a209a84, 0xfbcff798}, 1, {0, 0, 0, 1} }, //  1 = log10(2)
+    { {0x40000000, 0xadf85458, 0xa2bb4a9a}, 1, {0, 0, 0, 1} }, //  2 = e
+    { {0x3fff0000, 0xb8aa3b29, 0x5c17f0bc}, 1, {0,-1,-1, 0} }, //  3 = log2(e)
+    { {0x3ffd0000, 0xde5bd8a9, 0x37287195}, 0, {0, 0, 0, 0} }, //  4 = log10(e)
+    { {0x00000000, 0x00000000, 0x00000000}, 0, {0, 0, 0, 0} }, //  5 = 0.0
+    { {0x3ffe0000, 0xb17217f7, 0xd1cf79ac}, 1, {0,-1,-1, 0} }, //  6 = ln(2)
+    { {0x40000000, 0x935d8ddd, 0xaaa8ac17}, 1, {0,-1,-1, 0} }, //  7 = ln(10)
+    { {0x3fff0000, 0x80000000, 0x00000000}, 0, {0, 0, 0, 0} }, //  8 = 1e0
+    { {0x40020000, 0xa0000000, 0x00000000}, 0, {0, 0, 0, 0} }, //  9 = 1e1
+    { {0x40050000, 0xc8000000, 0x00000000}, 0, {0, 0, 0, 0} }, // 10 = 1e2
+    { {0x400c0000, 0x9c400000, 0x00000000}, 0, {0, 0, 0, 0} }, // 11 = 1e4
+    { {0x40190000, 0xbebc2000, 0x00000000}, 0, {0, 0, 0, 0} }, // 12 = 1e8
+    { {0x40340000, 0x8e1bc9bf, 0x04000000}, 0, {0, 0, 0, 0} }, // 13 = 1e16
+    { {0x40690000, 0x9dc5ada8, 0x2b70b59e}, 1, {0,-1,-1, 0} }, // 14 = 1e32
+    { {0x40d30000, 0xc2781f49, 0xffcfa6d5}, 1, {0, 0, 0, 1} }, // 15 = 1e64
+    { {0x41a80000, 0x93ba47c9, 0x80e98ce0}, 1, {0,-1,-1, 0} }, // 16 = 1e128
+    { {0x43510000, 0xaa7eebfb, 0x9df9de8e}, 1, {0,-1,-1, 0} }, // 17 = 1e256
+    { {0x46a30000, 0xe319a0ae, 0xa60e91c7}, 1, {0,-1,-1, 0} }, // 18 = 1e512
+    { {0x4d480000, 0xc9767586, 0x81750c17}, 1, {0, 0, 0, 1} }, // 19 = 1e1024
+    { {0x5a920000, 0x9e8b3b5d, 0xc53d5de5}, 1, {0, 0, 0, 1} }, // 20 = 1e2048
+    { {0x75250000, 0xc4605202, 0x8a20979b}, 1, {0,-1,-1, 0} }  // 21 = 1e4094
+};
+
+#define FPP_CR_PI       0
+#define FPP_CR_LOG10_2  1
+#define FPP_CR_E        2
+#define FPP_CR_LOG2_E   3
+#define FPP_CR_LOG10_E  4
+#define FPP_CR_ZERO     5
+#define FPP_CR_LN_2     6
+#define FPP_CR_LN_10    7
+#define FPP_CR_1E0      8
+#define FPP_CR_1E1      9
+#define FPP_CR_1E2      10
+#define FPP_CR_1E4      11
+#define FPP_CR_1E8      12
+#define FPP_CR_1E16     13
+#define FPP_CR_1E32     14
+#define FPP_CR_1E64     15
+#define FPP_CR_1E128    16
+#define FPP_CR_1E256    17
+#define FPP_CR_1E512    18
+#define FPP_CR_1E1024   19
+#define FPP_CR_1E2048   20
+#define FPP_CR_1E4096   21
 
 uae_u32 xhex_nan[]   ={0x7fff0000, 0xffffffff, 0xffffffff};
 
@@ -178,6 +209,112 @@ void from_exten(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
 #define FPSR_AE_DZ      0x00000010
 #define FPSR_AE_INEX    0x00000008
 
+void fpsr_set_exception(uae_u32 exception)
+{
+    regs.fpsr |= exception;
+}
+void fpsr_check_exception(void)
+{
+    // Any exception status bit and matching exception enable bits set?
+    uae_u32 exception = (regs.fpsr >> 8) & (regs.fpcr >> 8);
+    
+    if (exception) {
+        int vector = 0;
+        int vtable[8] = { 49, 49, 50, 51, 53, 52, 54, 48 };
+        int i;
+        for (i = 7; i >= 0; i--) {
+            if (exception & (1 << i)) {
+                vector = vtable[i];
+                break;
+            }
+        }
+        // logging only so far
+        write_log (_T("FPU exception: FPSR: %08x, FPCR: %04x (vector: %d)!\n"), regs.fpsr, regs.fpcr, vector);
+    }
+}
+void fpsr_set_result(fptype result)
+{
+    regs.fp_result = result;
+    
+    // condition code byte
+    regs.fpsr &= 0x00fffff8; // clear cc
+    if (fp_is_nan (&regs.fp_result)) {
+        regs.fpsr |= FPSR_CC_NAN;
+    } else {
+        if (fp_is_zero(&regs.fp_result))
+            regs.fpsr |= FPSR_CC_Z;
+        if (fp_is_infinity (&regs.fp_result))
+            regs.fpsr |= FPSR_CC_I;
+    }
+    if (fp_is_neg(&regs.fp_result))
+        regs.fpsr |= FPSR_CC_N;
+    
+    // check if result is signaling nan
+    if (fp_is_snan(&regs.fp_result))
+        regs.fpsr |= FPSR_SNAN;
+}
+void fpsr_clear_status(void)
+{
+    // clear exception status byte only
+    regs.fpsr &= 0x0fff00f8;
+    
+    // clear external status
+    clear_fp_status();
+}
+void fpsr_make_status(void)
+{
+    // get external status
+    get_fp_status(&regs.fpsr);
+    
+    // update accrued exception byte
+    if (regs.fpsr & (FPSR_BSUN | FPSR_SNAN | FPSR_OPERR))
+        regs.fpsr |= FPSR_AE_IOP;  // IOP = BSUN || SNAN || OPERR
+    if (regs.fpsr & FPSR_OVFL)
+        regs.fpsr |= FPSR_AE_OVFL; // OVFL = OVFL
+    if ((regs.fpsr & FPSR_UNFL) && (regs.fpsr & FPSR_INEX2))
+        regs.fpsr |= FPSR_AE_UNFL; // UNFL = UNFL && INEX2
+    if (regs.fpsr & FPSR_DZ)
+        regs.fpsr |= FPSR_AE_DZ;   // DZ = DZ
+    if (regs.fpsr & (FPSR_OVFL | FPSR_INEX2 | FPSR_INEX1))
+        regs.fpsr |= FPSR_AE_INEX; // INEX = INEX1 || INEX2 || OVFL
+    
+    fpsr_check_exception();
+}
+int fpsr_set_bsun(void)
+{
+    regs.fpsr |= FPSR_BSUN;
+    regs.fpsr |= FPSR_AE_IOP;
+    
+    if (regs.fpcr & FPSR_BSUN) {
+        // logging only so far
+        write_log (_T("FPU exception: BSUN! (FPSR: %08x, FPCR: %04x)\n"), regs.fpsr, regs.fpcr);
+        return 0; // return 1, once BSUN exception works
+    }
+    return 0;
+}
+void fpsr_set_quotient(uae_u64 quot, uae_s8 sign)
+{
+    regs.fpsr &= 0x0f00fff8;
+    regs.fpsr |= (quot << 16) & FPSR_QUOT_LSB;
+    regs.fpsr |= sign ? FPSR_QUOT_SIGN : 0;
+}
+
+uae_u32 fpp_get_fpsr (void)
+{
+    return regs.fpsr;
+}
+
+void fpp_set_fpsr (uae_u32 val)
+{
+    regs.fpsr = val;
+}
+
+void fpp_set_fpcr (uae_u32 val)
+{
+    set_fp_mode(val);
+    regs.fpcr = val & 0xffff;
+}
+
 
 static void fpnan (fptype *fp)
 {
@@ -241,86 +378,101 @@ void normalize_exten(uae_u32 *pwrd1, uae_u32 *pwrd2, uae_u32 *pwrd3)
 bool fpu_get_constant(fptype *fp, int cr)
 {
     uae_u32 *f = NULL;
+    uae_u32 entry = 0;
+    bool valid = true;
     
     switch (cr & 0x7f)
     {
-        case 0x00:
-            f = xhex_pi;
+        case 0x00: // pi
+            entry = FPP_CR_PI;
             break;
-        case 0x0b:
-            f = xhex_l10_2;
+        case 0x0b: // log10(2)
+            entry = FPP_CR_LOG10_2;
             break;
-        case 0x0c:
-            f = xhex_exp_1;
+        case 0x0c: // e
+            entry = FPP_CR_E;
             break;
-        case 0x0d:
-            f = xhex_l2_e;
+        case 0x0d: // log2(e)
+            entry = FPP_CR_LOG2_E;
             break;
-        case 0x0e:
-            f = xhex_l10_e;
+        case 0x0e: // log10(e)
+            entry = FPP_CR_LOG10_E;
             break;
-        case 0x0f:
-            f = xhex_zero;
+        case 0x0f: // 0.0
+            entry = FPP_CR_ZERO;
             break;
-        case 0x30:
-            f = xhex_ln_2;
+        case 0x30: // ln(2)
+            entry = FPP_CR_LN_2;
             break;
-        case 0x31:
-            f = xhex_ln_10;
+        case 0x31: // ln(10)
+            entry = FPP_CR_LN_10;
             break;
-        case 0x32:
-            f = xhex_1e0;
+        case 0x32: // 1e0
+            entry = FPP_CR_1E0;
             break;
-        case 0x33:
-            f = xhex_1e1;
+        case 0x33: // 1e1
+            entry = FPP_CR_1E1;
             break;
-        case 0x34:
-            f = xhex_1e2;
+        case 0x34: // 1e2
+            entry = FPP_CR_1E2;
             break;
-        case 0x35:
-            f = xhex_1e4;
+        case 0x35: // 1e4
+            entry = FPP_CR_1E4;
             break;
-        case 0x36:
-            f = xhex_1e8;
+        case 0x36: // 1e8
+            entry = FPP_CR_1E8;
             break;
-        case 0x37:
-            f = xhex_1e16;
+        case 0x37: // 1e16
+            entry = FPP_CR_1E16;
             break;
-        case 0x38:
-            f = xhex_1e32;
+        case 0x38: // 1e32
+            entry = FPP_CR_1E32;
             break;
-        case 0x39:
-            f = xhex_1e64;
+        case 0x39: // 1e64
+            entry = FPP_CR_1E64;
             break;
-        case 0x3a:
-            f = xhex_1e128;
+        case 0x3a: // 1e128
+            entry = FPP_CR_1E128;
             break;
-        case 0x3b:
-            f = xhex_1e256;
+        case 0x3b: // 1e256
+            entry = FPP_CR_1E256;
             break;
-        case 0x3c:
-            f = xhex_1e512;
+        case 0x3c: // 1e512
+            entry = FPP_CR_1E512;
             break;
-        case 0x3d:
-            f = xhex_1e1024;
+        case 0x3d: // 1e1024
+            entry = FPP_CR_1E1024;
             break;
-        case 0x3e:
-            f = xhex_1e2048;
+        case 0x3e: // 1e2048
+            entry = FPP_CR_1E2048;
             break;
-        case 0x3f:
-            f = xhex_1e4096;
+        case 0x3f: // 1e4096
+            entry = FPP_CR_1E4096;
             break;
-        default:
-            f = xhex_zero;
-            return false;
+        default: // undefined, return 0.0
+            write_log (_T("Undocumented FPU constant access (index %02x\n"), entry);
+            valid = false;
+            entry = FPP_CR_ZERO;
+            break;
+    }
+    
+    f = fpp_cr[entry].val;
+    
+    // if constant is inexact, set inexact bit and round
+    // note: with valid constants, LSB never wraps
+    if (fpp_cr[entry].inexact) {
+        fpsr_set_exception(FPSR_INEX2);
+        f[2] += fpp_cr[entry].rndoff[(regs.fpcr >> 4) & 3];
     }
 
     to_exten_fmovem(fp, f[0], f[1], f[2]);
     
     if (((regs.fpcr >> 6) & 3) == 1) fp_roundsgl(fp);
-    if (((regs.fpcr >> 6) & 3) == 2) fp_rounddbl(fp);
+    if (((regs.fpcr >> 6) & 3) >= 2) fp_rounddbl(fp);
+    
+    fpsr_set_result(*fp);
 
-    return true;
+    return valid;
 }
 
 /*
@@ -676,112 +828,6 @@ static void fpu_null (void)
     fpclear (&regs.fp_result);
     for (i = 0; i < 8; i++)
         fpnan (&regs.fp[i]);
-}
-
-void fpsr_set_exception(uae_u32 exception)
-{
-    regs.fpsr |= exception;
-}
-void fpsr_check_exception(void)
-{
-    // Any exception status bit and matching exception enable bits set?
-    uae_u32 exception = (regs.fpsr >> 8) & (regs.fpcr >> 8);
-    
-    if (exception) {
-        int vector = 0;
-        int vtable[8] = { 49, 49, 50, 51, 53, 52, 54, 48 };
-        int i;
-        for (i = 7; i >= 0; i--) {
-            if (exception & (1 << i)) {
-                vector = vtable[i];
-                break;
-            }
-        }
-        // logging only so far
-        write_log (_T("FPU exception: FPSR: %08x, FPCR: %04x (vector: %d)!\n"), regs.fpsr, regs.fpcr, vector);
-    }
-}
-void fpsr_set_result(fptype result)
-{
-    regs.fp_result = result;
-    
-    // condition code byte
-    regs.fpsr &= 0x00fffff8; // clear cc
-    if (fp_is_nan (&regs.fp_result)) {
-        regs.fpsr |= FPSR_CC_NAN;
-    } else {
-        if (fp_is_zero(&regs.fp_result))
-            regs.fpsr |= FPSR_CC_Z;
-        if (fp_is_infinity (&regs.fp_result))
-            regs.fpsr |= FPSR_CC_I;
-    }
-    if (fp_is_neg(&regs.fp_result))
-        regs.fpsr |= FPSR_CC_N;
-    
-    // check if result is signaling nan
-    if (fp_is_snan(&regs.fp_result))
-        regs.fpsr |= FPSR_SNAN;
-}
-void fpsr_clear_status(void)
-{
-    // clear exception status byte only
-    regs.fpsr &= 0x0fff00f8;
-    
-    // clear external status
-    clear_fp_status();
-}
-void fpsr_make_status(void)
-{
-    // get external status
-    get_fp_status(&regs.fpsr);
-    
-    // update accrued exception byte
-    if (regs.fpsr & (FPSR_BSUN | FPSR_SNAN | FPSR_OPERR))
-        regs.fpsr |= FPSR_AE_IOP;  // IOP = BSUN || SNAN || OPERR
-    if (regs.fpsr & FPSR_OVFL)
-        regs.fpsr |= FPSR_AE_OVFL; // OVFL = OVFL
-    if ((regs.fpsr & FPSR_UNFL) && (regs.fpsr & FPSR_INEX2))
-        regs.fpsr |= FPSR_AE_UNFL; // UNFL = UNFL && INEX2
-    if (regs.fpsr & FPSR_DZ)
-        regs.fpsr |= FPSR_AE_DZ;   // DZ = DZ
-    if (regs.fpsr & (FPSR_OVFL | FPSR_INEX2 | FPSR_INEX1))
-        regs.fpsr |= FPSR_AE_INEX; // INEX = INEX1 || INEX2 || OVFL
-    
-    fpsr_check_exception();
-}
-int fpsr_set_bsun(void)
-{
-    regs.fpsr |= FPSR_BSUN;
-    regs.fpsr |= FPSR_AE_IOP;
-    
-    if (regs.fpcr & FPSR_BSUN) {
-        // logging only so far
-        write_log (_T("FPU exception: BSUN! (FPSR: %08x, FPCR: %04x)\n"), regs.fpsr, regs.fpcr);
-        return 0; // return 1, once BSUN exception works
-    }
-    return 0;
-}
-void fpsr_set_quotient(uae_u64 quot, uae_s8 sign)
-{
-    regs.fpsr &= 0x0f00fff8;
-    regs.fpsr |= (quot << 16) & FPSR_QUOT_LSB;
-    regs.fpsr |= sign ? FPSR_QUOT_SIGN : 0;
-}
-
-uae_u32 fpp_get_fpsr (void)
-{
-    return regs.fpsr;
-}
-
-void fpp_set_fpsr (uae_u32 val)
-{
-    regs.fpsr = val;
-}
-
-void fpp_set_fpcr (uae_u32 val)
-{
-    set_fp_mode(val);
-    regs.fpcr = val & 0xffff;
 }
 
 static uae_u32 get_ftag (uae_u32 w1, uae_u32 w2, uae_u32 w3, int size)
@@ -2247,7 +2293,7 @@ static bool fp_arithmetic(fptype *srcd, int reg, int extra)
             regs.fp[extra & 7] = fp_cos(fp);
             regs.fp[reg]       = fp_sin(fp);
             if (((regs.fpcr >> 6) & 3) == 1) fp_round32(&regs.fp[extra & 7]);
-            if (((regs.fpcr >> 6) & 3) == 2) fp_round64(&regs.fp[extra & 7]);
+            if (((regs.fpcr >> 6) & 3) >= 2) fp_round64(&regs.fp[extra & 7]);
             break;
         case 0x38: /* FCMP */
             fpsr_set_result(fp_sub(regs.fp[reg], fp));
@@ -2268,7 +2314,7 @@ static bool fp_arithmetic(fptype *srcd, int reg, int extra)
         fp_round64(&regs.fp[reg]);
     else if (((regs.fpcr >> 6) & 3) == 1)
         fp_round32(&regs.fp[reg]);
-    else if (((regs.fpcr >> 6) & 3) == 2)
+    else if (((regs.fpcr >> 6) & 3) >= 2)
         fp_round64(&regs.fp[reg]);
     
     fpsr_set_result(regs.fp[reg]);
@@ -2499,7 +2545,6 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                     return;
                 fpsr_clear_status();
                 fpu_get_constant(&regs.fp[reg], extra);
-                fpsr_set_result(regs.fp[reg]);
                 fpsr_make_status();
                 return;
             }
