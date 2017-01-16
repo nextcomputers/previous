@@ -4021,7 +4021,11 @@ floatx80 floatx80_getexp( floatx80 a )
         return a;
     }
     
-    if (aExp == 0 && aSig == 0) return packFloatx80(aSign, 0, 0);
+    if ( aExp == 0 ) {
+        if ( aSig == 0 ) return packFloatx80( aSign, 0, 0 );
+        normalizeFloatx80Subnormal( aSig, &aExp, &aSig );
+        return int32_to_floatx80(aExp - 0x3FFF - 1);
+    }
     
     return int32_to_floatx80(aExp - 0x3FFF);
 }
