@@ -4029,6 +4029,64 @@ floatx80 floatx80_getexp( floatx80 a )
     
     return int32_to_floatx80(aExp - 0x3FFF);
 }
+
+/*----------------------------------------------------------------------------
+ | Scales extended double-precision floating-point value in operand `a' by
+ | value `b'. The function truncates the value in the second operand 'b' to
+ | an integral value and adds that value to the exponent of the operand 'a'.
+ | The operation performed according to the IEC/IEEE Standard for Binary
+ | Floating-Point Arithmetic.
+ *----------------------------------------------------------------------------*/
+
+floatx80 floatx80_scale(floatx80 a, floatx80 b)
+{
+    flag aSign, bSign;
+    int32 aExp, bExp, shiftCount;
+    bits64 aSig, bSig;
+    
+    aSig = extractFloatx80Frac(a);
+    aExp = extractFloatx80Exp(a);
+    aSign = extractFloatx80Sign(a);
+    bSig = extractFloatx80Frac(b);
+    bExp = extractFloatx80Exp(b);
+    bSign = extractFloatx80Sign(b);
+    
+    if ( bExp == 0x7FFF ) {
+        if ( (bits64) ( bSig<<1 ) ||
+            ( ( aExp == 0x7FFF ) && (bits64) ( aSig<<1 ) ) ) {
+            return propagateFloatx80NaN( a, b );
+        }
+        float_raise( float_flag_invalid );
+        a.low = floatx80_default_nan_low;
+        a.high = floatx80_default_nan_high;
+        return a;
+    }
+    if ( aExp == 0x7FFF ) {
+        if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaN( a, b );
+        return packFloatx80( aSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+    }
+    if ( aExp == 0 ) {
+        if ( aSig == 0 ) return packFloatx80( aSign, 0, 0);
+        if ( bExp < 0x3FFF ) return a;
+        normalizeFloatx80Subnormal( aSig, &aExp, &aSig );
+    }
+    
+    if ( bExp < 0x3FFF ) return a;
+    
+    if ( 0x400E < bExp ) {
+        aExp = bSign ? -0x4000 : 0x7FFF;
+        return roundAndPackFloatx80(
+                    floatx80_rounding_precision, aSign, aExp, aSig, 0 );
+    }
+    
+    shiftCount = 0x403E - bExp;
+    bSig >>= shiftCount;
+    aExp = bSign ? ( aExp - bSig ) : ( aExp + bSig );
+    
+    return roundAndPackFloatx80(
+                floatx80_rounding_precision, aSign, aExp, aSig, 0);
+    
+}
 // End of addition for Previous
 
 /*----------------------------------------------------------------------------
