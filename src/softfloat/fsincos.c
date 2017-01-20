@@ -66,7 +66,11 @@ void normalizeFloatx80Subnormal(uint64_t aSig, int32_t *zExpPtr, uint64_t *zSigP
 {
 	int shiftCount = countLeadingZeros64(aSig);
 	*zSigPtr = aSig<<shiftCount;
+#ifdef SOFTFLOAT_68K
+	*zExpPtr = -shiftCount;
+#else
 	*zExpPtr = 1 - shiftCount;
+#endif
 }
 
 /* reduce trigonometric function argument using 128-bit precision
