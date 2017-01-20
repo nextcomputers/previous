@@ -76,7 +76,11 @@ INLINE void normalizeFloatx80Subnormal(uint64_t aSig, int32_t *zExpPtr, uint64_t
 {
 	int shiftCount = countLeadingZeros64(aSig);
 	*zSigPtr = aSig<<shiftCount;
+#ifdef SOFTFLOAT_68K
+	*zExpPtr = -shiftCount;
+#else
 	*zExpPtr = 1 - shiftCount;
+#endif
 }
 
 /*----------------------------------------------------------------------------
