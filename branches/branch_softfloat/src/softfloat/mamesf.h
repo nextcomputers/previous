@@ -69,4 +69,11 @@ typedef int64_t sbits64;
 *----------------------------------------------------------------------------*/
 #define INLINE static inline
 
+/*----------------------------------------------------------------------------
+ | The macro `SOFTFLOAT_68K' can be defined to enable changes specific to
+ | 6888x floating point coprocessor emulation.
+ *----------------------------------------------------------------------------*/
+#define SOFTFLOAT_68K
+
+
 #endif //MAMESF_H

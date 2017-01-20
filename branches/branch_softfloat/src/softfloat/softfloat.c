@@ -1218,7 +1218,7 @@ floatx80 float32_to_floatx80( float32 a )
 
 }
 
-// 31-12-2016: Added for Previous
+#ifdef SOFTFLOAT_68K // 31-12-2016: Added for Previous
 floatx80 float32_to_floatx80_allowunnormal( float32 a )
 {
     flag aSign;
@@ -1240,7 +1240,7 @@ floatx80 float32_to_floatx80_allowunnormal( float32 a )
     return packFloatx80( aSign, aExp + 0x3F80, ( (bits64) aSig )<<40 );
     
 }
-// end of addition for Previous
+#endif // end of addition for Previous
 
 #endif
 
@@ -2170,7 +2170,7 @@ floatx80 float64_to_floatx80( float64 a )
 
 }
 
-// 31-12-2016: Added for Previous
+#ifdef SOFTFLOAT_68K // 31-12-2016: Added for Previous
 floatx80 float64_to_floatx80_allowunnormal( float64 a )
 {
     flag aSign;
@@ -2193,7 +2193,7 @@ floatx80 float64_to_floatx80_allowunnormal( float64 a )
                  aSign, aExp + 0x3C00, ( aSig | LIT64( 0x0010000000000000 ) )<<11 );
     
 }
-// end of addition for Previous
+#endif // end of addition for Previous
 
 #endif
 
@@ -3126,34 +3126,7 @@ float128 floatx80_to_float128( floatx80 a )
 
 #endif
 
-// 30-01-2016: Added for Previous
-
-floatx80 floatx80_normalize( floatx80 a )
-{
-    flag aSign;
-    int16 aExp;
-    bits64 aSig;
-    
-    aSig = extractFloatx80Frac( a );
-    aExp = extractFloatx80Exp( a );
-    aSign = extractFloatx80Sign( a );
-    
-    if (aSig == 0) {
-        aExp = 0;
-        return packFloatx80( aSign, aExp, aSig );
-    }
-    while ( (aSig & LIT64( 0x8000000000000000 ) ) == LIT64( 0x0000000000000000 ) ) {
-        if ( aExp == 0 ) {
-            float_raise( float_flag_denormal );
-            break;
-        }
-        aSig = aSig << 1;
-        aExp--;
-    }
-    return packFloatx80( aSign, aExp, aSig );
-    
-}
-
+#ifdef SOFTFLOAT_68K // 30-01-2016: Added for Previous
 floatx80 floatx80_round32( floatx80 a )
 {
     flag aSign;
@@ -3181,7 +3154,7 @@ floatx80 floatx80_round64( floatx80 a )
     return roundAndPackFloatx80(64, aSign, aExp, aSig, 0);
     
 }
-// end of addition for Previous
+#endif // end of addition for Previous
 
 /*----------------------------------------------------------------------------
 | Rounds the extended double-precision floating-point value `a' to an integer,
@@ -3256,7 +3229,7 @@ floatx80 floatx80_round_to_int( floatx80 a )
 
 }
 
-// 09-01-2017: Added for Previous
+#ifdef SOFTFLOAT_68K // 09-01-2017: Added for Previous
 floatx80 floatx80_round_to_int_toward_zero( floatx80 a )
 {
     flag aSign;
@@ -3293,7 +3266,7 @@ floatx80 floatx80_round_to_int_toward_zero( floatx80 a )
     return z;
     
 }
-// End of addition for Previous
+#endif // End of addition for Previous
 
 /*----------------------------------------------------------------------------
 | Returns the result of adding the absolute values of the extended double-
@@ -3615,7 +3588,7 @@ floatx80 floatx80_div( floatx80 a, floatx80 b )
 | `a' with respect to the corresponding value `b'.  The operation is performed
 | according to the IEC/IEEE Standard for Binary Floating-Point Arithmetic.
 *----------------------------------------------------------------------------*/
-#if 0
+#ifndef SOFTFLOAT_68K
 floatx80 floatx80_rem( floatx80 a, floatx80 b )
 {
 	flag aSign, zSign;
@@ -3706,8 +3679,7 @@ floatx80 floatx80_rem( floatx80 a, floatx80 b )
 			80, zSign, bExp + expDiff, aSig0, aSig1 );
 
 }
-#endif
-// 09-01-2017: Modified version for Previous
+#else // 09-01-2017: Modified version for Previous
 floatx80 floatx80_rem( floatx80 a, floatx80 b, bits64 *q, flag *s )
 {
     flag aSign, bSign, zSign;
@@ -3806,9 +3778,9 @@ floatx80 floatx80_rem( floatx80 a, floatx80 b, bits64 *q, flag *s )
                                   80, zSign, bExp + expDiff, aSig0, aSig1 );
     
 }
-// End of modification
+#endif // End of modification
 
-// 08-01-2017: Added for Previous
+#ifdef SOFTFLOAT_68K // 08-01-2017: Added for Previous
 /*----------------------------------------------------------------------------
  | Returns the modulo remainder of the extended double-precision floating-point
  | value `a' with respect to the corresponding value `b'.
@@ -3894,7 +3866,7 @@ floatx80 floatx80_mod( floatx80 a, floatx80 b, bits64 *q, flag *s )
             80, zSign, bExp + expDiff, aSig0, aSig1 );
     
 }
-// end of addition for Previous
+#endif // end of addition for Previous
 
 /*----------------------------------------------------------------------------
 | Returns the square root of the extended double-precision floating-point
@@ -3966,7 +3938,7 @@ floatx80 floatx80_sqrt( floatx80 a )
 
 }
 
-// 07-01-2017: Added for Previous
+#ifdef SOFTFLOAT_68K // 07-01-2017: Added for Previous
 /*----------------------------------------------------------------------------
  | Returns the mantissa of the extended double-precision floating-point
  | value `a'.
@@ -4087,7 +4059,7 @@ floatx80 floatx80_scale(floatx80 a, floatx80 b)
                 floatx80_rounding_precision, aSign, aExp, aSig, 0);
     
 }
-// End of addition for Previous
+#endif // End of addition for Previous
 
 /*----------------------------------------------------------------------------
 | Returns 1 if the extended double-precision floating-point value `a' is
