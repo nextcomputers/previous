@@ -39,41 +39,6 @@ static const floatx80 floatx80_default_nan = { 0xffff, 0xffffffffffffffffU };
 
 #define EXP_BIAS 0x3FFF
 
-#if 0 /* Included in softfloat-specialize" */
-/*----------------------------------------------------------------------------
-| Returns the fraction bits of the extended double-precision floating-point
-| value `a'.
-*----------------------------------------------------------------------------*/
-
-INLINE bits64 extractFloatx80Frac( floatx80 a )
-{
-	return a.low;
-
-}
-
-/*----------------------------------------------------------------------------
-| Returns the exponent bits of the extended double-precision floating-point
-| value `a'.
-*----------------------------------------------------------------------------*/
-
-INLINE int32 extractFloatx80Exp( floatx80 a )
-{
-	return a.high & 0x7FFF;
-
-}
-#endif
-
-/*----------------------------------------------------------------------------
-| Returns the sign bit of the extended double-precision floating-point value
-| `a'.
-*----------------------------------------------------------------------------*/
-
-INLINE flag extractFloatx80Sign( floatx80 a )
-{
-	return a.high>>15;
-
-}
-
 /*----------------------------------------------------------------------------
 | Takes extended double-precision floating-point  NaN  `a' and returns the
 | appropriate NaN result. If `a' is a signaling NaN, the invalid exception

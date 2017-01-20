@@ -272,7 +272,7 @@ flag floatx80_is_signaling_nan( floatx80 a )
 
 }
 
-// 28-12-2016: Added for Previous:
+#ifdef SOFTFLOAT_68K // 28-12-2016: Added for Previous:
 
 /*----------------------------------------------------------------------------
  | Returns 1 if the extended double-precision floating-point value `a' is
@@ -354,7 +354,7 @@ flag floatx80_is_normal( floatx80 a )
     
 }
 
-// End of addition for Previous
+#endif // End of addition for Previous
 
 /*----------------------------------------------------------------------------
 | Returns the result of converting the extended double-precision floating-
@@ -446,7 +446,7 @@ int32 extractFloatx80Exp( floatx80 a )
 | `a'.
 *----------------------------------------------------------------------------*/
 
-INLINE flag extractFloatx80Sign( floatx80 a )
+flag extractFloatx80Sign( floatx80 a )
 {
 
     return a.high>>15;
