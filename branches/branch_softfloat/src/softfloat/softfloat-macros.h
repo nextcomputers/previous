@@ -729,7 +729,7 @@ INLINE floatx80 floatx80_chs(floatx80 reg)
     reg.high ^= 0x8000;
     return reg;
 }
-
+#ifndef SOFTFLOAT_68K
 /*-----------------------------------------------------------------------------
 | Calculates the absolute value of the extended double-precision floating-point
 | value `a'.  The operation is performed according to the IEC/IEEE Standard
@@ -741,3 +741,4 @@ INLINE floatx80 floatx80_abs(floatx80 reg)
     reg.high &= 0x7FFF;
     return reg;
 }
+#endif
