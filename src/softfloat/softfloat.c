@@ -4143,6 +4143,68 @@ floatx80 floatx80_scale(floatx80 a, floatx80 b)
                 floatx80_rounding_precision, aSign, aExp, aSig, 0);
     
 }
+    
+/*-----------------------------------------------------------------------------
+ | Calculates the absolute value of the extended double-precision floating-point
+ | value `a'.  The operation is performed according to the IEC/IEEE Standard
+ | for Binary Floating-Point Arithmetic.
+ *----------------------------------------------------------------------------*/
+    
+floatx80 floatx80_abs(floatx80 a)
+{
+    int32 aExp;
+    bits64 aSig;
+    
+    aSig = extractFloatx80Frac(a);
+    aExp = extractFloatx80Exp(a);
+    
+    if ( aExp == 0x7FFF && (bits64) ( aSig<<1 ) ) {
+        return propagateFloatx80NaN( a, a );
+    }
+    
+    if ( aExp == 0 ) {
+        if ( aSig == 0 ) return packFloatx80( 0, 0, 0 );
+        normalizeFloatx80Subnormal( aSig, &aExp, &aSig );
+    }
+
+    return roundAndPackFloatx80(
+                floatx80_rounding_precision, 0, aExp, aSig, 0 );
+    
+}
+    
+/*-----------------------------------------------------------------------------
+ | Changes the sign of the extended double-precision floating-point value 'a'.
+ | The operation is performed according to the IEC/IEEE Standard for Binary
+ | Floating-Point Arithmetic.
+ *----------------------------------------------------------------------------*/
+    
+floatx80 floatx80_neg(floatx80 a)
+{
+    flag aSign;
+    int32 aExp;
+    bits64 aSig;
+    
+    aSig = extractFloatx80Frac(a);
+    aExp = extractFloatx80Exp(a);
+    aSign = extractFloatx80Sign(a);
+    
+    if ( aExp == 0x7FFF && (bits64) ( aSig<<1 ) ) {
+        return propagateFloatx80NaN( a, a );
+    }
+    
+    aSign = !aSign;
+    
+    if ( aExp == 0 ) {
+        if ( aSig == 0 ) return packFloatx80( aSign, 0, 0 );
+        normalizeFloatx80Subnormal( aSig, &aExp, &aSig );
+    }
+    
+    return roundAndPackFloatx80(
+                floatx80_rounding_precision, aSign, aExp, aSig, 0 );
+    
+}
+
+
 #endif // End of addition for Previous
 
 /*----------------------------------------------------------------------------

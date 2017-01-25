@@ -240,7 +240,6 @@ floatx80 floatx80_round_to_int( floatx80 );
 floatx80 floatx80_round_to_int_toward_zero( floatx80 );
 floatx80 floatx80_round32( floatx80 );
 floatx80 floatx80_round64( floatx80 );
-floatx80 floatx80_normalize( floatx80 );
 #endif
 floatx80 floatx80_add( floatx80, floatx80 );
 floatx80 floatx80_sub( floatx80, floatx80 );
@@ -282,6 +281,8 @@ floatx80 floatx80_getman( floatx80 a );
 floatx80 floatx80_getexp( floatx80 a );
 floatx80 floatx80_rem( floatx80 a, floatx80 b, bits64 *q, flag *s );
 floatx80 floatx80_mod( floatx80 a, floatx80 b, bits64 *q, flag *s );
+floatx80 floatx80_abs( floatx80 a );
+floatx80 floatx80_neg( floatx80 a );
 #endif
 
 // roundAndPackFloatx80 used to be in softfloat-round-pack, is now in softfloat.c

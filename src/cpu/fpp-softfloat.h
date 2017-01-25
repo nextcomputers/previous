@@ -392,7 +392,7 @@ STATIC_INLINE fptype fp_abs(fptype a)
 }
 STATIC_INLINE fptype fp_neg(fptype a)
 {
-    return floatx80_chs(a);
+    return floatx80_neg(a);
 }
 STATIC_INLINE fptype fp_cos(fptype a)
 {
