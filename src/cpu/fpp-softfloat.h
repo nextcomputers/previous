@@ -169,6 +169,12 @@ STATIC_INLINE bool fp_is_unnormal(fptype *fp)
     return floatx80_is_unnormal(*fp) != 0;
 }
 
+/* Function for normalizing unnormals */
+STATIC_INLINE void fp_normalize(fptype *fp)
+{
+    *fp = floatx80_normalize(*fp);
+}
+
 /* Functions for converting between float formats */
 static const long double twoto32 = 4294967296.0;
 

@@ -92,10 +92,12 @@ static bool fpu_mmu_fixup;
 
 void to_single(fptype *fp, uae_u32 wrd1)
 {
+#if 0 // now done in get_fp_value
     // automatically fix denormals if 6888x
     if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882)
         to_single_xn(fp, wrd1);
     else
+#endif
         to_single_x(fp, wrd1);
 }
 uae_u32 from_single(fptype *fp)
@@ -104,10 +106,12 @@ uae_u32 from_single(fptype *fp)
 }
 void to_double(fptype *fp, uae_u32 wrd1, uae_u32 wrd2)
 {
+#if 0 // now done in get_fp_value
     // automatically fix denormals if 6888x
     if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882)
         to_double_xn(fp, wrd1, wrd2);
     else
+#endif
         to_double_x(fp, wrd1, wrd2);
 }
 void from_double(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2)
@@ -116,10 +120,12 @@ void from_double(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2)
 }
 void to_exten(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
 {
+#if 0 // now done in get_fp_value
     // automatically fix unnormals if 6888x
     if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882) {
         normalize_exten(&wrd1, &wrd2, &wrd3);
     }
+#endif
     to_exten_x(fp, wrd1, wrd2, wrd3);
 }
 void to_exten_fmovem(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
@@ -674,45 +680,42 @@ static bool fault_if_unimplemented_680x0 (uae_u16 opcode, uae_u16 extra, uaecptr
         uae_u16 v = extra & 0x7f;
         switch (v)
         {
+            case 0x00: /* FMOVE */
+            case 0x40: /* FSMOVE */
+            case 0x44: /* FDMOVE */
+            case 0x04: /* FSQRT */
+            case 0x41: /* FSSQRT */
+            case 0x45: /* FDSQRT */
+            case 0x18: /* FABS */
+            case 0x58: /* FSABS */
+            case 0x5c: /* FDABS */
+            case 0x1a: /* FNEG */
+            case 0x5a: /* FSNEG */
+            case 0x5e: /* FDNEG */
+            case 0x20: /* FDIV */
+            case 0x60: /* FSDIV */
+            case 0x64: /* FDDIV */
+            case 0x22: /* FADD */
+            case 0x62: /* FSADD */
+            case 0x66: /* FDADD */
+            case 0x23: /* FMUL */
+            case 0x63: /* FSMUL */
+            case 0x67: /* FDMUL */
+            case 0x24: /* FSGLDIV */
+            case 0x27: /* FSGLMUL */
+            case 0x28: /* FSUB */
+            case 0x68: /* FSSUB */
+            case 0x6c: /* FDSUB */
+            case 0x38: /* FCMP */
+            case 0x3a: /* FTST */
+                return false;
             case 0x01: /* FINT */
             case 0x03: /* FINTRZ */
                 // Unimplemented only in 68040.
-                if (currprefs.cpu_model == 68040) {
-                    fpu_op_unimp (opcode, extra, ea, oldpc, FPU_EXP_UNIMP_INS, src, reg, -1);
-                    return true;
+                if (currprefs.cpu_model != 68040) {
+                    return false;
                 }
-                return false;
-            case 0x02: /* FSINH */
-            case 0x06: /* FLOGNP1 */
-            case 0x08: /* FETOXM1 */
-            case 0x09: /* FTANH */
-            case 0x0a: /* FATAN */
-            case 0x0c: /* FASIN */
-            case 0x0d: /* FATANH */
-            case 0x0e: /* FSIN */
-            case 0x0f: /* FTAN */
-            case 0x10: /* FETOX */
-            case 0x11: /* FTWOTOX */
-            case 0x12: /* FTENTOX */
-            case 0x14: /* FLOGN */
-            case 0x15: /* FLOG10 */
-            case 0x16: /* FLOG2 */
-            case 0x19: /* FCOSH */
-            case 0x1c: /* FACOS */
-            case 0x1d: /* FCOS */
-            case 0x1e: /* FGETEXP */
-            case 0x1f: /* FGETMAN */
-            case 0x30: /* FSINCOS */
-            case 0x31: /* FSINCOS */
-            case 0x32: /* FSINCOS */
-            case 0x33: /* FSINCOS */
-            case 0x34: /* FSINCOS */
-            case 0x35: /* FSINCOS */
-            case 0x36: /* FSINCOS */
-            case 0x37: /* FSINCOS */
-            case 0x21: /* FMOD */
-            case 0x25: /* FREM */
-            case 0x26: /* FSCALE */
+            default:
                 fpu_op_unimp (opcode, extra, ea, oldpc, FPU_EXP_UNIMP_INS, src, reg, -1);
                 return true;
         }
@@ -727,18 +730,53 @@ static bool fault_if_unimplemented_6888x (uae_u16 opcode, uae_u16 extra, uaecptr
         /* 68040/68060 only variants. 6888x = F-line exception. */
         switch (v)
         {
-            case 0x62: /* FSADD */
-            case 0x66: /* FDADD */
-            case 0x68: /* FSSUB */
-            case 0x6c: /* FDSUB */
-            case 0x5a: /* FSNEG */
-            case 0x5e: /* FDNEG */
-            case 0x58: /* FSABS */
-            case 0x5c: /* FDABS */
-            case 0x63: /* FSMUL */
-            case 0x67: /* FDMUL */
-            case 0x41: /* FSSQRT */
-            case 0x45: /* FDSQRT */
+            case 0x00: /* FMOVE */
+            case 0x01: /* FINT */
+            case 0x02: /* FSINH */
+            case 0x03: /* FINTRZ */
+            case 0x04: /* FSQRT */
+            case 0x06: /* FLOGNP1 */
+            case 0x08: /* FETOXM1 */
+            case 0x09: /* FTANH */
+            case 0x0a: /* FATAN */
+            case 0x0c: /* FASIN */
+            case 0x0d: /* FATANH */
+            case 0x0e: /* FSIN */
+            case 0x0f: /* FTAN */
+            case 0x10: /* FETOX */
+            case 0x11: /* FTWOTOX */
+            case 0x12: /* FTENTOX */
+            case 0x14: /* FLOGN */
+            case 0x15: /* FLOG10 */
+            case 0x16: /* FLOG2 */
+            case 0x18: /* FABS */
+            case 0x19: /* FCOSH */
+            case 0x1a: /* FNEG */
+            case 0x1c: /* FACOS */
+            case 0x1d: /* FCOS */
+            case 0x1e: /* FGETEXP */
+            case 0x1f: /* FGETMAN */
+            case 0x20: /* FDIV */
+            case 0x21: /* FMOD */
+            case 0x22: /* FADD */
+            case 0x23: /* FMUL */
+            case 0x24: /* FSGLDIV */
+            case 0x25: /* FREM */
+            case 0x26: /* FSCALE */
+            case 0x27: /* FSGLMUL */
+            case 0x28: /* FSUB */
+            case 0x30: /* FSINCOS */
+            case 0x31:
+            case 0x32:
+            case 0x33:
+            case 0x34:
+            case 0x35:
+            case 0x36:
+            case 0x37:
+            case 0x38: /* FCMP */
+            case 0x3a: /* FTST */
+                return false;
+            default:
                 fpu_noinst (opcode, oldpc);
                 return true;
         }
@@ -1057,23 +1095,29 @@ static void from_pack (fptype *src, uae_u32 *wrd, int kfactor)
 }
 
 // 68040/060 does not support denormals
-static bool fault_if_no_denormal_support_pre(uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fptype *fpd, int size)
+static bool normalize_or_fault_if_no_denormal_support_pre(uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fptype *fpd, int size)
 {
-    if (currprefs.cpu_model >= 68040 && currprefs.fpu_model) {
-        if (fp_is_unnormal(fpd) || fp_is_denormal(fpd)) {
+    if (fp_is_unnormal(fpd) || fp_is_denormal(fpd)) {
+        if (currprefs.cpu_model >= 68040 && currprefs.fpu_model) {
             fpu_op_unimp(opcode, extra, ea, oldpc, FPU_EXP_UNIMP_DATATYPE_PRE, fpd, -1, size);
             return true;
+        } else {
+            fp_normalize(fpd);
+            return false;
         }
     }
-
+    
     return false;
 }
-static bool fault_if_no_denormal_support_post(uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fptype *fpd, int size)
+static bool normalize_or_fault_if_no_denormal_support_post(uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fptype *fpd, int size)
 {
-    if (currprefs.cpu_model >= 68040 && currprefs.fpu_model) {
-        if (fp_is_unnormal(fpd) || fp_is_denormal(fpd)) {
+    if (fp_is_unnormal(fpd) || fp_is_denormal(fpd)) {
+        if (currprefs.cpu_model >= 68040 && currprefs.fpu_model) {
             fpu_op_unimp(opcode, extra, ea, oldpc, FPU_EXP_UNIMP_DATATYPE_POST, fpd, -1, size);
             return true;
+        } else {
+            fp_normalize(fpd);
+            return false;
         }
     }
 
@@ -1093,7 +1137,7 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr old
         if (fault_if_no_fpu (opcode, extra, 0, oldpc))
             return -1;
         *src = regs.fp[(extra >> 10) & 7];
-        if (fault_if_no_denormal_support_pre(opcode, extra, 0, oldpc, src, 2))
+        if (normalize_or_fault_if_no_denormal_support_pre(opcode, extra, 0, oldpc, src, 2))
             return -1;
         return 1;
     }
@@ -1116,7 +1160,7 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr old
                 break;
             case 1:
                 to_single (src, m68k_dreg (regs, reg));
-                if (fault_if_no_denormal_support_pre(opcode, extra, 0, oldpc, src, 0))
+                if (normalize_or_fault_if_no_denormal_support_pre(opcode, extra, 0, oldpc, src, 0))
                     return -1;
                 break;
             default:
@@ -1214,7 +1258,7 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr old
             break;
         case 1:
             to_single (src, (doext ? exts[0] : x_cp_get_long (ad)));
-            if (fault_if_no_denormal_support_pre(opcode, extra, 0, oldpc, src, 0))
+            if (normalize_or_fault_if_no_denormal_support_pre(opcode, extra, 0, oldpc, src, 0))
                 return -1;
             break;
         case 2:
@@ -1226,7 +1270,7 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr old
             ad += 4;
             wrd3 = (doext ? exts[2] : x_cp_get_long (ad));
             to_exten (src, wrd1, wrd2, wrd3);
-            if (fault_if_no_denormal_support_pre(opcode, extra, 0, oldpc, src, 2))
+            if (normalize_or_fault_if_no_denormal_support_pre(opcode, extra, 0, oldpc, src, 2))
                 return -1;
         }
             break;
@@ -1259,7 +1303,7 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr old
             ad += 4;
             wrd2 = (doext ? exts[1] : x_cp_get_long (ad));
             to_double (src, wrd1, wrd2);
-            if (fault_if_no_denormal_support_pre(opcode, extra, 0, oldpc, src, 1))
+            if (normalize_or_fault_if_no_denormal_support_pre(opcode, extra, 0, oldpc, src, 1))
                 return -1;
         }
             break;
@@ -1371,19 +1415,19 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
     switch (size)
     {
         case 0:
-            if (fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
+            if (normalize_or_fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
                 return 1;
             x_cp_put_long(ad, (uae_u32)to_int(value, 2));
             break;
         case 1:
-            if (fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
+            if (normalize_or_fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
                 return -1;
             x_cp_put_long(ad, from_single(value));
             break;
         case 2:
         {
             uae_u32 wrd1, wrd2, wrd3;
-            if (fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
+            if (normalize_or_fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
                 return 1;
             from_exten(value, &wrd1, &wrd2, &wrd3);
             x_cp_put_long (ad, wrd1);
@@ -1413,14 +1457,14 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
         }
             break;
         case 4:
-            if (fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
+            if (normalize_or_fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
                 return 1;
             x_cp_put_word(ad, (uae_s16)to_int(value, 1));
             break;
         case 5:
         {
             uae_u32 wrd1, wrd2;
-            if (fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 1))
+            if (normalize_or_fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 1))
                 return -1;
             from_double(value, &wrd1, &wrd2);
             x_cp_put_long (ad, wrd1);
@@ -1429,7 +1473,7 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
         }
             break;
         case 6:
-            if (fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
+            if (normalize_or_fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
                 return 1;
             x_cp_put_byte(ad, (uae_s8)to_int(value, 0));
             break;
@@ -2567,6 +2611,10 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                 return;
             
             regs.fpiar =  pc;
+            
+            if ((extra & 0x30) == 0x20 || (extra & 0x7f) == 0x38) // dyadic operation
+                if (normalize_or_fault_if_no_denormal_support_pre(opcode, extra, ad, pc, &regs.fp[reg], 2))
+                    return;
             
             v = fp_arithmetic(&srcd, reg, extra);
             if (!v)

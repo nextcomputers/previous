@@ -151,6 +151,11 @@ STATIC_INLINE bool fp_is_unnormal(fptype *fp)
     return (isnormal(*fp) == 0); /* FIXME: how to differ denormal/unnormal? */
 }
 
+/* Function for normalizing unnormals FIXME: how to do this with native floats? */
+STATIC_INLINE void fp_normalize(fptype *fp)
+{
+}
+
 /* Functions for converting between float formats */
 /* FIXME: how to preserve/fix denormals and unnormals? */
 
