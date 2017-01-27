@@ -3200,6 +3200,34 @@ floatx80 floatx80_round64( floatx80 a )
     return roundAndPackFloatx80(64, aSign, aExp, aSig, 0);
     
 }
+        
+floatx80 floatx80_normalize( floatx80 a )
+{
+    flag aSign;
+    int16 aExp;
+    bits64 aSig;
+    int8 shiftCount;
+    
+    aSig = extractFloatx80Frac( a );
+    aExp = extractFloatx80Exp( a );
+    aSign = extractFloatx80Sign( a );
+    
+    if ( aExp == 0x7FFF || aExp == 0 ) return a;
+    if ( aSig == 0 ) return packFloatx80(aSign, 0, 0);
+    
+    shiftCount = countLeadingZeros64( aSig );
+    
+    if ( shiftCount > aExp ) {
+        shiftCount = aExp;
+        aExp = 0;
+    } else {
+        aExp -= shiftCount;
+    }
+    aSig <<= shiftCount;
+    
+    return packFloatx80( aSign, aExp, aSig );
+    
+}
 #endif // end of addition for Previous
 
 /*----------------------------------------------------------------------------
