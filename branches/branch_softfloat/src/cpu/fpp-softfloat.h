@@ -429,6 +429,10 @@ STATIC_INLINE fptype fp_mul(fptype a, fptype b)
 {
     return floatx80_mul(a, b);
 }
+STATIC_INLINE fptype fp_sgldiv(fptype a, fptype b)
+{
+    return floatx80_sgldiv(a, b);
+}
 STATIC_INLINE fptype fp_rem(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
 {
     return floatx80_rem(a, b, q, s);
@@ -436,6 +440,10 @@ STATIC_INLINE fptype fp_rem(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
 STATIC_INLINE fptype fp_scale(fptype a, fptype b)
 {
     return floatx80_scale(a, b);
+}
+STATIC_INLINE fptype fp_sglmul(fptype a, fptype b)
+{
+    return floatx80_sglmul(a, b);
 }
 STATIC_INLINE fptype fp_sub(fptype a, fptype b)
 {

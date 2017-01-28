@@ -282,6 +282,8 @@ floatx80 floatx80_getman( floatx80 a );
 floatx80 floatx80_getexp( floatx80 a );
 floatx80 floatx80_rem( floatx80 a, floatx80 b, bits64 *q, flag *s );
 floatx80 floatx80_mod( floatx80 a, floatx80 b, bits64 *q, flag *s );
+floatx80 floatx80_sglmul( floatx80 a, floatx80 b );
+floatx80 floatx80_sgldiv( floatx80 a, floatx80 b );
 floatx80 floatx80_abs( floatx80 a );
 floatx80 floatx80_neg( floatx80 a );
 #endif
