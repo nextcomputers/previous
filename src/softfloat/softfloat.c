@@ -719,6 +719,87 @@ static void
 
 }
 
+#ifdef SOFTFLOAT_68K // 21-01-2017: Added for Previous
+floatx80 roundAndPackFloatx80Sgl( flag zSign, int32 zExp, bits64 zSig0, bits64 zSig1 )
+{
+    int8 roundingMode;
+    flag roundNearestEven, isTiny;
+    int64 roundIncrement, roundMask, roundBits;
+    
+    roundingMode = float_rounding_mode;
+    roundNearestEven = ( roundingMode == float_round_nearest_even );
+    roundIncrement = LIT64( 0x0000008000000000 );
+    roundMask = LIT64( 0x000000FFFFFFFFFF );
+    zSig0 |= ( zSig1 != 0 );
+    if ( ! roundNearestEven ) {
+        if ( roundingMode == float_round_to_zero ) {
+            roundIncrement = 0;
+        }
+        else {
+            roundIncrement = roundMask;
+            if ( zSign ) {
+                if ( roundingMode == float_round_up ) roundIncrement = 0;
+            }
+            else {
+                if ( roundingMode == float_round_down ) roundIncrement = 0;
+            }
+        }
+    }
+    roundBits = zSig0 & roundMask;
+    
+    if ( 0x7FFE <= (bits32) zExp ) {
+        if (    ( 0x7FFE < zExp )
+            || ( ( zExp == 0x7FFE ) && ( zSig0 + roundIncrement < zSig0 ) )
+            ) {
+            float_raise( float_flag_overflow | float_flag_inexact );
+            if (    ( roundingMode == float_round_to_zero )
+                || ( zSign && ( roundingMode == float_round_up ) )
+                || ( ! zSign && ( roundingMode == float_round_down ) )
+                ) {
+                return packFloatx80( zSign, 0x7FFE, LIT64( 0xFFFFFFFFFFFFFFFF ) );
+            }
+            return packFloatx80( zSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+        }
+        
+        if ( zExp < 0 ) {
+            isTiny =
+            ( float_detect_tininess == float_tininess_before_rounding )
+            || ( zExp < -1 )
+            || ( zSig0 <= zSig0 + roundIncrement );
+            shift64RightJamming( zSig0, -zExp, &zSig0 );
+            zExp = 0;
+            roundBits = zSig0 & roundMask;
+            if ( isTiny && roundBits ) float_raise( float_flag_underflow );
+            if ( roundBits ) float_exception_flags |= float_flag_inexact;
+            zSig0 += roundIncrement;
+            if ( ( zSig0 & ~roundMask ) == 0 ) {
+                zSig0 = ( roundIncrement != roundMask );
+                return packFloatx80( zSign, zExp, zSig0 );
+            }
+            roundIncrement = roundMask + 1;
+            if ( roundNearestEven && ( roundBits<<1 == roundIncrement ) ) {
+                roundMask |= roundIncrement;
+            }
+            zSig0 &= ~ roundMask;
+            return packFloatx80( zSign, zExp, zSig0 );
+        }
+    }
+    if ( roundBits ) float_exception_flags |= float_flag_inexact;
+    zSig0 += roundIncrement;
+    if ( zSig0 < roundIncrement ) {
+        ++zExp;
+        zSig0 = LIT64( 0x8000000000000000 );
+    }
+    roundIncrement = roundMask + 1;
+    if ( roundNearestEven && ( roundBits<<1 == roundIncrement ) ) {
+        roundMask |= roundIncrement;
+    }
+    zSig0 &= ~ roundMask;
+    if ( zSig0 == 0 ) zExp = 0;
+    return packFloatx80( zSign, zExp, zSig0 );
+    
+}
+#endif // End of Addition for Previous
 /*----------------------------------------------------------------------------
 | Takes an abstract floating-point value having sign `zSign', exponent
 | `zExp', and significand formed by the concatenation of `zSig0' and `zSig1',
@@ -3607,6 +3688,61 @@ floatx80 floatx80_mul( floatx80 a, floatx80 b )
 			floatx80_rounding_precision, zSign, zExp, zSig0, zSig1 );
 
 }
+    
+#ifdef SOFTFLOAT_68K // 21-01-2017: Added for Previous
+floatx80 floatx80_sglmul( floatx80 a, floatx80 b )
+{
+	flag aSign, bSign, zSign;
+	int32 aExp, bExp, zExp;
+	bits64 aSig, bSig, zSig0, zSig1;
+	floatx80 z;
+	
+	aSig = extractFloatx80Frac( a );
+	aExp = extractFloatx80Exp( a );
+	aSign = extractFloatx80Sign( a );
+	bSig = extractFloatx80Frac( b );
+	bExp = extractFloatx80Exp( b );
+	bSign = extractFloatx80Sign( b );
+	zSign = aSign ^ bSign;
+	if ( aExp == 0x7FFF ) {
+		if (    (bits64) ( aSig<<1 )
+			|| ( ( bExp == 0x7FFF ) && (bits64) ( bSig<<1 ) ) ) {
+			return propagateFloatx80NaN( a, b );
+		}
+		if ( ( bExp | bSig ) == 0 ) goto invalid;
+		return packFloatx80( zSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+	}
+	if ( bExp == 0x7FFF ) {
+		if ( (bits64) ( bSig<<1 ) ) return propagateFloatx80NaN( a, b );
+		if ( ( aExp | aSig ) == 0 ) {
+		invalid:
+			float_raise( float_flag_invalid );
+			z.low = floatx80_default_nan_low;
+			z.high = floatx80_default_nan_high;
+			return z;
+		}
+		return packFloatx80( zSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+	}
+	if ( aExp == 0 ) {
+		if ( aSig == 0 ) return packFloatx80( zSign, 0, 0 );
+		normalizeFloatx80Subnormal( aSig, &aExp, &aSig );
+	}
+	if ( bExp == 0 ) {
+		if ( bSig == 0 ) return packFloatx80( zSign, 0, 0 );
+		normalizeFloatx80Subnormal( bSig, &bExp, &bSig );
+	}
+	aSig &= LIT64( 0xFFFFFF0000000000 );
+	bSig &= LIT64( 0xFFFFFF0000000000 );
+	zExp = aExp + bExp - 0x3FFE;
+	mul64To128( aSig, bSig, &zSig0, &zSig1 );
+	if ( 0 < (sbits64) zSig0 ) {
+		shortShift128Left( zSig0, zSig1, 1, &zSig0, &zSig1 );
+		--zExp;
+	}
+	return roundAndPackFloatx80Sgl( zSign, zExp, zSig0, zSig1 );
+        
+}
+#endif // End of addition for Previous
 
 /*----------------------------------------------------------------------------
 | Returns the result of dividing the extended double-precision floating-point
@@ -3687,7 +3823,83 @@ floatx80 floatx80_div( floatx80 a, floatx80 b )
 			floatx80_rounding_precision, zSign, zExp, zSig0, zSig1 );
 
 }
-
+    
+#ifdef SOFTFLOAT_68K // 21-01-2017: Addition for Previous
+floatx80 floatx80_sgldiv( floatx80 a, floatx80 b )
+{
+	flag aSign, bSign, zSign;
+	int32 aExp, bExp, zExp;
+	bits64 aSig, bSig, zSig0, zSig1;
+	bits64 rem0, rem1, rem2, term0, term1, term2;
+	floatx80 z;
+	
+	aSig = extractFloatx80Frac( a );
+	aExp = extractFloatx80Exp( a );
+	aSign = extractFloatx80Sign( a );
+	bSig = extractFloatx80Frac( b );
+	bExp = extractFloatx80Exp( b );
+	bSign = extractFloatx80Sign( b );
+	zSign = aSign ^ bSign;
+	if ( aExp == 0x7FFF ) {
+		if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaN( a, b );
+		if ( bExp == 0x7FFF ) {
+			if ( (bits64) ( bSig<<1 ) ) return propagateFloatx80NaN( a, b );
+			goto invalid;
+		}
+		return packFloatx80( zSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+	}
+	if ( bExp == 0x7FFF ) {
+		if ( (bits64) ( bSig<<1 ) ) return propagateFloatx80NaN( a, b );
+		return packFloatx80( zSign, 0, 0 );
+	}
+	if ( bExp == 0 ) {
+		if ( bSig == 0 ) {
+			if ( ( aExp | aSig ) == 0 ) {
+			invalid:
+				float_raise( float_flag_invalid );
+				z.low = floatx80_default_nan_low;
+				z.high = floatx80_default_nan_high;
+		        return z;
+			}
+			float_raise( float_flag_divbyzero );
+			return packFloatx80( zSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+		}
+		normalizeFloatx80Subnormal( bSig, &bExp, &bSig );
+	}
+	if ( aExp == 0 ) {
+		if ( aSig == 0 ) return packFloatx80( zSign, 0, 0 );
+		normalizeFloatx80Subnormal( aSig, &aExp, &aSig );
+	}
+    aSig &= LIT64( 0xFFFFFF0000000000 );
+    bSig &= LIT64( 0xFFFFFF0000000000 );
+	zExp = aExp - bExp + 0x3FFE;
+	rem1 = 0;
+	if ( bSig <= aSig ) {
+		shift128Right( aSig, 0, 1, &aSig, &rem1 );
+		++zExp;
+	}
+	zSig0 = estimateDiv128To64( aSig, rem1, bSig );
+	mul64To128( bSig, zSig0, &term0, &term1 );
+	sub128( aSig, rem1, term0, term1, &rem0, &rem1 );
+	while ( (sbits64) rem0 < 0 ) {
+		--zSig0;
+		add128( rem0, rem1, 0, bSig, &rem0, &rem1 );
+	}
+	zSig1 = estimateDiv128To64( rem1, 0, bSig );
+	if ( (bits64) ( zSig1<<1 ) <= 8 ) {
+		mul64To128( bSig, zSig1, &term1, &term2 );
+		sub128( rem1, 0, term1, term2, &rem1, &rem2 );
+		while ( (sbits64) rem1 < 0 ) {
+			--zSig1;
+			add128( rem1, rem2, 0, bSig, &rem1, &rem2 );
+		}
+		zSig1 |= ( ( rem1 | rem2 ) != 0 );
+	}
+	return roundAndPackFloatx80Sgl( zSign, zExp, zSig0, zSig1 );
+        
+}
+#endif // End of addition for Previous
+    
 /*----------------------------------------------------------------------------
 | Returns the remainder of the extended double-precision floating-point value
 | `a' with respect to the corresponding value `b'.  The operation is performed

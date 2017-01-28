@@ -2190,7 +2190,6 @@ static uaecptr fmovem2fpp (uaecptr ad, uae_u32 list, int incr, int regdir)
 static bool fp_arithmetic(fptype *srcd, int reg, int extra)
 {
     fptype fp = *srcd;
-    bool sgl = false;
     uae_u64 q = 0;
     uae_s8 s = 0;
     
@@ -2307,9 +2306,9 @@ static bool fp_arithmetic(fptype *srcd, int reg, int extra)
             regs.fp[reg] = fp_mul(regs.fp[reg], fp);
             break;
         case 0x24: /* FSGLDIV */
-            regs.fp[reg] = fp_div(regs.fp[reg], fp);
-            sgl = true;
-            break;
+            regs.fp[reg] = fp_sgldiv(regs.fp[reg], fp);
+            fpsr_set_result(regs.fp[reg]);
+            return true;
         case 0x25: /* FREM */
             regs.fp[reg] = fp_rem(regs.fp[reg], fp, &q, &s);
             fpsr_set_quotient(q, s);
@@ -2318,9 +2317,9 @@ static bool fp_arithmetic(fptype *srcd, int reg, int extra)
             regs.fp[reg] = fp_scale(regs.fp[reg], fp);
             break;
         case 0x27: /* FSGLMUL */
-            regs.fp[reg] = fp_mul(regs.fp[reg], fp);
-            sgl = true;
-            break;
+            regs.fp[reg] = fp_sglmul(regs.fp[reg], fp);
+            fpsr_set_result(regs.fp[reg]);
+            return true;
         case 0x28: /* FSUB */
         case 0x68: /* FSSUB */
         case 0x6c: /* FDSUB */
@@ -2350,9 +2349,7 @@ static bool fp_arithmetic(fptype *srcd, int reg, int extra)
             return false;
     }
     
-    if (sgl)
-        fp_roundsgl(&regs.fp[reg]);
-    else if ((extra & 0x44) == 0x40)
+    if ((extra & 0x44) == 0x40)
         fp_round32(&regs.fp[reg]);
     else if ((extra & 0x44) == 0x44)
         fp_round64(&regs.fp[reg]);
