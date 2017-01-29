@@ -238,24 +238,24 @@ void fpsr_check_exception(void)
         write_log (_T("FPU exception: FPSR: %08x, FPCR: %04x (vector: %d)!\n"), regs.fpsr, regs.fpcr, vector);
     }
 }
-void fpsr_set_result(fptype result)
+void fpsr_set_result(fptype *result)
 {
     // condition code byte
     regs.fpsr &= 0x00fffff8; // clear cc
-    if (fp_is_nan (&result)) {
+    if (fp_is_nan (result)) {
         regs.fpsr |= FPSR_CC_NAN;
-    } else {
-        if (fp_is_zero(&result))
-            regs.fpsr |= FPSR_CC_Z;
-        if (fp_is_infinity (&result))
-            regs.fpsr |= FPSR_CC_I;
+        // check if nan is signaling
+        if (fp_is_snan(result)) {
+            regs.fpsr |= FPSR_SNAN;
+        }
+    } else if (fp_is_zero(result)) {
+        regs.fpsr |= FPSR_CC_Z;
+    } else if (fp_is_infinity (result)) {
+        regs.fpsr |= FPSR_CC_I;
     }
-    if (fp_is_neg(&result))
+    if (fp_is_neg(result)) {
         regs.fpsr |= FPSR_CC_N;
-    
-    // check if result is signaling nan
-    if (fp_is_snan(&result))
-        regs.fpsr |= FPSR_SNAN;
+    }
 }
 void fpsr_clear_status(void)
 {
@@ -474,7 +474,7 @@ bool fpu_get_constant(fptype *fp, int cr)
     if (((regs.fpcr >> 6) & 3) == 1) fp_roundsgl(fp);
     if (((regs.fpcr >> 6) & 3) >= 2) fp_rounddbl(fp);
     
-    fpsr_set_result(*fp);
+    fpsr_set_result(fp);
 
     return valid;
 }
@@ -2190,8 +2190,8 @@ static bool fp_arithmetic(fptype *srcd, int reg, int extra)
     uae_s8 s = 0;
     
     // SNAN -> QNAN if SNAN interrupt is not enabled
-    if (fp_is_snan(srcd) && !(regs.fpcr & 0x4000)) {
-        fp_unset_snan(srcd);
+    if (fp_is_snan(&fp) && !(regs.fpcr & 0x4000)) {
+        fp_unset_snan(&fp);
     }
     
     switch (extra & 0x7f)
@@ -2303,7 +2303,7 @@ static bool fp_arithmetic(fptype *srcd, int reg, int extra)
             break;
         case 0x24: /* FSGLDIV */
             regs.fp[reg] = fp_sgldiv(regs.fp[reg], fp);
-            fpsr_set_result(regs.fp[reg]);
+            fpsr_set_result(&regs.fp[reg]);
             return true;
         case 0x25: /* FREM */
             regs.fp[reg] = fp_rem(regs.fp[reg], fp, &q, &s);
@@ -2314,7 +2314,7 @@ static bool fp_arithmetic(fptype *srcd, int reg, int extra)
             break;
         case 0x27: /* FSGLMUL */
             regs.fp[reg] = fp_sglmul(regs.fp[reg], fp);
-            fpsr_set_result(regs.fp[reg]);
+            fpsr_set_result(&regs.fp[reg]);
             return true;
         case 0x28: /* FSUB */
         case 0x68: /* FSSUB */
@@ -2335,10 +2335,11 @@ static bool fp_arithmetic(fptype *srcd, int reg, int extra)
             if (((regs.fpcr >> 6) & 3) >= 2) fp_round64(&regs.fp[extra & 7]);
             break;
         case 0x38: /* FCMP */
-            fpsr_set_result(fp_cmp(regs.fp[reg], fp));
+            fp = fp_cmp(regs.fp[reg], fp);
+            fpsr_set_result(&fp);
             return true;
         case 0x3a: /* FTST */
-            fpsr_set_result(fp);
+            fpsr_set_result(&fp);
             return true;
             
         default:
@@ -2354,7 +2355,7 @@ static bool fp_arithmetic(fptype *srcd, int reg, int extra)
     else if (((regs.fpcr >> 6) & 3) >= 2)
         fp_round64(&regs.fp[reg]);
     
-    fpsr_set_result(regs.fp[reg]);
+    fpsr_set_result(&regs.fp[reg]);
     
     return true;
 }
