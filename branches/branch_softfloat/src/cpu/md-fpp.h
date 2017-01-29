@@ -581,6 +581,16 @@ STATIC_INLINE fptype fp_mul(fptype a, fptype b)
 {
     return (a * b);
 }
+STATIC_INLINE fptype fp_sgldiv(fptype a, fptype b)
+{
+    fptype z;
+    float mant;
+    int expon;
+    z = a / b;
+    
+    mant = (float)(frexpl(z, &expon) * 2.0);
+    return ldexpl((fptype)mant, expon - 1);
+}
 STATIC_INLINE fptype fp_rem(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
 {
     fptype quot;
@@ -601,6 +611,17 @@ STATIC_INLINE fptype fp_rem(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
 STATIC_INLINE fptype fp_scale(fptype a, fptype b)
 {
     return ldexpl(a, (int) b);
+}
+STATIC_INLINE fptype fp_sglmul(fptype a, fptype b)
+{
+    fptype z;
+    float mant;
+    int expon;
+    /* FIXME: truncate mantissa of a and b to single precision */
+    z = a * b;
+
+    mant = (float)(frexpl(z, &expon) * 2.0);
+    return ldexpl((fptype)mant, expon - 1);
 }
 STATIC_INLINE fptype fp_sub(fptype a, fptype b)
 {
@@ -692,6 +713,16 @@ STATIC_INLINE fptype fp_mod(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
 #define fp_add(a, b)    ((a) + (b))
 #define fp_mul(a, b)    ((a) * (b))
 
+STATIC_INLINE fptype fp_sgldiv(fptype a, fptype b)
+{
+    fptype z;
+    float mant;
+    int expon;
+    z = a / b;
+    
+    mant = (float)(frexp(z, &expon) * 2.0);
+    return ldexp((fptype)mant, expon - 1);
+}
 STATIC_INLINE fptype fp_rem(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
 {
     fptype quot;
@@ -710,6 +741,18 @@ STATIC_INLINE fptype fp_rem(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
     return remainder(a, b);
 }
 #define fp_scale(a, b)  ldexp(a, (int)(b))
+
+STATIC_INLINE fptype fp_sglmul(fptype a, fptype b)
+{
+    fptype z;
+    float mant;
+    int expon;
+    /* FIXME: truncate mantissa of a and b to single precision */
+    z = a * b;
+    
+    mant = (float)(frexp(z, &expon) * 2.0);
+    return ldexp((fptype)mant, expon - 1);
+}
 #define fp_sub(a, b)    ((a) - (b))
 
 #endif // !USE_LONG_DOUBLE
