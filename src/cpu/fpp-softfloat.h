@@ -449,6 +449,10 @@ STATIC_INLINE fptype fp_sub(fptype a, fptype b)
 {
     return floatx80_sub(a, b);
 }
+STATIC_INLINE fptype fp_cmp(fptype a, fptype b)
+{
+    return floatx80_cmp(a, b);
+}
 
 /* FIXME: create softfloat functions for following arithmetics */
 
