@@ -4060,8 +4060,7 @@ floatx80 floatx80_rem( floatx80 a, floatx80 b, bits64 *q, flag *s )
         mul64To128( bSig, qTemp, &term0, &term1 );
         sub128( aSig0, aSig1, term0, term1, &aSig0, &aSig1 );
         shortShift128Left( aSig0, aSig1, 62, &aSig0, &aSig1 );
-        *q += qTemp;
-        *q <<= 62;
+        *q = ( expDiff > 63 ) ? 0 : ( qTemp<<expDiff );
         expDiff -= 62;
     }
     expDiff += 64;
@@ -4166,8 +4165,7 @@ floatx80 floatx80_mod( floatx80 a, floatx80 b, bits64 *q, flag *s )
         mul64To128( bSig, qTemp, &term0, &term1 );
         sub128( aSig0, aSig1, term0, term1, &aSig0, &aSig1 );
         shortShift128Left( aSig0, aSig1, 62, &aSig0, &aSig1 );
-        *q += qTemp;
-        *q <<= 62;
+        *q = ( expDiff > 63 ) ? 0 : ( qTemp<<expDiff );
         expDiff -= 62;
     }
     expDiff += 64;
