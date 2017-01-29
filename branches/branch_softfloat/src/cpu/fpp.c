@@ -240,23 +240,21 @@ void fpsr_check_exception(void)
 }
 void fpsr_set_result(fptype result)
 {
-    regs.fp_result = result;
-    
     // condition code byte
     regs.fpsr &= 0x00fffff8; // clear cc
-    if (fp_is_nan (&regs.fp_result)) {
+    if (fp_is_nan (&result)) {
         regs.fpsr |= FPSR_CC_NAN;
     } else {
-        if (fp_is_zero(&regs.fp_result))
+        if (fp_is_zero(&result))
             regs.fpsr |= FPSR_CC_Z;
-        if (fp_is_infinity (&regs.fp_result))
+        if (fp_is_infinity (&result))
             regs.fpsr |= FPSR_CC_I;
     }
-    if (fp_is_neg(&regs.fp_result))
+    if (fp_is_neg(&result))
         regs.fpsr |= FPSR_CC_N;
     
     // check if result is signaling nan
-    if (fp_is_snan(&regs.fp_result))
+    if (fp_is_snan(&result))
         regs.fpsr |= FPSR_SNAN;
 }
 void fpsr_clear_status(void)
@@ -862,8 +860,6 @@ static void fpu_null (void)
     regs.fpcr = 0;
     regs.fpsr = 0;
     regs.fpiar = 0;
-    fpset(&regs.fp_result, 1);
-    fpclear (&regs.fp_result);
     for (i = 0; i < 8; i++)
         fpnan (&regs.fp[i]);
 }
@@ -2339,7 +2335,7 @@ static bool fp_arithmetic(fptype *srcd, int reg, int extra)
             if (((regs.fpcr >> 6) & 3) >= 2) fp_round64(&regs.fp[extra & 7]);
             break;
         case 0x38: /* FCMP */
-            fpsr_set_result(fp_sub(regs.fp[reg], fp));
+            fpsr_set_result(fp_cmp(regs.fp[reg], fp));
             return true;
         case 0x3a: /* FTST */
             fpsr_set_result(fp);
@@ -2641,7 +2637,6 @@ void fpu_reset (void)
     regs.fpu_exp_state = 0;
     fpp_set_fpcr (0);
     fpp_set_fpsr (0);
-    fpset (&regs.fp_result, 1);
 }
 
 #if 0

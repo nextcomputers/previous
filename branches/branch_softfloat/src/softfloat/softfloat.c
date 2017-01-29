@@ -4441,8 +4441,50 @@ floatx80 floatx80_neg(floatx80 a)
                 floatx80_rounding_precision, aSign, aExp, aSig, 0 );
     
 }
-
-
+    
+/*----------------------------------------------------------------------------
+ | Returns the result of comparing the extended double-precision floating-
+ | point values `a' and `b'.  The result is abstracted for matching the
+ | corresponding condition codes.
+ *----------------------------------------------------------------------------*/
+    
+floatx80 floatx80_cmp( floatx80 a, floatx80 b )
+{
+    flag aSign, bSign;
+    int32 aExp, bExp;
+    bits64 aSig, bSig;
+    
+    aSig = extractFloatx80Frac( a );
+    aExp = extractFloatx80Exp( a );
+    aSign = extractFloatx80Sign( a );
+    bSig = extractFloatx80Frac( b );
+    bExp = extractFloatx80Exp( b );
+    bSign = extractFloatx80Sign( b );
+    
+    if ( ( aExp == 0x7FFF && (bits64) ( aSig<<1 ) ) ||
+         ( bExp == 0x7FFF && (bits64) ( bSig<<1 ) ) ) {
+        return propagateFloatx80NaN( a, b );
+    }
+    
+    if ( bExp < aExp ) return packFloatx80( aSign, 0x3FFF, LIT64( 0x8000000000000000 ) );
+    if ( aExp < bExp ) return packFloatx80( bSign ^ 1, 0x3FFF, LIT64( 0x8000000000000000 ) );
+    
+    if ( aExp == 0x7FFF ) {
+        if ( aSign == bSign ) return packFloatx80( aSign, 0, 0 );
+        return packFloatx80( aSign, 0x3FFF, LIT64( 0x8000000000000000 ) );
+    }
+    
+    if ( bSig < aSig ) return packFloatx80( aSign, 0x3FFF, LIT64( 0x8000000000000000 ) );
+    if ( aSig < bSig ) return packFloatx80( bSign ^ 1, 0x3FFF, LIT64( 0x8000000000000000 ) );
+    
+    if ( aSig == 0 ) return packFloatx80( aSign, 0, 0 );
+    
+    if ( aSign == bSign ) return packFloatx80( 0, 0, 0 );
+    
+    return packFloatx80( aSign, 0x3FFF, LIT64( 0x8000000000000000 ) );
+    
+}
+    
 #endif // End of addition for Previous
 
 /*----------------------------------------------------------------------------

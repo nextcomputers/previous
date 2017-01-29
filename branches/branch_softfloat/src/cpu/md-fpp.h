@@ -144,11 +144,13 @@ STATIC_INLINE bool fp_is_neg(fptype *fp)
 }
 STATIC_INLINE bool fp_is_denormal(fptype *fp)
 {
-    return (isnormal(*fp) == 0); /* FIXME: how to differ denormal/unnormal? */
+    return false;
+    //return (isnormal(*fp) == 0); /* FIXME: how to differ denormal/unnormal? */
 }
 STATIC_INLINE bool fp_is_unnormal(fptype *fp)
 {
-    return (isnormal(*fp) == 0); /* FIXME: how to differ denormal/unnormal? */
+    return false;
+    //return (isnormal(*fp) == 0); /* FIXME: how to differ denormal/unnormal? */
 }
 
 /* Function for normalizing unnormals FIXME: how to do this with native floats? */
@@ -627,6 +629,10 @@ STATIC_INLINE fptype fp_sub(fptype a, fptype b)
 {
     return (a - b);
 }
+STATIC_INLINE fptype fp_cmp(fptype a, fptype b)
+{
+    return (a - b); /* FIXME: comparing is different from subtraction */
+}
 
 #else // if !USE_LONG_DOUBLE
 
@@ -754,6 +760,7 @@ STATIC_INLINE fptype fp_sglmul(fptype a, fptype b)
     return ldexp((fptype)mant, expon - 1);
 }
 #define fp_sub(a, b)    ((a) - (b))
+#define fp_cmp(a, b)    ((a) - (b)) /* FIXME: comparing is different from subtraction */
 
 #endif // !USE_LONG_DOUBLE
 
