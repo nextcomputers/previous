@@ -299,25 +299,12 @@ STATIC_INLINE void from_exten_x(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, uae_u3
 
 STATIC_INLINE uae_s64 to_int(fptype *src, int size)
 {
-    static fptype fxsizes[6];
-    static bool setup = false;
-    if (!setup) {
-        fxsizes[0] = int32_to_floatx80(-128);
-        fxsizes[1] = int32_to_floatx80(127);
-        fxsizes[2] = int32_to_floatx80(-32768);
-        fxsizes[3] = int32_to_floatx80(32767);
-        fxsizes[4] = int32_to_floatx80(-2147483648);
-        fxsizes[5] = int32_to_floatx80(2147483647);
-        setup = true;
+    switch (size) {
+        case 0: return floatx80_to_int8(*src);
+        case 1: return floatx80_to_int16(*src);
+        case 2: return floatx80_to_int32(*src);
+        default: return 0;
     }
-    
-    if (floatx80_lt(*src, fxsizes[size * 2 + 0])) {
-        return floatx80_to_int32(fxsizes[size * 2 + 0]);
-    }
-    if (floatx80_le(fxsizes[size * 2 + 1], *src)) {
-        return floatx80_to_int32(fxsizes[size * 2 + 1]);
-    }
-    return floatx80_to_int32(*src);
 }
 STATIC_INLINE fptype from_int(uae_s32 src)
 {
