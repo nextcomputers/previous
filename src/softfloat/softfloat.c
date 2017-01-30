@@ -104,6 +104,86 @@ static int32 roundAndPackInt32( flag zSign, bits64 absZ )
 
 }
 
+#ifdef SOFTFLOAT_68K // 30-01-2017: Added for Previous
+static int16 roundAndPackInt16( flag zSign, bits64 absZ )
+{
+    int8 roundingMode;
+    flag roundNearestEven;
+    int8 roundIncrement, roundBits;
+    int16 z;
+    
+    roundingMode = float_rounding_mode;
+    roundNearestEven = ( roundingMode == float_round_nearest_even );
+    roundIncrement = 0x40;
+    if ( ! roundNearestEven ) {
+        if ( roundingMode == float_round_to_zero ) {
+            roundIncrement = 0;
+        }
+        else {
+            roundIncrement = 0x7F;
+            if ( zSign ) {
+                if ( roundingMode == float_round_up ) roundIncrement = 0;
+            }
+            else {
+                if ( roundingMode == float_round_down ) roundIncrement = 0;
+            }
+        }
+    }
+    roundBits = absZ & 0x7F;
+    absZ = ( absZ + roundIncrement )>>7;
+    absZ &= ~ ( ( ( roundBits ^ 0x40 ) == 0 ) & roundNearestEven );
+    z = absZ;
+    if ( zSign ) z = - z;
+    z = (sbits16) z;
+    if ( ( absZ>>16 ) || ( z && ( ( z < 0 ) ^ zSign ) ) ) {
+        float_raise( float_flag_invalid );
+        return zSign ? (sbits16) 0x8000 : 0x7FFF;
+    }
+    if ( roundBits ) float_exception_flags |= float_flag_inexact;
+    return z;
+    
+}
+
+static int8 roundAndPackInt8( flag zSign, bits64 absZ )
+{
+    int8 roundingMode;
+    flag roundNearestEven;
+    int8 roundIncrement, roundBits;
+    int8 z;
+    
+    roundingMode = float_rounding_mode;
+    roundNearestEven = ( roundingMode == float_round_nearest_even );
+    roundIncrement = 0x40;
+    if ( ! roundNearestEven ) {
+        if ( roundingMode == float_round_to_zero ) {
+            roundIncrement = 0;
+        }
+        else {
+            roundIncrement = 0x7F;
+            if ( zSign ) {
+                if ( roundingMode == float_round_up ) roundIncrement = 0;
+            }
+            else {
+                if ( roundingMode == float_round_down ) roundIncrement = 0;
+            }
+        }
+    }
+    roundBits = absZ & 0x7F;
+    absZ = ( absZ + roundIncrement )>>7;
+    absZ &= ~ ( ( ( roundBits ^ 0x40 ) == 0 ) & roundNearestEven );
+    z = absZ;
+    if ( zSign ) z = - z;
+    z = (sbits8) z;
+    if ( ( absZ>>8 ) || ( z && ( ( z < 0 ) ^ zSign ) ) ) {
+        float_raise( float_flag_invalid );
+        return zSign ? (sbits8) 0x80 : 0x7F;
+    }
+    if ( roundBits ) float_exception_flags |= float_flag_inexact;
+    return z;
+    
+}
+#endif // End of addition for Previous
+
 /*----------------------------------------------------------------------------
 | Takes the 128-bit fixed-point value formed by concatenating `absZ0' and
 | `absZ1', with binary point between bits 63 and 64 (between the input words),
@@ -3025,13 +3105,63 @@ int32 floatx80_to_int32( floatx80 a )
 	aSig = extractFloatx80Frac( a );
 	aExp = extractFloatx80Exp( a );
 	aSign = extractFloatx80Sign( a );
+#ifdef SOFTFLOAT_68K
+    if ( aExp == 0x7FFF ) {
+        float_raise( float_flag_invalid );
+        if ( (bits64) ( aSig<<1 ) ) return (sbits32)(aSig>>32);
+        return aSign ? (sbits32) 0x80000000 : 0x7FFFFFFF;
+    }
+#else
 	if ( ( aExp == 0x7FFF ) && (bits64) ( aSig<<1 ) ) aSign = 0;
+#endif
 	shiftCount = 0x4037 - aExp;
 	if ( shiftCount <= 0 ) shiftCount = 1;
 	shift64RightJamming( aSig, shiftCount, &aSig );
 	return roundAndPackInt32( aSign, aSig );
 
 }
+#ifdef SOFTFLOAT_68K // 30-01-2017: Addition for Previous
+int16 floatx80_to_int16( floatx80 a )
+{
+    flag aSign;
+    int32 aExp, shiftCount;
+    bits64 aSig;
+    
+    aSig = extractFloatx80Frac( a );
+    aExp = extractFloatx80Exp( a );
+    aSign = extractFloatx80Sign( a );
+    if ( aExp == 0x7FFF ) {
+        float_raise( float_flag_invalid );
+        if ( (bits64) ( aSig<<1 ) ) return (sbits16)(aSig>>48);
+        return aSign ? (sbits16) 0x8000 : 0x7FFF;
+    }
+    shiftCount = 0x4037 - aExp;
+    if ( shiftCount <= 0 ) shiftCount = 1;
+    shift64RightJamming( aSig, shiftCount, &aSig );
+    return roundAndPackInt16( aSign, aSig );
+    
+}
+int8 floatx80_to_int8( floatx80 a )
+{
+    flag aSign;
+    int32 aExp, shiftCount;
+    bits64 aSig;
+    
+    aSig = extractFloatx80Frac( a );
+    aExp = extractFloatx80Exp( a );
+    aSign = extractFloatx80Sign( a );
+    if ( aExp == 0x7FFF ) {
+        float_raise( float_flag_invalid );
+        if ( (bits64) ( aSig<<1 ) ) return (sbits8)(aSig>>56);
+        return aSign ? (sbits8) 0x80 : 0x7F;
+    }
+    shiftCount = 0x4037 - aExp;
+    if ( shiftCount <= 0 ) shiftCount = 1;
+    shift64RightJamming( aSig, shiftCount, &aSig );
+    return roundAndPackInt8( aSign, aSig );
+    
+}
+#endif // End of addition for Previous
 
 /*----------------------------------------------------------------------------
 | Returns the result of converting the extended double-precision floating-

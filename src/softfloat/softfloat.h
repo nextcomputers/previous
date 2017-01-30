@@ -198,6 +198,10 @@ flag float64_is_signaling_nan( float64 );
 | Software IEC/IEEE extended double-precision conversion routines.
 *----------------------------------------------------------------------------*/
 int32 floatx80_to_int32( floatx80 );
+#ifdef SOFTFLOAT_68K
+int16 floatx80_to_int16( floatx80 );
+int8 floatx80_to_int8( floatx80 );
+#endif
 int32 floatx80_to_int32_round_to_zero( floatx80 );
 int64 floatx80_to_int64( floatx80 );
 int64 floatx80_to_int64_round_to_zero( floatx80 );
