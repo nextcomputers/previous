@@ -340,7 +340,10 @@ STATIC_INLINE void fp_round64(fptype *fp)
 }
 
 /* Arithmetic functions */
-
+STATIC_INLINE fptype fp_move(fptype a)
+{
+    return floatx80_move(a);
+}
 STATIC_INLINE fptype fp_int(fptype a)
 {
     return floatx80_round_to_int(a);

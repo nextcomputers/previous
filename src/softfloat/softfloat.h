@@ -291,6 +291,7 @@ floatx80 floatx80_sgldiv( floatx80 a, floatx80 b );
 floatx80 floatx80_abs( floatx80 a );
 floatx80 floatx80_neg( floatx80 a );
 floatx80 floatx80_cmp( floatx80 a, floatx80 b );
+floatx80 floatx80_move( floatx80 a );
 #endif
 
 // roundAndPackFloatx80 used to be in softfloat-round-pack, is now in softfloat.c

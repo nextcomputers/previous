@@ -2199,7 +2199,7 @@ static bool fp_arithmetic(fptype *srcd, int reg, int extra)
         case 0x00: /* FMOVE */
         case 0x40: /* FSMOVE */
         case 0x44: /* FDMOVE */
-            regs.fp[reg] = fp;
+            regs.fp[reg] = fp_move(fp);
             break;
         case 0x01: /* FINT */
             regs.fp[reg] = fp_int(fp);
