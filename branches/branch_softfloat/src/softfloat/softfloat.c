@@ -4613,6 +4613,28 @@ floatx80 floatx80_cmp( floatx80 a, floatx80 b )
     
 }
     
+floatx80 floatx80_move( floatx80 a )
+{
+    flag aSign;
+    int32 aExp;
+    bits64 aSig;
+    
+    aSig = extractFloatx80Frac( a );
+    aExp = extractFloatx80Exp( a );
+    aSign = extractFloatx80Sign( a );
+    
+    if ( aExp == 0x7FFF ) {
+        if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaN( a, a );
+        return a;
+    }
+    if ( aExp == 0 ) {
+        if ( aSig == 0 ) return a;
+        normalizeRoundAndPackFloatx80( floatx80_rounding_precision, aSign, aExp, aSig, 0 );
+    }
+    return a;
+    
+}
+    
 #endif // End of addition for Previous
 
 /*----------------------------------------------------------------------------

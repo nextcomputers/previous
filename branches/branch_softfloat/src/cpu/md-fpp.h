@@ -431,6 +431,10 @@ STATIC_INLINE void fp_round64(fptype *fp)
 
 #ifdef USE_LONG_DOUBLE
 
+STATIC_INLINE fptype fp_move(fptype a)
+{
+    return a;
+}
 STATIC_INLINE fptype fp_int(fptype a)
 {
 #ifdef USE_HOST_ROUNDING
@@ -636,6 +640,7 @@ STATIC_INLINE fptype fp_cmp(fptype a, fptype b)
 
 #else // if !USE_LONG_DOUBLE
 
+#define fp_move(a) (a)
 STATIC_INLINE fptype fp_int(fptype a)
 {
 #ifdef USE_HOST_ROUNDING
