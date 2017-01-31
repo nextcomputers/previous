@@ -4591,7 +4591,7 @@ floatx80 floatx80_cmp( floatx80 a, floatx80 b )
     
     if ( ( aExp == 0x7FFF && (bits64) ( aSig<<1 ) ) ||
          ( bExp == 0x7FFF && (bits64) ( bSig<<1 ) ) ) {
-        return propagateFloatx80NaN( a, b );
+        return packFloatx80(0, 0x7FFF, floatx80_default_nan_low);
     }
     
     if ( bExp < aExp ) return packFloatx80( aSign, 0x3FFF, LIT64( 0x8000000000000000 ) );
