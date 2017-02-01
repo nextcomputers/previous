@@ -90,53 +90,6 @@ uae_u32 xhex_nan[]   ={0x7fff0000, 0xffffffff, 0xffffffff};
 static bool fpu_mmu_fixup;
 
 
-void to_single(fptype *fp, uae_u32 wrd1)
-{
-#if 0 // now done in get_fp_value
-    // automatically fix denormals if 6888x
-    if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882)
-        to_single_xn(fp, wrd1);
-    else
-#endif
-        to_single_x(fp, wrd1);
-}
-uae_u32 from_single(fptype *fp)
-{
-    return from_single_x(fp);
-}
-void to_double(fptype *fp, uae_u32 wrd1, uae_u32 wrd2)
-{
-#if 0 // now done in get_fp_value
-    // automatically fix denormals if 6888x
-    if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882)
-        to_double_xn(fp, wrd1, wrd2);
-    else
-#endif
-        to_double_x(fp, wrd1, wrd2);
-}
-void from_double(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2)
-{
-    from_double_x(fp, wrd1, wrd2);
-}
-void to_exten(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
-{
-#if 0 // now done in get_fp_value
-    // automatically fix unnormals if 6888x
-    if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882) {
-        normalize_exten(&wrd1, &wrd2, &wrd3);
-    }
-#endif
-    to_exten_x(fp, wrd1, wrd2, wrd3);
-}
-void to_exten_fmovem(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
-{
-    to_exten_x(fp, wrd1, wrd2, wrd3);
-}
-void from_exten(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
-{
-    from_exten_x(fp, wrd1, wrd2, wrd3);
-}
-
 /* Floating Point Control Register (FPCR)
  *
  * Exception Enable Byte
@@ -353,7 +306,6 @@ bool double_is_denormal(uae_u32 wrd1, uae_u32 wrd2)
     }
     return false;
 }
-#endif
 void normalize_exten(uae_u32 *pwrd1, uae_u32 *pwrd2, uae_u32 *pwrd3)
 {
     uae_u32 wrd1 = *pwrd1;
@@ -378,6 +330,7 @@ void normalize_exten(uae_u32 *pwrd1, uae_u32 *pwrd2, uae_u32 *pwrd3)
         *pwrd3 = wrd3;
     }
 }
+#endif
 
 bool fpu_get_constant(fptype *fp, int cr)
 {
@@ -959,12 +912,12 @@ static void from_pack (fptype *src, uae_u32 *wrd, int kfactor)
     
     if (fp_is_nan (src)) {
         // copied bit by bit, no conversion
-        from_exten(src, &wrd[0], &wrd[1], &wrd[2]);
+        from_exten_fmovem(src, &wrd[0], &wrd[1], &wrd[2]);
         return;
     }
     if (fp_is_infinity (src)) {
         // extended exponent and all 0 packed fraction
-        from_exten(src, &wrd[0], &wrd[1], &wrd[2]);
+        from_exten_fmovem(src, &wrd[0], &wrd[1], &wrd[2]);
         wrd[1] = wrd[2] = 0;
         return;
     }
@@ -1777,7 +1730,7 @@ void fpuop_save (uae_u32 opcode)
         
         if (regs.fpu_exp_state > 1) {
             uae_u32 src1[3];
-            from_exten (&regs.exp_src1, &src1[0], &src1[1], &src1[2]);
+            from_exten_fmovem (&regs.exp_src1, &src1[0], &src1[1], &src1[2]);
             frame_id = 0x0000e000 | src1[0];
             frame_v1 = src1[1];
             frame_v2 = src1[2];
@@ -1821,8 +1774,8 @@ void fpuop_save (uae_u32 opcode)
             uae_u32 stag, dtag;
             uae_u32 extra = regs.exp_extra;
             
-            from_exten(&regs.exp_src1, &src1[0], &src1[1], &src1[2]);
-            from_exten(&regs.exp_src2, &src2[0], &src2[1], &src2[2]);
+            from_exten_fmovem(&regs.exp_src1, &src1[0], &src1[1], &src1[2]);
+            from_exten_fmovem(&regs.exp_src2, &src2[0], &src2[1], &src2[2]);
             stag = get_ftag(src1[0], src1[1], src1[2], regs.exp_size);
             dtag = get_ftag(src2[0], src2[1], src2[2], -1);
             if ((extra & 0x7f) == 4) // FSQRT 4->5
@@ -2070,7 +2023,7 @@ static uaecptr fmovem2mem (uaecptr ad, uae_u32 list, int incr, int regdir)
             else
                 reg = r;
             if (list & 0x80) {
-                from_exten(&regs.fp[reg], &wrd[0], &wrd[1], &wrd[2]);
+                from_exten_fmovem(&regs.fp[reg], &wrd[0], &wrd[1], &wrd[2]);
                 if (incr < 0)
                     ad -= 3 * 4;
                 for (i = 0; i < 3; i++) {
@@ -2100,7 +2053,7 @@ static uaecptr fmovem2mem (uaecptr ad, uae_u32 list, int incr, int regdir)
             else
                 reg = r;
             if (list & 0x80) {
-                from_exten(&regs.fp[reg], &wrd1, &wrd2, &wrd3);
+                from_exten_fmovem(&regs.fp[reg], &wrd1, &wrd2, &wrd3);
                 if (incr < 0)
                     ad -= 3 * 4;
                 x_put_long(ad + 0, wrd1);
