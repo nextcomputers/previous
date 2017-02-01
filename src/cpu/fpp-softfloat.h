@@ -32,10 +32,6 @@
 #define FPCR_PRECISION_EXTENDED	0x00000000
 
 extern uae_u32 fpp_get_fpsr (void);
-extern void to_single(fptype *fp, uae_u32 wrd1);
-extern void to_double(fptype *fp, uae_u32 wrd1, uae_u32 wrd2);
-extern void to_exten(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3);
-extern void normalize_exten (uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3);
 
 
 /* Functions for setting host/library modes and getting status */
@@ -120,19 +116,6 @@ STATIC_INLINE const char *fp_print(fptype *fx)
     }
     
     return fs;
-}
-
-STATIC_INLINE void softfloat_set(fptype *fx, uae_u32 *f)
-{
-    fx->high = (uae_u16)(f[0] >> 16);
-    fx->low = ((uae_u64)f[1] << 32) | f[2];
-}
-
-STATIC_INLINE void softfloat_get(fptype *fx, uae_u32 *f)
-{
-    f[0] = (uae_u32)(fx->high << 16);
-    f[1] = fx->low >> 32;
-    f[2] = (uae_u32)fx->low;
 }
 
 /* Functions for detecting float type */
@@ -250,51 +233,51 @@ STATIC_INLINE void from_native(long double fp, fptype *fpx)
     }
 }
 
-STATIC_INLINE void to_single_xn(fptype *fp, uae_u32 wrd1)
-{
-    float32 f = wrd1;
-    *fp = float32_to_floatx80(f); // automatically fix denormals
-}
-STATIC_INLINE void to_single_x(fptype *fp, uae_u32 wrd1)
+STATIC_INLINE void to_single(fptype *fp, uae_u32 wrd1)
 {
     float32 f = wrd1;
     *fp = float32_to_floatx80_allowunnormal(f);
 }
-STATIC_INLINE uae_u32 from_single_x(fptype *fp)
+STATIC_INLINE uae_u32 from_single(fptype *fp)
 {
     float32 f = floatx80_to_float32(*fp);
     return f;
 }
 
-STATIC_INLINE void to_double_xn(fptype *fp, uae_u32 wrd1, uae_u32 wrd2)
-{
-    float64 f = ((float64)wrd1 << 32) | wrd2;
-    *fp = float64_to_floatx80(f); // automatically fix denormals
-}
-STATIC_INLINE void to_double_x(fptype *fp, uae_u32 wrd1, uae_u32 wrd2)
+STATIC_INLINE void to_double(fptype *fp, uae_u32 wrd1, uae_u32 wrd2)
 {
     float64 f = ((float64)wrd1 << 32) | wrd2;
     *fp = float64_to_floatx80_allowunnormal(f);
 }
-STATIC_INLINE void from_double_x(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2)
+STATIC_INLINE void from_double(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2)
 {
     float64 f = floatx80_to_float64(*fp);
     *wrd1 = f >> 32;
     *wrd2 = (uae_u32)f;
 }
 
-STATIC_INLINE void to_exten_x(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
+STATIC_INLINE void to_exten(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
 {
-    uae_u32 wrd[3] = { wrd1, wrd2, wrd3 };
-    softfloat_set(fp, wrd);
+    fp->high = (uae_u16)(wrd1 >> 16);
+    fp->low = ((uae_u64)wrd2 << 32) | wrd3;
 }
-STATIC_INLINE void from_exten_x(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
+STATIC_INLINE void from_exten(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
 {
-    uae_u32 wrd[3];
-    softfloat_get(fp, wrd);
-    *wrd1 = wrd[0];
-    *wrd2 = wrd[1];
-    *wrd3 = wrd[2];
+    floatx80 f = floatx80_to_floatx80(*fp);
+    *wrd1 = (uae_u32)(f.high << 16);
+    *wrd2 = f.low >> 32;
+    *wrd3 = (uae_u32)f.low;
+}
+STATIC_INLINE void to_exten_fmovem(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
+{
+    fp->high = (uae_u16)(wrd1 >> 16);
+    fp->low = ((uae_u64)wrd2 << 32) | wrd3;
+}
+STATIC_INLINE void from_exten_fmovem(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
+{
+    *wrd1 = (uae_u32)(fp->high << 16);
+    *wrd2 = fp->low >> 32;
+    *wrd3 = (uae_u32)fp->low;
 }
 
 STATIC_INLINE uae_s64 to_int(fptype *src, int size)

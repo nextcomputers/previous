@@ -34,11 +34,6 @@
 #define FPCR_PRECISION_EXTENDED	0x00000000
 
 extern uae_u32 fpp_get_fpsr (void);
-extern void to_single(fptype *fp, uae_u32 wrd1);
-extern void to_double(fptype *fp, uae_u32 wrd1, uae_u32 wrd2);
-extern void to_exten(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3);
-extern void normalize_exten (uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3);
-
 
 /* Functions for setting host/library modes and getting status */
 STATIC_INLINE void set_fp_mode(uae_u32 mode_control)
@@ -170,7 +165,7 @@ STATIC_INLINE void from_native(long double fp, fptype *fpx)
     *fpx = fp;
 }
 
-STATIC_INLINE void to_single_xn(fptype *fp, uae_u32 wrd1)
+STATIC_INLINE void to_single(fptype *fp, uae_u32 wrd1)
 {
     union {
         float f;
@@ -180,17 +175,7 @@ STATIC_INLINE void to_single_xn(fptype *fp, uae_u32 wrd1)
     val.u = wrd1;
     *fp = (fptype) val.f;
 }
-STATIC_INLINE void to_single_x(fptype *fp, uae_u32 wrd1)
-{
-    union {
-        float f;
-        uae_u32 u;
-    } val;
-    
-    val.u = wrd1;
-    *fp = (fptype) val.f;
-}
-STATIC_INLINE uae_u32 from_single_x(fptype *fp)
+STATIC_INLINE uae_u32 from_single(fptype *fp)
 {
     union {
         float f;
@@ -201,7 +186,7 @@ STATIC_INLINE uae_u32 from_single_x(fptype *fp)
     return val.u;
 }
 
-STATIC_INLINE void to_double_xn(fptype *fp, uae_u32 wrd1, uae_u32 wrd2)
+STATIC_INLINE void to_double(fptype *fp, uae_u32 wrd1, uae_u32 wrd2)
 {
     union {
         double d;
@@ -217,23 +202,7 @@ STATIC_INLINE void to_double_xn(fptype *fp, uae_u32 wrd1, uae_u32 wrd2)
 #endif
     *fp = (fptype) val.d;
 }
-STATIC_INLINE void to_double_x(fptype *fp, uae_u32 wrd1, uae_u32 wrd2)
-{
-    union {
-        double d;
-        uae_u32 u[2];
-    } val;
-    
-#ifdef WORDS_BIGENDIAN
-    val.u[0] = wrd1;
-    val.u[1] = wrd2;
-#else
-    val.u[1] = wrd1;
-    val.u[0] = wrd2;
-#endif
-    *fp = (fptype) val.d;
-}
-STATIC_INLINE void from_double_x(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2)
+STATIC_INLINE void from_double(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2)
 {
     union {
         double d;
@@ -250,7 +219,7 @@ STATIC_INLINE void from_double_x(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2)
 #endif
 }
 #ifdef USE_LONG_DOUBLE
-STATIC_INLINE void to_exten_x(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
+STATIC_INLINE void to_exten(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
 {
     union {
         long double ld;
@@ -268,7 +237,7 @@ STATIC_INLINE void to_exten_x(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wr
 #endif
     *fp = val.ld;
 }
-STATIC_INLINE void from_exten_x(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
+STATIC_INLINE void from_exten(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
 {
     union {
         long double ld;
@@ -288,7 +257,7 @@ STATIC_INLINE void from_exten_x(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, uae_u3
 }
 #else // if !USE_LONG_DOUBLE
 static const double twoto32 = 4294967296.0;
-STATIC_INLINE void to_exten_x(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
+STATIC_INLINE void to_exten(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
 {
     double frac;
     if ((wrd1 & 0x7fff0000) == 0 && wrd2 == 0 && wrd3 == 0) {
@@ -300,7 +269,7 @@ STATIC_INLINE void to_exten_x(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wr
         frac = -frac;
     *fp = ldexp (frac, ((wrd1 >> 16) & 0x7fff) - 16383);
 }
-STATIC_INLINE void from_exten_x(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
+STATIC_INLINE void from_exten(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
 {
     int expon;
     double frac;
@@ -330,6 +299,14 @@ STATIC_INLINE void from_exten_x(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, uae_u3
     *wrd3 = (uae_u32) ((frac * twoto32 - *wrd2) * twoto32);
 }
 #endif // !USE_LONG_DOUBLE
+STATIC_INLINE void to_exten_fmovem(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3)
+{
+    to_exten(fp, wrd1, wrd2, wrd3);
+}
+STATIC_INLINE void from_exten_fmovem(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
+{
+    from_exten(fp, wrd1, wrd2, wrd3);
+}
 
 #ifndef USE_HOST_ROUNDING
 #ifdef USE_LONG_DOUBLE

@@ -1430,8 +1430,8 @@ floatx80 float32_to_floatx80_allowunnormal( float32 a )
     aExp = extractFloat32Exp( a );
     aSign = extractFloat32Sign( a );
     if ( aExp == 0xFF ) {
-        if ( aSig ) return commonNaNToFloatx80( float32ToCommonNaN( a ) );
-        return packFloatx80( aSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+        aSig |= 0x00800000;
+        return packFloatx80( aSign, 0x7FFF, ( (bits64) aSig )<<40 );
     }
     if ( aExp == 0 ) {
         if ( aSig == 0 ) return packFloatx80( aSign, 0, 0 );
@@ -2382,8 +2382,7 @@ floatx80 float64_to_floatx80_allowunnormal( float64 a )
     aExp = extractFloat64Exp( a );
     aSign = extractFloat64Sign( a );
     if ( aExp == 0x7FF ) {
-        if ( aSig ) return commonNaNToFloatx80( float64ToCommonNaN( a ) );
-        return packFloatx80( aSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+        return packFloatx80( aSign, 0x7FFF, ( aSig | LIT64( 0x0010000000000000 ) )<<11 );
     }
     if ( aExp == 0 ) {
         if ( aSig == 0 ) return packFloatx80( aSign, 0, 0 );
@@ -3348,6 +3347,35 @@ float64 floatx80_to_float64( floatx80 a )
 	return roundAndPackFloat64( aSign, aExp, zSig );
 
 }
+        
+#ifdef SOFTFLOAT_68K // 31-01-2017
+/*----------------------------------------------------------------------------
+ | Returns the result of converting the extended double-precision floating-
+ | point value `a' to the extended double-precision floating-point format.
+ | The conversion is performed according to the IEC/IEEE Standard for Binary
+ | Floating-Point Arithmetic.
+ *----------------------------------------------------------------------------*/
+        
+floatx80 floatx80_to_floatx80( floatx80 a )
+{
+    flag aSign;
+    int32 aExp;
+    bits64 aSig;
+    
+    aSig = extractFloatx80Frac( a );
+    aExp = extractFloatx80Exp( a );
+    aSign = extractFloatx80Sign( a );
+    
+    if ( aExp == 0x7FFF && (bits64) ( aSig<<1 ) ) {
+        return propagateFloatx80NaN( a, a );
+    }
+    if ( aExp == 0 && aSig != 0 ) {
+        return normalizeRoundAndPackFloatx80( floatx80_rounding_precision, aSign, aExp, aSig, 0 );
+    }
+    return a;
+    
+}
+#endif
 
 #ifdef FLOAT128
 
@@ -3428,12 +3456,9 @@ floatx80 floatx80_normalize( floatx80 a )
     
     shiftCount = countLeadingZeros64( aSig );
     
-    if ( shiftCount > aExp ) {
-        shiftCount = aExp;
-        aExp = 0;
-    } else {
-        aExp -= shiftCount;
-    }
+    if ( shiftCount > aExp ) shiftCount = aExp;
+    
+    aExp -= shiftCount;
     aSig <<= shiftCount;
     
     return packFloatx80( aSign, aExp, aSig );

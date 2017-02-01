@@ -207,6 +207,9 @@ int64 floatx80_to_int64( floatx80 );
 int64 floatx80_to_int64_round_to_zero( floatx80 );
 float32 floatx80_to_float32( floatx80 );
 float64 floatx80_to_float64( floatx80 );
+#ifdef SOFTFLOAT_68K
+floatx80 floatx80_to_floatx80( floatx80 );
+#endif
 #ifdef FLOAT128
 float128 floatx80_to_float128( floatx80 );
 #endif
