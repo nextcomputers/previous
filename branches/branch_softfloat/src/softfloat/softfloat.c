@@ -4616,6 +4616,8 @@ floatx80 floatx80_cmp( floatx80 a, floatx80 b )
     
     if ( ( aExp == 0x7FFF && (bits64) ( aSig<<1 ) ) ||
          ( bExp == 0x7FFF && (bits64) ( bSig<<1 ) ) ) {
+        if ( floatx80_is_signaling_nan( a ) || floatx80_is_signaling_nan( b ) )
+            float_raise( float_flag_signaling );
         return packFloatx80(0, 0x7FFF, floatx80_default_nan_low);
     }
     
@@ -4636,6 +4638,13 @@ floatx80 floatx80_cmp( floatx80 a, floatx80 b )
     
     return packFloatx80( aSign, 0x3FFF, LIT64( 0x8000000000000000 ) );
     
+}
+    
+floatx80 floatx80_tst( floatx80 a )
+{
+    if ( floatx80_is_signaling_nan( a ) )
+        float_raise( float_flag_signaling );
+    return a;
 }
     
 floatx80 floatx80_move( floatx80 a )

@@ -69,16 +69,20 @@ STATIC_INLINE void set_fp_mode(uae_u32 mode_control)
 }
 STATIC_INLINE void get_fp_status(uae_u32 *status)
 {
-    if (float_exception_flags & float_flag_invalid)
-        *status |= 0x2000;
-    if (float_exception_flags & float_flag_divbyzero)
-        *status |= 0x0400;
-    if (float_exception_flags & float_flag_overflow)
-        *status |= 0x1000;
-    if (float_exception_flags & float_flag_underflow)
-        *status |= 0x0800;
-    if (float_exception_flags & float_flag_inexact)
-        *status |= 0x0200;
+    if (float_exception_flags & float_flag_signaling) {
+        *status |= 0x4000;
+    } else {
+        if (float_exception_flags & float_flag_invalid)
+            *status |= 0x2000;
+        if (float_exception_flags & float_flag_divbyzero)
+            *status |= 0x0400;
+        if (float_exception_flags & float_flag_overflow)
+            *status |= 0x1000;
+        if (float_exception_flags & float_flag_underflow)
+            *status |= 0x0800;
+        if (float_exception_flags & float_flag_inexact)
+            *status |= 0x0200;
+    }
 }
 STATIC_INLINE void clear_fp_status(void)
 {
@@ -311,6 +315,9 @@ STATIC_INLINE void fp_rounddbl(fptype *fp)
 // round to float
 STATIC_INLINE void fp_round32(fptype *fp)
 {
+    if (fp_is_nan(fp)) {
+        return;
+    }
     float32 f = floatx80_to_float32(*fp);
     *fp = float32_to_floatx80(f);
 }
@@ -318,204 +325,203 @@ STATIC_INLINE void fp_round32(fptype *fp)
 // round to double
 STATIC_INLINE void fp_round64(fptype *fp)
 {
+    if (fp_is_nan(fp)) {
+        return;
+    }
     float64 f = floatx80_to_float64(*fp);
     *fp = float64_to_floatx80(f);
 }
 
 /* Arithmetic functions */
-STATIC_INLINE fptype fp_move(fptype a)
+STATIC_INLINE void fp_move(fptype *a, fptype *b)
 {
-    return floatx80_move(a);
+    *a = floatx80_move(*b);
 }
-STATIC_INLINE fptype fp_int(fptype a)
+STATIC_INLINE void fp_int(fptype *a, fptype *b)
 {
-    return floatx80_round_to_int(a);
+    *a = floatx80_round_to_int(*b);
 }
-STATIC_INLINE fptype fp_intrz(fptype a)
+STATIC_INLINE void fp_intrz(fptype *a, fptype *b)
 {
-    return floatx80_round_to_int_toward_zero(a);
+    *a = floatx80_round_to_int_toward_zero(*b);
 }
-STATIC_INLINE fptype fp_sqrt(fptype a)
+STATIC_INLINE void fp_sqrt(fptype *a, fptype *b)
 {
-    return floatx80_sqrt(a);
+    *a = floatx80_sqrt(*b);
 }
-STATIC_INLINE fptype fp_lognp1(fptype a)
+STATIC_INLINE void fp_lognp1(fptype *a, fptype *b)
 {
-    return floatx80_flognp1(a);
+    *a = floatx80_flognp1(*b);
 }
-STATIC_INLINE fptype fp_sin(fptype a)
+STATIC_INLINE void fp_sin(fptype *a, fptype *b)
 {
-    floatx80_fsin(&a);
-    return a;
+    fptype c = *b;
+    floatx80_fsin(&c);
+    *a = c;
 }
-STATIC_INLINE fptype fp_tan(fptype a)
+STATIC_INLINE void fp_tan(fptype *a, fptype *b)
 {
-    floatx80_ftan(&a);
-    return a;
+    fptype c = *b;
+    floatx80_ftan(&c);
+    *a = c;
 }
-STATIC_INLINE fptype fp_logn(fptype a)
+STATIC_INLINE void fp_logn(fptype *a, fptype *b)
 {
-    return floatx80_flogn(a);
+    *a = floatx80_flogn(*b);
 }
-STATIC_INLINE fptype fp_log10(fptype a)
+STATIC_INLINE void fp_log10(fptype *a, fptype *b)
 {
-    return floatx80_flog10(a);
+    *a = floatx80_flog10(*b);
 }
-STATIC_INLINE fptype fp_log2(fptype a)
+STATIC_INLINE void fp_log2(fptype *a, fptype *b)
 {
-    return floatx80_flog2(a);
+    *a = floatx80_flog2(*b);
 }
-STATIC_INLINE fptype fp_abs(fptype a)
+STATIC_INLINE void fp_abs(fptype *a, fptype *b)
 {
-    return floatx80_abs(a);
+    *a = floatx80_abs(*b);
 }
-STATIC_INLINE fptype fp_neg(fptype a)
+STATIC_INLINE void fp_neg(fptype *a, fptype *b)
 {
-    return floatx80_neg(a);
+    *a = floatx80_neg(*b);
 }
-STATIC_INLINE fptype fp_cos(fptype a)
+STATIC_INLINE void fp_cos(fptype *a, fptype *b)
 {
-    floatx80_fcos(&a);
-    return a;
+    fptype c = *b;
+    floatx80_fcos(&c);
+    *a = c;
 }
-STATIC_INLINE fptype fp_getexp(fptype a)
+STATIC_INLINE void fp_getexp(fptype *a, fptype *b)
 {
-    return floatx80_getexp(a);
+    *a = floatx80_getexp(*b);
 }
-STATIC_INLINE fptype fp_getman(fptype a)
+STATIC_INLINE void fp_getman(fptype *a, fptype *b)
 {
-    return floatx80_getman(a);
+    *a = floatx80_getman(*b);
 }
-STATIC_INLINE fptype fp_div(fptype a, fptype b)
+STATIC_INLINE void fp_div(fptype *a, fptype *b)
 {
-    return floatx80_div(a, b);
+    *a = floatx80_div(*a, *b);
 }
-STATIC_INLINE fptype fp_mod(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
+STATIC_INLINE void fp_mod(fptype *a, fptype *b, uae_u64 *q, uae_s8 *s)
 {
-    return floatx80_mod(a, b, q, s);
+    *a = floatx80_mod(*a, *b, q, s);
 }
-STATIC_INLINE fptype fp_add(fptype a, fptype b)
+STATIC_INLINE void fp_add(fptype *a, fptype *b)
 {
-    return floatx80_add(a, b);
+    *a = floatx80_add(*a, *b);
 }
-STATIC_INLINE fptype fp_mul(fptype a, fptype b)
+STATIC_INLINE void fp_mul(fptype *a, fptype *b)
 {
-    return floatx80_mul(a, b);
+    *a = floatx80_mul(*a, *b);
 }
-STATIC_INLINE fptype fp_sgldiv(fptype a, fptype b)
+STATIC_INLINE void fp_sgldiv(fptype *a, fptype *b)
 {
-    return floatx80_sgldiv(a, b);
+    *a = floatx80_sgldiv(*a, *b);
 }
-STATIC_INLINE fptype fp_rem(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
+STATIC_INLINE void fp_rem(fptype *a, fptype *b, uae_u64 *q, uae_s8 *s)
 {
-    return floatx80_rem(a, b, q, s);
+    *a = floatx80_rem(*a, *b, q, s);
 }
-STATIC_INLINE fptype fp_scale(fptype a, fptype b)
+STATIC_INLINE void fp_scale(fptype *a, fptype *b)
 {
-    return floatx80_scale(a, b);
+    *a = floatx80_scale(*a, *b);
 }
-STATIC_INLINE fptype fp_sglmul(fptype a, fptype b)
+STATIC_INLINE void fp_sglmul(fptype *a, fptype *b)
 {
-    return floatx80_sglmul(a, b);
+    *a = floatx80_sglmul(*a, *b);
 }
-STATIC_INLINE fptype fp_sub(fptype a, fptype b)
+STATIC_INLINE void fp_sub(fptype *a, fptype *b)
 {
-    return floatx80_sub(a, b);
+    *a = floatx80_sub(*a, *b);
 }
-STATIC_INLINE fptype fp_cmp(fptype a, fptype b)
+STATIC_INLINE void fp_cmp(fptype *a, fptype *b)
 {
-    return floatx80_cmp(a, b);
+    *a = floatx80_cmp(*a, *b);
+}
+STATIC_INLINE void fp_tst(fptype *a, fptype *b)
+{
+    *a = floatx80_tst(*b);
 }
 
 /* FIXME: create softfloat functions for following arithmetics */
 
-STATIC_INLINE fptype fp_sinh(fptype a)
+STATIC_INLINE void fp_sinh(fptype *a, fptype *b)
 {
-    long double fpa;
-    to_native(&fpa, a);
-    fpa = sinhl(fpa);
-    from_native(fpa, &a);
-    return a;
+    long double fp;
+    to_native(&fp, *b);
+    fp = sinhl(fp);
+    from_native(fp, a);
 }
-STATIC_INLINE fptype fp_etoxm1(fptype a)
+STATIC_INLINE void fp_etoxm1(fptype *a, fptype *b)
 {
-    long double fpa;
-    to_native(&fpa, a);
-    fpa = expl(fpa) - 1.0;
-    from_native(fpa, &a);
-    return a;
+    long double fp;
+    to_native(&fp, *b);
+    fp = expl(fp) - 1.0;
+    from_native(fp, a);
 }
-STATIC_INLINE fptype fp_tanh(fptype a)
+STATIC_INLINE void fp_tanh(fptype *a, fptype *b)
 {
-    long double fpa;
-    to_native(&fpa, a);
-    fpa = tanhl(fpa);
-    from_native(fpa, &a);
-    return a;
+    long double fp;
+    to_native(&fp, *b);
+    fp = tanhl(fp);
+    from_native(fp, a);
 }
-STATIC_INLINE fptype fp_atan(fptype a)
+STATIC_INLINE void fp_atan(fptype *a, fptype *b)
 {
-    long double fpa;
-    to_native(&fpa, a);
-    fpa = atanl(fpa);
-    from_native(fpa, &a);
-    return a;
+    long double fp;
+    to_native(&fp, *b);
+    fp = atanl(fp);
+    from_native(fp, a);
 }
-STATIC_INLINE fptype fp_asin(fptype a)
+STATIC_INLINE void fp_asin(fptype *a, fptype *b)
 {
-    long double fpa;
-    to_native(&fpa, a);
-    fpa = asinl(fpa);
-    from_native(fpa, &a);
-    return a;
+    long double fp;
+    to_native(&fp, *b);
+    fp = asinl(fp);
+    from_native(fp, a);
 }
-STATIC_INLINE fptype fp_atanh(fptype a)
+STATIC_INLINE void fp_atanh(fptype *a, fptype *b)
 {
-    long double fpa;
-    to_native(&fpa, a);
-    fpa = atanhl(fpa);
-    from_native(fpa, &a);
-    return a;
+    long double fp;
+    to_native(&fp, *b);
+    fp = atanhl(fp);
+    from_native(fp, a);
 }
-STATIC_INLINE fptype fp_etox(fptype a)
+STATIC_INLINE void fp_etox(fptype *a, fptype *b)
 {
-    long double fpa;
-    to_native(&fpa, a);
-    fpa = expl(fpa);
-    from_native(fpa, &a);
-    return a;
+    long double fp;
+    to_native(&fp, *b);
+    fp = expl(fp);
+    from_native(fp, a);
 }
-STATIC_INLINE fptype fp_twotox(fptype a)
+STATIC_INLINE void fp_twotox(fptype *a, fptype *b)
 {
-    long double fpa;
-    to_native(&fpa, a);
-    fpa = powl(2.0, fpa);
-    from_native(fpa, &a);
-    return a;
+    long double fp;
+    to_native(&fp, *b);
+    fp = powl(2.0, fp);
+    from_native(fp, a);
 }
-STATIC_INLINE fptype fp_tentox(fptype a)
+STATIC_INLINE void fp_tentox(fptype *a, fptype *b)
 {
-    long double fpa;
-    to_native(&fpa, a);
-    fpa = powl(10.0, fpa);
-    from_native(fpa, &a);
-    return a;
+    long double fp;
+    to_native(&fp, *b);
+    fp = powl(10.0, fp);
+    from_native(fp, a);
 }
-STATIC_INLINE fptype fp_cosh(fptype a)
+STATIC_INLINE void fp_cosh(fptype *a, fptype *b)
 {
-    long double fpa;
-    to_native(&fpa, a);
-    fpa = coshl(fpa);
-    from_native(fpa, &a);
-    return a;
+    long double fp;
+    to_native(&fp, *b);
+    fp = coshl(fp);
+    from_native(fp, a);
 }
-STATIC_INLINE fptype fp_acos(fptype a)
+STATIC_INLINE void fp_acos(fptype *a, fptype *b)
 {
-    long double fpa;
-    to_native(&fpa, a);
-    fpa = acosl(fpa);
-    from_native(fpa, &a);
-    return a;
+    long double fp;
+    to_native(&fp, *b);
+    fp = acosl(fp);
+    from_native(fp, a);
 }
 
 #endif
