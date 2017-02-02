@@ -181,7 +181,8 @@ void fpsr_check_exception(void)
         int vector = 0;
         int vtable[8] = { 49, 49, 50, 51, 53, 52, 54, 48 };
         int i;
-        for (i = 7; i >= 0; i--) {
+        // BSUN is handled separately
+        for (i = 6; i >= 0; i--) {
             if (exception & (1 << i)) {
                 vector = vtable[i];
                 break;
@@ -197,10 +198,6 @@ void fpsr_set_result(fptype *result)
     regs.fpsr &= 0x00fffff8; // clear cc
     if (fp_is_nan (result)) {
         regs.fpsr |= FPSR_CC_NAN;
-        // check if nan is signaling
-        if (fp_is_snan(result)) {
-            regs.fpsr |= FPSR_SNAN;
-        }
     } else if (fp_is_zero(result)) {
         regs.fpsr |= FPSR_CC_Z;
     } else if (fp_is_infinity (result)) {
@@ -218,7 +215,7 @@ void fpsr_clear_status(void)
     // clear external status
     clear_fp_status();
 }
-void fpsr_make_status(void)
+uae_u32 fpsr_make_status(void)
 {
     // get external status
     get_fp_status(&regs.fpsr);
@@ -235,7 +232,7 @@ void fpsr_make_status(void)
     if (regs.fpsr & (FPSR_OVFL | FPSR_INEX2 | FPSR_INEX1))
         regs.fpsr |= FPSR_AE_INEX; // INEX = INEX1 || INEX2 || OVFL
     
-    fpsr_check_exception();
+    return (regs.fpsr & regs.fpcr & (FPSR_SNAN | FPSR_OPERR | FPSR_DZ));
 }
 int fpsr_set_bsun(void)
 {
@@ -2136,143 +2133,145 @@ static uaecptr fmovem2fpp (uaecptr ad, uae_u32 list, int incr, int regdir)
     return ad;
 }
 
-static bool fp_arithmetic(fptype *srcd, int reg, int extra)
+static bool fp_arithmetic(fptype *src, fptype *dst, int extra)
 {
-    fptype fp = *srcd;
     uae_u64 q = 0;
     uae_s8 s = 0;
-    
-    // SNAN -> QNAN if SNAN interrupt is not enabled
-    if (fp_is_snan(&fp) && !(regs.fpcr & 0x4000)) {
-        fp_unset_snan(&fp);
-    }
     
     switch (extra & 0x7f)
     {
         case 0x00: /* FMOVE */
         case 0x40: /* FSMOVE */
         case 0x44: /* FDMOVE */
-            regs.fp[reg] = fp_move(fp);
+            fp_move(dst, src);
             break;
         case 0x01: /* FINT */
-            regs.fp[reg] = fp_int(fp);
+            fp_int(dst, src);
             break;
         case 0x02: /* FSINH */
-            regs.fp[reg] = fp_sinh(fp);
+            fp_sinh(dst, src);
             break;
         case 0x03: /* FINTRZ */
-            regs.fp[reg] = fp_intrz(fp);
+            fp_intrz(dst, src);
             break;
         case 0x04: /* FSQRT */
         case 0x41: /* FSSQRT */
         case 0x45: /* FDSQRT */
-            regs.fp[reg] = fp_sqrt(fp);
+            fp_sqrt(dst, src);
             break;
         case 0x06: /* FLOGNP1 */
-            regs.fp[reg] = fp_lognp1(fp);
+            fp_lognp1(dst, src);
             break;
         case 0x08: /* FETOXM1 */
-            regs.fp[reg] = fp_etoxm1(fp);
+            fp_etoxm1(dst, src);
             break;
         case 0x09: /* FTANH */
-            regs.fp[reg] = fp_tanh(fp);
+            fp_tanh(dst, src);
             break;
         case 0x0a: /* FATAN */
-            regs.fp[reg] = fp_atan(fp);
+            fp_atan(dst, src);
             break;
         case 0x0c: /* FASIN */
-            regs.fp[reg] = fp_asin(fp);
+            fp_asin(dst, src);
             break;
         case 0x0d: /* FATANH */
-            regs.fp[reg] = fp_atanh(fp);
+            fp_atanh(dst, src);
             break;
         case 0x0e: /* FSIN */
-            regs.fp[reg] = fp_sin(fp);
+            fp_sin(dst, src);
             break;
         case 0x0f: /* FTAN */
-            regs.fp[reg] = fp_tan(fp);
+            fp_tan(dst, src);
             break;
         case 0x10: /* FETOX */
-            regs.fp[reg] = fp_etox(fp);
+            fp_etox(dst, src);
             break;
         case 0x11: /* FTWOTOX */
-            regs.fp[reg] = fp_twotox(fp);
+            fp_twotox(dst, src);
             break;
         case 0x12: /* FTENTOX */
-            regs.fp[reg] = fp_tentox(fp);
+            fp_tentox(dst, src);
             break;
         case 0x14: /* FLOGN */
-            regs.fp[reg] = fp_logn(fp);
+            fp_logn(dst, src);
             break;
         case 0x15: /* FLOG10 */
-            regs.fp[reg] = fp_log10(fp);
+            fp_log10(dst, src);
             break;
         case 0x16: /* FLOG2 */
-            regs.fp[reg] = fp_log2(fp);
+            fp_log2(dst, src);
             break;
         case 0x18: /* FABS */
         case 0x58: /* FSABS */
         case 0x5c: /* FDABS */
-            regs.fp[reg] = fp_abs(fp);
+            fp_abs(dst, src);
             break;
         case 0x19: /* FCOSH */
-            regs.fp[reg] = fp_cosh(fp);
+            fp_cosh(dst, src);
             break;
         case 0x1a: /* FNEG */
         case 0x5a: /* FSNEG */
         case 0x5e: /* FDNEG */
-            regs.fp[reg] = fp_neg(fp);
+            fp_neg(dst, src);
             break;
         case 0x1c: /* FACOS */
-            regs.fp[reg] = fp_acos(fp);
+            fp_acos(dst, src);
             break;
         case 0x1d: /* FCOS */
-            regs.fp[reg] = fp_cos(fp);
+            fp_cos(dst, src);
             break;
         case 0x1e: /* FGETEXP */
-            regs.fp[reg] = fp_getexp(fp);
+            fp_getexp(dst, src);
             break;
         case 0x1f: /* FGETMAN */
-            regs.fp[reg] = fp_getman(fp);
+            fp_getman(dst, src);
             break;
         case 0x20: /* FDIV */
         case 0x60: /* FSDIV */
         case 0x64: /* FDDIV */
-            regs.fp[reg] = fp_div(regs.fp[reg], fp);
+            fp_div(dst, src);
             break;
         case 0x21: /* FMOD */
-            regs.fp[reg] = fp_mod(regs.fp[reg], fp, &q, &s);
+            fp_mod(dst, src, &q, &s);
+            if (fpsr_make_status())
+                return false;
             fpsr_set_quotient(q, s);
             break;
         case 0x22: /* FADD */
         case 0x62: /* FSADD */
         case 0x66: /* FDADD */
-            regs.fp[reg] = fp_add(regs.fp[reg], fp);
+            fp_add(dst, src);
             break;
         case 0x23: /* FMUL */
         case 0x63: /* FSMUL */
         case 0x67: /* FDMUL */
-            regs.fp[reg] = fp_mul(regs.fp[reg], fp);
+            fp_mul(dst, src);
             break;
         case 0x24: /* FSGLDIV */
-            regs.fp[reg] = fp_sgldiv(regs.fp[reg], fp);
-            fpsr_set_result(&regs.fp[reg]);
+            fp_sgldiv(dst, src);
+            if (fpsr_make_status())
+                return false;
+            fpsr_set_result(dst);
             return true;
         case 0x25: /* FREM */
-            regs.fp[reg] = fp_rem(regs.fp[reg], fp, &q, &s);
+            fp_rem(dst, src, &q, &s);
+            if (fpsr_make_status())
+                return false;
             fpsr_set_quotient(q, s);
             break;
         case 0x26: /* FSCALE */
-            regs.fp[reg] = fp_scale(regs.fp[reg], fp);
+            fp_scale(dst, src);
             break;
         case 0x27: /* FSGLMUL */
-            regs.fp[reg] = fp_sglmul(regs.fp[reg], fp);
-            fpsr_set_result(&regs.fp[reg]);
+            fp_sglmul(dst, src);
+            if (fpsr_make_status())
+                return false;
+            fpsr_set_result(dst);
             return true;
         case 0x28: /* FSUB */
         case 0x68: /* FSSUB */
         case 0x6c: /* FDSUB */
-            regs.fp[reg] = fp_sub(regs.fp[reg], fp);
+            fp_sub(dst, src);
             break;
         case 0x30: /* FSINCOS */
         case 0x31:
@@ -2282,33 +2281,45 @@ static bool fp_arithmetic(fptype *srcd, int reg, int extra)
         case 0x35:
         case 0x36:
         case 0x37:
-            regs.fp[extra & 7] = fp_cos(fp);
-            regs.fp[reg]       = fp_sin(fp);
-            if (((regs.fpcr >> 6) & 3) == 1) fp_round32(&regs.fp[extra & 7]);
-            if (((regs.fpcr >> 6) & 3) >= 2) fp_round64(&regs.fp[extra & 7]);
+            fp_cos(dst, src);
+            if (((regs.fpcr >> 6) & 3) == 1) fp_round32(dst);
+            if (((regs.fpcr >> 6) & 3) >= 2) fp_round64(dst);
+            if (fpsr_make_status())
+                return false;
+            regs.fp[extra & 7] = *dst;
+            fp_sin(dst, src);
             break;
         case 0x38: /* FCMP */
-            fp = fp_cmp(regs.fp[reg], fp);
-            fpsr_set_result(&fp);
-            return true;
+            fp_cmp(dst, src);
+            if (fpsr_make_status())
+                return false;
+            fpsr_set_result(dst);
+            return false;
         case 0x3a: /* FTST */
-            fpsr_set_result(&fp);
-            return true;
+            fp_tst(dst, src);
+            if (fpsr_make_status())
+                return false;
+            fpsr_set_result(dst);
+            return false;
             
         default:
+            write_log (_T("Unknown FPU arithmetic function (%02x)\n"), extra & 0x7f);
             return false;
     }
     
     if ((extra & 0x44) == 0x40)
-        fp_round32(&regs.fp[reg]);
+        fp_round32(dst);
     else if ((extra & 0x44) == 0x44)
-        fp_round64(&regs.fp[reg]);
+        fp_round64(dst);
     else if (((regs.fpcr >> 6) & 3) == 1)
-        fp_round32(&regs.fp[reg]);
+        fp_round32(dst);
     else if (((regs.fpcr >> 6) & 3) >= 2)
-        fp_round64(&regs.fp[reg]);
+        fp_round64(dst);
     
-    fpsr_set_result(&regs.fp[reg]);
+    if (fpsr_make_status())
+        return false;
+    
+    fpsr_set_result(dst);
     
     return true;
 }
@@ -2317,7 +2328,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
 {
     int reg = -1;
     int v;
-    fptype srcd;
+    fptype src, dst;
     uaecptr pc = m68k_getpc () - 4;
     uaecptr ad = 0;
     
@@ -2334,6 +2345,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
             if (put_fp_value (&regs.fp[(extra >> 7) & 7], opcode, extra, pc) == 0)
                 fpu_noinst (opcode, pc);
             fpsr_make_status();
+            fpsr_check_exception();
             return;
             
         case 4:
@@ -2532,11 +2544,12 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
             if ((extra & 0xfc00) == 0x5c00) {
                 if (fault_if_no_fpu (opcode, extra, 0, pc))
                     return;
-                if (fault_if_unimplemented_680x0 (opcode, extra, ad, pc, &srcd, reg))
+                if (fault_if_unimplemented_680x0 (opcode, extra, ad, pc, &src, reg))
                     return;
                 fpsr_clear_status();
                 fpu_get_constant(&regs.fp[reg], extra);
                 fpsr_make_status();
+                fpsr_check_exception();
                 return;
             }
             
@@ -2546,7 +2559,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
             
             fpsr_clear_status();
 
-            v = get_fp_value (opcode, extra, &srcd, pc, &ad);
+            v = get_fp_value (opcode, extra, &src, pc, &ad);
             if (v <= 0) {
                 if (v == 0)
                     fpu_noinst (opcode, pc);
@@ -2554,19 +2567,22 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
             }
             
             // get_fp_value() checked this, but only if EA was nonzero (non-register)
-            if (fault_if_unimplemented_680x0 (opcode, extra, ad, pc, &srcd, reg))
+            if (fault_if_unimplemented_680x0 (opcode, extra, ad, pc, &src, reg))
                 return;
             
             regs.fpiar =  pc;
             
-            if ((extra & 0x30) == 0x20 || (extra & 0x7f) == 0x38) // dyadic operation
-                if (normalize_or_fault_if_no_denormal_support_pre(opcode, extra, ad, pc, &regs.fp[reg], 2))
-                    return;
+            dst = regs.fp[reg];
             
-            v = fp_arithmetic(&srcd, reg, extra);
-            if (!v)
-                fpu_noinst (opcode, pc);
-            fpsr_make_status();
+            if ((extra & 0x30) == 0x20 || (extra & 0x7f) == 0x38) // dyadic operation
+                if (normalize_or_fault_if_no_denormal_support_pre(opcode, extra, ad, pc, &dst, 2))
+                    return;
+
+            v = fp_arithmetic(&src, &dst, extra);
+            if (v)
+                regs.fp[reg] = dst;
+            
+            fpsr_check_exception();
             return;
         default:
             break;
