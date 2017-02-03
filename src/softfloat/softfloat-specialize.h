@@ -97,7 +97,7 @@ static commonNaNT float32ToCommonNaN( float32 a )
 {
     commonNaNT z;
 
-    if ( float32_is_signaling_nan( a ) ) float_raise( float_flag_invalid );
+    if ( float32_is_signaling_nan( a ) ) float_raise( float_flag_signaling );
     z.sign = a>>31;
     z.low = 0;
     z.high = ( (bits64) a )<<41;
@@ -133,7 +133,7 @@ static float32 propagateFloat32NaN( float32 a, float32 b )
     bIsSignalingNaN = float32_is_signaling_nan( b );
     a |= 0x00400000;
     b |= 0x00400000;
-    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_invalid );
+    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling );
     if ( aIsNaN ) {
         return ( aIsSignalingNaN & bIsNaN ) ? b : a;
     }
@@ -184,7 +184,7 @@ static commonNaNT float64ToCommonNaN( float64 a )
 {
     commonNaNT z;
 
-    if ( float64_is_signaling_nan( a ) ) float_raise( float_flag_invalid );
+    if ( float64_is_signaling_nan( a ) ) float_raise( float_flag_signaling );
     z.sign = a>>63;
     z.low = 0;
     z.high = a<<12;
@@ -223,7 +223,7 @@ static float64 propagateFloat64NaN( float64 a, float64 b )
     bIsSignalingNaN = float64_is_signaling_nan( b );
     a |= LIT64( 0x0008000000000000 );
     b |= LIT64( 0x0008000000000000 );
-    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_invalid );
+    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling );
     if ( aIsNaN ) {
         return ( aIsSignalingNaN & bIsNaN ) ? b : a;
     }
@@ -240,7 +240,7 @@ static float64 propagateFloat64NaN( float64 a, float64 b )
 | `high' and `low' values hold the most- and least-significant bits,
 | respectively.
 *----------------------------------------------------------------------------*/
-#define floatx80_default_nan_high 0xFFFF
+#define floatx80_default_nan_high 0x7FFF
 #define floatx80_default_nan_low  LIT64( 0xFFFFFFFFFFFFFFFF )
 
 /*----------------------------------------------------------------------------
@@ -366,7 +366,7 @@ static commonNaNT floatx80ToCommonNaN( floatx80 a )
 {
     commonNaNT z;
 
-    if ( floatx80_is_signaling_nan( a ) ) float_raise( float_flag_invalid );
+    if ( floatx80_is_signaling_nan( a ) ) float_raise( float_flag_signaling );
     z.sign = a.high>>15;
     z.low = 0;
     z.high = a.low<<1;
@@ -382,8 +382,11 @@ static commonNaNT floatx80ToCommonNaN( floatx80 a )
 static floatx80 commonNaNToFloatx80( commonNaNT a )
 {
     floatx80 z;
-
+#ifdef SOFTFLOAT_68K
+    z.low = LIT64( 0x4000000000000000 ) | ( a.high>>1 );
+#else
     z.low = LIT64( 0xC000000000000000 ) | ( a.high>>1 );
+#endif
     z.high = ( ( (bits16) a.sign )<<15 ) | 0x7FFF;
     return z;
 
@@ -403,17 +406,45 @@ floatx80 propagateFloatx80NaN( floatx80 a, floatx80 b )
     aIsSignalingNaN = floatx80_is_signaling_nan( a );
     bIsNaN = floatx80_is_nan( b );
     bIsSignalingNaN = floatx80_is_signaling_nan( b );
+#ifdef SOFTFLOAT_68K
+    a.low |= LIT64( 0x4000000000000000 );
+    b.low |= LIT64( 0x4000000000000000 );
+    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling );
+    return aIsNaN ? a : b;
+#else
     a.low |= LIT64( 0xC000000000000000 );
     b.low |= LIT64( 0xC000000000000000 );
-    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_invalid );
+    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling );
     if ( aIsNaN ) {
         return ( aIsSignalingNaN & bIsNaN ) ? b : a;
     }
     else {
         return b;
     }
+#endif
 
 }
+
+#ifdef SOFTFLOAT_68K
+/*----------------------------------------------------------------------------
+ | Takes extended double-precision floating-point  NaN  `a' and returns the
+ | appropriate NaN result. If `a' is a signaling NaN, the invalid exception
+ | is raised.
+ *----------------------------------------------------------------------------*/
+
+floatx80 propagateFloatx80NaNOneArg(floatx80 a)
+{
+    if ( floatx80_is_signaling_nan( a ) )
+        float_raise( float_flag_signaling );
+#ifdef SOFTFLOAT_68K
+    a.low |= LIT64( 0x4000000000000000 );
+#else
+    a.low |= LIT64( 0xC000000000000000 );
+#endif
+    
+    return a;
+}
+#endif
 
 #define EXP_BIAS 0x3FFF
 
@@ -502,7 +533,7 @@ static commonNaNT float128ToCommonNaN( float128 a )
 {
     commonNaNT z;
 
-    if ( float128_is_signaling_nan( a ) ) float_raise( float_flag_invalid );
+    if ( float128_is_signaling_nan( a ) ) float_raise( float_flag_signaling );
     z.sign = a.high>>63;
     shortShift128Left( a.high, a.low, 16, &z.high, &z.low );
     return z;
@@ -540,7 +571,7 @@ static float128 propagateFloat128NaN( float128 a, float128 b )
     bIsSignalingNaN = float128_is_signaling_nan( b );
     a.high |= LIT64( 0x0000800000000000 );
     b.high |= LIT64( 0x0000800000000000 );
-    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_invalid );
+    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling );
     if ( aIsNaN ) {
         return ( aIsSignalingNaN & bIsNaN ) ? b : a;
     }

@@ -854,13 +854,13 @@ static void to_pack (fptype *fp, uae_u32 *wrd)
     if (((wrd[0] >> 16) & 0x7fff) == 0x7fff) {
         // infinity has extended exponent and all 0 packed fraction
         // nans are copies bit by bit
-        to_exten_fmovem(fp, wrd[0], wrd[1], wrd[2]);
+        to_exten(fp, wrd[0], wrd[1], wrd[2]);
         return;
     }
     if (!(wrd[0] & 0xf) && !wrd[1] && !wrd[2]) {
         // exponent is not cared about, if mantissa is zero
         wrd[0] &= 0x80000000;
-        to_exten_fmovem(fp, wrd[0], wrd[1], wrd[2]);
+        to_exten(fp, wrd[0], wrd[1], wrd[2]);
         return;
     }
     
@@ -908,13 +908,13 @@ static void from_pack (fptype *src, uae_u32 *wrd, int kfactor)
     long double fp;
     
     if (fp_is_nan (src)) {
-        // copied bit by bit, no conversion
-        from_exten_fmovem(src, &wrd[0], &wrd[1], &wrd[2]);
+        // copy bit by bit, handle signaling nan
+        from_exten(src, &wrd[0], &wrd[1], &wrd[2]);
         return;
     }
     if (fp_is_infinity (src)) {
         // extended exponent and all 0 packed fraction
-        from_exten_fmovem(src, &wrd[0], &wrd[1], &wrd[2]);
+        from_exten(src, &wrd[0], &wrd[1], &wrd[2]);
         wrd[1] = wrd[2] = 0;
         return;
     }

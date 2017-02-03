@@ -563,7 +563,7 @@ static float64
 | `zSigPtr', respectively.
 *----------------------------------------------------------------------------*/
 
-static void
+/* static */ void
 	normalizeFloatx80Subnormal( bits64 aSig, int32 *zExpPtr, bits64 *zSigPtr )
 {
 	int8 shiftCount;
@@ -3106,8 +3106,12 @@ int32 floatx80_to_int32( floatx80 a )
 	aSign = extractFloatx80Sign( a );
 #ifdef SOFTFLOAT_68K
     if ( aExp == 0x7FFF ) {
+        if ( (bits64) ( aSig<<1 ) ) {
+            a = propagateFloatx80NaNOneArg( a );
+            if ( a.low == aSig ) float_raise( float_flag_invalid );
+            return (sbits32)(a.low>>32);
+        }
         float_raise( float_flag_invalid );
-        if ( (bits64) ( aSig<<1 ) ) return (sbits32)(aSig>>32);
         return aSign ? (sbits32) 0x80000000 : 0x7FFFFFFF;
     }
 #else
@@ -3130,8 +3134,12 @@ int16 floatx80_to_int16( floatx80 a )
     aExp = extractFloatx80Exp( a );
     aSign = extractFloatx80Sign( a );
     if ( aExp == 0x7FFF ) {
+        if ( (bits64) ( aSig<<1 ) ) {
+            a = propagateFloatx80NaNOneArg( a );
+            if ( a.low == aSig ) float_raise( float_flag_invalid );
+            return (sbits16)(a.low>>48);
+        }
         float_raise( float_flag_invalid );
-        if ( (bits64) ( aSig<<1 ) ) return (sbits16)(aSig>>48);
         return aSign ? (sbits16) 0x8000 : 0x7FFF;
     }
     shiftCount = 0x4037 - aExp;
@@ -3150,8 +3158,12 @@ int8 floatx80_to_int8( floatx80 a )
     aExp = extractFloatx80Exp( a );
     aSign = extractFloatx80Sign( a );
     if ( aExp == 0x7FFF ) {
+        if ( (bits64) ( aSig<<1 ) ) {
+            a = propagateFloatx80NaNOneArg( a );
+            if ( a.low == aSig ) float_raise( float_flag_invalid );
+            return (sbits8)(a.low>>56);
+        }
         float_raise( float_flag_invalid );
-        if ( (bits64) ( aSig<<1 ) ) return (sbits8)(aSig>>56);
         return aSign ? (sbits8) 0x80 : 0x7F;
     }
     shiftCount = 0x4037 - aExp;
@@ -3367,7 +3379,7 @@ floatx80 floatx80_to_floatx80( floatx80 a )
     aSign = extractFloatx80Sign( a );
     
     if ( aExp == 0x7FFF && (bits64) ( aSig<<1 ) ) {
-        return propagateFloatx80NaN( a, a );
+        return commonNaNToFloatx80( floatx80ToCommonNaN( a ) );
     }
     if ( aExp == 0 && aSig != 0 ) {
         return normalizeRoundAndPackFloatx80( floatx80_rounding_precision, aSign, aExp, aSig, 0 );
@@ -3484,7 +3496,7 @@ floatx80 floatx80_round_to_int( floatx80 a )
 	aExp = extractFloatx80Exp( a );
 	if ( 0x403E <= aExp ) {
 		if ( ( aExp == 0x7FFF ) && (bits64) ( extractFloatx80Frac( a )<<1 ) ) {
-			return propagateFloatx80NaN( a, a );
+			return propagateFloatx80NaNOneArg( a );
 		}
 		return a;
 	}
@@ -3554,7 +3566,7 @@ floatx80 floatx80_round_to_int_toward_zero( floatx80 a )
     aExp = extractFloatx80Exp( a );
     if ( 0x403E <= aExp ) {
         if ( ( aExp == 0x7FFF ) && (bits64) ( extractFloatx80Frac( a )<<1 ) ) {
-            return propagateFloatx80NaN( a, a );
+            return propagateFloatx80NaNOneArg( a );
         }
         return a;
     }
@@ -4362,7 +4374,7 @@ floatx80 floatx80_sqrt( floatx80 a )
 	aExp = extractFloatx80Exp( a );
 	aSign = extractFloatx80Sign( a );
 	if ( aExp == 0x7FFF ) {
-		if ( (bits64) ( aSig0<<1 ) ) return propagateFloatx80NaN( a, a );
+		if ( (bits64) ( aSig0<<1 ) ) return propagateFloatx80NaNOneArg( a );
 		if ( ! aSign ) return a;
 		goto invalid;
 	}
@@ -4431,7 +4443,7 @@ floatx80 floatx80_getman( floatx80 a )
     aSign = extractFloatx80Sign( a );
     
     if ( aExp == 0x7FFF ) {
-        if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaN( a, a );
+        if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaNOneArg( a );
         float_raise( float_flag_invalid );
         a.low = floatx80_default_nan_low;
         a.high = floatx80_default_nan_high;
@@ -4462,7 +4474,7 @@ floatx80 floatx80_getexp( floatx80 a )
     aSign = extractFloatx80Sign( a );
     
     if ( aExp == 0x7FFF ) {
-        if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaN( a, a );
+        if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaNOneArg( a );
         float_raise( float_flag_invalid );
         a.low = floatx80_default_nan_low;
         a.high = floatx80_default_nan_high;
@@ -4550,7 +4562,7 @@ floatx80 floatx80_abs(floatx80 a)
     aExp = extractFloatx80Exp(a);
     
     if ( aExp == 0x7FFF && (bits64) ( aSig<<1 ) ) {
-        return propagateFloatx80NaN( a, a );
+        return propagateFloatx80NaNOneArg( a );
     }
     
     if ( aExp == 0 ) {
@@ -4580,7 +4592,7 @@ floatx80 floatx80_neg(floatx80 a)
     aSign = extractFloatx80Sign(a);
     
     if ( aExp == 0x7FFF && (bits64) ( aSig<<1 ) ) {
-        return propagateFloatx80NaN( a, a );
+        return propagateFloatx80NaNOneArg( a );
     }
     
     aSign = !aSign;
@@ -4616,9 +4628,8 @@ floatx80 floatx80_cmp( floatx80 a, floatx80 b )
     
     if ( ( aExp == 0x7FFF && (bits64) ( aSig<<1 ) ) ||
          ( bExp == 0x7FFF && (bits64) ( bSig<<1 ) ) ) {
-        if ( floatx80_is_signaling_nan( a ) || floatx80_is_signaling_nan( b ) )
-            float_raise( float_flag_signaling );
-        return packFloatx80(0, 0x7FFF, floatx80_default_nan_low);
+        return propagateFloatx80NaN( packFloatx80( 0, aExp, aSig ),
+                                     packFloatx80( 0, bExp, bSig ) );
     }
     
     if ( bExp < aExp ) return packFloatx80( aSign, 0x3FFF, LIT64( 0x8000000000000000 ) );
@@ -4642,8 +4653,15 @@ floatx80 floatx80_cmp( floatx80 a, floatx80 b )
     
 floatx80 floatx80_tst( floatx80 a )
 {
-    if ( floatx80_is_signaling_nan( a ) )
-        float_raise( float_flag_signaling );
+    int32 aExp;
+    bits64 aSig;
+    
+    aSig = extractFloatx80Frac( a );
+    aExp = extractFloatx80Exp( a );
+    
+    if ( aExp == 0x7FFF && (bits64) ( aSig<<1 ) )
+        return propagateFloatx80NaNOneArg( a );
+    
     return a;
 }
     
@@ -4658,7 +4676,7 @@ floatx80 floatx80_move( floatx80 a )
     aSign = extractFloatx80Sign( a );
     
     if ( aExp == 0x7FFF ) {
-        if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaN( a, a );
+        if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaNOneArg( a );
         return a;
     }
     if ( aExp == 0 ) {
