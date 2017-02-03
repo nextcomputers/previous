@@ -299,7 +299,11 @@ floatx80 floatx80_move( floatx80 a );
 #endif
 
 // roundAndPackFloatx80 used to be in softfloat-round-pack, is now in softfloat.c
+void normalizeFloatx80Subnormal( bits64 aSig, int32 *zExpPtr, bits64 *zSigPtr );
 floatx80 roundAndPackFloatx80(int8 roundingPrecision, flag zSign, int32 zExp, bits64 zSig0, bits64 zSig1);
+// functions are in softfloat-specialize.h
+floatx80 propagateFloatx80NaNOneArg(floatx80 a);
+floatx80 propagateFloatx80NaN( floatx80 a, floatx80 b );
 
 #endif
 

@@ -39,39 +39,6 @@ static const floatx80 floatx80_default_nan = { 0xffff, 0xffffffffffffffffU };
 
 #define EXP_BIAS 0x3FFF
 
-/*----------------------------------------------------------------------------
-| Takes extended double-precision floating-point  NaN  `a' and returns the
-| appropriate NaN result. If `a' is a signaling NaN, the invalid exception
-| is raised.
-*----------------------------------------------------------------------------*/
-
-INLINE floatx80 propagateFloatx80NaNOneArg(floatx80 a)
-{
-	if (floatx80_is_signaling_nan(a))
-		float_raise(float_flag_invalid);
-
-	a.low |= 0xC000000000000000U;
-
-	return a;
-}
-
-/*----------------------------------------------------------------------------
-| Normalizes the subnormal extended double-precision floating-point value
-| represented by the denormalized significand `aSig'.  The normalized exponent
-| and significand are stored at the locations pointed to by `zExpPtr' and
-| `zSigPtr', respectively.
-*----------------------------------------------------------------------------*/
-
-void normalizeFloatx80Subnormal(uint64_t aSig, int32_t *zExpPtr, uint64_t *zSigPtr)
-{
-	int shiftCount = countLeadingZeros64(aSig);
-	*zSigPtr = aSig<<shiftCount;
-#ifdef SOFTFLOAT_68K
-	*zExpPtr = -shiftCount;
-#else
-	*zExpPtr = 1 - shiftCount;
-#endif
-}
 
 /* reduce trigonometric function argument using 128-bit precision
    M_PI approximation */

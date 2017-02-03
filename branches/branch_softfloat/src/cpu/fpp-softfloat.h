@@ -69,20 +69,18 @@ STATIC_INLINE void set_fp_mode(uae_u32 mode_control)
 }
 STATIC_INLINE void get_fp_status(uae_u32 *status)
 {
-    if (float_exception_flags & float_flag_signaling) {
+    if (float_exception_flags & float_flag_signaling)
         *status |= 0x4000;
-    } else {
-        if (float_exception_flags & float_flag_invalid)
-            *status |= 0x2000;
-        if (float_exception_flags & float_flag_divbyzero)
-            *status |= 0x0400;
-        if (float_exception_flags & float_flag_overflow)
-            *status |= 0x1000;
-        if (float_exception_flags & float_flag_underflow)
-            *status |= 0x0800;
-        if (float_exception_flags & float_flag_inexact)
-            *status |= 0x0200;
-    }
+    if (float_exception_flags & float_flag_invalid)
+        *status |= 0x2000;
+    if (float_exception_flags & float_flag_overflow)
+        *status |= 0x1000;
+    if (float_exception_flags & float_flag_underflow)
+        *status |= 0x0800;
+    if (float_exception_flags & float_flag_divbyzero)
+        *status |= 0x0400;
+    if (float_exception_flags & float_flag_inexact)
+        *status |= 0x0200;
 }
 STATIC_INLINE void clear_fp_status(void)
 {
@@ -355,15 +353,13 @@ STATIC_INLINE void fp_lognp1(fptype *a, fptype *b)
 }
 STATIC_INLINE void fp_sin(fptype *a, fptype *b)
 {
-    fptype c = *b;
-    floatx80_fsin(&c);
-    *a = c;
+    *a = *b;
+    floatx80_fsin(a);
 }
 STATIC_INLINE void fp_tan(fptype *a, fptype *b)
 {
-    fptype c = *b;
-    floatx80_ftan(&c);
-    *a = c;
+    *a = *b;
+    floatx80_ftan(a);
 }
 STATIC_INLINE void fp_logn(fptype *a, fptype *b)
 {
@@ -387,9 +383,8 @@ STATIC_INLINE void fp_neg(fptype *a, fptype *b)
 }
 STATIC_INLINE void fp_cos(fptype *a, fptype *b)
 {
-    fptype c = *b;
-    floatx80_fcos(&c);
-    *a = c;
+    *a = *b;
+    floatx80_fcos(a);
 }
 STATIC_INLINE void fp_getexp(fptype *a, fptype *b)
 {
