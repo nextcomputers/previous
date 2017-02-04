@@ -735,7 +735,7 @@ static float64
 				) {
 				return packFloatx80( zSign, 0x7FFE, ~ roundMask );
 			}
-			return packFloatx80( zSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+			return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
 		}
 #ifdef SOFTFLOAT_68K
 		if ( zExp < 0 ) {
@@ -838,7 +838,7 @@ floatx80 roundAndPackFloatx80Sgl( flag zSign, int32 zExp, bits64 zSig0, bits64 z
                 ) {
                 return packFloatx80( zSign, 0x7FFE, LIT64( 0xFFFFFFFFFFFFFFFF ) );
             }
-            return packFloatx80( zSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+            return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
         }
         
         if ( zExp < 0 ) {
@@ -1408,7 +1408,7 @@ floatx80 float32_to_floatx80( float32 a )
 	aSign = extractFloat32Sign( a );
 	if ( aExp == 0xFF ) {
 		if ( aSig ) return commonNaNToFloatx80( float32ToCommonNaN( a ) );
-		return packFloatx80( aSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+		return packFloatx80( aSign, 0x7FFF, floatx80_default_infinity_low );
 	}
 	if ( aExp == 0 ) {
 		if ( aSig == 0 ) return packFloatx80( aSign, 0, 0 );
@@ -2359,7 +2359,7 @@ floatx80 float64_to_floatx80( float64 a )
 	aSign = extractFloat64Sign( a );
 	if ( aExp == 0x7FF ) {
 		if ( aSig ) return commonNaNToFloatx80( float64ToCommonNaN( a ) );
-		return packFloatx80( aSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+		return packFloatx80( aSign, 0x7FFF, floatx80_default_infinity_low );
 	}
 	if ( aExp == 0 ) {
 		if ( aSig == 0 ) return packFloatx80( aSign, 0, 0 );
@@ -3639,7 +3639,7 @@ static floatx80 addFloatx80Sigs( floatx80 a, floatx80 b, flag zSign )
 	else if ( expDiff < 0 ) {
 		if ( bExp == 0x7FFF ) {
 			if ( (bits64) ( bSig<<1 ) ) return propagateFloatx80NaN( a, b );
-			return packFloatx80( zSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+			return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
 		}
 #ifndef SOFTFLOAT_68K
 		if ( aExp == 0 ) ++expDiff;
@@ -3725,7 +3725,7 @@ static floatx80 subFloatx80Sigs( floatx80 a, floatx80 b, flag zSign )
 	bExpBigger:
 	if ( bExp == 0x7FFF ) {
 		if ( (bits64) ( bSig<<1 ) ) return propagateFloatx80NaN( a, b );
-		return packFloatx80( zSign ^ 1, 0x7FFF, LIT64( 0x8000000000000000 ) );
+		return packFloatx80( zSign ^ 1, 0x7FFF, floatx80_default_infinity_low );
 	}
 #ifndef SOFTFLOAT_68K
 	if ( aExp == 0 ) ++expDiff;
@@ -3823,7 +3823,7 @@ floatx80 floatx80_mul( floatx80 a, floatx80 b )
 			return propagateFloatx80NaN( a, b );
 		}
 		if ( ( bExp | bSig ) == 0 ) goto invalid;
-		return packFloatx80( zSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+		return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
 	}
 	if ( bExp == 0x7FFF ) {
 		if ( (bits64) ( bSig<<1 ) ) return propagateFloatx80NaN( a, b );
@@ -3834,7 +3834,7 @@ floatx80 floatx80_mul( floatx80 a, floatx80 b )
 			z.high = floatx80_default_nan_high;
 			return z;
 		}
-		return packFloatx80( zSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+		return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
 	}
 	if ( aExp == 0 ) {
 		if ( aSig == 0 ) return packFloatx80( zSign, 0, 0 );
@@ -3877,7 +3877,7 @@ floatx80 floatx80_sglmul( floatx80 a, floatx80 b )
 			return propagateFloatx80NaN( a, b );
 		}
 		if ( ( bExp | bSig ) == 0 ) goto invalid;
-		return packFloatx80( zSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+		return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
 	}
 	if ( bExp == 0x7FFF ) {
 		if ( (bits64) ( bSig<<1 ) ) return propagateFloatx80NaN( a, b );
@@ -3888,7 +3888,7 @@ floatx80 floatx80_sglmul( floatx80 a, floatx80 b )
 			z.high = floatx80_default_nan_high;
 			return z;
 		}
-		return packFloatx80( zSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+		return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
 	}
 	if ( aExp == 0 ) {
 		if ( aSig == 0 ) return packFloatx80( zSign, 0, 0 );
@@ -3938,7 +3938,7 @@ floatx80 floatx80_div( floatx80 a, floatx80 b )
 			if ( (bits64) ( bSig<<1 ) ) return propagateFloatx80NaN( a, b );
 			goto invalid;
 		}
-		return packFloatx80( zSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+		return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
 	}
 	if ( bExp == 0x7FFF ) {
 		if ( (bits64) ( bSig<<1 ) ) return propagateFloatx80NaN( a, b );
@@ -3954,7 +3954,7 @@ floatx80 floatx80_div( floatx80 a, floatx80 b )
 				return z;
 			}
 			float_raise( float_flag_divbyzero );
-			return packFloatx80( zSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+			return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
 		}
 		normalizeFloatx80Subnormal( bSig, &bExp, &bSig );
 	}
@@ -4013,7 +4013,7 @@ floatx80 floatx80_sgldiv( floatx80 a, floatx80 b )
 			if ( (bits64) ( bSig<<1 ) ) return propagateFloatx80NaN( a, b );
 			goto invalid;
 		}
-		return packFloatx80( zSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+		return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
 	}
 	if ( bExp == 0x7FFF ) {
 		if ( (bits64) ( bSig<<1 ) ) return propagateFloatx80NaN( a, b );
@@ -4029,7 +4029,7 @@ floatx80 floatx80_sgldiv( floatx80 a, floatx80 b )
 		        return z;
 			}
 			float_raise( float_flag_divbyzero );
-			return packFloatx80( zSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+			return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
 		}
 		normalizeFloatx80Subnormal( bSig, &bExp, &bSig );
 	}
@@ -4522,7 +4522,7 @@ floatx80 floatx80_scale(floatx80 a, floatx80 b)
     }
     if ( aExp == 0x7FFF ) {
         if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaN( a, b );
-        return packFloatx80( aSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+        return packFloatx80( aSign, 0x7FFF, floatx80_default_infinity_low );
     }
     if ( aExp == 0 ) {
         if ( aSig == 0 ) return packFloatx80( aSign, 0, 0);
@@ -5159,7 +5159,7 @@ floatx80 float128_to_floatx80( float128 a )
 		if ( aSig0 | aSig1 ) {
 			return commonNaNToFloatx80( float128ToCommonNaN( a ) );
 		}
-		return packFloatx80( aSign, 0x7FFF, LIT64( 0x8000000000000000 ) );
+		return packFloatx80( aSign, 0x7FFF, floatx80_default_infinity_low );
 	}
 	if ( aExp == 0 ) {
 		if ( ( aSig0 | aSig1 ) == 0 ) return packFloatx80( aSign, 0, 0 );
