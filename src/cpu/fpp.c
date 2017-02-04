@@ -1298,12 +1298,14 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
 #if DEBUG_FPP
     write_log (_T("PUTFP: %f %04X %04X\n"), value, opcode, extra);
 #endif
+#if 0
     if (!(extra & 0x4000)) {
         if (fault_if_no_fpu (opcode, extra, 0, oldpc))
             return 1;
         regs.fp[(extra >> 10) & 7] = *value;
         return 1;
     }
+#endif
     reg = opcode & 7;
     mode = (opcode >> 3) & 7;
     size = (extra >> 10) & 7;
@@ -2384,7 +2386,8 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
     {
         case 3:
             fpsr_clear_status();
-            v = put_fp_value (&regs.fp[(extra >> 7) & 7], opcode, extra, pc);
+            src = regs.fp[(extra >> 7) & 7];
+            v = put_fp_value (&src, opcode, extra, pc);
             if (v <= 0) {
                 if (v == 0)
                     fpu_noinst (opcode, pc);
