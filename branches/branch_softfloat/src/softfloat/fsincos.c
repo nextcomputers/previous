@@ -28,11 +28,10 @@ these four paragraphs for those parts of this code that are retained.
 #define USE_estimateDiv128To64
 #include "mamesf.h"
 #include "softfloat.h"
-//#include "softfloat-specialize"
 #include "fpu_constant.h"
 
 static const floatx80 floatx80_one = { 0x3fff, 0x8000000000000000U };
-static const floatx80 floatx80_default_nan = { 0xffff, 0xffffffffffffffffU };
+static const floatx80 floatx80_default_nan = { floatx80_default_nan_high, floatx80_default_nan_low };
 
 #define packFloat2x128m(zHi, zLo) {(zHi), (zLo)}
 #define PACK_FLOAT_128(hi,lo) packFloat2x128m(LIT64(hi),LIT64(lo))

@@ -609,7 +609,7 @@ INLINE bits32 estimateSqrt32( int16 aExp, bits32 a )
 | `a'.  If `a' is zero, 32 is returned.
 *----------------------------------------------------------------------------*/
 
-static int8 countLeadingZeros32( bits32 a )
+INLINE int8 countLeadingZeros32( bits32 a )
 {
     static const int8 countLeadingZerosHigh[] = {
         8, 7, 6, 6, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4,
@@ -650,7 +650,7 @@ static int8 countLeadingZeros32( bits32 a )
 | `a'.  If `a' is zero, 64 is returned.
 *----------------------------------------------------------------------------*/
 
-static int8 countLeadingZeros64( bits64 a )
+INLINE int8 countLeadingZeros64( bits64 a )
 {
     int8 shiftCount;
 
