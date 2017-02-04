@@ -172,10 +172,15 @@ void fpsr_set_exception(uae_u32 exception)
 {
     regs.fpsr |= exception;
 }
-void fpsr_check_exception(void)
+void fpsr_check_exception(uae_u32 mask)
 {
+    uae_u32 exception;
+    bool nonmaskable;
     // Any exception status bit and matching exception enable bits set?
-    uae_u32 exception = (regs.fpsr >> 8) & (regs.fpcr >> 8);
+    exception = (regs.fpsr >> 8) & (regs.fpcr >> 8);
+    // Add 68040/68060 nonmaskable exceptions
+    if (currprefs.cpu_model >= 68040 && currprefs.fpu_model)
+        exception |= (regs.fpsr & (FPSR_OVFL | FPSR_UNFL | mask)) >> 8;
     
     if (exception) {
         int vector = 0;
@@ -189,7 +194,9 @@ void fpsr_check_exception(void)
             }
         }
         // logging only so far
-        write_log (_T("FPU exception: FPSR: %08x, FPCR: %04x (vector: %d)!\n"), regs.fpsr, regs.fpcr, vector);
+        nonmaskable = (exception != ((regs.fpsr >> 8) & (regs.fpcr >> 8)));
+        write_log (_T("FPU %s exception: FPSR: %08x, FPCR: %04x (vector: %d)!\n"),
+                   nonmaskable?"nonmaskable":"", regs.fpsr, regs.fpcr, vector);
     }
 }
 void fpsr_set_result(fptype *result)
@@ -217,6 +224,8 @@ void fpsr_clear_status(void)
 }
 uae_u32 fpsr_make_status(void)
 {
+    uae_u32 exception;
+    
     // get external status
     get_fp_status(&regs.fpsr);
     
@@ -232,7 +241,12 @@ uae_u32 fpsr_make_status(void)
     if (regs.fpsr & (FPSR_OVFL | FPSR_INEX2 | FPSR_INEX1))
         regs.fpsr |= FPSR_AE_INEX; // INEX = INEX1 || INEX2 || OVFL
     
-    return (regs.fpsr & regs.fpcr & (FPSR_SNAN | FPSR_OPERR | FPSR_DZ));
+    // return exceptions that interrupt calculation
+    exception = regs.fpsr & regs.fpcr & (FPSR_SNAN | FPSR_OPERR | FPSR_DZ);
+    if (currprefs.cpu_model >= 68040 && currprefs.fpu_model)
+        exception |= regs.fpsr & (FPSR_OVFL | FPSR_UNFL);
+    
+    return exception;
 }
 int fpsr_set_bsun(void)
 {
@@ -1069,6 +1083,17 @@ static bool normalize_or_fault_if_no_denormal_support_post(uae_u16 opcode, uae_u
 
     return false;
 }
+static bool fault_if_68040_integer_nonmaskable(uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fptype *fpd)
+{
+    if (currprefs.cpu_model == 68040 && currprefs.fpu_model) {
+        fpsr_make_status();
+        if (regs.fpsr & (FPSR_SNAN | FPSR_OPERR)) {
+            fpsr_check_exception(FPSR_SNAN | FPSR_OPERR);
+            //return true; FIXME: enable this once exception works
+        }
+    }
+    return false;
+}
 
 static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr oldpc, uae_u32 *adp)
 {
@@ -1236,6 +1261,7 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr old
             if (fault_if_4060 (opcode, extra, adold, oldpc, FPU_EXP_UNIMP_DATATYPE_PACKED_PRE, NULL, wrd))
                 return -1;
             to_pack (src, wrd);
+            fp_normalize(src);
             return 1;
         }
             break;
@@ -1285,18 +1311,27 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
     switch (mode)
     {
         case 0:
+            if (normalize_or_fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
+                return -1;
+
             switch (size)
         {
             case 6:
                 m68k_dreg (regs, reg) = (uae_u32)(((to_int (value, 0) & 0xff)
                                                    | (m68k_dreg (regs, reg) & ~0xff)));
+                if (fault_if_68040_integer_nonmaskable(opcode, extra, ad, oldpc, value))
+                    return -1;
                 break;
             case 4:
                 m68k_dreg (regs, reg) = (uae_u32)(((to_int (value, 1) & 0xffff)
                                                    | (m68k_dreg (regs, reg) & ~0xffff)));
+                if (fault_if_68040_integer_nonmaskable(opcode, extra, ad, oldpc, value))
+                    return -1;
                 break;
             case 0:
                 m68k_dreg (regs, reg) = (uae_u32)to_int (value, 2);
+                if (fault_if_68040_integer_nonmaskable(opcode, extra, ad, oldpc, value))
+                    return -1;
                 break;
             case 1:
                 m68k_dreg (regs, reg) = from_single (value);
@@ -1362,8 +1397,10 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
     {
         case 0:
             if (normalize_or_fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
-                return 1;
+                return -1;
             x_cp_put_long(ad, (uae_u32)to_int(value, 2));
+            if (fault_if_68040_integer_nonmaskable(opcode, extra, ad, oldpc, value))
+                return -1;
             break;
         case 1:
             if (normalize_or_fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
@@ -1374,7 +1411,7 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
         {
             uae_u32 wrd1, wrd2, wrd3;
             if (normalize_or_fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
-                return 1;
+                return -1;
             from_exten(value, &wrd1, &wrd2, &wrd3);
             x_cp_put_long (ad, wrd1);
             ad += 4;
@@ -1389,11 +1426,12 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
             uae_u32 wrd[3];
             int kfactor;
             if (fault_if_4060 (opcode, extra, ad, oldpc, FPU_EXP_UNIMP_DATATYPE_PACKED_POST, value, NULL))
-                return 1;
+                return -1;
             kfactor = size == 7 ? m68k_dreg (regs, (extra >> 4) & 7) : extra;
             kfactor &= 127;
             if (kfactor & 64)
                 kfactor |= ~63;
+            fp_normalize(value);
             from_pack (value, wrd, kfactor);
             x_cp_put_long (ad, wrd[0]);
             ad += 4;
@@ -1404,13 +1442,15 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
             break;
         case 4:
             if (normalize_or_fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
-                return 1;
+                return -1;
             x_cp_put_word(ad, (uae_s16)to_int(value, 1));
+            if (fault_if_68040_integer_nonmaskable(opcode, extra, ad, oldpc, value))
+                return -1;
             break;
         case 5:
         {
             uae_u32 wrd1, wrd2;
-            if (normalize_or_fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 1))
+            if (normalize_or_fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
                 return -1;
             from_double(value, &wrd1, &wrd2);
             x_cp_put_long (ad, wrd1);
@@ -1420,8 +1460,10 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
             break;
         case 6:
             if (normalize_or_fault_if_no_denormal_support_post(opcode, extra, ad, oldpc, value, 2))
-                return 1;
+                return -1;
             x_cp_put_byte(ad, (uae_s8)to_int(value, 0));
+            if (fault_if_68040_integer_nonmaskable(opcode, extra, ad, oldpc, value))
+                return -1;
             break;
         default:
             return 0;
@@ -2342,10 +2384,14 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
     {
         case 3:
             fpsr_clear_status();
-            if (put_fp_value (&regs.fp[(extra >> 7) & 7], opcode, extra, pc) == 0)
-                fpu_noinst (opcode, pc);
+            v = put_fp_value (&regs.fp[(extra >> 7) & 7], opcode, extra, pc);
+            if (v <= 0) {
+                if (v == 0)
+                    fpu_noinst (opcode, pc);
+                return;
+            }
             fpsr_make_status();
-            fpsr_check_exception();
+            fpsr_check_exception(0);
             return;
             
         case 4:
@@ -2549,7 +2595,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                 fpsr_clear_status();
                 fpu_get_constant(&regs.fp[reg], extra);
                 fpsr_make_status();
-                fpsr_check_exception();
+                fpsr_check_exception(0);
                 return;
             }
             
@@ -2582,7 +2628,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
             if (v)
                 regs.fp[reg] = dst;
             
-            fpsr_check_exception();
+            fpsr_check_exception(0);
             return;
         default:
             break;
