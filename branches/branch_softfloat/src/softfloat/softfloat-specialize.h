@@ -244,6 +244,11 @@ static float64 propagateFloat64NaN( float64 a, float64 b )
 #define floatx80_default_nan_low  LIT64( 0xFFFFFFFFFFFFFFFF )
 
 /*----------------------------------------------------------------------------
+ | The pattern for a default generated extended double-precision infinity.
+ *----------------------------------------------------------------------------*/
+#define floatx80_default_infinity_low  LIT64( 0x0000000000000000 )
+
+/*----------------------------------------------------------------------------
 | Returns 1 if the extended double-precision floating-point value `a' is a
 | NaN; otherwise returns 0.
 *----------------------------------------------------------------------------*/
