@@ -59,11 +59,6 @@ typedef struct {
 } commonNaNT;
 
 /*----------------------------------------------------------------------------
-| The pattern for a default generated single-precision NaN.
-*----------------------------------------------------------------------------*/
-#define float32_default_nan 0xFFFFFFFF
-
-/*----------------------------------------------------------------------------
 | Returns 1 if the single-precision floating-point value `a' is a NaN;
 | otherwise returns 0.
 *----------------------------------------------------------------------------*/
@@ -142,11 +137,6 @@ static float32 propagateFloat32NaN( float32 a, float32 b )
     }
 
 }
-
-/*----------------------------------------------------------------------------
-| The pattern for a default generated double-precision NaN.
-*----------------------------------------------------------------------------*/
-#define float64_default_nan LIT64( 0xFFFFFFFFFFFFFFFF )
 
 /*----------------------------------------------------------------------------
 | Returns 1 if the double-precision floating-point value `a' is a NaN;
@@ -234,19 +224,6 @@ static float64 propagateFloat64NaN( float64 a, float64 b )
 }
 
 #ifdef FLOATX80
-
-/*----------------------------------------------------------------------------
-| The pattern for a default generated extended double-precision NaN.  The
-| `high' and `low' values hold the most- and least-significant bits,
-| respectively.
-*----------------------------------------------------------------------------*/
-#define floatx80_default_nan_high 0x7FFF
-#define floatx80_default_nan_low  LIT64( 0xFFFFFFFFFFFFFFFF )
-
-/*----------------------------------------------------------------------------
- | The pattern for a default generated extended double-precision infinity.
- *----------------------------------------------------------------------------*/
-#define floatx80_default_infinity_low  LIT64( 0x0000000000000000 )
 
 /*----------------------------------------------------------------------------
 | Returns 1 if the extended double-precision floating-point value `a' is a
@@ -441,11 +418,8 @@ floatx80 propagateFloatx80NaNOneArg(floatx80 a)
 {
     if ( floatx80_is_signaling_nan( a ) )
         float_raise( float_flag_signaling );
-#ifdef SOFTFLOAT_68K
+
     a.low |= LIT64( 0x4000000000000000 );
-#else
-    a.low |= LIT64( 0xC000000000000000 );
-#endif
     
     return a;
 }
@@ -492,13 +466,6 @@ flag extractFloatx80Sign( floatx80 a )
 #endif
 
 #ifdef FLOAT128
-
-/*----------------------------------------------------------------------------
-| The pattern for a default generated quadruple-precision NaN.  The `high' and
-| `low' values hold the most- and least-significant bits, respectively.
-*----------------------------------------------------------------------------*/
-#define float128_default_nan_high LIT64( 0xFFFFFFFFFFFFFFFF )
-#define float128_default_nan_low  LIT64( 0xFFFFFFFFFFFFFFFF )
 
 /*----------------------------------------------------------------------------
 | Returns 1 if the quadruple-precision floating-point value `a' is a NaN;

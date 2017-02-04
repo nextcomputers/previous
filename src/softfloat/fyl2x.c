@@ -29,18 +29,12 @@ these four paragraphs for those parts of this code that are retained.
 #define USE_estimateDiv128To64
 #include "mamesf.h"
 #include "softfloat.h"
-//#include "softfloat-specialize"
 #include "fpu_constant.h"
-/*
-static const floatx80 floatx80_log10_2 = packFloatx80(0, 0x3ffd, 0x9a209a84fbcff798U);
-static const floatx80 floatx80_ln_2 = packFloatx80(0, 0x3ffe, 0xb17217f7d1cf79acU);
-static const floatx80 floatx80_one = packFloatx80(0, 0x3fff, 0x8000000000000000U);
-static const floatx80 floatx80_default_nan = packFloatx80(0, 0xffff, 0xffffffffffffffffU);
-*/
+
 static const floatx80 floatx80_log10_2 = { 0x3ffd, 0x9a209a84fbcff798U };
 static const floatx80 floatx80_ln_2 = { 0x3ffe, 0xb17217f7d1cf79acU };
 static const floatx80 floatx80_one = { 0x3fff, 0x8000000000000000U };
-static const floatx80 floatx80_default_nan = { 0xffff, 0xffffffffffffffffU };
+static const floatx80 floatx80_default_nan = { floatx80_default_nan_high, floatx80_default_nan_low };
 
 #define packFloat_128(zHi, zLo) {(zHi), (zLo)}
 #define PACK_FLOAT_128(hi,lo) packFloat_128(LIT64(hi),LIT64(lo))
@@ -178,7 +172,7 @@ invalid:
 				if (bSig == 0) goto invalid;
 				float_raise(float_flag_denormal);
 			}
-			return packFloatx80(bSign, 0x7FFF, 0x8000000000000000U);
+			return packFloatx80(bSign, 0x7FFF, floatx80_default_infinity_low);
 		}
 	}
 	if (bExp == 0x7FFF)
@@ -188,16 +182,16 @@ invalid:
 		if (aSig && (aExp == 0))
 			float_raise(float_flag_denormal);
 		if (aExp < 0x3FFF) {
-			return packFloatx80(zSign, 0x7FFF, 0x8000000000000000U);
+			return packFloatx80(zSign, 0x7FFF, floatx80_default_infinity_low);
 		}
 		if (aExp == 0x3FFF && ((uint64_t) (aSig<<1) == 0)) goto invalid;
-		return packFloatx80(bSign, 0x7FFF, 0x8000000000000000U);
+		return packFloatx80(bSign, 0x7FFF, floatx80_default_infinity_low);
 	}
 	if (aExp == 0) {
 		if (aSig == 0) {
 			if ((bExp | bSig) == 0) goto invalid;
 			float_raise(float_flag_divbyzero);
-			return packFloatx80(zSign, 0x7FFF, 0x8000000000000000U);
+			return packFloatx80(zSign, 0x7FFF, floatx80_default_infinity_low);
 		}
 		if (aSign) goto invalid;
 		float_raise(float_flag_denormal);
@@ -292,7 +286,7 @@ invalid:
 				if (bSig == 0) goto invalid;
 				float_raise(float_flag_denormal);
 			}
-			return packFloatx80(bSign, 0x7FFF, 0x8000000000000000U);
+			return packFloatx80(bSign, 0x7FFF, floatx80_default_infinity_low);
 		}
 	}
 	if (bExp == 0x7FFF)
@@ -305,7 +299,7 @@ invalid:
 			float_raise(float_flag_denormal);
 		}
 
-		return packFloatx80(zSign, 0x7FFF, 0x8000000000000000U);
+		return packFloatx80(zSign, 0x7FFF, floatx80_default_infinity_low);
 	}
 	if (aExp == 0) {
 		if (aSig == 0) {
