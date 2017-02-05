@@ -99,6 +99,14 @@ enum {
 };
 
 /*----------------------------------------------------------------------------
+ | Variables for storing sign, exponent and significand of overflowed or 
+ | underflowed extended double-precision floating-point value.
+ *----------------------------------------------------------------------------*/
+extern flag floatx80_oufl_sign;
+extern int32 floatx80_oufl_exponent;
+extern bits64 floatx80_oufl_significand;
+
+/*----------------------------------------------------------------------------
 | Routine to raise any or all of the software IEC/IEEE floating-point
 | exception flags.
 *----------------------------------------------------------------------------*/
