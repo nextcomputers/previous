@@ -443,6 +443,9 @@ STATIC_INLINE void fp_tst(fptype *a, fptype *b)
 
 STATIC_INLINE void fp_sinh(fptype *a, fptype *b)
 {
+    flag e = 0;
+    floatx80_sinh_check(*a, &e);
+    if (e) return;
     long double fp;
     to_native(&fp, *b);
     fp = sinhl(fp);
@@ -450,6 +453,9 @@ STATIC_INLINE void fp_sinh(fptype *a, fptype *b)
 }
 STATIC_INLINE void fp_etoxm1(fptype *a, fptype *b)
 {
+    flag e = 0;
+    floatx80_etoxm1_check(*a, &e);
+    if (e) return;
     long double fp;
     to_native(&fp, *b);
     fp = expl(fp) - 1.0;
@@ -457,6 +463,9 @@ STATIC_INLINE void fp_etoxm1(fptype *a, fptype *b)
 }
 STATIC_INLINE void fp_tanh(fptype *a, fptype *b)
 {
+    flag e = 0;
+    floatx80_tanh_check(*a, &e);
+    if (e) return;
     long double fp;
     to_native(&fp, *b);
     fp = tanhl(fp);
@@ -464,6 +473,9 @@ STATIC_INLINE void fp_tanh(fptype *a, fptype *b)
 }
 STATIC_INLINE void fp_atan(fptype *a, fptype *b)
 {
+    flag e = 0;
+    floatx80_atan_check(*a, &e);
+    if (e) return;
     long double fp;
     to_native(&fp, *b);
     fp = atanl(fp);
@@ -471,6 +483,9 @@ STATIC_INLINE void fp_atan(fptype *a, fptype *b)
 }
 STATIC_INLINE void fp_asin(fptype *a, fptype *b)
 {
+    flag e = 0;
+    floatx80_asin_check(*a, &e);
+    if (e) return;
     long double fp;
     to_native(&fp, *b);
     fp = asinl(fp);
@@ -478,6 +493,9 @@ STATIC_INLINE void fp_asin(fptype *a, fptype *b)
 }
 STATIC_INLINE void fp_atanh(fptype *a, fptype *b)
 {
+    flag e = 0;
+    floatx80_atanh_check(*a, &e);
+    if (e) return;
     long double fp;
     to_native(&fp, *b);
     fp = atanhl(fp);
@@ -485,6 +503,9 @@ STATIC_INLINE void fp_atanh(fptype *a, fptype *b)
 }
 STATIC_INLINE void fp_etox(fptype *a, fptype *b)
 {
+    flag e = 0;
+    floatx80_etox_check(*a, &e);
+    if (e) return;
     long double fp;
     to_native(&fp, *b);
     fp = expl(fp);
@@ -492,6 +513,9 @@ STATIC_INLINE void fp_etox(fptype *a, fptype *b)
 }
 STATIC_INLINE void fp_twotox(fptype *a, fptype *b)
 {
+    flag e = 0;
+    floatx80_twotox_check(*a, &e);
+    if (e) return;
     long double fp;
     to_native(&fp, *b);
     fp = powl(2.0, fp);
@@ -499,6 +523,9 @@ STATIC_INLINE void fp_twotox(fptype *a, fptype *b)
 }
 STATIC_INLINE void fp_tentox(fptype *a, fptype *b)
 {
+    flag e = 0;
+    floatx80_tentox_check(*a, &e);
+    if (e) return;
     long double fp;
     to_native(&fp, *b);
     fp = powl(10.0, fp);
@@ -506,6 +533,9 @@ STATIC_INLINE void fp_tentox(fptype *a, fptype *b)
 }
 STATIC_INLINE void fp_cosh(fptype *a, fptype *b)
 {
+    flag e = 0;
+    floatx80_cosh_check(*a, &e);
+    if (e) return;
     long double fp;
     to_native(&fp, *b);
     fp = coshl(fp);
@@ -513,6 +543,9 @@ STATIC_INLINE void fp_cosh(fptype *a, fptype *b)
 }
 STATIC_INLINE void fp_acos(fptype *a, fptype *b)
 {
+    flag e = 0;
+    floatx80_acos_check(*a, &e);
+    if (e) return;
     long double fp;
     to_native(&fp, *b);
     fp = acosl(fp);
