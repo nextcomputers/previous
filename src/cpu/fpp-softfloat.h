@@ -299,35 +299,27 @@ STATIC_INLINE fptype from_int(uae_s32 src)
 /* Functions for rounding */
 
 // round to float with extended precision exponent
-STATIC_INLINE void fp_roundsgl(fptype *fp)
+STATIC_INLINE void fp_round32(fptype *fp)
 {
     *fp = floatx80_round32(*fp);
 }
 
 // round to double with extended precision exponent
-STATIC_INLINE void fp_rounddbl(fptype *fp)
+STATIC_INLINE void fp_round64(fptype *fp)
 {
     *fp = floatx80_round64(*fp);
 }
 
 // round to float
-STATIC_INLINE void fp_round32(fptype *fp)
+STATIC_INLINE void fp_round_single(fptype *fp)
 {
-    if (fp_is_nan(fp)) {
-        return;
-    }
-    float32 f = floatx80_to_float32(*fp);
-    *fp = float32_to_floatx80(f);
+    *fp = floatx80_round_to_float32(*fp);
 }
 
 // round to double
-STATIC_INLINE void fp_round64(fptype *fp)
+STATIC_INLINE void fp_round_double(fptype *fp)
 {
-    if (fp_is_nan(fp)) {
-        return;
-    }
-    float64 f = floatx80_to_float64(*fp);
-    *fp = float64_to_floatx80(f);
+    *fp = floatx80_round_to_float64(*fp);
 }
 
 /* Arithmetic functions */

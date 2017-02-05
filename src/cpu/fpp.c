@@ -435,8 +435,8 @@ bool fpu_get_constant(fptype *fp, int cr)
 
     to_exten_fmovem(fp, f[0], f[1], f[2]);
     
-    if (((regs.fpcr >> 6) & 3) == 1) fp_roundsgl(fp);
-    if (((regs.fpcr >> 6) & 3) >= 2) fp_rounddbl(fp);
+    if (((regs.fpcr >> 6) & 3) == 1) fp_round32(fp);
+    if (((regs.fpcr >> 6) & 3) >= 2) fp_round64(fp);
     
     fpsr_set_result(fp);
 
@@ -2326,8 +2326,8 @@ static bool fp_arithmetic(fptype *src, fptype *dst, int extra)
         case 0x36:
         case 0x37:
             fp_cos(dst, src);
-            if (((regs.fpcr >> 6) & 3) == 1) fp_round32(dst);
-            if (((regs.fpcr >> 6) & 3) >= 2) fp_round64(dst);
+            if (((regs.fpcr >> 6) & 3) == 1) fp_round_single(dst);
+            if (((regs.fpcr >> 6) & 3) >= 2) fp_round_double(dst);
             if (fpsr_make_status())
                 return false;
             regs.fp[extra & 7] = *dst;
@@ -2352,13 +2352,13 @@ static bool fp_arithmetic(fptype *src, fptype *dst, int extra)
     }
     
     if ((extra & 0x44) == 0x40)
-        fp_round32(dst);
+        fp_round_single(dst);
     else if ((extra & 0x44) == 0x44)
-        fp_round64(dst);
+        fp_round_double(dst);
     else if (((regs.fpcr >> 6) & 3) == 1)
-        fp_round32(dst);
+        fp_round_single(dst);
     else if (((regs.fpcr >> 6) & 3) >= 2)
-        fp_round64(dst);
+        fp_round_double(dst);
     
     if (fpsr_make_status())
         return false;

@@ -3635,6 +3635,79 @@ floatx80 floatx80_round64( floatx80 a )
     
 }
         
+floatx80 floatx80_round_to_float32( floatx80 a )
+{
+    int32 aExp;
+    bits64 aSig;
+    flag zSign;
+    int16 zExp;
+    bits32 zSig;
+    float32 z;
+    
+    aSig = extractFloatx80Frac( a );
+    aExp = extractFloatx80Exp( a );
+    zSign = extractFloatx80Sign( a );
+    
+    if ( aExp == 0x7FFF ) {
+        if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaNOneArg( a );
+        return a;
+    }
+    if ( aExp == 0 && aSig == 0 ) return a;
+
+    shift64RightJamming( aSig, 33, &aSig );
+    aExp -= 0x3F81;
+    z = roundAndPackFloat32( zSign, aExp, aSig );
+    
+    zSig = extractFloat32Frac( z );
+    zExp = extractFloat32Exp( z );
+    if ( zExp == 0xFF ) {
+        return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
+    }
+    if ( zExp == 0 ) {
+        if ( zSig == 0 ) return packFloatx80( zSign, 0, 0 );
+        normalizeFloat32Subnormal( zSig, &zExp, &zSig );
+    }
+    zSig |= 0x00800000;
+    return packFloatx80( zSign, zExp + 0x3F80, ( (bits64) zSig )<<40 );
+
+}
+        
+floatx80 floatx80_round_to_float64( floatx80 a )
+{
+    int32 aExp;
+    bits64 aSig, zSig;
+    flag zSign;
+    int16 zExp;
+    float64 z;
+    
+    aSig = extractFloatx80Frac( a );
+    aExp = extractFloatx80Exp( a );
+    zSign = extractFloatx80Sign( a );
+
+    if ( aExp == 0x7FFF ) {
+        if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaNOneArg( a );
+        return a;
+    }
+    if ( aExp == 0 && aSig == 0 ) return a;
+
+    shift64RightJamming( aSig, 1, &aSig );
+    aExp -= 0x3C01;
+    z = roundAndPackFloat64( zSign, aExp, aSig );
+    
+    zSig = extractFloat64Frac( z );
+    zExp = extractFloat64Exp( z );
+    if ( zExp == 0x7FF ) {
+        return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
+    }
+    if ( zExp == 0 ) {
+        if ( zSig == 0 ) return packFloatx80( zSign, 0, 0 );
+        normalizeFloat64Subnormal( zSig, &zExp, &zSig );
+    }
+    zSig |= LIT64( 0x0010000000000000 );
+    return packFloatx80( zSign, zExp + 0x3C00, zSig<<11 );
+
+}
+        
 floatx80 floatx80_normalize( floatx80 a )
 {
     flag aSign;
