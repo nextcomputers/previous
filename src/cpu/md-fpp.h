@@ -80,6 +80,7 @@ STATIC_INLINE void get_fp_status(uae_u32 *status)
         if (exp_flags & FE_INVALID)
             *status |= 0x2000;
     }
+    /* FIXME: how to detect SNAN? */
 }
 STATIC_INLINE void clear_fp_status(void)
 {
@@ -365,7 +366,7 @@ STATIC_INLINE fptype from_int(uae_s32 src)
 /* Functions for rounding */
 
 // round to float with extended precision exponent
-STATIC_INLINE void fp_roundsgl(fptype *fp)
+STATIC_INLINE void fp_round32(fptype *fp)
 {
     int expon;
     float mant;
@@ -379,7 +380,7 @@ STATIC_INLINE void fp_roundsgl(fptype *fp)
 }
 
 // round to double with extended precision exponent
-STATIC_INLINE void fp_rounddbl(fptype *fp)
+STATIC_INLINE void fp_round64(fptype *fp)
 {
     int expon;
     double mant;
@@ -393,13 +394,13 @@ STATIC_INLINE void fp_rounddbl(fptype *fp)
 }
 
 // round to float
-STATIC_INLINE void fp_round32(fptype *fp)
+STATIC_INLINE void fp_round_single(fptype *fp)
 {
     *fp = (float) *fp;
 }
 
 // round to double
-STATIC_INLINE void fp_round64(fptype *fp)
+STATIC_INLINE void fp_round_double(fptype *fp)
 {
     *fp = (double) *fp;
 }
@@ -408,144 +409,148 @@ STATIC_INLINE void fp_round64(fptype *fp)
 
 #ifdef USE_LONG_DOUBLE
 
-STATIC_INLINE fptype fp_move(fptype a)
+STATIC_INLINE void fp_move(fptype *a, fptype *b)
 {
-    return a;
+    *a = *b;
 }
-STATIC_INLINE fptype fp_int(fptype a)
+STATIC_INLINE void fp_int(fptype *a, fptype *b)
 {
 #ifdef USE_HOST_ROUNDING
-    return rintl(a);
+    *a = rintl(*b);
 #else
     switch (regs.fpcr & FPCR_ROUNDING_MODE)
     {
         case FPCR_ROUND_NEAR:
-            return fp_round_to_nearest(a);
+            *a = fp_round_to_nearest(*b);
+            break;
         case FPCR_ROUND_ZERO:
-            return fp_round_to_zero(a);
+            *a = fp_round_to_zero(*b);
+            break;
         case FPCR_ROUND_MINF:
-            return fp_round_to_minus_infinity(a);
+            *a = fp_round_to_minus_infinity(*b);
+            break;
         case FPCR_ROUND_PINF:
-            return fp_round_to_plus_infinity(a);
+            *a = fp_round_to_plus_infinity(*b);
+            break;
         default: /* never reached */
-            return a;
+            break;
     }
 #endif
 }
-STATIC_INLINE fptype fp_sinh(fptype a)
+STATIC_INLINE void fp_sinh(fptype *a, fptype *b)
 {
-    return sinhl(a);
+    *a = sinhl(*b);
 }
-STATIC_INLINE fptype fp_intrz(fptype a)
+STATIC_INLINE void fp_intrz(fptype *a, fptype *b)
 {
 #ifdef USE_HOST_ROUNDING
-    return truncl(a);
+    *a = truncl(*b);
 #else
-    return fp_round_to_zero (a);
+    *a = fp_round_to_zero (*b);
 #endif
 }
-STATIC_INLINE fptype fp_sqrt(fptype a)
+STATIC_INLINE void fp_sqrt(fptype *a, fptype *b)
 {
-    return sqrtl(a);
+    *a = sqrtl(*b);
 }
-STATIC_INLINE fptype fp_lognp1(fptype a)
+STATIC_INLINE void fp_lognp1(fptype *a, fptype *b)
 {
-    return logl(a + 1.0);
+    *a = log1pl(*b);
 }
-STATIC_INLINE fptype fp_etoxm1(fptype a)
+STATIC_INLINE void fp_etoxm1(fptype *a, fptype *b)
 {
-    return expl(a) - 1.0;
+    *a = expm1l(*b);
 }
-STATIC_INLINE fptype fp_tanh(fptype a)
+STATIC_INLINE void fp_tanh(fptype *a, fptype *b)
 {
-    return tanhl(a);
+    *a = tanhl(*b);
 }
-STATIC_INLINE fptype fp_atan(fptype a)
+STATIC_INLINE void fp_atan(fptype *a, fptype *b)
 {
-    return atanl(a);
+    *a = atanl(*b);
 }
-STATIC_INLINE fptype fp_asin(fptype a)
+STATIC_INLINE void fp_asin(fptype *a, fptype *b)
 {
-    return asinl(a);
+    *a = asinl(*b);
 }
-STATIC_INLINE fptype fp_atanh(fptype a)
+STATIC_INLINE void fp_atanh(fptype *a, fptype *b)
 {
-    return atanhl(a);
+    *a = atanhl(*b);
 }
-STATIC_INLINE fptype fp_sin(fptype a)
+STATIC_INLINE void fp_sin(fptype *a, fptype *b)
 {
-    return sinl(a);
+    *a = sinl(*b);
 }
-STATIC_INLINE fptype fp_tan(fptype a)
+STATIC_INLINE void fp_tan(fptype *a, fptype *b)
 {
-    return tanl(a);
+    *a = tanl(*b);
 }
-STATIC_INLINE fptype fp_etox(fptype a)
+STATIC_INLINE void fp_etox(fptype *a, fptype *b)
 {
-    return expl(a);
+    *a = expl(*b);
 }
-STATIC_INLINE fptype fp_twotox(fptype a)
+STATIC_INLINE void fp_twotox(fptype *a, fptype *b)
 {
-    return powl(2.0, a);
+    *a = powl(2.0, *b);
 }
-STATIC_INLINE fptype fp_tentox(fptype a)
+STATIC_INLINE void fp_tentox(fptype *a, fptype *b)
 {
-    return powl(10.0, a);
+    *a = powl(10.0, *b);
 }
-STATIC_INLINE fptype fp_logn(fptype a)
+STATIC_INLINE void fp_logn(fptype *a, fptype *b)
 {
-    return logl(a);
+    *a = logl(*b);
 }
-STATIC_INLINE fptype fp_log10(fptype a)
+STATIC_INLINE void fp_log10(fptype *a, fptype *b)
 {
-    return log10l(a);
+    *a = log10l(*b);
 }
-STATIC_INLINE fptype fp_log2(fptype a)
+STATIC_INLINE void fp_log2(fptype *a, fptype *b)
 {
-    return log2l(a);
+    *a = log2l(*b);
 }
-STATIC_INLINE fptype fp_abs(fptype a)
+STATIC_INLINE void fp_abs(fptype *a, fptype *b)
 {
-    return a < 0.0 ? -a : a;
+    *a = fabsl(*b);
 }
-STATIC_INLINE fptype fp_cosh(fptype a)
+STATIC_INLINE void fp_cosh(fptype *a, fptype *b)
 {
-    return coshl(a);
+    *a = coshl(*b);
 }
-STATIC_INLINE fptype fp_neg(fptype a)
+STATIC_INLINE void fp_neg(fptype *a, fptype *b)
 {
-    return -a;
+    *a = -(*b);
 }
-STATIC_INLINE fptype fp_acos(fptype a)
+STATIC_INLINE void fp_acos(fptype *a, fptype *b)
 {
-    return acosl(a);
+    *a = acosl(*b);
 }
-STATIC_INLINE fptype fp_cos(fptype a)
+STATIC_INLINE void fp_cos(fptype *a, fptype *b)
 {
-    return cosl(a);
+    *a = cosl(*b);
 }
-STATIC_INLINE fptype fp_getexp(fptype a)
-{
-    int expon;
-    frexpl(a, &expon);
-    return (long double) (expon - 1);
-}
-STATIC_INLINE fptype fp_getman(fptype a)
+STATIC_INLINE void fp_getexp(fptype *a, fptype *b)
 {
     int expon;
-    return frexpl(a, &expon) * 2.0;
+    frexpl(*b, &expon);
+    *a = (long double) (expon - 1);
 }
-STATIC_INLINE fptype fp_div(fptype a, fptype b)
+STATIC_INLINE void fp_getman(fptype *a, fptype *b)
 {
-    return (a / b);
+    int expon;
+    *a = frexpl(*b, &expon) * 2.0;
 }
-STATIC_INLINE fptype fp_mod(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
+STATIC_INLINE void fp_div(fptype *a, fptype *b)
+{
+    *a /= *b;
+}
+STATIC_INLINE void fp_mod(fptype *a, fptype *b, uae_u64 *q, uae_s8 *s)
 {
     fptype quot;
 #ifdef USE_HOST_ROUNDING
-    quot = truncl(a / b);
+    quot = truncl(*a / *b);
 #else
-    quot = fp_round_to_zero(a / b);
+    quot = fp_round_to_zero(*a / *b);
 #endif
     if (quot < 0.0) {
         *s = 1;
@@ -554,33 +559,33 @@ STATIC_INLINE fptype fp_mod(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
         *s = 0;
     }
     *q = (uae_u64)quot;
-    return fmodl(a, b);
+    *a = fmodl(*a, *b);
 }
-STATIC_INLINE fptype fp_add(fptype a, fptype b)
+STATIC_INLINE void fp_add(fptype *a, fptype *b)
 {
-    return (a + b);
+    *a += *b;
 }
-STATIC_INLINE fptype fp_mul(fptype a, fptype b)
+STATIC_INLINE void fp_mul(fptype *a, fptype *b)
 {
-    return (a * b);
+    *a *= *b;
 }
-STATIC_INLINE fptype fp_sgldiv(fptype a, fptype b)
+STATIC_INLINE void fp_sgldiv(fptype *a, fptype *b)
 {
     fptype z;
     float mant;
     int expon;
-    z = a / b;
+    z = *a / *b;
     
     mant = (float)(frexpl(z, &expon) * 2.0);
-    return ldexpl((fptype)mant, expon - 1);
+    *a = ldexpl((fptype)mant, expon - 1);
 }
-STATIC_INLINE fptype fp_rem(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
+STATIC_INLINE void fp_rem(fptype *a, fptype *b, uae_u64 *q, uae_s8 *s)
 {
     fptype quot;
 #ifdef USE_HOST_ROUNDING
-    quot = roundl(a / b);
+    quot = roundl(*a / *b);
 #else
-    quot = fp_round_to_nearest(a / b);
+    quot = fp_round_to_nearest(*a / *b);
 #endif
     if (quot < 0.0) {
         *s = 1;
@@ -589,105 +594,180 @@ STATIC_INLINE fptype fp_rem(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
         *s = 0;
     }
     *q = (uae_u64)quot;
-    return remainderl(a, b);
+    *a = remainderl(*a, *b);
 }
-STATIC_INLINE fptype fp_scale(fptype a, fptype b)
+STATIC_INLINE void fp_scale(fptype *a, fptype *b)
 {
-    return ldexpl(a, (int) b);
+    *a = ldexpl(*a, (int) *b);
 }
-STATIC_INLINE fptype fp_sglmul(fptype a, fptype b)
+STATIC_INLINE void fp_sglmul(fptype *a, fptype *b)
 {
     fptype z;
     float mant;
     int expon;
     /* FIXME: truncate mantissa of a and b to single precision */
-    z = a * b;
+    z = *a * (*b);
 
     mant = (float)(frexpl(z, &expon) * 2.0);
-    return ldexpl((fptype)mant, expon - 1);
+    *a = ldexpl((fptype)mant, expon - 1);
 }
-STATIC_INLINE fptype fp_sub(fptype a, fptype b)
+STATIC_INLINE void fp_sub(fptype *a, fptype *b)
 {
-    return (a - b);
+    *a -= *b;
 }
-STATIC_INLINE fptype fp_cmp(fptype a, fptype b)
+STATIC_INLINE void fp_cmp(fptype *a, fptype *b)
 {
-    return (a - b); /* FIXME: comparing is different from subtraction */
+    *a = (*a - *b); /* FIXME: comparing is different from subtraction */
+}
+STATIC_INLINE void fp_tst(fptype *a, fptype *b)
+{
+    *a = *b; /* FIXME: test b */
 }
 
 #else // if !USE_LONG_DOUBLE
 
-#define fp_move(a) (a)
-STATIC_INLINE fptype fp_int(fptype a)
+STATIC_INLINE void fp_move(fptype *a, fptype *b)
+{
+    *a = *b;
+}
+STATIC_INLINE void fp_int(fptype *a, fptype *b)
 {
 #ifdef USE_HOST_ROUNDING
-    return rint(a);
+    *a = rint(*b);
 #else
     switch (regs.fpcr & FPCR_ROUNDING_MODE)
     {
         case FPCR_ROUND_NEAR:
-            return fp_round_to_nearest(a);
+            *a = fp_round_to_nearest(*b);
+            break;
         case FPCR_ROUND_ZERO:
-            return fp_round_to_zero(a);
+            *a = fp_round_to_zero(*b);
+            break;
         case FPCR_ROUND_MINF:
-            return fp_round_to_minus_infinity(a);
+            *a = fp_round_to_minus_infinity(*b);
+            break;
         case FPCR_ROUND_PINF:
-            return fp_round_to_plus_infinity(a);
+            *a = fp_round_to_plus_infinity(*b);
+            break;
         default: /* never reached */
-            return a;
+            break;
     }
 #endif
 }
-#define fp_sinh(a) sinh(a)
-STATIC_INLINE fptype fp_intrz(fptype a)
+STATIC_INLINE void fp_sinh(fptype *a, fptype *b)
+{
+    *a = sinh(*b);
+}
+STATIC_INLINE void fp_intrz(fptype *a, fptype *b)
 {
 #ifdef USE_HOST_ROUNDING
-    return trunc(a);
+    *a = trunc(*b);
 #else
-    return fp_round_to_zero (a);
+    *a = fp_round_to_zero (*b);
 #endif
 }
-#define fp_sqrt(a)      sqrt(a)
-#define fp_lognp1(a)    log((a) + 1.0)
-#define fp_etoxm1(a)    (exp(a) - 1.0)
-#define fp_tanh(a)      tanh(a)
-#define fp_atan(a)      atan(a)
-#define fp_asin(a)      asin(a)
-#define fp_atanh(a)     atanh(a)
-#define fp_sin(a)       sin(a)
-#define fp_tan(a)       tan(a)
-#define fp_etox(a)      exp(a)
-#define fp_twotox(a)    pow(2.0, a)
-#define fp_tentox(a)    pow(10.0, a)
-#define fp_logn(a)      log(a)
-#define fp_log10(a)     log10(a)
-#define fp_log2(a)      log2(a)
-#define fp_abs(a)       ((a) < 0.0 ? -(a) : (a))
-#define fp_cosh(a)      cosh(a)
-#define fp_neg(a)       (-(a))
-#define fp_acos(a)      acos(a)
-#define fp_cos(a)       cos(a)
-
-STATIC_INLINE fptype fp_getexp(fptype a)
+STATIC_INLINE void fp_sqrt(fptype *a, fptype *b)
+{
+    *a = sqrt(*b);
+}
+STATIC_INLINE void fp_lognp1(fptype *a, fptype *b)
+{
+    *a = log1p(*b);
+}
+STATIC_INLINE void fp_etoxm1(fptype *a, fptype *b)
+{
+    *a = expm1(*b);
+}
+STATIC_INLINE void fp_tanh(fptype *a, fptype *b)
+{
+    *a = tanh(*b);
+}
+STATIC_INLINE void fp_atan(fptype *a, fptype *b)
+{
+    *a = atan(*b);
+}
+STATIC_INLINE void fp_asin(fptype *a, fptype *b)
+{
+    *a = asin(*b);
+}
+STATIC_INLINE void fp_atanh(fptype *a, fptype *b)
+{
+    *a = atanh(*b);
+}
+STATIC_INLINE void fp_sin(fptype *a, fptype *b)
+{
+    *a = sin(*b);
+}
+STATIC_INLINE void fp_tan(fptype *a, fptype *b)
+{
+    *a = tan(*b);
+}
+STATIC_INLINE void fp_etox(fptype *a, fptype *b)
+{
+    *a = exp(*b);
+}
+STATIC_INLINE void fp_twotox(fptype *a, fptype *b)
+{
+    *a = pow(2.0, *b);
+}
+STATIC_INLINE void fp_tentox(fptype *a, fptype *b)
+{
+    *a = pow(10.0, *b);
+}
+STATIC_INLINE void fp_logn(fptype *a, fptype *b)
+{
+    *a = log(*b);
+}
+STATIC_INLINE void fp_log10(fptype *a, fptype *b)
+{
+    *a = log10(*b);
+}
+STATIC_INLINE void fp_log2(fptype *a, fptype *b)
+{
+    *a = log2(*b);
+}
+STATIC_INLINE void fp_abs(fptype *a, fptype *b)
+{
+    *a = fabs(*b);
+}
+STATIC_INLINE void fp_cosh(fptype *a, fptype *b)
+{
+    *a = cosh(*b);
+}
+STATIC_INLINE void fp_neg(fptype *a, fptype *b)
+{
+    *a = -(*b);
+}
+STATIC_INLINE void fp_acos(fptype *a, fptype *b)
+{
+    *a = acos(*b);
+}
+STATIC_INLINE void fp_cos(fptype *a, fptype *b)
+{
+    *a = cos(*b);
+}
+STATIC_INLINE void fp_getexp(fptype *a, fptype *b)
 {
     int expon;
-    frexp(a, &expon);
-    return (double) (expon - 1);
+    frexp(*b, &expon);
+    *a = (long double) (expon - 1);
 }
-STATIC_INLINE fptype fp_getman(fptype a)
+STATIC_INLINE void fp_getman(fptype *a, fptype *b)
 {
     int expon;
-    return frexp(a, &expon) * 2.0;
+    *a = frexp(*b, &expon) * 2.0;
 }
-#define fp_div(a, b)    ((a) / (b))
-
-STATIC_INLINE fptype fp_mod(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
+STATIC_INLINE void fp_div(fptype *a, fptype *b)
+{
+    *a /= *b;
+}
+STATIC_INLINE void fp_mod(fptype *a, fptype *b, uae_u64 *q, uae_s8 *s)
 {
     fptype quot;
 #ifdef USE_HOST_ROUNDING
-    quot = trunc(a / b);
+    quot = trunc(*a / *b);
 #else
-    quot = fp_round_to_zero(a / b);
+    quot = fp_round_to_zero(*a / *b);
 #endif
     if (quot < 0.0) {
         *s = 1;
@@ -696,28 +776,33 @@ STATIC_INLINE fptype fp_mod(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
         *s = 0;
     }
     *q = (uae_u64)quot;
-    return fmod(a, b);
+    *a = fmod(*a, *b);
 }
-#define fp_add(a, b)    ((a) + (b))
-#define fp_mul(a, b)    ((a) * (b))
-
-STATIC_INLINE fptype fp_sgldiv(fptype a, fptype b)
+STATIC_INLINE void fp_add(fptype *a, fptype *b)
+{
+    *a += *b;
+}
+STATIC_INLINE void fp_mul(fptype *a, fptype *b)
+{
+    *a *= *b;
+}
+STATIC_INLINE void fp_sgldiv(fptype *a, fptype *b)
 {
     fptype z;
     float mant;
     int expon;
-    z = a / b;
+    z = *a / *b;
     
     mant = (float)(frexp(z, &expon) * 2.0);
-    return ldexp((fptype)mant, expon - 1);
+    *a = ldexp((fptype)mant, expon - 1);
 }
-STATIC_INLINE fptype fp_rem(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
+STATIC_INLINE void fp_rem(fptype *a, fptype *b, uae_u64 *q, uae_s8 *s)
 {
     fptype quot;
 #ifdef USE_HOST_ROUNDING
-    quot = round(a / b);
+    quot = round(*a / *b);
 #else
-    quot = fp_round_to_nearest(a / b);
+    quot = fp_round_to_nearest(*a / *b);
 #endif
     if (quot < 0.0) {
         *s = 1;
@@ -726,23 +811,35 @@ STATIC_INLINE fptype fp_rem(fptype a, fptype b, uae_u64 *q, uae_s8 *s)
         *s = 0;
     }
     *q = (uae_u64)quot;
-    return remainder(a, b);
+    *a = remainder(*a, *b);
 }
-#define fp_scale(a, b)  ldexp(a, (int)(b))
-
-STATIC_INLINE fptype fp_sglmul(fptype a, fptype b)
+STATIC_INLINE void fp_scale(fptype *a, fptype *b)
+{
+    *a = ldexp(*a, (int) *b);
+}
+STATIC_INLINE void fp_sglmul(fptype *a, fptype *b)
 {
     fptype z;
     float mant;
     int expon;
     /* FIXME: truncate mantissa of a and b to single precision */
-    z = a * b;
+    z = *a * (*b);
     
     mant = (float)(frexp(z, &expon) * 2.0);
-    return ldexp((fptype)mant, expon - 1);
+    *a = ldexp((fptype)mant, expon - 1);
 }
-#define fp_sub(a, b)    ((a) - (b))
-#define fp_cmp(a, b)    ((a) - (b)) /* FIXME: comparing is different from subtraction */
+STATIC_INLINE void fp_sub(fptype *a, fptype *b)
+{
+    *a -= *b;
+}
+STATIC_INLINE void fp_cmp(fptype *a, fptype *b)
+{
+    *a = (*a - *b); /* FIXME: comparing is different from subtraction */
+}
+STATIC_INLINE void fp_tst(fptype *a, fptype *b)
+{
+    *a = *b; /* FIXME: test b */
+}
 
 #endif // !USE_LONG_DOUBLE
 
