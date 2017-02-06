@@ -37,18 +37,8 @@ extern uae_u32 fpp_get_fpsr (void);
 /* Functions for setting host/library modes and getting status */
 STATIC_INLINE void set_fp_mode(uae_u32 mode_control)
 {
-    switch(mode_control & FPCR_ROUNDING_PRECISION) {
-        case FPCR_PRECISION_EXTENDED: // X
-            //floatx80_rounding_precision = 80;
-            break;
-        case FPCR_PRECISION_SINGLE:   // S
-            //floatx80_rounding_precision = 32;
-            break;
-        case FPCR_PRECISION_DOUBLE:   // D
-        default:                      // undefined
-            //floatx80_rounding_precision = 64;
-            break;
-    }
+    float_detect_tininess = float_tininess_before_rounding;
+    
     floatx80_rounding_precision = 80;
     
     switch(mode_control & FPCR_ROUNDING_MODE) {
