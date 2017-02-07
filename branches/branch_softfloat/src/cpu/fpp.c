@@ -30,6 +30,7 @@
 
 #define DEBUG_FPP 0
 #define EXCEPTION_FPP 1
+#define ARITHMETIC_EXCEPTIONS_DISABLED
 
 struct fpp_cr_entry {
     uae_u32 val[3];
@@ -245,8 +246,11 @@ uae_u32 fpsr_make_status(void)
     exception = regs.fpsr & regs.fpcr & (FPSR_SNAN | FPSR_OPERR | FPSR_DZ);
     if (currprefs.cpu_model >= 68040 && currprefs.fpu_model)
         exception |= regs.fpsr & (FPSR_OVFL | FPSR_UNFL);
-    
+#ifndef ARITHMETIC_EXCEPTIONS_DISABLED
     return exception;
+#else
+    return 0;
+#endif
 }
 int fpsr_set_bsun(void)
 {
@@ -256,7 +260,9 @@ int fpsr_set_bsun(void)
     if (regs.fpcr & FPSR_BSUN) {
         // logging only so far
         write_log (_T("FPU exception: BSUN! (FPSR: %08x, FPCR: %04x)\n"), regs.fpsr, regs.fpcr);
-        return 0; // return 1, once BSUN exception works
+#ifndef ARITHMETIC_EXCEPTIONS_DISABLED
+        return 1;
+#endif
     }
     return 0;
 }
@@ -1089,7 +1095,9 @@ static bool fault_if_68040_integer_nonmaskable(uae_u16 opcode, uae_u16 extra, ua
         fpsr_make_status();
         if (regs.fpsr & (FPSR_SNAN | FPSR_OPERR)) {
             fpsr_check_exception(FPSR_SNAN | FPSR_OPERR);
-            //return true; FIXME: enable this once exception works
+#ifndef ARITHMETIC_EXCEPTIONS_DISABLED
+            return true;
+#endif
         }
     }
     return false;

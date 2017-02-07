@@ -440,7 +440,7 @@ STATIC_INLINE void fp_etoxm1(fptype *a, fptype *b)
     if (e) return;
     long double fp;
     to_native(&fp, *b);
-    fp = expl(fp) - 1.0;
+    fp = expm1l(fp);
     from_native(fp, a);
 }
 STATIC_INLINE void fp_tanh(fptype *a, fptype *b)
