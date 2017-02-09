@@ -922,15 +922,14 @@ floatx80 roundAndPackFloatx80Sgl( flag zSign, int32 zExp, bits64 zSig0, bits64 z
             if ( isTiny ) float_raise( float_flag_underflow );
             if ( roundBits ) float_exception_flags |= float_flag_inexact;
             zSig0 += roundIncrement;
-            if ( ( zSig0 & ~roundMask ) == 0 ) {
-                zSig0 = ( roundIncrement != roundMask );
-                return packFloatx80( zSign, zExp, zSig0 );
-            }
-            roundIncrement = roundMask + 1;
-            if ( roundNearestEven && ( roundBits<<1 == roundIncrement ) ) {
-                roundMask |= roundIncrement;
+            if ( roundNearestEven && ( roundBits == roundIncrement ) ) {
+                roundMask |= roundIncrement<<1;
             }
             zSig0 &= ~ roundMask;
+            if ( zSig0 == LIT64( 0x0000010000000000 ) && roundBits
+                && roundIncrement && roundNearestEven == 0 ) {
+                return packFloatx80( zSign, zExp, 1 );
+            }
             return packFloatx80( zSign, zExp, zSig0 );
         }
     }
