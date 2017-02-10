@@ -926,10 +926,6 @@ floatx80 roundAndPackFloatx80Sgl( flag zSign, int32 zExp, bits64 zSig0, bits64 z
                 roundMask |= roundIncrement<<1;
             }
             zSig0 &= ~ roundMask;
-            if ( zSig0 == LIT64( 0x0000010000000000 ) && roundBits
-                && roundIncrement && roundNearestEven == 0 ) {
-                return packFloatx80( zSign, zExp, 1 );
-            }
             return packFloatx80( zSign, zExp, zSig0 );
         }
     }
