@@ -710,6 +710,10 @@ static void Exception_build_stack_frame (uae_u32 oldpc, uae_u32 currpc, uae_u32 
             m68k_areg (regs, 7) -= 4;
             x_put_long (m68k_areg (regs, 7), oldpc);
             break;
+        case 0x3: // floating point post-instruction stack frame (68040)
+            m68k_areg (regs, 7) -= 4;
+            x_put_long (m68k_areg (regs, 7), regs.fp_ea);
+            break;
         case 0x7: // access error stack frame (68040)
 
 			for (i = 3; i >= 0; i--) {
@@ -748,13 +752,12 @@ static void Exception_build_stack_frame (uae_u32 oldpc, uae_u32 currpc, uae_u32 
             break;
         case 0x9: // coprocessor mid-instruction stack frame (68020, 68030)
             m68k_areg (regs, 7) -= 4;
-            x_put_long (m68k_areg (regs, 7), 0);
+            x_put_long (m68k_areg (regs, 7), regs.fp_ea);
             m68k_areg (regs, 7) -= 4;
             x_put_long (m68k_areg (regs, 7), 0);
             m68k_areg (regs, 7) -= 4;
             x_put_long (m68k_areg (regs, 7), oldpc);
             break;
-        case 0x3: // floating point post-instruction stack frame (68040)
         case 0x8: // bus and address error stack frame (68010)
             write_log(_T("Exception stack frame format %X not implemented\n"), format);
             return;
@@ -767,9 +770,9 @@ static void Exception_build_stack_frame (uae_u32 oldpc, uae_u32 currpc, uae_u32 
 			}
 			// 68060 bus access fault
 			m68k_areg (regs, 7) -= 4;
-			x_put_long (m68k_areg (regs, 7), regs.mmu_fslw);
+			x_put_long (m68k_areg (regs, 7), ssw);
 			m68k_areg (regs, 7) -= 4;
-			x_put_long (m68k_areg (regs, 7), regs.mmu_fault_addr);
+			x_put_long (m68k_areg (regs, 7), oldpc);
 			break;
 		case 0xB: // long bus cycle fault stack frame (68020, 68030)
 			// We always use B frame because it is easier to emulate,
@@ -895,6 +898,12 @@ static void Exception_mmu030 (int nr, uaecptr oldpc)
 		mmu030_state[0] = mmu030_state[1] = 0;
 		mmu030_data_buffer = 0;
         Exception_build_stack_frame (last_fault_for_exception_3, currpc, MMU030_SSW_RW | MMU030_SSW_SIZE_W | (regs.s ? 6 : 2), nr,  0xA);
+    } else if (nr >= 48 && nr < 55) {
+        if (regs.fpu_exp_pre) {
+            Exception_build_stack_frame(oldpc, regs.instruction_pc, 0, nr, 0x0);
+        } else { /* mid-instruction */
+            Exception_build_stack_frame(regs.fpiar, currpc, 0, nr, 0x9);
+        }
     } else {
         Exception_build_stack_frame (oldpc, currpc, regs.mmu_ssw, nr, 0x0);
     }
@@ -940,7 +949,7 @@ static void Exception_mmu (int nr, uaecptr oldpc)
         if (currprefs.mmu_model == 68040)
 			Exception_build_stack_frame(oldpc, currpc, regs.mmu_ssw, nr, 0x7);
 		else
-			Exception_build_stack_frame(oldpc, currpc, regs.mmu_fslw, nr, 0x4);
+			Exception_build_stack_frame(regs.mmu_fault_addr, currpc, regs.mmu_fslw, nr, 0x4);
 	} else if (nr == 3) { // address error
         Exception_build_stack_frame(last_fault_for_exception_3, currpc, 0, nr, 0x2);
 		write_log (_T("Exception %d (%x) at %x!\n"), nr, last_fault_for_exception_3, currpc);
@@ -955,6 +964,19 @@ static void Exception_mmu (int nr, uaecptr oldpc)
         Exception_build_stack_frame (oldpc, currpc, regs.mmu_ssw, nr, 0x1);
 	} else if (nr == 61) {
         Exception_build_stack_frame(oldpc, regs.instruction_pc, regs.mmu_ssw, nr, 0x0);
+    } else if (nr >= 48 && nr <= 55) {
+        if (regs.fpu_exp_pre) {
+            Exception_build_stack_frame(oldpc, regs.instruction_pc, 0, nr, 0x0);
+        } else { /* post-instruction */
+            Exception_build_stack_frame(oldpc, currpc, regs.mmu_ssw, nr, 0x3);
+        }
+    } else if (nr == 11 && regs.fp_unimp) {
+        regs.fp_unimp = false;
+        if (currprefs.cpu_model == 68060 && (currprefs.fpu_model == 0 || (regs.pcr & 2))) {
+            Exception_build_stack_frame(regs.fp_ea, currpc, currpc, nr, 0x4);
+        } else {
+            Exception_build_stack_frame(regs.fp_ea, currpc, regs.mmu_ssw, nr, 0x2);
+        }
 	} else {
         Exception_build_stack_frame(oldpc, currpc, regs.mmu_ssw, nr, 0x0);
 	}
