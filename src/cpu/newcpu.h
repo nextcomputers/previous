@@ -210,7 +210,8 @@ struct regstruct
 	uae_u32 fpu_state;
 	uae_u32 fpu_exp_state;
     bool fpu_exp_pre;
-	uae_u16 fp_ea, fp_exp_pend;
+	uae_u16 fp_opword, fp_exp_pend;
+    uaecptr fp_ea;
     bool fp_unimp;
 	bool fp_exception;
 	bool fp_branch;
