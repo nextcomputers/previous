@@ -206,15 +206,12 @@ struct regstruct
 
 #ifdef FPUEMU
 	fptype fp[8];
-	fptype fp_result;
-	uae_u32 fp_result_status;
 	uae_u32 fpcr, fpsr, fpiar;
 	uae_u32 fpu_state;
 	uae_u32 fpu_exp_state;
-	fptype exp_src1, exp_src2;
-	uae_u32 exp_pack[3];
-	uae_u16 exp_opcode, exp_extra, exp_type;
-	uae_u16 exp_size;
+    bool fpu_exp_pre;
+	uae_u16 fp_ea, fp_exp_pend;
+    bool fp_unimp;
 	bool fp_exception;
 	bool fp_branch;
 #endif
