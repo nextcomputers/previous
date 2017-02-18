@@ -943,7 +943,7 @@ static void Exception_mmu (int nr, uaecptr oldpc)
         if (currprefs.mmu_model == 68040)
 			Exception_build_stack_frame(oldpc, currpc, regs.mmu_ssw, nr, 0x7);
 		else
-			Exception_build_stack_frame(oldpc, currpc, regs.mmu_fslw, nr, 0x4);
+			Exception_build_stack_frame(regs.mmu_fault_addr, currpc, regs.mmu_fslw, nr, 0x4);
 	} else if (nr == 3) { // address error
         Exception_build_stack_frame(last_fault_for_exception_3, currpc, 0, nr, 0x2);
 		write_log (_T("Exception %d (%x) at %x!\n"), nr, last_fault_for_exception_3, currpc);
@@ -960,12 +960,20 @@ static void Exception_mmu (int nr, uaecptr oldpc)
         Exception_build_stack_frame(oldpc, regs.instruction_pc, regs.mmu_ssw, nr, 0x0);
     } else if (nr >= 48 && nr <= 55) {
         if (regs.fpu_exp_pre) {
-            Exception_build_stack_frame(oldpc, regs.instruction_pc, 0, nr, 0x0);
+            if (currprefs.cpu_model == 68060 && nr == 55 && regs.fp_unimp_pend&2) { // packed decimal real
+                Exception_build_stack_frame(regs.fp_ea, regs.instruction_pc, 0, nr, 0x2);
+            } else {
+                Exception_build_stack_frame(oldpc, regs.instruction_pc, 0, nr, 0x0);
+            }
         } else { /* post-instruction */
-            Exception_build_stack_frame(oldpc, currpc, regs.mmu_ssw, nr, 0x3);
+            if (currprefs.cpu_model == 68060 && nr == 55 && regs.fp_unimp_pend&2) { // packed decimal real
+                Exception_build_stack_frame(regs.fp_ea, currpc, 0, nr, 0x2);
+            } else {
+                Exception_build_stack_frame(oldpc, currpc, 0, nr, 0x3);
+            }
         }
-    } else if (nr == 11 && regs.fp_unimp) {
-        regs.fp_unimp = false;
+    } else if (nr == 11 && regs.fp_unimp_ins) {
+        regs.fp_unimp_ins = false;
         if ((currprefs.cpu_model == 68060 && (currprefs.fpu_model == 0 || (regs.pcr & 2))) ||
             (currprefs.cpu_model == 68040 && currprefs.fpu_model == 0)) {
             Exception_build_stack_frame(regs.fp_ea, currpc, currpc, nr, 0x4);

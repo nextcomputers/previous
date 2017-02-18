@@ -209,10 +209,11 @@ struct regstruct
 	uae_u32 fpcr, fpsr, fpiar;
 	uae_u32 fpu_state;
 	uae_u32 fpu_exp_state;
-    bool fpu_exp_pre;
-	uae_u16 fp_opword, fp_exp_pend;
+    uae_u16 fp_opword;
     uaecptr fp_ea;
-    bool fp_unimp;
+    uae_u32 fp_exp_pend, fp_unimp_pend;
+    bool fpu_exp_pre;
+    bool fp_unimp_ins;
 	bool fp_exception;
 	bool fp_branch;
 #endif

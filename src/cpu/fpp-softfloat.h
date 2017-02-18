@@ -286,6 +286,12 @@ STATIC_INLINE fptype from_int(uae_s32 src)
     return int32_to_floatx80(src);
 }
 
+/* Functions for returning exception state data */
+STATIC_INLINE void fp_get_exceptional_operand(uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
+{
+    
+}
+
 /* Functions for rounding */
 
 // round to float with extended precision exponent
