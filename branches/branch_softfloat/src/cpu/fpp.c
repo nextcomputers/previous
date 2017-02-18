@@ -218,7 +218,7 @@ static uae_u32 get_ftag (uae_u32 w1, uae_u32 w2, uae_u32 w3, int size)
     if (exp == 0) {
         if (!w2 && !w3)
             return 1; // ZERO
-        if (size == 0 || size == 1)
+        if (size == 1 || size == 5)
             return 5; // Single/double DENORMAL
         return 4; // Extended DENORMAL or UNNORMAL
     } else if (exp == 0x7fff)  {
@@ -237,8 +237,8 @@ static uae_u32 get_ftag (uae_u32 w1, uae_u32 w2, uae_u32 w3, int size)
 bool fp_arithmetic_exception(bool pre)
 {
     // first check for pending arithmetic exceptions
-    if (regs.fp_exp_pend) {
 #if ARITHMETIC_EXCEPTIONS
+    if (regs.fp_exp_pend) {
         write_log (_T("FPU ARITHMETIC EXCEPTION (%d)\n"), regs.fp_exp_pend);
         regs.fpu_exp_pre = pre;
         Exception(regs.fp_exp_pend);
@@ -246,10 +246,8 @@ bool fp_arithmetic_exception(bool pre)
             regs.fp_exp_pend = 0;
         
         return true;
-#else
-        regs.fp_exp_pend = 0;
-#endif
     }
+#endif
     // no arithmetic exceptions pending, check for unimplemented
     if (regs.fp_unimp_pend) {
         write_log (_T("FPU UNIMPLEMENTED DATATYPE EXCEPTION\n"));
@@ -291,6 +289,7 @@ uae_u32 fpsr_get_vector(uae_u32 exception)
 }
 void fpsr_check_exception(uae_u32 mask, fptype *src, uae_u32 opcode, uae_u16 extra, uae_u32 ea)
 {
+#if ARITHMETIC_EXCEPTIONS
     bool nonmaskable;
     uae_u32 exception;
     // Any exception status bit and matching exception enable bits set?
@@ -298,7 +297,7 @@ void fpsr_check_exception(uae_u32 mask, fptype *src, uae_u32 opcode, uae_u16 ext
     // Add 68040/68060 nonmaskable exceptions
     if (currprefs.cpu_model >= 68040 && currprefs.fpu_model)
         exception |= regs.fpsr & (FPSR_OVFL | FPSR_UNFL | mask);
-    
+
     if (exception) {
         regs.fp_exp_pend = fpsr_get_vector(exception);
         nonmaskable = (regs.fp_exp_pend != fpsr_get_vector(regs.fpsr & regs.fpcr));
@@ -343,6 +342,8 @@ void fpsr_check_exception(uae_u32 mask, fptype *src, uae_u32 opcode, uae_u16 ext
                 if (exp_e3) {
                     fsave_data.cmdreg3b = (extra & 0x3C3) | ((extra & 0x038)>>1) | ((extra & 0x004)<<3);
                     fsave_data.e3 = 1;
+                    fp_get_exceptional_operand_grs(&fsave_data.wbt[0], &fsave_data.wbt[1], &fsave_data.wbt[2], &fsave_data.grs);
+                    fsave_data.wbte15 = (regs.fp_exp_pend == 51) ? 1 : 0; // UNFL
                 } else {
                     fsave_data.cmdreg1b = extra;
                     fsave_data.e1 = 1;
@@ -356,6 +357,7 @@ void fpsr_check_exception(uae_u32 mask, fptype *src, uae_u32 opcode, uae_u16 ext
             }
         }
     }
+#endif
 }
 void fpsr_set_result(fptype *result)
 {
@@ -651,12 +653,12 @@ static void fpu_op_unimp_instruction(uae_u16 opcode, uae_u16 extra, uae_u32 ea, 
         fp_get_exceptional_operand(&fsave_data.eo[0], &fsave_data.eo[1], &fsave_data.eo[2]);
     } else if (currprefs.cpu_model == 68040) {
         // fsave data for 68040
-        fsave_data.cmdreg1b = extra;
-        fsave_data.e1 = 1;
         if (regs.fp_unimp_pend & 2) {
             // packed data has been saved by fp_check_unimp_datatype
         } else {
             reset_fsave_data();
+            fsave_data.cmdreg1b = extra;
+            fsave_data.e1 = 1;
             from_exten(src, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]);
             fsave_data.stag = get_ftag(fsave_data.et[0], fsave_data.et[1], fsave_data.et[2], size);
             if (reg >= 0) {
@@ -1556,7 +1558,7 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
             uae_u32 wrd[3];
             int kfactor;
             if (fault_if_4060 (opcode, extra, ad, oldpc, value, NULL))
-                return -1;
+                return 1; // for calling fp_arithmetic_exception
             kfactor = size == 7 ? m68k_dreg (regs, (extra >> 4) & 7) : extra;
             kfactor &= 127;
             if (kfactor & 64)
@@ -2247,7 +2249,8 @@ void fpuop_restore (uae_u32 opcode)
             regs.fpu_state = 1;
             regs.fpu_exp_state = 0;
         } else if (ff == 0xe0) {
-            regs.fpu_exp_state = 1;
+            regs.fpu_state = 1;
+            regs.fpu_exp_state = 2;
             if (v == 7) {
                 regs.fp_unimp_pend = 1;
             } else {
