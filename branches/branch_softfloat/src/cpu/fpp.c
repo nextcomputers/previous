@@ -292,7 +292,7 @@ void fpsr_check_exception(uae_u32 mask, fptype *src, uae_u32 opcode, uae_u16 ext
     bool nonmaskable;
     uae_u32 exception;
     // Any exception status bit and matching exception enable bits set?
-    exception = regs.fpsr & regs.fpcr;
+    exception = regs.fpsr & regs.fpcr & 0xff00;
     // Add 68040/68060 nonmaskable exceptions
     if (currprefs.cpu_model >= 68040 && currprefs.fpu_model)
         exception |= regs.fpsr & (FPSR_OVFL | FPSR_UNFL | mask);
@@ -310,7 +310,10 @@ void fpsr_check_exception(uae_u32 mask, fptype *src, uae_u32 opcode, uae_u16 ext
         uae_u32 size = (extra >> 10) & 7;
         uae_u32 opclass = (extra >> 13) & 7;
         
-        /* TODO: FSAVE data */
+        // data for FSAVE stack frame
+        regs.fpu_exp_state = 2; // 68060 EXCP frame, 68040 BUSY frame
+
+        /* TODO: more FSAVE data */
 
         // fsave data for 68040
         fsave_data.cmdreg1b = extra;
@@ -2239,7 +2242,7 @@ void fpuop_restore (uae_u32 opcode)
             }
             if (currprefs.fpu_model == 68882) {
                 if ((biu_flags & 0x08000000) == 0x00000000) {
-                    regs.fp_exp_pend = fpsr_get_vector(regs.fpsr & regs.fpcr);
+                    regs.fp_exp_pend = fpsr_get_vector(regs.fpsr & regs.fpcr & 0xff00);
                 }
             }
         } else { // null frame
