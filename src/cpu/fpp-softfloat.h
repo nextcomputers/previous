@@ -291,6 +291,10 @@ STATIC_INLINE void fp_get_exceptional_operand(uae_u32 *wrd1, uae_u32 *wrd2, uae_
 {
     
 }
+STATIC_INLINE void fp_get_exceptional_operand_grs(uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3, uae_u32 *grs)
+{
+
+}
 
 /* Functions for rounding */
 
