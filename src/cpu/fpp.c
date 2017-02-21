@@ -331,7 +331,7 @@ void fpsr_check_exception(uae_u32 mask, fptype *src, uae_u32 opcode, uae_u16 ext
                 fsave_data.cmdreg1b = extra;
                 fsave_data.e1 = 1;
                 fsave_data.t = 1;
-                from_exten(src, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]);
+                from_exten_fmovem(src, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]);
                 fsave_data.stag = get_ftag(fsave_data.et[0], fsave_data.et[1], fsave_data.et[2], size);
             } else { // OPCLASS 000 and 010
                 if (regs.fp_exp_pend == 51 || regs.fp_exp_pend == 53 || regs.fp_exp_pend == 49) { // UNFL, OVFL, INEX
@@ -347,10 +347,10 @@ void fpsr_check_exception(uae_u32 mask, fptype *src, uae_u32 opcode, uae_u16 ext
                 } else {
                     fsave_data.cmdreg1b = extra;
                     fsave_data.e1 = 1;
-                    from_exten(src, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]);
+                    from_exten_fmovem(src, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]);
                     fsave_data.stag = get_ftag(fsave_data.et[0], fsave_data.et[1], fsave_data.et[2], size);
                     if (dyadic) {
-                        from_exten(&regs.fp[reg], &fsave_data.fpt[0], &fsave_data.fpt[1], &fsave_data.fpt[2]);
+                        from_exten_fmovem(&regs.fp[reg], &fsave_data.fpt[0], &fsave_data.fpt[1], &fsave_data.fpt[2]);
                         fsave_data.dtag = get_ftag(fsave_data.fpt[0], fsave_data.fpt[1], fsave_data.fpt[2], -1);
                     }
                 }
@@ -658,11 +658,10 @@ static void fpu_op_unimp_instruction(uae_u16 opcode, uae_u16 extra, uae_u32 ea, 
         } else {
             reset_fsave_data();
             fsave_data.cmdreg1b = extra;
-            fsave_data.e1 = 1;
-            from_exten(src, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]);
+            from_exten_fmovem(src, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]);
             fsave_data.stag = get_ftag(fsave_data.et[0], fsave_data.et[1], fsave_data.et[2], size);
             if (reg >= 0) {
-                from_exten(&regs.fp[reg], &fsave_data.fpt[0], &fsave_data.fpt[1], &fsave_data.fpt[2]);
+                from_exten_fmovem(&regs.fp[reg], &fsave_data.fpt[0], &fsave_data.fpt[1], &fsave_data.fpt[2]);
                 fsave_data.dtag = get_ftag(fsave_data.fpt[0], fsave_data.fpt[1], fsave_data.fpt[2], -1);
             }
         }
@@ -692,6 +691,7 @@ static void fp_check_unimp_datatype(uae_u16 opcode, uae_u16 extra, uae_u32 ea, u
     bool dyadic = ((extra & 0x30) == 0x20 || (extra & 0x7f) == 0x38);
     
     regs.fpiar = oldpc;
+    regs.fp_ea = ea;
 
     if ((extra & 0x7f) == 4) // FSQRT 4->5
         extra |= 1;
@@ -711,10 +711,12 @@ static void fp_check_unimp_datatype(uae_u16 opcode, uae_u16 extra, uae_u32 ea, u
     } else if (currprefs.cpu_model == 68040) {
         // fsave data for 68040
         fsave_data.cmdreg1b = extra;
-        fsave_data.e1 = 1;
+        if (packed) {
+            fsave_data.e1 = 1; // used to distinguish packed operands
+        }
         if (opclass == 3) { // OPCLASS 011
             fsave_data.t = 1;
-            from_exten(src, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]);
+            from_exten_fmovem(src, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]);
             fsave_data.stag = get_ftag(fsave_data.et[0], fsave_data.et[1], fsave_data.et[2], size);
         } else { // OPCLASS 000 and 010
             if (packed) {
@@ -722,10 +724,10 @@ static void fp_check_unimp_datatype(uae_u16 opcode, uae_u16 extra, uae_u32 ea, u
                 fsave_data.et[1] = packed[1];
                 fsave_data.et[2] = packed[2];
             } else {
-                from_exten(src, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]);
+                from_exten_fmovem(src, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]);
                 fsave_data.stag = get_ftag(fsave_data.et[0], fsave_data.et[1], fsave_data.et[2], size);
                 if (dyadic) {
-                    from_exten(&regs.fp[reg], &fsave_data.fpt[0], &fsave_data.fpt[1], &fsave_data.fpt[2]);
+                    from_exten_fmovem(&regs.fp[reg], &fsave_data.fpt[0], &fsave_data.fpt[1], &fsave_data.fpt[2]);
                     fsave_data.dtag = get_ftag(fsave_data.fpt[0], fsave_data.fpt[1], fsave_data.fpt[2], -1);
                 }
             }
@@ -1557,7 +1559,7 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
         {
             uae_u32 wrd[3];
             int kfactor;
-            if (fault_if_4060 (opcode, extra, ad, oldpc, value, NULL))
+            if (fault_if_4060 (opcode, extra, ad, oldpc, value, wrd))
                 return 1; // for calling fp_arithmetic_exception
             kfactor = size == 7 ? m68k_dreg (regs, (extra >> 4) & 7) : extra;
             kfactor &= 127;
