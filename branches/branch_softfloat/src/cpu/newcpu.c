@@ -960,13 +960,13 @@ static void Exception_mmu (int nr, uaecptr oldpc)
         Exception_build_stack_frame(oldpc, regs.instruction_pc, regs.mmu_ssw, nr, 0x0);
     } else if (nr >= 48 && nr <= 55) {
         if (regs.fpu_exp_pre) {
-            if (currprefs.cpu_model == 68060 && nr == 55 && regs.fp_unimp_pend&2) { // packed decimal real
+            if (currprefs.cpu_model == 68060 && nr == 55 && regs.fp_unimp_pend == 2) { // packed decimal real
                 Exception_build_stack_frame(regs.fp_ea, regs.instruction_pc, 0, nr, 0x2);
             } else {
                 Exception_build_stack_frame(oldpc, regs.instruction_pc, 0, nr, 0x0);
             }
         } else { /* post-instruction */
-            if (currprefs.cpu_model == 68060 && nr == 55 && regs.fp_unimp_pend&2) { // packed decimal real
+            if (currprefs.cpu_model == 68060 && nr == 55 && regs.fp_unimp_pend == 2) { // packed decimal real
                 Exception_build_stack_frame(regs.fp_ea, currpc, 0, nr, 0x2);
             } else {
                 Exception_build_stack_frame(oldpc, currpc, 0, nr, 0x3);
