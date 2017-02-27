@@ -1182,25 +1182,29 @@ static void from_pack (fptype *src, uae_u32 *wrd, int kfactor)
 }
 
 // 68040/060 does not support denormals
-static void normalize_or_fault_if_no_denormal_support(uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fptype *src)
+static bool normalize_or_fault_if_no_denormal_support(uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fptype *src)
 {
     if (fp_is_unnormal(src) || fp_is_denormal(src)) {
         if (currprefs.cpu_model >= 68040 && currprefs.fpu_model) {
             fp_unimp_datatype(opcode, extra, ea, oldpc, src, NULL);
+            return true;
         } else {
             fp_normalize(src);
         }
     }
+    return false;
 }
-static void normalize_or_fault_if_no_denormal_support_dst(uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fptype *dst, fptype *src)
+static bool normalize_or_fault_if_no_denormal_support_dst(uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fptype *dst, fptype *src)
 {
     if (fp_is_unnormal(dst) || fp_is_denormal(dst)) {
         if (currprefs.cpu_model >= 68040 && currprefs.fpu_model) {
             fp_unimp_datatype(opcode, extra, ea, oldpc, src, NULL);
+            return true;
         } else {
             fp_normalize(dst);
         }
     }
+    return false;
 }
 // 68040/060 does not support packed decimal format
 static bool fault_if_no_packed_support(uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc, fptype *src, uae_u32 *packed)
@@ -1240,6 +1244,7 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr old
         if (fault_if_no_fpu (opcode, extra, 0, oldpc))
             return -1;
         *src = regs.fp[(extra >> 10) & 7];
+        normalize_or_fault_if_no_denormal_support(opcode, extra, 0, oldpc, src);
         return 1;
     }
     mode = (opcode >> 3) & 7;
@@ -1261,6 +1266,7 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr old
                 break;
             case 1:
                 to_single (src, m68k_dreg (regs, reg));
+                normalize_or_fault_if_no_denormal_support(opcode, extra, 0, oldpc, src);
                 break;
             default:
                 return 0;
@@ -1346,9 +1352,10 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr old
     }
     
     *adp = ad;
+    uae_u32 adold = ad;
     
     if (currprefs.fpu_model == 68060) {
-        if (fault_if_unimplemented_680x0(opcode, extra, ad, oldpc, src, reg)) {
+        if (fault_if_unimplemented_680x0(opcode, extra, ad, oldpc, src, -1)) {
             return -1;
         }
     }
@@ -1360,6 +1367,7 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr old
             break;
         case 1:
             to_single (src, (doext ? exts[0] : x_cp_get_long (ad)));
+            normalize_or_fault_if_no_denormal_support(opcode, extra, adold, oldpc, src);
             break;
         case 2:
         {
@@ -1370,12 +1378,12 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr old
             ad += 4;
             wrd3 = (doext ? exts[2] : x_cp_get_long (ad));
             to_exten (src, wrd1, wrd2, wrd3);
+            normalize_or_fault_if_no_denormal_support(opcode, extra, adold, oldpc, src);
         }
             break;
         case 3:
         {
             uae_u32 wrd[3];
-            uae_u32 adold = ad;
             if (currprefs.cpu_model == 68060) {
                 if (fault_if_no_packed_support (opcode, extra, adold, oldpc, NULL, wrd))
                     return 1;
@@ -1388,6 +1396,7 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr old
             if (fault_if_no_packed_support (opcode, extra, adold, oldpc, NULL, wrd))
                 return 1;
             to_pack (src, wrd);
+            fp_normalize(src);
             return 1;
         }
             break;
@@ -1401,6 +1410,7 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr old
             ad += 4;
             wrd2 = (doext ? exts[1] : x_cp_get_long (ad));
             to_double (src, wrd1, wrd2);
+            normalize_or_fault_if_no_denormal_support(opcode, extra, adold, oldpc, src);
         }
             break;
         case 6:
@@ -1441,23 +1451,31 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
             switch (size)
         {
             case 6:
+                if (normalize_or_fault_if_no_denormal_support(opcode, extra, 0, oldpc, value))
+                    return 1;
                 m68k_dreg (regs, reg) = (uae_u32)(((to_int (value, 0) & 0xff)
                                                    | (m68k_dreg (regs, reg) & ~0xff)));
                 if (fault_if_68040_integer_nonmaskable(opcode, extra, ad, oldpc, value))
                     return -1;
                 break;
             case 4:
+                if (normalize_or_fault_if_no_denormal_support(opcode, extra, 0, oldpc, value))
+                    return 1;
                 m68k_dreg (regs, reg) = (uae_u32)(((to_int (value, 1) & 0xffff)
                                                    | (m68k_dreg (regs, reg) & ~0xffff)));
                 if (fault_if_68040_integer_nonmaskable(opcode, extra, ad, oldpc, value))
                     return -1;
                 break;
             case 0:
+                if (normalize_or_fault_if_no_denormal_support(opcode, extra, 0, oldpc, value))
+                    return 1;
                 m68k_dreg (regs, reg) = (uae_u32)to_int (value, 2);
                 if (fault_if_68040_integer_nonmaskable(opcode, extra, ad, oldpc, value))
                     return -1;
                 break;
             case 1:
+                if (normalize_or_fault_if_no_denormal_support(opcode, extra, 0, oldpc, value))
+                    return 1;
                 m68k_dreg (regs, reg) = from_single (value);
                 break;
             default:
@@ -1522,15 +1540,21 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
     switch (size)
     {
         case 0:
+            if (normalize_or_fault_if_no_denormal_support(opcode, extra, ad, oldpc, value))
+                return 1;
             x_cp_put_long(ad, (uae_u32)to_int(value, 2));
             if (fault_if_68040_integer_nonmaskable(opcode, extra, ad, oldpc, value))
                 return -1;
             break;
         case 1:
+            if (normalize_or_fault_if_no_denormal_support(opcode, extra, ad, oldpc, value))
+                return 1;
             x_cp_put_long(ad, from_single(value));
             break;
         case 2:
         {
+            if (normalize_or_fault_if_no_denormal_support(opcode, extra, ad, oldpc, value))
+                return 1;
             uae_u32 wrd1, wrd2, wrd3;
             from_exten(value, &wrd1, &wrd2, &wrd3);
             x_cp_put_long (ad, wrd1);
@@ -1546,7 +1570,7 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
             uae_u32 wrd[3];
             int kfactor;
             if (fault_if_no_packed_support (opcode, extra, ad, oldpc, value, wrd))
-                return 1; // for calling fp_exception_pending
+                return 1;
             kfactor = size == 7 ? m68k_dreg (regs, (extra >> 4) & 7) : extra;
             kfactor &= 127;
             if (kfactor & 64)
@@ -1561,12 +1585,16 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
         }
             break;
         case 4:
+            if (normalize_or_fault_if_no_denormal_support(opcode, extra, ad, oldpc, value))
+                return 1;
             x_cp_put_word(ad, (uae_s16)to_int(value, 1));
             if (fault_if_68040_integer_nonmaskable(opcode, extra, ad, oldpc, value))
                 return -1;
             break;
         case 5:
         {
+            if (normalize_or_fault_if_no_denormal_support(opcode, extra, ad, oldpc, value))
+                return 1;
             uae_u32 wrd1, wrd2;
             from_double(value, &wrd1, &wrd2);
             x_cp_put_long (ad, wrd1);
@@ -1575,6 +1603,8 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
         }
             break;
         case 6:
+            if (normalize_or_fault_if_no_denormal_support(opcode, extra, ad, oldpc, value))
+                return 1;
             x_cp_put_byte(ad, (uae_s8)to_int(value, 0));
             if (fault_if_68040_integer_nonmaskable(opcode, extra, ad, oldpc, value))
                 return -1;
@@ -2635,13 +2665,6 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
             regs.fpiar = pc;
             fpsr_clear_status();
             src = regs.fp[(extra >> 7) & 7];
-            
-            normalize_or_fault_if_no_denormal_support(opcode, extra, ad, pc, &src);
-            if (regs.fp_unimp_pend) {
-                fp_exception_pending(false); // post/mid instruction
-                return;
-            }
-            
             v = put_fp_value (&src, opcode, extra, pc, &ad);
             if (v <= 0) {
                 if (v == 0)
@@ -2876,15 +2899,14 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
             
             dst = regs.fp[reg];
             
-            if (regs.fp_unimp_pend == 0)
-                normalize_or_fault_if_no_denormal_support(opcode, extra, ad, pc, &src);
-            
             if (fp_is_dyadic(extra))
                 normalize_or_fault_if_no_denormal_support_dst(opcode, extra, ad, pc, &dst, &src);
             
+            // check for 680x0 unimplemented instruction
             if (fault_if_unimplemented_680x0 (opcode, extra, ad, pc, &src, reg))
                 return;
-
+            
+            // unimplemented datatype was checked in get_fp_value
             if (regs.fp_unimp_pend)
                 return;
 
