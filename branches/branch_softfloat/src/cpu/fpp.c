@@ -173,6 +173,7 @@ static bool fpu_mmu_fixup;
 
 struct {
     // 6888x and 68060
+    uae_u32 ccr;
     uae_u32 eo[3];
     // 68060
     uae_u32 v;
@@ -199,6 +200,7 @@ void reset_fsave_data(void)
         fsave_data.et[i] = 0;
         fsave_data.wbt[i] = 0;
     }
+    fsave_data.ccr = 0;
     fsave_data.v = 0;
     fsave_data.fpiarcu = 0;
     fsave_data.cmdreg1b = 0;
@@ -321,19 +323,27 @@ void fpsr_check_arithmetic_exception(uae_u32 mask, fptype *src, uae_u32 opcode, 
         // data for FSAVE stack frame
         regs.fpu_exp_state = 2; // 68060 EXCP frame, 68040 BUSY frame, 6888x IDLE frame
 
-        /* TODO: more FSAVE data */
+        uae_u32 opclass = (extra >> 13) & 7;
 
         if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882) {
             // fsave data for 68881 and 68882
-            fp_get_exceptional_operand(fsave_data.eo[0], fsave_data.eo[1], fsave_data.eo[2]);
+            if (opclass == 3) { // 011
+                fsave_data.ccr = ((uae_u32)extra << 16) | extra;
+            } else { // 000 or 010
+                fsave_data.ccr = ((uae_u32)(opcode | 0x0080) << 16) | extra;
+            }
+            if (regs.fp_exp_pend == 54 || regs.fp_exp_pend == 52 || regs.fp_exp_pend == 50) { // SNAN, OPERR, DZ
+                from_exten_fmovem(src, &fsave_data.eo[0], &fsave_data.eo[1], &fsave_data.eo[2]);
+            } else if (regs.fp_exp_pend == 53 || regs.fp_exp_pend == 51) { // OVFL, UNFL
+                fp_get_exceptional_operand(&fsave_data.eo[0], &fsave_data.eo[1], &fsave_data.eo[2]);
+            }
         } else if (currprefs.cpu_model == 68060) {
             // fsave data for 68060
             fsave_data.v = regs.fp_exp_pend & 7;
-            fp_get_exceptional_operand(fsave_data.eo[0], fsave_data.eo[1], fsave_data.eo[2]);
+            fp_get_exceptional_operand(&fsave_data.eo[0], &fsave_data.eo[1], &fsave_data.eo[2]);
         } else {
             uae_u32 reg = (extra >> 7) & 7;
             uae_u32 size = (extra >> 10) & 7;
-            uae_u32 opclass = (extra >> 13) & 7;
             bool exp_e3 = false;
             
             // fsave data for 68040
@@ -2034,7 +2044,7 @@ void fpuop_save (uae_u32 opcode)
                 ad -= frame_size;
         }
     } else { /* 68881/68882 */
-        uae_u32 biu_flags = 0x7000ffff;
+        uae_u32 biu_flags = 0x740effff;
         int frame_size_real = currprefs.fpu_model == 68882 ? 0x3c : 0x1c;
         uae_u32 frame_id = regs.fpu_state == 0 ? ((frame_size_real - 4) << 16) : (fpu_version << 24) | ((frame_size_real - 4) << 16);
         
@@ -2061,7 +2071,7 @@ void fpuop_save (uae_u32 opcode)
                     i++;
                     ad -= 4;
                     if (mmu030_state[0] == i) {
-                        x_put_long (ad, fsave_data.eo[0]); // exceptional operand lo
+                        x_put_long (ad, fsave_data.eo[2]); // exceptional operand lo
                         mmu030_state[0]++;
                     }
                     i++;
@@ -2073,7 +2083,7 @@ void fpuop_save (uae_u32 opcode)
                     i++;
                     ad -= 4;
                     if (mmu030_state[0] == i) {
-                        x_put_long (ad, fsave_data.eo[2]); // exceptional operand hi
+                        x_put_long (ad, fsave_data.eo[0]); // exceptional operand hi
                         mmu030_state[0]++;
                     }
                     i++;
@@ -2089,7 +2099,7 @@ void fpuop_save (uae_u32 opcode)
                     }
                     ad -= 4;
                     if (mmu030_state[0] == i) {
-                        x_put_long (ad, 0x00000000); // command/condition register
+                        x_put_long (ad, fsave_data.ccr); // command/condition register
                         mmu030_state[0]++;
                     }
                     i++;
@@ -2108,7 +2118,7 @@ void fpuop_save (uae_u32 opcode)
                 i++;
                 if (regs.fpu_state != 0) { // idle frame
                     if (mmu030_state[0] == i) {
-                        x_put_long (ad, 0x00000000); // command/condition register
+                        x_put_long (ad, fsave_data.ccr); // command/condition register
                         mmu030_state[0]++;
                     }
                     ad += 4;
@@ -2124,7 +2134,7 @@ void fpuop_save (uae_u32 opcode)
                         }
                     }
                     if (mmu030_state[0] == i) {
-                        x_put_long (ad, fsave_data.eo[2]); // exceptional operand hi
+                        x_put_long (ad, fsave_data.eo[0]); // exceptional operand hi
                         mmu030_state[0]++;
                     }
                     ad += 4;
@@ -2136,7 +2146,7 @@ void fpuop_save (uae_u32 opcode)
                     ad += 4;
                     i++;
                     if (mmu030_state[0] == i) {
-                        x_put_long (ad, fsave_data.eo[0]); // exceptional operand lo
+                        x_put_long (ad, fsave_data.eo[2]); // exceptional operand lo
                         mmu030_state[0]++;
                     }
                     ad += 4;
@@ -2162,11 +2172,11 @@ void fpuop_save (uae_u32 opcode)
                     ad -= 4;
                     x_put_long (ad, 0x00000000); // operand register
                     ad -= 4;
-                    x_put_long (ad, fsave_data.eo[0]); // exceptional operand lo
+                    x_put_long (ad, fsave_data.eo[2]); // exceptional operand lo
                     ad -= 4;
                     x_put_long (ad, fsave_data.eo[1]); // exceptional operand mid
                     ad -= 4;
-                    x_put_long (ad, fsave_data.eo[2]); // exceptional operand hi
+                    x_put_long (ad, fsave_data.eo[0]); // exceptional operand hi
                     if (currprefs.fpu_model == 68882) {
                         for (i = 0; i < 32; i += 4) {
                             ad -= 4;
@@ -2174,7 +2184,7 @@ void fpuop_save (uae_u32 opcode)
                         }
                     }
                     ad -= 4;
-                    x_put_long (ad, 0x00000000); // command/condition register
+                    x_put_long (ad, fsave_data.ccr); // command/condition register
                 }
                 ad -= 4;
                 x_put_long (ad, frame_id); // frame id
@@ -2182,7 +2192,7 @@ void fpuop_save (uae_u32 opcode)
                 x_put_long (ad, frame_id); // frame id
                 ad += 4;
                 if (regs.fpu_state != 0) { // idle frame
-                    x_put_long (ad, 0x00000000); // command/condition register
+                    x_put_long (ad, fsave_data.ccr); // command/condition register
                     ad += 4;
                     if (currprefs.fpu_model == 68882) {
                         for (i = 0; i < 32; i += 4) {
@@ -2190,11 +2200,11 @@ void fpuop_save (uae_u32 opcode)
                             ad += 4;
                         }
                     }
-                    x_put_long (ad, fsave_data.eo[2]); // exceptional operand hi
+                    x_put_long (ad, fsave_data.eo[0]); // exceptional operand hi
                     ad += 4;
                     x_put_long (ad, fsave_data.eo[1]); // exceptional operand mid
                     ad += 4;
-                    x_put_long (ad, fsave_data.eo[0]); // exceptional operand lo
+                    x_put_long (ad, fsave_data.eo[2]); // exceptional operand lo
                     ad += 4;
                     x_put_long (ad, 0x00000000); // operand register
                     ad += 4;
