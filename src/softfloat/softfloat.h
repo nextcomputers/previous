@@ -99,12 +99,19 @@ enum {
 };
 
 /*----------------------------------------------------------------------------
- | Variables for storing sign, exponent and significand of overflowed or 
- | underflowed extended double-precision floating-point value.
+ | Variables for storing sign, exponent and significand of internal extended 
+ | double-precision floating-point value for external use.
  *----------------------------------------------------------------------------*/
-extern flag floatx80_oufl_sign;
-extern int32 floatx80_oufl_exponent;
-extern bits64 floatx80_oufl_significand;
+extern flag floatx80_internal_sign;
+extern int32 floatx80_internal_exp;
+extern bits64 floatx80_internal_sig0;
+extern bits64 floatx80_internal_sig1;
+
+/*----------------------------------------------------------------------------
+ | Function for storing sign, exponent and significand of extended 
+ | double-precision floating-point intermediate result for external use.
+ *----------------------------------------------------------------------------*/
+void saveFloatx80Internal( flag zSign, int32 zExp, bits64 zSig0, bits64 zSig1 );
 
 /*----------------------------------------------------------------------------
 | Routine to raise any or all of the software IEC/IEEE floating-point

@@ -217,7 +217,6 @@ STATIC_INLINE void from_native(long double fp, fptype *fpx)
     
     while (!(fpx->low & LIT64( 0x8000000000000000))) {
         if (fpx->high == 0) {
-            float_raise( float_flag_denormal );
             break;
         }
         fpx->low <<= 1;
@@ -287,13 +286,44 @@ STATIC_INLINE fptype from_int(uae_s32 src)
 }
 
 /* Functions for returning exception state data */
-STATIC_INLINE void fp_get_exceptional_operand(uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
+STATIC_INLINE fptype fp_get_internal_overflow(void)
 {
+    fptype internal;
     
+    if (floatx80_internal_exp > (0x7fff + 0x6000)) { // catastrophic
+        floatx80_internal_exp = 0;
+    } else {
+        floatx80_internal_exp -= 0x6000;
+    }
+    
+    internal.high = ((bits16)floatx80_internal_exp) & 0x7fff;
+    internal.low = floatx80_internal_sig0;
+
+    return internal;
+}
+STATIC_INLINE fptype fp_get_internal_underflow(void)
+{
+    fptype internal;
+
+    if (floatx80_internal_exp < (0x0000 - 0x6000)) { // catastrophic
+        floatx80_internal_exp = 0;
+    } else {
+        floatx80_internal_exp += 0x6000;
+    }
+    
+    internal.high = ((bits16)floatx80_internal_exp) & 0x7fff;
+    internal.low = floatx80_internal_sig0;
+    
+    return internal;
 }
 STATIC_INLINE void fp_get_exceptional_operand_grs(uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3, uae_u32 *grs)
 {
-
+    *wrd1 = (((uae_u32)floatx80_internal_exp) & 0x7fff) << 16;
+    *wrd1 |= floatx80_internal_sign ? 0x80000000 : 0x000000000;
+    *wrd2 = floatx80_internal_sig0 >> 32;
+    *wrd3 = (uae_u32) floatx80_internal_sig0;
+    *grs = floatx80_internal_sig1 >> 61;
+    *grs |= (floatx80_internal_sig1 & 0x3fffffffffffffffULL) ? 1 : 0;
 }
 
 /* Functions for rounding */

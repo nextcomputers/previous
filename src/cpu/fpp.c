@@ -327,6 +327,8 @@ void fpsr_check_arithmetic_exception(uae_u32 mask, fptype *src, uae_u32 opcode, 
 
         if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882) {
             // fsave data for 68881 and 68882
+            fptype eo;
+            
             if (opclass == 3) { // 011
                 fsave_data.ccr = ((uae_u32)extra << 16) | extra;
             } else { // 000 or 010
@@ -334,13 +336,20 @@ void fpsr_check_arithmetic_exception(uae_u32 mask, fptype *src, uae_u32 opcode, 
             }
             if (regs.fp_exp_pend == 54 || regs.fp_exp_pend == 52 || regs.fp_exp_pend == 50) { // SNAN, OPERR, DZ
                 from_exten_fmovem(src, &fsave_data.eo[0], &fsave_data.eo[1], &fsave_data.eo[2]);
-            } else if (regs.fp_exp_pend == 53 || regs.fp_exp_pend == 51) { // OVFL, UNFL
-                fp_get_exceptional_operand(&fsave_data.eo[0], &fsave_data.eo[1], &fsave_data.eo[2]);
-            }
+            } else if (regs.fp_exp_pend == 53) { // OVFL
+                eo = fp_get_internal_overflow();
+                if (((regs.fpcr >> 6) & 3) == 1) fp_round32(&eo);
+                if (((regs.fpcr >> 6) & 3) >= 2) fp_round64(&eo);
+                from_exten_fmovem(&eo, &fsave_data.eo[0], &fsave_data.eo[1], &fsave_data.eo[2]);
+            } else if (regs.fp_exp_pend == 51) { // UNFL
+                eo = fp_get_internal_underflow();
+                if (((regs.fpcr >> 6) & 3) == 1) fp_round32(&eo);
+                if (((regs.fpcr >> 6) & 3) >= 2) fp_round64(&eo);
+                from_exten_fmovem(&eo, &fsave_data.eo[0], &fsave_data.eo[1], &fsave_data.eo[2]);
+            } // else INEX1, INEX2: do nothing
         } else if (currprefs.cpu_model == 68060) {
             // fsave data for 68060
             fsave_data.v = regs.fp_exp_pend & 7;
-            fp_get_exceptional_operand(&fsave_data.eo[0], &fsave_data.eo[1], &fsave_data.eo[2]);
         } else {
             uae_u32 reg = (extra >> 7) & 7;
             uae_u32 size = (extra >> 10) & 7;
@@ -2044,14 +2053,12 @@ void fpuop_save (uae_u32 opcode)
                 ad -= frame_size;
         }
     } else { /* 68881/68882 */
-        uae_u32 biu_flags = 0x740effff;
+        uae_u32 biu_flags = 0x540effff | regs.fpu_exp_state ? 0x00000000 : 0x28000000;
         int frame_size_real = currprefs.fpu_model == 68882 ? 0x3c : 0x1c;
         uae_u32 frame_id = regs.fpu_state == 0 ? ((frame_size_real - 4) << 16) : (fpu_version << 24) | ((frame_size_real - 4) << 16);
         
-        if (regs.fpu_state) { // not in null state
-            biu_flags |= regs.fp_exp_pend ? 0x00000000 : 0x08000000;
-            regs.fp_exp_pend = 0;
-        }
+        regs.fp_exp_pend = 0;
+        regs.fpu_exp_state = 0;
         
         if (currprefs.mmu_model) {
             i = 0;
@@ -2318,6 +2325,7 @@ void fpuop_restore (uae_u32 opcode)
                 ad += 4;
             }
             if ((biu_flags & 0x08000000) == 0x00000000) {
+                regs.fpu_exp_state = 2;
                 regs.fp_exp_pend = fpsr_get_vector(regs.fpsr & regs.fpcr & 0xff00);
             }
         } else { // null frame
