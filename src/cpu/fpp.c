@@ -336,6 +336,10 @@ void fpsr_check_arithmetic_exception(uae_u32 mask, fptype *src, uae_u32 opcode, 
             }
             if (regs.fp_exp_pend == 54 || regs.fp_exp_pend == 52 || regs.fp_exp_pend == 50) { // SNAN, OPERR, DZ
                 from_exten_fmovem(src, &fsave_data.eo[0], &fsave_data.eo[1], &fsave_data.eo[2]);
+                if (regs.fp_exp_pend == 52 && opclass == 3) { // OPERR from move to integer or packed
+                    fsave_data.eo[0] &= 0x4fff0000;
+                    fsave_data.eo[1] = fsave_data.eo[2] = 0;
+                }
             } else if (regs.fp_exp_pend == 53) { // OVFL
                 eo = fp_get_internal_overflow();
                 if (((regs.fpcr >> 6) & 3) == 1) fp_round32(&eo);
