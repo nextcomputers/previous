@@ -66,6 +66,28 @@ void saveFloatx80Internal( flag zSign, int32 zExp, bits64 zSig0, bits64 zSig1 )
     
 }
 
+void saveFloat64Internal( flag zSign, int16 zExp, bits64 zSig )
+{
+    floatx80 z = roundAndPackFloatx80( 64, zSign, 0x3FFF, zSig<<1, 0 );
+
+    floatx80_internal_sign = zSign;
+    floatx80_internal_exp = zExp + 0x3C01;
+    floatx80_internal_sig0 = extractFloatx80Frac( z );
+    floatx80_internal_sig1 = 0;
+
+}
+
+void saveFloat32Internal( flag zSign, int16 zExp, bits32 zSig )
+{
+    floatx80 z = roundAndPackFloatx80( 32, zSign, 0x3FFF, ( (bits64) zSig )<<33, 0 );
+    
+    floatx80_internal_sign = zSign;
+    floatx80_internal_exp = zExp + 0x3F81;
+    floatx80_internal_sig0 = extractFloatx80Frac( z );
+    floatx80_internal_sig1 = 0;
+
+}
+
 /*----------------------------------------------------------------------------
 | Functions and definitions to determine:  (1) whether tininess for underflow
 | is detected before or after rounding by default, (2) what (if anything)
@@ -379,6 +401,7 @@ static float32 roundAndPackFloat32( flag zSign, int16 zExp, bits32 zSig )
 			) {
 #ifdef SOFTFLOAT_68K
             float_raise( float_flag_overflow );
+            saveFloat32Internal( zSign, zExp, zSig );
             if ( roundBits ) float_raise( float_flag_inexact );
 #else
 			float_raise( float_flag_overflow | float_flag_inexact );
@@ -390,12 +413,16 @@ static float32 roundAndPackFloat32( flag zSign, int16 zExp, bits32 zSig )
 					( float_detect_tininess == float_tininess_before_rounding )
 				|| ( zExp < -1 )
 				|| ( zSig + roundIncrement < 0x80000000 );
+#ifdef SOFTFLOAT_68K
+            if ( isTiny ) {
+                float_raise( float_flag_underflow );
+                saveFloat32Internal( zSign, zExp, zSig );
+            }
+#endif
 			shift32RightJamming( zSig, - zExp, &zSig );
 			zExp = 0;
 			roundBits = zSig & 0x7F;
-#ifdef SOFTFLOAT_68K
-            if ( isTiny ) float_raise( float_flag_underflow );
-#else
+#ifndef SOFTFLOAT_68K
 			if ( isTiny && roundBits ) float_raise( float_flag_underflow );
 #endif
 		}
@@ -546,6 +573,7 @@ static float64 roundAndPackFloat64( flag zSign, int16 zExp, bits64 zSig )
 			) {
 #ifdef SOFTFLOAT_68K
 			float_raise( float_flag_overflow );
+            saveFloat64Internal( zSign, zExp, zSig );
             if ( roundBits ) float_raise( float_flag_inexact );
 #else
             float_raise( float_flag_overflow | float_flag_inexact );
@@ -557,12 +585,16 @@ static float64 roundAndPackFloat64( flag zSign, int16 zExp, bits64 zSig )
 					( float_detect_tininess == float_tininess_before_rounding )
 				|| ( zExp < -1 )
 				|| ( zSig + roundIncrement < LIT64( 0x8000000000000000 ) );
+#ifdef SOFTFLOAT_68K
+            if ( isTiny ) {
+                float_raise( float_flag_underflow );
+                saveFloat64Internal( zSign, zExp, zSig );
+            }
+#endif
 			shift64RightJamming( zSig, - zExp, &zSig );
 			zExp = 0;
 			roundBits = zSig & 0x3FF;
-#ifdef SOFTFLOAT_68K
-            if ( isTiny ) float_raise( float_flag_underflow );
-#else
+#ifndef SOFTFLOAT_68K
 			if ( isTiny && roundBits ) float_raise( float_flag_underflow );
 #endif
 		}
@@ -3576,8 +3608,17 @@ float32 floatx80_to_float32( floatx80 a )
 		}
 		return packFloat32( aSign, 0xFF, 0 );
 	}
+#ifdef SOFTFLOAT_68K
+    if ( aExp == 0 ) {
+        if ( aSig == 0) return 0;
+        normalizeFloatx80Subnormal( aSig, &aExp, &aSig );
+    }
+    shift64RightJamming( aSig, 33, &aSig );
+    aExp -= 0x3F81;
+#else
 	shift64RightJamming( aSig, 33, &aSig );
 	if ( aExp || aSig ) aExp -= 0x3F81;
+#endif
 	return roundAndPackFloat32( aSign, aExp, aSig );
 
 }
@@ -3604,8 +3645,17 @@ float64 floatx80_to_float64( floatx80 a )
 		}
 		return packFloat64( aSign, 0x7FF, 0 );
 	}
+#ifdef SOFTFLOAT_68K
+    if ( aExp == 0 ) {
+        if ( aSig == 0) return 0;
+        normalizeFloatx80Subnormal( aSig, &aExp, &aSig );
+    }
+    shift64RightJamming( aSig, 1, &zSig );
+    aExp -= 0x3C01;
+#else
 	shift64RightJamming( aSig, 1, &zSig );
 	if ( aExp || aSig ) aExp -= 0x3C01;
+#endif
 	return roundAndPackFloat64( aSign, aExp, zSig );
 
 }
