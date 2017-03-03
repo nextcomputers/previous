@@ -2057,12 +2057,16 @@ void fpuop_save (uae_u32 opcode)
                 ad -= frame_size;
         }
     } else { /* 68881/68882 */
-        uae_u32 biu_flags = 0x540effff | regs.fpu_exp_state ? 0x00000000 : 0x28000000;
+        uae_u32 biu_flags = 0x540effff;
         int frame_size_real = currprefs.fpu_model == 68882 ? 0x3c : 0x1c;
         uae_u32 frame_id = regs.fpu_state == 0 ? ((frame_size_real - 4) << 16) : (fpu_version << 24) | ((frame_size_real - 4) << 16);
         
         regs.fp_exp_pend = 0;
-        regs.fpu_exp_state = 0;
+        if (regs.fpu_exp_state) {
+            biu_flags |= 0x20000000;
+        } else {
+            biu_flags |= 0x08000000;
+        }
         
         if (currprefs.mmu_model) {
             i = 0;
