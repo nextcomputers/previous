@@ -3610,7 +3610,7 @@ float32 floatx80_to_float32( floatx80 a )
 	}
 #ifdef SOFTFLOAT_68K
     if ( aExp == 0 ) {
-        if ( aSig == 0) return packFloat64( aSign, 0, 0 );
+        if ( aSig == 0) return packFloat32( aSign, 0, 0 );
         normalizeFloatx80Subnormal( aSig, &aExp, &aSig );
     }
     shift64RightJamming( aSig, 33, &aSig );
