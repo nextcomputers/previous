@@ -468,6 +468,12 @@ void fpsr_set_quotient(uae_u64 quot, uae_s8 sign)
     regs.fpsr |= (quot << 16) & FPSR_QUOT_LSB;
     regs.fpsr |= sign ? FPSR_QUOT_SIGN : 0;
 }
+void fpsr_get_quotient(uae_u64 *quot, uae_s8 *sign)
+{
+    *quot = (regs.fpsr & FPSR_QUOT_LSB) >> 16;
+    *sign = (regs.fpsr & FPSR_QUOT_SIGN) ? 1 : 0;
+}
+
 
 uae_u32 fpp_get_fpsr (void)
 {
@@ -2576,9 +2582,8 @@ static bool fp_arithmetic(fptype *src, fptype *dst, int extra)
             fp_div(dst, src);
             break;
         case 0x21: /* FMOD */
+            fpsr_get_quotient(&q, &s);
             fp_mod(dst, src, &q, &s);
-            if (fpsr_make_status())
-                return false;
             fpsr_set_quotient(q, s);
             break;
         case 0x22: /* FADD */
@@ -2593,14 +2598,13 @@ static bool fp_arithmetic(fptype *src, fptype *dst, int extra)
             break;
         case 0x24: /* FSGLDIV */
             fp_sgldiv(dst, src);
+            fpsr_set_result(dst);
             if (fpsr_make_status())
                 return false;
-            fpsr_set_result(dst);
             return true;
         case 0x25: /* FREM */
+            fpsr_get_quotient(&q, &s);
             fp_rem(dst, src, &q, &s);
-            if (fpsr_make_status())
-                return false;
             fpsr_set_quotient(q, s);
             break;
         case 0x26: /* FSCALE */
@@ -2608,9 +2612,9 @@ static bool fp_arithmetic(fptype *src, fptype *dst, int extra)
             break;
         case 0x27: /* FSGLMUL */
             fp_sglmul(dst, src);
+            fpsr_set_result(dst);
             if (fpsr_make_status())
                 return false;
-            fpsr_set_result(dst);
             return true;
         case 0x28: /* FSUB */
         case 0x68: /* FSSUB */
@@ -2635,14 +2639,12 @@ static bool fp_arithmetic(fptype *src, fptype *dst, int extra)
             break;
         case 0x38: /* FCMP */
             fp_cmp(dst, src);
-            if (fpsr_make_status())
-                return false;
+            fpsr_make_status();
             fpsr_set_result(dst);
             return false;
         case 0x3a: /* FTST */
             fp_tst(dst, src);
-            if (fpsr_make_status())
-                return false;
+            fpsr_make_status();
             fpsr_set_result(dst);
             return false;
             
@@ -2660,10 +2662,10 @@ static bool fp_arithmetic(fptype *src, fptype *dst, int extra)
     else if (((regs.fpcr >> 6) & 3) >= 2)
         fp_round_double(dst);
     
+    fpsr_set_result(dst);
+
     if (fpsr_make_status())
         return false;
-    
-    fpsr_set_result(dst);
     
     return true;
 }
@@ -2937,10 +2939,12 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                 return;
 
             v = fp_arithmetic(&src, &dst, extra);
+            
+            fpsr_check_arithmetic_exception(0, &src, opcode, extra, ad);
+
             if (v)
                 regs.fp[reg] = dst;
             
-            fpsr_check_arithmetic_exception(0, &src, opcode, extra, ad);
             return;
         default:
             break;
