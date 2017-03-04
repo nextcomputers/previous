@@ -4552,8 +4552,7 @@ floatx80 floatx80_rem( floatx80 a, floatx80 b, bits64 *q, flag *s )
     bSig = extractFloatx80Frac( b );
     bExp = extractFloatx80Exp( b );
     bSign = extractFloatx80Sign( b );
-    *q = 0;
-    *s = 0;
+
     if ( aExp == 0x7FFF ) {
         if (    (bits64) ( aSig0<<1 )
             || ( ( bExp == 0x7FFF ) && (bits64) ( bSig<<1 ) ) ) {
@@ -4563,6 +4562,8 @@ floatx80 floatx80_rem( floatx80 a, floatx80 b, bits64 *q, flag *s )
     }
     if ( bExp == 0x7FFF ) {
         if ( (bits64) ( bSig<<1 ) ) return propagateFloatx80NaN( a, b );
+        *s = (aSign != bSign);
+        *q = 0;
         return a;
     }
     if ( bExp == 0 ) {
@@ -4577,7 +4578,11 @@ floatx80 floatx80_rem( floatx80 a, floatx80 b, bits64 *q, flag *s )
     }
     if ( aExp == 0 ) {
 #ifdef SOFTFLOAT_68K
-        if ( aSig0 == 0 ) return a;
+        if ( aSig0 == 0 ) {
+            *s = (aSign != bSign);
+            *q = 0;
+            return a;
+        }
 #else
         if ( (bits64) ( aSig0<<1 ) == 0 ) return a;
 #endif
@@ -4661,8 +4666,7 @@ floatx80 floatx80_mod( floatx80 a, floatx80 b, bits64 *q, flag *s )
     bSig = extractFloatx80Frac( b );
     bExp = extractFloatx80Exp( b );
     bSign = extractFloatx80Sign( b );
-    *q = 0;
-    *s = 0;
+
     if ( aExp == 0x7FFF ) {
         if (    (bits64) ( aSig0<<1 )
             || ( ( bExp == 0x7FFF ) && (bits64) ( bSig<<1 ) ) ) {
@@ -4672,6 +4676,8 @@ floatx80 floatx80_mod( floatx80 a, floatx80 b, bits64 *q, flag *s )
     }
     if ( bExp == 0x7FFF ) {
         if ( (bits64) ( bSig<<1 ) ) return propagateFloatx80NaN( a, b );
+        *s = (aSign != bSign);
+        *q = 0;
         return a;
     }
     if ( bExp == 0 ) {
@@ -4686,7 +4692,11 @@ floatx80 floatx80_mod( floatx80 a, floatx80 b, bits64 *q, flag *s )
     }
     if ( aExp == 0 ) {
 #ifdef SOFTFLOAT_68K
-        if ( aSig0 == 0 ) return a;
+        if ( aSig0 == 0 ) {
+            *s = (aSign != bSign);
+            *q = 0;
+            return a;
+        }
 #else
         if ( (bits64) ( aSig0<<1 ) == 0 ) return a;
 #endif
