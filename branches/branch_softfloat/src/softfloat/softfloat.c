@@ -59,9 +59,11 @@ bits64 floatx80_internal_sig1 = 0;
  *----------------------------------------------------------------------------*/
 void saveFloatx80Internal( flag zSign, int32 zExp, bits64 zSig0, bits64 zSig1 )
 {
+    floatx80 z = roundAndPackFloatx80( 80, zSign, 0x3FFF, zSig0, zSig1 );
+
     floatx80_internal_sign = zSign;
     floatx80_internal_exp = zExp;
-    floatx80_internal_sig0 = zSig0;
+    floatx80_internal_sig0 = extractFloatx80Frac( z );
     floatx80_internal_sig1 = zSig1;
     
 }
@@ -4906,8 +4908,8 @@ floatx80 floatx80_scale(floatx80 a, floatx80 b)
     
     if ( bExp < 0x3FFF ) return a;
     
-    if ( 0x400E < bExp ) {
-        aExp = bSign ? -0x4000 : 0x7FFF;
+    if ( 0x400F < bExp ) {
+        aExp = bSign ? -0x6001 : 0xE000;
         return roundAndPackFloatx80(
                     floatx80_rounding_precision, aSign, aExp, aSig, 0 );
     }
