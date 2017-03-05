@@ -297,6 +297,7 @@ STATIC_INLINE fptype fp_get_internal_overflow(void)
     }
     
     internal.high = ((bits16)floatx80_internal_exp) & 0x7fff;
+    internal.high |= ((bits16)floatx80_internal_sign) << 15;
     internal.low = floatx80_internal_sig0;
 
     return internal;
@@ -312,18 +313,24 @@ STATIC_INLINE fptype fp_get_internal_underflow(void)
     }
     
     internal.high = ((bits16)floatx80_internal_exp) & 0x7fff;
+    internal.high |= ((bits16)floatx80_internal_sign) << 15;
     internal.low = floatx80_internal_sig0;
     
     return internal;
 }
-STATIC_INLINE void fp_get_exceptional_operand_grs(uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3, uae_u32 *grs)
+STATIC_INLINE fptype fp_get_internal_unmodified(uae_u32 *grs)
 {
-    *wrd1 = (((uae_u32)floatx80_internal_exp) & 0x7fff) << 16;
-    *wrd1 |= floatx80_internal_sign ? 0x80000000 : 0x000000000;
-    *wrd2 = floatx80_internal_sig0 >> 32;
-    *wrd3 = (uae_u32) floatx80_internal_sig0;
-    *grs = floatx80_internal_sig1 >> 61;
-    *grs |= (floatx80_internal_sig1 & 0x3fffffffffffffffULL) ? 1 : 0;
+    fptype internal;
+    bits64 roundbits;
+
+    internal.high = ((bits16)floatx80_internal_exp) & 0x7fff;
+    internal.high |= ((bits16)floatx80_internal_sign) << 15;
+    internal.low = floatx80_internal_sig0;
+    
+    shift64RightJamming(floatx80_internal_sig1, 61, &roundbits);
+    *grs = (uae_u32)roundbits;
+    
+    return internal;
 }
 
 /* Functions for rounding */
