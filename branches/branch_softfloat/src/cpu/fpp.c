@@ -321,14 +321,15 @@ void fpsr_check_arithmetic_exception(uae_u32 mask, fptype *src, uae_u32 opcode, 
         regs.fp_ea = ea;
         
         // data for FSAVE stack frame
-        regs.fpu_exp_state = 2; // 68060 EXCP frame, 68040 BUSY frame, 6888x IDLE frame
-
+        fptype eo;
         uae_u32 opclass = (extra >> 13) & 7;
+        
+        reset_fsave_data();
 
         if (currprefs.fpu_model == 68881 || currprefs.fpu_model == 68882) {
             // fsave data for 68881 and 68882
-            fptype eo;
-            
+            regs.fpu_exp_state = 1; // 6888x IDLE frame
+
             if (opclass == 3) { // 011
                 fsave_data.ccr = ((uae_u32)extra << 16) | extra;
             } else { // 000 or 010
@@ -353,35 +354,64 @@ void fpsr_check_arithmetic_exception(uae_u32 mask, fptype *src, uae_u32 opcode, 
             } // else INEX1, INEX2: do nothing
         } else if (currprefs.cpu_model == 68060) {
             // fsave data for 68060
+            regs.fpu_exp_state = 2; // 68060 EXCP frame
             fsave_data.v = regs.fp_exp_pend & 7;
         } else {
+            // fsave data for 68040
+            regs.fpu_exp_state = 1; // 68040 UNIMP frame
+
             uae_u32 reg = (extra >> 7) & 7;
             uae_u32 size = (extra >> 10) & 7;
-            bool exp_e3 = false;
-            
-            // fsave data for 68040
+
             fsave_data.fpiarcu = regs.fpiar;
+            
+            if (regs.fp_exp_pend == 54) { // SNAN (undocumented)
+                fsave_data.wbte15 = 1;
+                fsave_data.grs = 7;
+            } else {
+                fsave_data.grs = 1;
+            }
 
             if (opclass == 3) { // OPCLASS 011
                 fsave_data.cmdreg1b = extra;
                 fsave_data.e1 = 1;
                 fsave_data.t = 1;
+                fsave_data.wbte15 = (regs.fp_exp_pend == 51 || regs.fp_exp_pend == 54) ? 1 : 0; // UNFL, SNAN
+                
+                if (fp_is_snan(src)) {
+                    fp_unset_snan(src);
+                }
                 from_exten_fmovem(src, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]);
                 fsave_data.stag = get_ftag(src, size);
             } else { // OPCLASS 000 and 010
+                fsave_data.cmdreg1b = extra;
+                fsave_data.e1 = 1;
+                fsave_data.wbte15 = (regs.fp_exp_pend == 54) ? 1 : 0; // SNAN (undocumented)
+
                 if (regs.fp_exp_pend == 51 || regs.fp_exp_pend == 53 || regs.fp_exp_pend == 49) { // UNFL, OVFL, INEX
                     if ((extra & 0x30) == 0x20 || (extra & 0x3f) == 0x04) { // FADD, FSUB, FMUL, FDIV, FSQRT
-                        exp_e3 = true;
+                        regs.fpu_exp_state = 2; // 68040 BUSY frame
+                        fsave_data.e3 = 1;
+                        fsave_data.e1 = 0;
+                        fsave_data.cmdreg3b = (extra & 0x3C3) | ((extra & 0x038)>>1) | ((extra & 0x004)<<3);
+                        eo = fp_get_internal_unmodified(&fsave_data.grs);
+                        from_exten_fmovem(&eo, &fsave_data.wbt[0], &fsave_data.wbt[1], &fsave_data.wbt[2]);
+                        fsave_data.wbte15 = (regs.fp_exp_pend == 51) ? 1 : 0; // UNFL
+                        // src and dst is stored (undocumented)
+                        from_exten_fmovem(src, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]);
+                        fsave_data.stag = get_ftag(src, size);
+                        if (fp_is_dyadic(extra)) {
+                            from_exten_fmovem(&regs.fp[reg], &fsave_data.fpt[0], &fsave_data.fpt[1], &fsave_data.fpt[2]);
+                            fsave_data.dtag = get_ftag(&regs.fp[reg], -1);
+                        }
+                    } else { // FMOVE to register, FABS, FNEG
+                        eo = fp_get_internal_unmodified(&fsave_data.grs);
+                        fsave_data.grs = 1; // yes, really
+                        from_exten_fmovem(&eo, &fsave_data.fpt[0], &fsave_data.fpt[1], &fsave_data.fpt[2]);
+                        from_exten_fmovem(&eo, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]); // undocumented
+                        fsave_data.stag = get_ftag(src, size);
                     }
-                }
-                if (exp_e3) {
-                    fsave_data.cmdreg3b = (extra & 0x3C3) | ((extra & 0x038)>>1) | ((extra & 0x004)<<3);
-                    fsave_data.e3 = 1;
-                    fp_get_exceptional_operand_grs(&fsave_data.wbt[0], &fsave_data.wbt[1], &fsave_data.wbt[2], &fsave_data.grs);
-                    fsave_data.wbte15 = (regs.fp_exp_pend == 51) ? 1 : 0; // UNFL
-                } else {
-                    fsave_data.cmdreg1b = extra;
-                    fsave_data.e1 = 1;
+                } else { // SNAN, OPERR, DZ
                     from_exten_fmovem(src, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]);
                     fsave_data.stag = get_ftag(src, size);
                     if (fp_is_dyadic(extra)) {
