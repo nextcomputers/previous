@@ -343,13 +343,9 @@ void fpsr_check_arithmetic_exception(uae_u32 mask, fptype *src, uae_u32 opcode, 
                 }
             } else if (regs.fp_exp_pend == 53) { // OVFL
                 eo = fp_get_internal_overflow();
-                if (((regs.fpcr >> 6) & 3) == 1) fp_round32(&eo);
-                if (((regs.fpcr >> 6) & 3) >= 2) fp_round64(&eo);
                 from_exten_fmovem(&eo, &fsave_data.eo[0], &fsave_data.eo[1], &fsave_data.eo[2]);
             } else if (regs.fp_exp_pend == 51) { // UNFL
                 eo = fp_get_internal_underflow();
-                if (((regs.fpcr >> 6) & 3) == 1) fp_round32(&eo);
-                if (((regs.fpcr >> 6) & 3) >= 2) fp_round64(&eo);
                 from_exten_fmovem(&eo, &fsave_data.eo[0], &fsave_data.eo[1], &fsave_data.eo[2]);
             } // else INEX1, INEX2: do nothing
         } else if (currprefs.cpu_model == 68060) {
@@ -394,7 +390,8 @@ void fpsr_check_arithmetic_exception(uae_u32 mask, fptype *src, uae_u32 opcode, 
                         fsave_data.e3 = 1;
                         fsave_data.e1 = 0;
                         fsave_data.cmdreg3b = (extra & 0x3C3) | ((extra & 0x038)>>1) | ((extra & 0x004)<<3);
-                        eo = fp_get_internal_unmodified(&fsave_data.grs);
+                        eo = fp_get_internal_round_exten();
+                        fsave_data.grs = fp_get_internal_grs();
                         from_exten_fmovem(&eo, &fsave_data.wbt[0], &fsave_data.wbt[1], &fsave_data.wbt[2]);
                         fsave_data.wbte15 = (regs.fp_exp_pend == 51) ? 1 : 0; // UNFL
                         // src and dst is stored (undocumented)
@@ -405,9 +402,10 @@ void fpsr_check_arithmetic_exception(uae_u32 mask, fptype *src, uae_u32 opcode, 
                             fsave_data.dtag = get_ftag(&regs.fp[reg], -1);
                         }
                     } else { // FMOVE to register, FABS, FNEG
-                        eo = fp_get_internal_unmodified(&fsave_data.grs);
+                        eo = fp_get_internal_round_exten();
                         fsave_data.grs = 1; // yes, really
                         from_exten_fmovem(&eo, &fsave_data.fpt[0], &fsave_data.fpt[1], &fsave_data.fpt[2]);
+                        eo = fp_get_internal_weired(); // really weired
                         from_exten_fmovem(&eo, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]); // undocumented
                         fsave_data.stag = get_ftag(src, size);
                     }
@@ -2521,9 +2519,13 @@ static bool fp_arithmetic(fptype *src, fptype *dst, int extra)
     switch (extra & 0x7f)
     {
         case 0x00: /* FMOVE */
-        case 0x40: /* FSMOVE */
-        case 0x44: /* FDMOVE */
             fp_move(dst, src);
+            break;
+        case 0x40: /* FSMOVE */
+            fp_move_single(dst, src);
+            break;
+        case 0x44: /* FDMOVE */
+            fp_move_double(dst, src);
             break;
         case 0x01: /* FINT */
             fp_int(dst, src);
@@ -2535,9 +2537,13 @@ static bool fp_arithmetic(fptype *src, fptype *dst, int extra)
             fp_intrz(dst, src);
             break;
         case 0x04: /* FSQRT */
-        case 0x41: /* FSSQRT */
-        case 0x45: /* FDSQRT */
             fp_sqrt(dst, src);
+            break;
+        case 0x41: /* FSSQRT */
+            fp_sqrt_single(dst, src);
+            break;
+        case 0x45: /* FDSQRT */
+            fp_sqrt_double(dst, src);
             break;
         case 0x06: /* FLOGNP1 */
             fp_lognp1(dst, src);
@@ -2582,17 +2588,25 @@ static bool fp_arithmetic(fptype *src, fptype *dst, int extra)
             fp_log2(dst, src);
             break;
         case 0x18: /* FABS */
-        case 0x58: /* FSABS */
-        case 0x5c: /* FDABS */
             fp_abs(dst, src);
+            break;
+        case 0x58: /* FSABS */
+            fp_abs_single(dst, src);
+            break;
+        case 0x5c: /* FDABS */
+            fp_abs_double(dst, src);
             break;
         case 0x19: /* FCOSH */
             fp_cosh(dst, src);
             break;
         case 0x1a: /* FNEG */
-        case 0x5a: /* FSNEG */
-        case 0x5e: /* FDNEG */
             fp_neg(dst, src);
+            break;
+        case 0x5a: /* FSNEG */
+            fp_neg_single(dst, src);
+            break;
+        case 0x5e: /* FDNEG */
+            fp_neg_double(dst, src);
             break;
         case 0x1c: /* FACOS */
             fp_acos(dst, src);
@@ -2607,9 +2621,13 @@ static bool fp_arithmetic(fptype *src, fptype *dst, int extra)
             fp_getman(dst, src);
             break;
         case 0x20: /* FDIV */
-        case 0x60: /* FSDIV */
-        case 0x64: /* FDDIV */
             fp_div(dst, src);
+            break;
+        case 0x60: /* FSDIV */
+            fp_div_single(dst, src);
+            break;
+        case 0x64: /* FDDIV */
+            fp_div_double(dst, src);
             break;
         case 0x21: /* FMOD */
             fpsr_get_quotient(&q, &s);
@@ -2617,21 +2635,26 @@ static bool fp_arithmetic(fptype *src, fptype *dst, int extra)
             fpsr_set_quotient(q, s);
             break;
         case 0x22: /* FADD */
-        case 0x62: /* FSADD */
-        case 0x66: /* FDADD */
             fp_add(dst, src);
             break;
+        case 0x62: /* FSADD */
+            fp_add_single(dst, src);
+            break;
+        case 0x66: /* FDADD */
+            fp_add_double(dst, src);
+            break;
         case 0x23: /* FMUL */
-        case 0x63: /* FSMUL */
-        case 0x67: /* FDMUL */
             fp_mul(dst, src);
+            break;
+        case 0x63: /* FSMUL */
+            fp_mul_single(dst, src);
+            break;
+        case 0x67: /* FDMUL */
+            fp_mul_double(dst, src);
             break;
         case 0x24: /* FSGLDIV */
             fp_sgldiv(dst, src);
-            fpsr_set_result(dst);
-            if (fpsr_make_status())
-                return false;
-            return true;
+            break;
         case 0x25: /* FREM */
             fpsr_get_quotient(&q, &s);
             fp_rem(dst, src, &q, &s);
@@ -2642,14 +2665,15 @@ static bool fp_arithmetic(fptype *src, fptype *dst, int extra)
             break;
         case 0x27: /* FSGLMUL */
             fp_sglmul(dst, src);
-            fpsr_set_result(dst);
-            if (fpsr_make_status())
-                return false;
-            return true;
+            break;
         case 0x28: /* FSUB */
-        case 0x68: /* FSSUB */
-        case 0x6c: /* FDSUB */
             fp_sub(dst, src);
+            break;
+        case 0x68: /* FSSUB */
+            fp_sub_single(dst, src);
+            break;
+        case 0x6c: /* FDSUB */
+            fp_sub_double(dst, src);
             break;
         case 0x30: /* FSINCOS */
         case 0x31:
@@ -2660,8 +2684,6 @@ static bool fp_arithmetic(fptype *src, fptype *dst, int extra)
         case 0x36:
         case 0x37:
             fp_cos(dst, src);
-            if (((regs.fpcr >> 6) & 3) == 1) fp_round_single(dst);
-            if (((regs.fpcr >> 6) & 3) >= 2) fp_round_double(dst);
             if (fpsr_make_status())
                 return false;
             regs.fp[extra & 7] = *dst;
@@ -2682,15 +2704,6 @@ static bool fp_arithmetic(fptype *src, fptype *dst, int extra)
             write_log (_T("Unknown FPU arithmetic function (%02x)\n"), extra & 0x7f);
             return false;
     }
-    
-    if ((extra & 0x44) == 0x40)
-        fp_round_single(dst);
-    else if ((extra & 0x44) == 0x44)
-        fp_round_double(dst);
-    else if (((regs.fpcr >> 6) & 3) == 1)
-        fp_round_single(dst);
-    else if (((regs.fpcr >> 6) & 3) >= 2)
-        fp_round_double(dst);
     
     fpsr_set_result(dst);
 
