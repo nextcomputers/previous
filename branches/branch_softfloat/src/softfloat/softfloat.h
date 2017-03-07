@@ -106,12 +106,18 @@ extern flag floatx80_internal_sign;
 extern int32 floatx80_internal_exp;
 extern bits64 floatx80_internal_sig0;
 extern bits64 floatx80_internal_sig1;
+extern int8 floatx80_internal_precision;
+extern int8 floatx80_internal_mode;
 
 /*----------------------------------------------------------------------------
- | Function for storing sign, exponent and significand of extended 
+ | Function for getting sign, exponent and significand of extended
  | double-precision floating-point intermediate result for external use.
  *----------------------------------------------------------------------------*/
-void saveFloatx80Internal( flag zSign, int32 zExp, bits64 zSig0, bits64 zSig1 );
+floatx80 getFloatInternalOverflow( void );
+floatx80 getFloatInternalUnderflow( void );
+floatx80 getFloatInternalRoundedAll( void );
+floatx80 getFloatInternalFloatx80( void );
+bits64 getFloatInternalGRS( void );
 
 /*----------------------------------------------------------------------------
 | Routine to raise any or all of the software IEC/IEEE floating-point
