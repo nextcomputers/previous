@@ -306,7 +306,7 @@ STATIC_INLINE fptype fp_get_internal_underflow(void)
 {
     return getFloatInternalUnderflow();
 }
-STATIC_INLINE fptype fp_get_internal_weired(void)
+STATIC_INLINE fptype fp_get_internal_round_all(void)
 {
     return getFloatInternalRoundedAll();
 }

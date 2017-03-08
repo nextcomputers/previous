@@ -352,6 +352,7 @@ void fpsr_check_arithmetic_exception(uae_u32 mask, fptype *src, uae_u32 opcode, 
             // fsave data for 68060
             regs.fpu_exp_state = 2; // 68060 EXCP frame
             fsave_data.v = regs.fp_exp_pend & 7;
+            from_exten_fmovem(src, &fsave_data.eo[0], &fsave_data.eo[1], &fsave_data.eo[2]);
         } else {
             // fsave data for 68040
             regs.fpu_exp_state = 1; // 68040 UNIMP frame
@@ -405,7 +406,7 @@ void fpsr_check_arithmetic_exception(uae_u32 mask, fptype *src, uae_u32 opcode, 
                         eo = fp_get_internal_round_exten();
                         fsave_data.grs = 1; // yes, really
                         from_exten_fmovem(&eo, &fsave_data.fpt[0], &fsave_data.fpt[1], &fsave_data.fpt[2]);
-                        eo = fp_get_internal_weired(); // really weired
+                        eo = fp_get_internal_round_all(); // weird
                         from_exten_fmovem(&eo, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]); // undocumented
                         fsave_data.stag = get_ftag(src, size);
                     }
