@@ -391,7 +391,11 @@ void fpsr_check_arithmetic_exception(uae_u32 mask, fptype *src, uae_u32 opcode, 
                         fsave_data.e3 = 1;
                         fsave_data.e1 = 0;
                         fsave_data.cmdreg3b = (extra & 0x3C3) | ((extra & 0x038)>>1) | ((extra & 0x004)<<3);
-                        eo = fp_get_internal_round_exten();
+                        if (regs.fp_exp_pend == 51) { // UNFL
+                            eo = fp_get_internal();
+                        } else { // OVFL, INEX
+                            eo = fp_get_internal_round();
+                        }
                         fsave_data.grs = fp_get_internal_grs();
                         from_exten_fmovem(&eo, &fsave_data.wbt[0], &fsave_data.wbt[1], &fsave_data.wbt[2]);
                         fsave_data.wbte15 = (regs.fp_exp_pend == 51) ? 1 : 0; // UNFL
