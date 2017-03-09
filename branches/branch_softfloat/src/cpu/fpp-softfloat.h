@@ -310,9 +310,17 @@ STATIC_INLINE fptype fp_get_internal_round_all(void)
 {
     return getFloatInternalRoundedAll();
 }
+STATIC_INLINE fptype fp_get_internal_round(void)
+{
+    return getFloatInternalRoundedSome();
+}
 STATIC_INLINE fptype fp_get_internal_round_exten(void)
 {
     return getFloatInternalFloatx80();
+}
+STATIC_INLINE fptype fp_get_internal(void)
+{
+    return getFloatInternalUnrounded();
 }
 STATIC_INLINE uae_u32 fp_get_internal_grs(void)
 {

@@ -116,6 +116,8 @@ extern int8 floatx80_internal_mode;
 floatx80 getFloatInternalOverflow( void );
 floatx80 getFloatInternalUnderflow( void );
 floatx80 getFloatInternalRoundedAll( void );
+floatx80 getFloatInternalRoundedSome( void );
+floatx80 getFloatInternalUnrounded( void );
 floatx80 getFloatInternalFloatx80( void );
 bits64 getFloatInternalGRS( void );
 

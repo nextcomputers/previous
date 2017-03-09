@@ -248,6 +248,31 @@ floatx80 getFloatInternalRoundedAll( void )
 
 }
 
+floatx80 getFloatInternalRoundedSome( void )
+{
+    flag zSign;
+    int32 zExp;
+    bits64 zSig, zSig32, zSig64, zSig80;
+    
+    if (floatx80_internal_precision == 80) {
+        getRoundedFloatInternal( 80, &zSign, &zExp, &zSig80 );
+        zSig = zSig80;
+    } else if (floatx80_internal_precision == 64) {
+        getRoundedFloatInternal( 80, &zSign, &zExp, &zSig80 );
+        getRoundedFloatInternal( 64, &zSign, &zExp, &zSig64 );
+        zSig = zSig64;
+        zSig |= ( zSig80 | LIT64( 0x0000000000000001 ) ) & LIT64( 0x00000000000007FF );
+    } else {
+        getRoundedFloatInternal( 80, &zSign, &zExp, &zSig80 );
+        getRoundedFloatInternal( 32, &zSign, &zExp, &zSig32 );
+        zSig = zSig32;
+        zSig |= ( zSig80 | LIT64( 0x0000000000000001 ) ) & LIT64( 0x000000FFFFFFFFFF );
+    }
+    
+    return packFloatx80( zSign, zExp & 0x7FFF, zSig );
+    
+}
+
 floatx80 getFloatInternalFloatx80( void )
 {
     flag zSign;
@@ -255,6 +280,16 @@ floatx80 getFloatInternalFloatx80( void )
     bits64 zSig;
     
     getRoundedFloatInternal( 80, &zSign, &zExp, &zSig );
+    
+    return packFloatx80( zSign, zExp & 0x7FFF, zSig );
+    
+}
+
+floatx80 getFloatInternalUnrounded( void )
+{
+    flag zSign = floatx80_internal_sign;
+    int32 zExp = floatx80_internal_exp;
+    bits64 zSig = floatx80_internal_sig0;
     
     return packFloatx80( zSign, zExp & 0x7FFF, zSig );
     
