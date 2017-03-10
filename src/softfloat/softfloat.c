@@ -258,15 +258,21 @@ floatx80 getFloatInternalRoundedSome( void )
         getRoundedFloatInternal( 80, &zSign, &zExp, &zSig80 );
         zSig = zSig80;
     } else if (floatx80_internal_precision == 64) {
-        getRoundedFloatInternal( 80, &zSign, &zExp, &zSig80 );
         getRoundedFloatInternal( 64, &zSign, &zExp, &zSig64 );
+        zSig80 = floatx80_internal_sig0;
+        if (zSig64 != (zSig80 & LIT64( 0xFFFFFFFFFFFFF800 ))) {
+            zSig80++;
+        }
         zSig = zSig64;
-        zSig |= ( zSig80 | LIT64( 0x0000000000000001 ) ) & LIT64( 0x00000000000007FF );
+        zSig |= zSig80 & LIT64( 0x00000000000007FF );
     } else {
-        getRoundedFloatInternal( 80, &zSign, &zExp, &zSig80 );
         getRoundedFloatInternal( 32, &zSign, &zExp, &zSig32 );
+        zSig80 = floatx80_internal_sig0;
+        if (zSig32 != (zSig80 & LIT64( 0xFFFFFF0000000000 ))) {
+           zSig80++;
+        }
         zSig = zSig32;
-        zSig |= ( zSig80 | LIT64( 0x0000000000000001 ) ) & LIT64( 0x000000FFFFFFFFFF );
+        zSig |= zSig80 & LIT64( 0x000000FFFFFFFFFF );
     }
     
     return packFloatx80( zSign, zExp & 0x7FFF, zSig );
@@ -297,10 +303,26 @@ floatx80 getFloatInternalUnrounded( void )
 
 bits64 getFloatInternalGRS( void )
 {
+#if 1
+    if (floatx80_internal_sig1)
+        return 5;
+    
+    if (floatx80_internal_precision == 64 &&
+        floatx80_internal_sig0 & LIT64( 0x00000000000007FF )) {
+        return 1;
+    }
+    if (floatx80_internal_precision == 32 &&
+        floatx80_internal_sig0 & LIT64( 0x000000FFFFFFFFFF )) {
+        return 1;
+    }
+    
+    return 0;
+#else
     bits64 roundbits;
     shift64RightJamming(floatx80_internal_sig1, 61, &roundbits);
 
     return roundbits;
+#endif
     
 }
 
