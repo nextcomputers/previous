@@ -408,7 +408,7 @@ void fpsr_check_arithmetic_exception(uae_u32 mask, fptype *src, uae_u32 opcode, 
                         }
                     } else { // FMOVE to register, FABS, FNEG
                         eo = fp_get_internal_round_exten();
-                        fsave_data.grs = 1; // yes, really
+                        fsave_data.grs = fp_get_internal_grs();
                         from_exten_fmovem(&eo, &fsave_data.fpt[0], &fsave_data.fpt[1], &fsave_data.fpt[2]);
                         eo = fp_get_internal_round_all(); // weird
                         from_exten_fmovem(&eo, &fsave_data.et[0], &fsave_data.et[1], &fsave_data.et[2]); // undocumented
