@@ -83,6 +83,8 @@ STATIC_INLINE void get_fp_status(uae_u32 *status)
         *status |= 0x0400;
     if (float_exception_flags & float_flag_inexact)
         *status |= 0x0200;
+    if (float_exception_flags & float_flag_decimal)
+        *status |= 0x0100;
 }
 STATIC_INLINE void clear_fp_status(void)
 {
@@ -295,6 +297,148 @@ STATIC_INLINE uae_s64 to_int(fptype *src, int size)
 STATIC_INLINE fptype from_int(uae_s32 src)
 {
     return int32_to_floatx80(src);
+}
+
+STATIC_INLINE void to_pack (fptype *fp, uae_u32 *wrd)
+{
+    uae_s32 exp = 0;
+    uae_s64 mant = 0;
+    
+    if (((wrd[0] >> 16) & 0x7fff) == 0x7fff) {
+        // infinity has extended exponent and all 0 packed fraction
+        // nans are copies bit by bit
+        to_exten(fp, wrd[0], wrd[1], wrd[2]);
+        return;
+    }
+    if (!(wrd[0] & 0xf) && !wrd[1] && !wrd[2]) {
+        // exponent is not cared about, if mantissa is zero
+        wrd[0] &= 0x80000000;
+        to_exten(fp, wrd[0], wrd[1], wrd[2]);
+        return;
+    }
+    
+    int i;
+    int zerocount;
+    uae_s64 multiplier;
+    
+    uae_u32 pack_exp = (wrd[0] >> 16) & 0xFFF;              // packed exponent
+    uae_u32 pack_int = wrd[0] & 0xF;                        // packed integer part
+    uae_u64 pack_frac = ((uae_u64)wrd[1] << 32) | wrd[2];   // packed fraction
+    uae_u32 pack_se = (wrd[0] >> 30) & 1;                   // sign of packed exponent
+    uae_u32 pack_sm = (wrd[0] >> 31) & 1;                   // sign of packed significand
+    
+    for (i = 0; i < 3; i++) {
+        exp *= 10;
+        exp += (pack_exp >> (8 - i * 4)) & 0xF;
+    }
+    
+    if (pack_se) {
+        exp = -exp;
+    }
+    
+    exp -= 16;
+    
+    if (exp < 0) {
+        exp = -exp;
+        pack_se = 1;
+    }
+    
+    mant = pack_int;
+    
+    for (i = 0; i < 16; i++) {
+        mant *= 10;
+        mant += (pack_frac >> (60 - i * 4)) & 0xF;
+    }
+#if 0
+    if (pack_sm) {
+        mant = -mant;
+    }
+    
+    zerocount = 0;
+    multiplier = 10;
+    if (exp >= 27) {
+        if (pack_se) {
+            for (i = 0; i < 16; i++) {
+                if ((pack_frac >> (i * 4)) & 0xF) {
+                    break;
+                }
+                zerocount++;
+            }
+            
+            exp -= zerocount;
+            
+            while (zerocount) {
+                if (zerocount & 1) {
+                    mant /= multiplier;
+                }
+                multiplier *= multiplier;
+                zerocount >>= 1;
+            }
+        } else {
+            if (pack_int == 0) {
+                zerocount++;
+                for (i = 0; i < 16; i++) {
+                    if ((pack_frac >> (60 - i * 4)) & 0xF) {
+                        break;
+                    }
+                    zerocount++;
+                }
+            }
+            
+            exp -= zerocount;
+            
+            while (zerocount) {
+                if (zerocount & 1) {
+                    mant *= multiplier;
+                }
+                multiplier *= multiplier;
+                zerocount >>= 1;
+            }
+        }
+    }
+    
+    /* TODO: calculate rounding mode */
+    floatx80 z = int64_to_floatx80(mant);
+    floatx80 m = int32_to_floatx80(10);
+    floatx80 a = int32_to_floatx80(1);
+    
+    while (exp) {
+        if (exp & 1) {
+            a = floatx80_mul(a, m);
+        }
+        m = floatx80_mul(m, m);
+        exp >>= 1;
+    }
+    
+    if (pack_se) {
+        z = floatx80_div(z, a);
+    } else {
+        z = floatx80_mul(z, a);
+    }
+    
+    printf("z = %s\n",fp_print(&z));
+    printf("m = %s\n",fp_print(&m));
+    printf("a = %s\n",fp_print(&a));
+    
+    printf("zerocount = %i\n",zerocount);
+    printf("multiplier = %llu\n",multiplier);
+    
+    *fp = z;
+    
+    /* TODO: set inex1 and restore rounding mode */
+    // if mul/div caused inex2 --> set inex1
+    
+#else
+    floatx80 f;
+    f.high = exp & 0x3FFF;
+    f.high |= pack_se ? 0x4000 : 0;
+    f.high |= pack_sm ? 0x8000 : 0;
+    f.low = mant;
+    
+    *fp = floatdecimal_to_floatx80(f);
+    
+    printf("z = %s\n",fp_print(fp));
+#endif
 }
 
 /* Functions for returning exception state data */
