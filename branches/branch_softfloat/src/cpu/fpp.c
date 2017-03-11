@@ -1053,59 +1053,6 @@ static void fpu_null (void)
 /* E = MAX & F # 0 -> NotANumber */
 /* E = biased by 127 (single) ,1023 (double) ,16383 (extended) */
 
-static void to_pack (fptype *fp, uae_u32 *wrd)
-{
-    long double d;
-    char *cp;
-    char str[100];
-    
-    if (((wrd[0] >> 16) & 0x7fff) == 0x7fff) {
-        // infinity has extended exponent and all 0 packed fraction
-        // nans are copies bit by bit
-        to_exten(fp, wrd[0], wrd[1], wrd[2]);
-        return;
-    }
-    if (!(wrd[0] & 0xf) && !wrd[1] && !wrd[2]) {
-        // exponent is not cared about, if mantissa is zero
-        wrd[0] &= 0x80000000;
-        to_exten(fp, wrd[0], wrd[1], wrd[2]);
-        return;
-    }
-    
-    cp = str;
-    if (wrd[0] & 0x80000000)
-        *cp++ = '-';
-    *cp++ = (wrd[0] & 0xf) + '0';
-    *cp++ = '.';
-    *cp++ = ((wrd[1] >> 28) & 0xf) + '0';
-    *cp++ = ((wrd[1] >> 24) & 0xf) + '0';
-    *cp++ = ((wrd[1] >> 20) & 0xf) + '0';
-    *cp++ = ((wrd[1] >> 16) & 0xf) + '0';
-    *cp++ = ((wrd[1] >> 12) & 0xf) + '0';
-    *cp++ = ((wrd[1] >> 8) & 0xf) + '0';
-    *cp++ = ((wrd[1] >> 4) & 0xf) + '0';
-    *cp++ = ((wrd[1] >> 0) & 0xf) + '0';
-    *cp++ = ((wrd[2] >> 28) & 0xf) + '0';
-    *cp++ = ((wrd[2] >> 24) & 0xf) + '0';
-    *cp++ = ((wrd[2] >> 20) & 0xf) + '0';
-    *cp++ = ((wrd[2] >> 16) & 0xf) + '0';
-    *cp++ = ((wrd[2] >> 12) & 0xf) + '0';
-    *cp++ = ((wrd[2] >> 8) & 0xf) + '0';
-    *cp++ = ((wrd[2] >> 4) & 0xf) + '0';
-    *cp++ = ((wrd[2] >> 0) & 0xf) + '0';
-    *cp++ = 'E';
-    if (wrd[0] & 0x40000000)
-        *cp++ = '-';
-    *cp++ = ((wrd[0] >> 24) & 0xf) + '0';
-    *cp++ = ((wrd[0] >> 20) & 0xf) + '0';
-    *cp++ = ((wrd[0] >> 16) & 0xf) + '0';
-    *cp = 0;
-
-    sscanf (str, "%Le", &d);
-
-    from_native(d, fp);
-}
-
 static void from_pack (fptype *src, uae_u32 *wrd, int kfactor)
 {
     int i, j, t;

@@ -95,7 +95,7 @@ enum {
 extern int8 float_exception_flags;
 enum {
 	float_flag_invalid = 0x01, float_flag_denormal = 0x02, float_flag_divbyzero = 0x04, float_flag_overflow = 0x08,
-	float_flag_underflow = 0x10, float_flag_inexact = 0x20, float_flag_signaling = 0x40
+    float_flag_underflow = 0x10, float_flag_inexact = 0x20, float_flag_signaling = 0x40, float_flag_decimal = 0x80
 };
 
 /*----------------------------------------------------------------------------
@@ -266,6 +266,7 @@ float32 floatx80_to_float32( floatx80 );
 float64 floatx80_to_float64( floatx80 );
 #ifdef SOFTFLOAT_68K
 floatx80 floatx80_to_floatx80( floatx80 );
+floatx80 floatdecimal_to_floatx80( floatx80 );
 #endif
 #ifdef FLOAT128
 float128 floatx80_to_float128( floatx80 );
