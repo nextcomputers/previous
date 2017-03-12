@@ -147,3 +147,277 @@ floatx80 floatdecimal_to_floatx80(floatx80 a)
     
 }
 
+
+/*----------------------------------------------------------------------------
+ | Binary to decimal
+ *----------------------------------------------------------------------------*/
+
+floatx80 floatx80_to_floatdecimal(floatx80 a, int32 *k)
+{
+    flag aSign;
+    int32 aExp;
+    bits64 aSig;
+    
+    flag decSign;
+    int32 decExp, zExp, mExp, xExp;
+    bits64 decSig, zSig0, zSig1, mSig0, mSig1, xSig0, xSig1;
+    
+    aSign = extractFloatx80Sign(a);
+    aExp = extractFloatx80Exp(a);
+    aSig = extractFloatx80Frac(a);
+    
+    if (aExp == 0x7FFF) {
+        if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a);
+        return a;
+    }
+    
+    if (aExp == 0) {
+        if (aSig == 0) return packFloatx80(aSign, 0, 0);
+        normalizeFloatx80Subnormal(aSig, &aExp, &aSig);
+    }
+
+    int32 kfactor = *k;
+    
+    int32 ilog, len;
+    
+    flag bSign;
+    
+
+    
+    floatx80 b;
+    floatx80 c;
+    floatx80 one = int32_to_floatx80(1);
+    floatx80 log2 = packFloatx80(0, 0x3FFD, LIT64(0x9A209A84FBCFF798));
+    floatx80 log2up1 = packFloatx80(0, 0x3FFD, LIT64(0x9A209A84FBCFF799));
+    
+    
+    if (aExp < 0) {
+        ilog = -4933;
+    } else {
+        b = packFloatx80(0, 0x3FFF, aSig);
+        c = int32_to_floatx80(aExp - 0x3FFF);
+        b = floatx80_add(b, c);
+        b = floatx80_sub(b, one);
+        bSign = extractFloatx80Sign(b);
+        if (bSign) {
+            b = floatx80_mul(b, log2up1);
+        } else {
+            b = floatx80_mul(b, log2);
+        }
+        ilog = floatx80_to_int32(b);
+    }
+    
+    bool ictr = false;
+    
+try_again:
+    printf("ILOG = %i\n",ilog);
+    
+    if (kfactor > 0) {
+        if (kfactor > 17) {
+            kfactor = 17;
+            float_raise(float_flag_invalid);
+        }
+        len = kfactor;
+    } else {
+        len = ilog + 1 - kfactor;
+        if (len > 17) {
+            len = 17;
+        }
+        if (len < 1) {
+            len = 1;
+        }
+    }
+    
+    printf("LEN = %i\n",len);
+    
+    if (kfactor <= 0 && kfactor > ilog) {
+        ilog = kfactor;
+        printf("ILOG is kfactor = %i\n",ilog);
+    }
+    
+    flag lambda = 0;
+    int iscale = ilog + 1 - len;
+    
+    if (iscale < 0) {
+        lambda = 1;
+#if 0
+        if (iscale <= -4908) { // do we need this?
+            iscale += 24;
+            temp_for_a9 = 24;
+        }
+#endif
+        iscale = -iscale;
+    }
+    
+    printf("ISCALE = %i, LAMDA = %i\n",iscale,lambda);
+    
+    mExp = 0x4002;
+    mSig0 = LIT64(0xA000000000000000);
+    xExp = 0x3FFF;
+    xSig0 = LIT64(0x8000000000000000);
+    
+    while (iscale) {
+        if (iscale & 1) {
+            mul128by128(&xExp, &xSig0, &xSig1, mExp, mSig0, mSig1);
+        }
+        mul128by128(&mExp, &mSig0, &mSig1, mExp, mSig0, mSig1);
+        iscale >>= 1;
+    }
+    
+    zExp = aExp;
+    zSig0 = aSig;
+    zSig1 = 0;
+    
+    if (lambda) {
+        mul128by128(&zExp, &zSig0, &zSig1, xExp, xSig0, xSig1);
+    } else {
+        div128by128(&zExp, &zSig0, &zSig1, xExp, xSig0, xSig1);
+    }
+    if (zSig1) zSig0 |= 1;
+    
+    floatx80 z = packFloatx80(aSign, zExp, zSig0);
+    z = floatx80_round_to_int(z);
+    zSig0 = extractFloatx80Frac(z);
+    zExp = extractFloatx80Exp(z);
+    
+    if (ictr == false) {
+        int lentemp = len - 1;
+        
+        mExp = 0x4002;
+        mSig0 = LIT64(0xA000000000000000);
+        xExp = 0x3FFF;
+        xSig0 = LIT64(0x8000000000000000);
+        
+        while (lentemp) {
+            if (lentemp & 1) {
+                mul128by128(&xExp, &xSig0, &xSig1, mExp, mSig0, mSig1);
+            }
+            mul128by128(&mExp, &mSig0, &mSig1, mExp, mSig0, mSig1);
+            lentemp >>= 1;
+        }
+        
+        zSig0 = extractFloatx80Frac(z);
+        zExp = extractFloatx80Exp(z);
+        
+        if (zExp < xExp || ((zExp == xExp) && lt128(zSig0, 0, xSig0, xSig1))) { // z < x
+            ilog -= 1;
+            ictr = true;
+            mul128by128(&xExp, &xSig0, &xSig1, 0x4002, LIT64(0xA000000000000000), 0);
+            goto try_again;
+        }
+        
+        mul128by128(&xExp, &xSig0, &xSig1, 0x4002, LIT64(0xA000000000000000), 0);
+        
+        if (zExp > xExp || ((zExp == xExp) && lt128(xSig0, xSig1, zSig0, 0))) { // z > x
+            ilog += 1;
+            ictr = true;
+            goto try_again;
+        }
+    } else {
+        int lentemp = len;
+
+        mExp = 0x4002;
+        mSig0 = LIT64(0xA000000000000000);
+        xExp = 0x3FFF;
+        xSig0 = LIT64(0x8000000000000000);
+        
+        while (lentemp) {
+            if (lentemp & 1) {
+                mul128by128(&xExp, &xSig0, &xSig1, mExp, mSig0, mSig1);
+            }
+            mul128by128(&mExp, &mSig0, &mSig1, mExp, mSig0, mSig1);
+            lentemp >>= 1;
+        }
+
+        if (eq128(zSig0, 0, xSig0, xSig1)) {
+            div128by128(&zExp, &zSig0, &zSig1, 0x4002, LIT64(0xA000000000000000), 0);
+            ilog += 1;
+            len += 1;
+            mul128by128(&xExp, &xSig0, &xSig1, 0x4002, LIT64(0xA000000000000000), 0);
+        }
+    }
+    
+    if (zSig1) zSig0 |= 1;
+    
+    z = packFloatx80(0, zExp, zSig0);
+    
+    decSign = aSign;
+    decSig = floatx80_to_int64(z);
+    if (ilog < 0) {
+        decExp = -ilog;
+        decExp |= 0x4000;
+    } else {
+        decExp = ilog;
+    }
+    if (decExp > 999) {
+        float_raise(float_flag_invalid);
+    }
+    
+    *k = len;
+    
+    return packFloatx80(decSign, decExp, decSig);
+#if 0
+    printf("abs(Yint) = %s\n",fp_print(&zint));
+    
+    uae_u64 significand = floatx80_to_int64(zint);
+    
+    printf("Mantissa = %lli\n",significand);
+    
+    printf("Exponent = %i\n",ilog);
+    
+    uae_s32 exp = ilog;
+    
+    uae_u32 pack_exp = 0;   // packed exponent
+    uae_u32 pack_exp4 = 0;
+    uae_u32 pack_int = 0;   // packed integer part
+    uae_u64 pack_frac = 0;  // packed fraction
+    uae_u32 pack_se = 0;    // sign of packed exponent
+    uae_u32 pack_sm = 0;    // sign of packed significand
+    
+    if (exp < 0) {
+        exp = -exp;
+        pack_se = 1;
+    }
+    
+    uae_u64 digit;
+    pack_frac = 0;
+    while (len > 0) {
+        len--;
+        digit = significand % 10;
+        significand /= 10;
+        if (len == 0) {
+            pack_int = digit;
+        } else {
+            pack_frac |= digit << (64 - len * 4);
+        }
+    }
+    printf("PACKED FRACTION = %02x.%16llx\n",pack_int, pack_frac);
+    
+    if (exp > 999) {
+        digit = exp / 1000;
+        exp -= digit * 1000;
+        pack_exp4 = digit;
+        // OPERR
+    }
+    digit = exp / 100;
+    exp -= digit * 100;
+    pack_exp = digit << 8;
+    digit = exp / 10;
+    exp -= digit * 10;
+    pack_exp |= digit << 4;
+    pack_exp |= exp;
+    
+    pack_sm = aSign;
+    
+    wrd[0] = pack_exp << 16;
+    wrd[0] |= pack_exp4 << 12;
+    wrd[0] |= pack_int;
+    wrd[0] |= pack_se ? 0x40000000 : 0;
+    wrd[0] |= pack_sm ? 0x80000000 : 0;
+    
+    wrd[1] = pack_frac >> 32;
+    wrd[2] = pack_frac & 0xffffffff;
+    
+    printf("PACKED = %08x %08x %08x\n",wrd[0],wrd[1],wrd[2]);
+#endif
+}
