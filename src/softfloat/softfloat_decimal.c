@@ -253,8 +253,10 @@ try_again:
     
     mExp = 0x4002;
     mSig0 = LIT64(0xA000000000000000);
+    mSig1 = 0;
     xExp = 0x3FFF;
     xSig0 = LIT64(0x8000000000000000);
+    xSig1 = 0;
     
     while (iscale) {
         if (iscale & 1) {
@@ -279,14 +281,17 @@ try_again:
     z = floatx80_round_to_int(z);
     zSig0 = extractFloatx80Frac(z);
     zExp = extractFloatx80Exp(z);
+    zSig1 = 0;
     
     if (ictr == false) {
         int lentemp = len - 1;
         
         mExp = 0x4002;
         mSig0 = LIT64(0xA000000000000000);
+        mSig1 = 0;
         xExp = 0x3FFF;
         xSig0 = LIT64(0x8000000000000000);
+        xSig1 = 0;
         
         while (lentemp) {
             if (lentemp & 1) {
@@ -318,8 +323,10 @@ try_again:
 
         mExp = 0x4002;
         mSig0 = LIT64(0xA000000000000000);
+        mSig1 = 0;
         xExp = 0x3FFF;
         xSig0 = LIT64(0x8000000000000000);
+        xSig1 = 0;
         
         while (lentemp) {
             if (lentemp & 1) {
@@ -343,15 +350,11 @@ try_again:
     
     decSign = aSign;
     decSig = floatx80_to_int64(z);
-    if (ilog < 0) {
-        decExp = -ilog;
-        decExp |= 0x4000;
-    } else {
-        decExp = ilog;
-    }
+    decExp = (ilog < 0) ? -ilog : ilog;
     if (decExp > 999) {
         float_raise(float_flag_invalid);
     }
+    if (ilog < 0) decExp |= 0x4000;
     
     *k = len;
     
