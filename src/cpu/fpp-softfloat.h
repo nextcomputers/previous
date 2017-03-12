@@ -440,6 +440,74 @@ STATIC_INLINE void to_pack (fptype *fp, uae_u32 *wrd)
     printf("z = %s\n",fp_print(fp));
 #endif
 }
+STATIC_INLINE void from_pack (fptype *src, uae_u32 *wrd, uae_s32 kfactor)
+{
+#if 0
+    if (fp_is_nan (src)) {
+        // copy bit by bit, handle signaling nan
+        from_exten(src, &wrd[0], &wrd[1], &wrd[2]);
+        return;
+    }
+    if (fp_is_infinity (src)) {
+        // extended exponent and all 0 packed fraction
+        from_exten(src, &wrd[0], &wrd[1], &wrd[2]);
+        wrd[1] = wrd[2] = 0;
+        return;
+    }
+#endif
+    
+    floatx80 f = floatx80_to_floatdecimal(*src, &kfactor);
+    
+    uae_u32 pack_exp = 0;   // packed exponent
+    uae_u32 pack_exp4 = 0;
+    uae_u32 pack_int = 0;   // packed integer part
+    uae_u64 pack_frac = 0;  // packed fraction
+    uae_u32 pack_se = 0;    // sign of packed exponent
+    uae_u32 pack_sm = 0;    // sign of packed significand
+    
+    uae_u32 exponent = f.high & 0x3FFF;
+    uae_u64 significand = f.low;
+
+    uae_s32 len = kfactor; // SoftFloat saved len to kfactor variable
+    
+    uae_u64 digit;
+    pack_frac = 0;
+    while (len > 0) {
+        len--;
+        digit = significand % 10;
+        significand /= 10;
+        if (len == 0) {
+            pack_int = digit;
+        } else {
+            pack_frac |= digit << (64 - len * 4);
+        }
+    }
+
+    digit = exponent / 1000;
+    exponent -= digit * 1000;
+    pack_exp4 = digit;
+    digit = exponent / 100;
+    exponent -= digit * 100;
+    pack_exp = digit << 8;
+    digit = exponent / 10;
+    exponent -= digit * 10;
+    pack_exp |= digit << 4;
+    pack_exp |= exponent;
+    
+    pack_se = f.high & 0x4000;
+    pack_sm = f.high & 0x8000;
+    
+    wrd[0] = pack_exp << 16;
+    wrd[0] |= pack_exp4 << 12;
+    wrd[0] |= pack_int;
+    wrd[0] |= pack_se ? 0x40000000 : 0;
+    wrd[0] |= pack_sm ? 0x80000000 : 0;
+    
+    wrd[1] = pack_frac >> 32;
+    wrd[2] = pack_frac & 0xffffffff;
+    
+    printf("PACKED = %08x %08x %08x\n",wrd[0],wrd[1],wrd[2]);
+}
 
 /* Functions for returning exception state data */
 STATIC_INLINE fptype fp_get_internal_overflow(void)

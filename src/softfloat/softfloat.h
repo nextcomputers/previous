@@ -267,6 +267,7 @@ float64 floatx80_to_float64( floatx80 );
 #ifdef SOFTFLOAT_68K
 floatx80 floatx80_to_floatx80( floatx80 );
 floatx80 floatdecimal_to_floatx80( floatx80 );
+floatx80 floatx80_to_floatdecimal(floatx80, int32*);
 #endif
 #ifdef FLOAT128
 float128 floatx80_to_float128( floatx80 );
