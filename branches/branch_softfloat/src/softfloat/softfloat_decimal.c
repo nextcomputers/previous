@@ -72,6 +72,83 @@ void div128by128(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 bExp, bits64 b
     *aSig1 = zSig1;
 }
 
+void tentoint128(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 scale)
+{
+    int32 mExp;
+    bits64 mSig0, mSig1;
+    
+    *aExp = 0x3FFF;
+    *aSig0 = LIT64(0x8000000000000000);
+    *aSig1 = 0;
+
+    mExp = 0x4002;
+    mSig0 = LIT64(0xA000000000000000);
+    mSig1 = 0;
+    
+    while (scale) {
+        if (scale & 1) {
+            mul128by128(aExp, aSig0, aSig1, mExp, mSig0, mSig1);
+        }
+        mul128by128(&mExp, &mSig0, &mSig1, mExp, mSig0, mSig1);
+        scale >>= 1;
+    }
+}
+
+int32 getDecimalExponent(int32 aExp, bits64 aSig)
+{
+    floatx80 b;
+    floatx80 c;
+    floatx80 one = int32_to_floatx80(1);
+    floatx80 log2 = packFloatx80(0, 0x3FFD, LIT64(0x9A209A84FBCFF798));
+
+    int32 ilog;
+    
+    int32 zExp;
+    
+    flag zSign;
+    int32 shiftCount;
+    bits64 zSig;
+    flag aSign;
+    
+    zExp = aExp - 0x3FFF;
+    if (aExp == 0) {
+        zSign = 0;
+        zExp = 0;
+        zSig = 0;
+    } else {
+        zSign = (aExp < 0);
+        aExp = zSign ? -aExp : aExp;
+        shiftCount = countLeadingZeros32(aExp);
+        zExp = 0x403E - shiftCount;
+        zSig = aExp << shiftCount;
+        zSig -= LIT64(0x8000000000000000);
+    }
+    
+    if (aSig == 0) {
+        aSig = LIT64(0x8000000000000000);
+        aExp = 0x3FFF;
+        aSign = 1;
+    } else {
+        aSig -= LIT64(0x8000000000000000);
+        shiftCount = countLeadingZeros64(aSig);
+        aSig <<= shiftCount;
+        aExp = 0x3FFF - shiftCount;
+        aSign = 0;
+    }
+    
+
+    
+    
+    
+//    b = packFloatx80(0, 0x3FFF, aSig);
+//    c = int32_to_floatx80(aExp - 0x3FFF);
+    b = floatx80_add(b, c);
+//    b = floatx80_sub(b, one);
+    b = floatx80_mul(b, log2);
+    ilog = floatx80_to_int32(b);
+    return ilog;
+}
+
 /*----------------------------------------------------------------------------
 | Decimal to binary
 *----------------------------------------------------------------------------*/
@@ -79,8 +156,8 @@ void div128by128(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 bExp, bits64 b
 floatx80 floatdecimal_to_floatx80(floatx80 a)
 {
     flag decSign, zSign, decExpSign, increment;
-    int32 decExp, zExp, mExp, xExp, shiftCount;
-    bits64 decSig, zSig0, zSig1, mSig0, mSig1, xSig0, xSig1;
+    int32 decExp, zExp, xExp, shiftCount;
+    bits64 decSig, zSig0, zSig1, xSig0, xSig1;
     
     decSign = extractFloatx80Sign(a);
     decExp = extractFloatx80Exp(a);
@@ -99,18 +176,7 @@ floatx80 floatdecimal_to_floatx80(floatx80 a)
     zSig1 = 0;
     zSign = decSign;
     
-    mExp = 0x4002;
-    mSig0 = LIT64(0xA000000000000000);
-    xExp = 0x3FFF;
-    xSig0 = LIT64(0x8000000000000000);
-    
-    while (decExp) {
-        if (decExp & 1) {
-            mul128by128(&xExp, &xSig0, &xSig1, mExp, mSig0, mSig1);
-        }
-        mul128by128(&mExp, &mSig0, &mSig1, mExp, mSig0, mSig1);
-        decExp >>= 1;
-    }
+    tentoint128(&xExp, &xSig0, &xSig1, decExp);
     
     if (decExpSign) {
         div128by128(&zExp, &zSig0, &zSig1, xExp, xSig0, xSig1);
@@ -159,8 +225,8 @@ floatx80 floatx80_to_floatdecimal(floatx80 a, int32 *k)
     bits64 aSig;
     
     flag decSign;
-    int32 decExp, zExp, mExp, xExp;
-    bits64 decSig, zSig0, zSig1, mSig0, mSig1, xSig0, xSig1;
+    int32 decExp, zExp, xExp;
+    bits64 decSig, zSig0, zSig1, xSig0, xSig1;
     
     aSign = extractFloatx80Sign(a);
     aExp = extractFloatx80Exp(a);
@@ -207,7 +273,7 @@ floatx80 floatx80_to_floatdecimal(floatx80 a, int32 *k)
         ilog = floatx80_to_int32(b);
     }
     
-    bool ictr = false;
+    flag ictr = 1;
     
 try_again:
     printf("ILOG = %i\n",ilog);
@@ -251,20 +317,7 @@ try_again:
     
     printf("ISCALE = %i, LAMDA = %i\n",iscale,lambda);
     
-    mExp = 0x4002;
-    mSig0 = LIT64(0xA000000000000000);
-    mSig1 = 0;
-    xExp = 0x3FFF;
-    xSig0 = LIT64(0x8000000000000000);
-    xSig1 = 0;
-    
-    while (iscale) {
-        if (iscale & 1) {
-            mul128by128(&xExp, &xSig0, &xSig1, mExp, mSig0, mSig1);
-        }
-        mul128by128(&mExp, &mSig0, &mSig1, mExp, mSig0, mSig1);
-        iscale >>= 1;
-    }
+    tentoint128(&xExp, &xSig0, &xSig1, iscale);
     
     zExp = aExp;
     zSig0 = aSig;
@@ -283,30 +336,16 @@ try_again:
     zExp = extractFloatx80Exp(z);
     zSig1 = 0;
     
-    if (ictr == false) {
-        int lentemp = len - 1;
+    if (ictr == 0) {
         
-        mExp = 0x4002;
-        mSig0 = LIT64(0xA000000000000000);
-        mSig1 = 0;
-        xExp = 0x3FFF;
-        xSig0 = LIT64(0x8000000000000000);
-        xSig1 = 0;
-        
-        while (lentemp) {
-            if (lentemp & 1) {
-                mul128by128(&xExp, &xSig0, &xSig1, mExp, mSig0, mSig1);
-            }
-            mul128by128(&mExp, &mSig0, &mSig1, mExp, mSig0, mSig1);
-            lentemp >>= 1;
-        }
+        tentoint128(&xExp, &xSig0, &xSig1, len - 1);
         
         zSig0 = extractFloatx80Frac(z);
         zExp = extractFloatx80Exp(z);
         
         if (zExp < xExp || ((zExp == xExp) && lt128(zSig0, 0, xSig0, xSig1))) { // z < x
             ilog -= 1;
-            ictr = true;
+            ictr = 1;
             mul128by128(&xExp, &xSig0, &xSig1, 0x4002, LIT64(0xA000000000000000), 0);
             goto try_again;
         }
@@ -315,36 +354,25 @@ try_again:
         
         if (zExp > xExp || ((zExp == xExp) && lt128(xSig0, xSig1, zSig0, 0))) { // z > x
             ilog += 1;
-            ictr = true;
+            ictr = 1;
             goto try_again;
         }
-    } else {
-        int lentemp = len;
-
-        mExp = 0x4002;
-        mSig0 = LIT64(0xA000000000000000);
-        mSig1 = 0;
-        xExp = 0x3FFF;
-        xSig0 = LIT64(0x8000000000000000);
-        xSig1 = 0;
         
-        while (lentemp) {
-            if (lentemp & 1) {
-                mul128by128(&xExp, &xSig0, &xSig1, mExp, mSig0, mSig1);
-            }
-            mul128by128(&mExp, &mSig0, &mSig1, mExp, mSig0, mSig1);
-            lentemp >>= 1;
-        }
+        div128by128(&zExp, &zSig0, &zSig1, 0x4002, LIT64(0xA000000000000000), 0);
+        ilog += 1;
+    } else {
 
-        if (eq128(zSig0, 0, xSig0, xSig1)) {
-            div128by128(&zExp, &zSig0, &zSig1, 0x4002, LIT64(0xA000000000000000), 0);
+        tentoint128(&xExp, &xSig0, &xSig1, len);
+
+        if ((zExp == xExp) && eq128(zSig0, 0, xSig0, xSig1)) { // z == x
             ilog += 1;
             len += 1;
-            mul128by128(&xExp, &xSig0, &xSig1, 0x4002, LIT64(0xA000000000000000), 0);
+            div128by128(&zExp, &zSig0, &zSig1, 0x4002, LIT64(0xA000000000000000), 0);
+            //mul128by128(&xExp, &xSig0, &xSig1, 0x4002, LIT64(0xA000000000000000), 0);
         }
     }
     
-    if (zSig1) zSig0 |= 1;
+//    if (zSig1) zSig0 |= 1;
     
     z = packFloatx80(0, zExp, zSig0);
     
@@ -359,68 +387,4 @@ try_again:
     *k = len;
     
     return packFloatx80(decSign, decExp, decSig);
-#if 0
-    printf("abs(Yint) = %s\n",fp_print(&zint));
-    
-    uae_u64 significand = floatx80_to_int64(zint);
-    
-    printf("Mantissa = %lli\n",significand);
-    
-    printf("Exponent = %i\n",ilog);
-    
-    uae_s32 exp = ilog;
-    
-    uae_u32 pack_exp = 0;   // packed exponent
-    uae_u32 pack_exp4 = 0;
-    uae_u32 pack_int = 0;   // packed integer part
-    uae_u64 pack_frac = 0;  // packed fraction
-    uae_u32 pack_se = 0;    // sign of packed exponent
-    uae_u32 pack_sm = 0;    // sign of packed significand
-    
-    if (exp < 0) {
-        exp = -exp;
-        pack_se = 1;
-    }
-    
-    uae_u64 digit;
-    pack_frac = 0;
-    while (len > 0) {
-        len--;
-        digit = significand % 10;
-        significand /= 10;
-        if (len == 0) {
-            pack_int = digit;
-        } else {
-            pack_frac |= digit << (64 - len * 4);
-        }
-    }
-    printf("PACKED FRACTION = %02x.%16llx\n",pack_int, pack_frac);
-    
-    if (exp > 999) {
-        digit = exp / 1000;
-        exp -= digit * 1000;
-        pack_exp4 = digit;
-        // OPERR
-    }
-    digit = exp / 100;
-    exp -= digit * 100;
-    pack_exp = digit << 8;
-    digit = exp / 10;
-    exp -= digit * 10;
-    pack_exp |= digit << 4;
-    pack_exp |= exp;
-    
-    pack_sm = aSign;
-    
-    wrd[0] = pack_exp << 16;
-    wrd[0] |= pack_exp4 << 12;
-    wrd[0] |= pack_int;
-    wrd[0] |= pack_se ? 0x40000000 : 0;
-    wrd[0] |= pack_sm ? 0x80000000 : 0;
-    
-    wrd[1] = pack_frac >> 32;
-    wrd[2] = pack_frac & 0xffffffff;
-    
-    printf("PACKED = %08x %08x %08x\n",wrd[0],wrd[1],wrd[2]);
-#endif
 }
