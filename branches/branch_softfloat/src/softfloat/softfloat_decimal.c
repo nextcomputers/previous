@@ -94,60 +94,6 @@ void tentoint128(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 scale)
     }
 }
 
-int32 getDecimalExponent(int32 aExp, bits64 aSig)
-{
-    floatx80 b;
-    floatx80 c;
-    floatx80 one = int32_to_floatx80(1);
-    floatx80 log2 = packFloatx80(0, 0x3FFD, LIT64(0x9A209A84FBCFF798));
-
-    int32 ilog;
-    
-    int32 zExp;
-    
-    flag zSign;
-    int32 shiftCount;
-    bits64 zSig;
-    flag aSign;
-    
-    zExp = aExp - 0x3FFF;
-    if (aExp == 0) {
-        zSign = 0;
-        zExp = 0;
-        zSig = 0;
-    } else {
-        zSign = (aExp < 0);
-        aExp = zSign ? -aExp : aExp;
-        shiftCount = countLeadingZeros32(aExp);
-        zExp = 0x403E - shiftCount;
-        zSig = aExp << shiftCount;
-        zSig -= LIT64(0x8000000000000000);
-    }
-    
-    if (aSig == 0) {
-        aSig = LIT64(0x8000000000000000);
-        aExp = 0x3FFF;
-        aSign = 1;
-    } else {
-        aSig -= LIT64(0x8000000000000000);
-        shiftCount = countLeadingZeros64(aSig);
-        aSig <<= shiftCount;
-        aExp = 0x3FFF - shiftCount;
-        aSign = 0;
-    }
-    
-
-    
-    
-    
-//    b = packFloatx80(0, 0x3FFF, aSig);
-//    c = int32_to_floatx80(aExp - 0x3FFF);
-    b = floatx80_add(b, c);
-//    b = floatx80_sub(b, one);
-    b = floatx80_mul(b, log2);
-    ilog = floatx80_to_int32(b);
-    return ilog;
-}
 
 /*----------------------------------------------------------------------------
 | Decimal to binary
@@ -273,7 +219,7 @@ floatx80 floatx80_to_floatdecimal(floatx80 a, int32 *k)
         ilog = floatx80_to_int32(b);
     }
     
-    flag ictr = 1;
+    flag ictr = 0;
     
 try_again:
     printf("ILOG = %i\n",ilog);
