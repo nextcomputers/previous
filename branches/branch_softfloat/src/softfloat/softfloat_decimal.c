@@ -202,8 +202,12 @@ floatx80 floatx80_to_floatdecimal(floatx80 a, int32 *k)
     floatx80 log2 = packFloatx80(0, 0x3FFD, LIT64(0x9A209A84FBCFF798));
     floatx80 log2up1 = packFloatx80(0, 0x3FFD, LIT64(0x9A209A84FBCFF799));
     
-    
-    if (aExp < 0) {
+#if 0
+    if (aExp < 0)
+#else
+    if (0)
+#endif
+    {
         ilog = -4933;
     } else {
         b = packFloatx80(0, 0x3FFF, aSig);
@@ -303,19 +307,21 @@ try_again:
             ictr = 1;
             goto try_again;
         }
-        
+#if 0 // what is this for?
         div128by128(&zExp, &zSig0, &zSig1, 0x4002, LIT64(0xA000000000000000), 0);
         ilog += 1;
+#endif
     } else {
 
         tentoint128(&xExp, &xSig0, &xSig1, len);
-
+#if 0 // what is this for?
         if ((zExp == xExp) && eq128(zSig0, 0, xSig0, xSig1)) { // z == x
             ilog += 1;
             len += 1;
             div128by128(&zExp, &zSig0, &zSig1, 0x4002, LIT64(0xA000000000000000), 0);
-            //mul128by128(&xExp, &xSig0, &xSig1, 0x4002, LIT64(0xA000000000000000), 0);
+            mul128by128(&xExp, &xSig0, &xSig1, 0x4002, LIT64(0xA000000000000000), 0);
         }
+#endif
     }
     
 //    if (zSig1) zSig0 |= 1;
