@@ -440,23 +440,9 @@ STATIC_INLINE void to_pack (fptype *fp, uae_u32 *wrd)
     printf("z = %s\n",fp_print(fp));
 #endif
 }
-STATIC_INLINE void from_pack (fptype *src, uae_u32 *wrd, uae_s32 kfactor)
+STATIC_INLINE void from_pack (fptype *fp, uae_u32 *wrd, uae_s32 kfactor)
 {
-#if 0
-    if (fp_is_nan (src)) {
-        // copy bit by bit, handle signaling nan
-        from_exten(src, &wrd[0], &wrd[1], &wrd[2]);
-        return;
-    }
-    if (fp_is_infinity (src)) {
-        // extended exponent and all 0 packed fraction
-        from_exten(src, &wrd[0], &wrd[1], &wrd[2]);
-        wrd[1] = wrd[2] = 0;
-        return;
-    }
-#endif
-    
-    floatx80 f = floatx80_to_floatdecimal(*src, &kfactor);
+    floatx80 f = floatx80_to_floatdecimal(*fp, &kfactor);
     
     uae_u32 pack_exp = 0;   // packed exponent
     uae_u32 pack_exp4 = 0;
@@ -465,46 +451,58 @@ STATIC_INLINE void from_pack (fptype *src, uae_u32 *wrd, uae_s32 kfactor)
     uae_u32 pack_se = 0;    // sign of packed exponent
     uae_u32 pack_sm = 0;    // sign of packed significand
     
-    uae_u32 exponent = f.high & 0x3FFF;
-    uae_u64 significand = f.low;
+    uae_u32 exponent;
+    uae_u64 significand;
 
-    uae_s32 len = kfactor; // SoftFloat saved len to kfactor variable
-    
+    uae_s32 len;
     uae_u64 digit;
-    pack_frac = 0;
-    while (len > 0) {
-        len--;
-        digit = significand % 10;
-        significand /= 10;
-        if (len == 0) {
-            pack_int = digit;
-        } else {
-            pack_frac |= digit << (64 - len * 4);
+    
+    if ((f.high & 0x7FFF) == 0x7FFF) {
+        wrd[0] = (uae_u32)(fp->high << 16);
+        wrd[1] = fp->low >> 32;
+        wrd[2] = (uae_u32)fp->low;
+    } else {
+        exponent = f.high & 0x3FFF;
+        significand = f.low;
+        
+        pack_frac = 0;
+        len = kfactor; // SoftFloat saved len to kfactor variable
+        while (len > 0) {
+            len--;
+            digit = significand % 10;
+            significand /= 10;
+            if (len == 0) {
+                pack_int = digit;
+            } else {
+                pack_frac |= digit << (64 - len * 4);
+            }
         }
+        
+        pack_exp = 0;
+        len = 4;
+        while (len > 0) {
+            len--;
+            digit = exponent % 10;
+            exponent /= 10;
+            if (len == 0) {
+                pack_exp4 = digit;
+            } else {
+                pack_exp |= digit << (12 - len * 4);
+            }
+        }
+        
+        pack_se = f.high & 0x4000;
+        pack_sm = f.high & 0x8000;
+        
+        wrd[0] = pack_exp << 16;
+        wrd[0] |= pack_exp4 << 12;
+        wrd[0] |= pack_int;
+        wrd[0] |= pack_se ? 0x40000000 : 0;
+        wrd[0] |= pack_sm ? 0x80000000 : 0;
+        
+        wrd[1] = pack_frac >> 32;
+        wrd[2] = pack_frac & 0xffffffff;
     }
-
-    digit = exponent / 1000;
-    exponent -= digit * 1000;
-    pack_exp4 = digit;
-    digit = exponent / 100;
-    exponent -= digit * 100;
-    pack_exp = digit << 8;
-    digit = exponent / 10;
-    exponent -= digit * 10;
-    pack_exp |= digit << 4;
-    pack_exp |= exponent;
-    
-    pack_se = f.high & 0x4000;
-    pack_sm = f.high & 0x8000;
-    
-    wrd[0] = pack_exp << 16;
-    wrd[0] |= pack_exp4 << 12;
-    wrd[0] |= pack_int;
-    wrd[0] |= pack_se ? 0x40000000 : 0;
-    wrd[0] |= pack_sm ? 0x80000000 : 0;
-    
-    wrd[1] = pack_frac >> 32;
-    wrd[2] = pack_frac & 0xffffffff;
     
     printf("PACKED = %08x %08x %08x\n",wrd[0],wrd[1],wrd[2]);
 }
