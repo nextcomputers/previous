@@ -94,6 +94,52 @@ void tentoint128(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 scale)
     }
 }
 
+int32 getDecimalExponent(int32 aExp, bits64 aSig)
+{
+    flag zSign;
+    int32 zExp, shiftCount;
+    bits64 zSig0, zSig1;
+    
+    if (aSig == 0 || aExp == 0x3FFF) {
+        return 0;
+    }
+
+    aSig ^= LIT64(0x8000000000000000);
+    aExp -= 0x3FFF;
+    zSign = (aExp < 0);
+    aExp = zSign ? -aExp : aExp;
+    shiftCount = 31 - countLeadingZeros32(aExp);
+    zExp = 0x3FFF + shiftCount;
+    
+    if (shiftCount < 0) {
+        shortShift128Left(aSig, 0, -shiftCount, &zSig0, &zSig1);
+    } else {
+        shift128Right(aSig, 0, shiftCount, &zSig0, &zSig1);
+        aSig = (bits64)aExp << (63 - shiftCount);
+        if (zSign) {
+            sub128(aSig, 0, zSig0, zSig1, &zSig0, &zSig1);
+        } else {
+            add128(aSig, 0, zSig0, zSig1, &zSig0, &zSig1);
+        }
+    }
+    
+    shiftCount = countLeadingZeros64(zSig0);
+    shortShift128Left(zSig0, zSig1, shiftCount, &zSig0, &zSig1);
+    zExp -= shiftCount;
+    mul128by128(&zExp, &zSig0, &zSig1, 0x3FFD, LIT64(0x9A209A84FBCFF798), LIT64(0x8F8959AC0B7C9178));
+    
+    shiftCount = 0x403E - zExp;
+    shift128RightJamming(zSig0, zSig1, shiftCount, &zSig0, &zSig1);
+
+    if ((sbits64)zSig1 < 0) {
+        ++zSig0;
+        zSig0 &= ~((bits64)(zSig1<<1) == 0);
+    }
+    
+    zExp = zSign ? -zSig0 : zSig0;
+
+    return zExp;
+}
 
 /*----------------------------------------------------------------------------
 | Decimal to binary
@@ -166,13 +212,11 @@ floatx80 floatdecimal_to_floatx80(floatx80 a)
 
 floatx80 floatx80_to_floatdecimal(floatx80 a, int32 *k)
 {
-    flag aSign;
-    int32 aExp;
-    bits64 aSig;
-    
-    flag decSign;
-    int32 decExp, zExp, xExp;
-    bits64 decSig, zSig0, zSig1, xSig0, xSig1;
+    flag aSign, decSign;
+    int32 aExp, decExp, zExp, xExp;
+    bits64 aSig, decSig, zSig0, zSig1, xSig0, xSig1;
+    flag ictr, lambda;
+    int32 kfactor, ilog, iscale, len;
     
     aSign = extractFloatx80Sign(a);
     aExp = extractFloatx80Exp(a);
@@ -188,14 +232,12 @@ floatx80 floatx80_to_floatdecimal(floatx80 a, int32 *k)
         normalizeFloatx80Subnormal(aSig, &aExp, &aSig);
     }
 
-    int32 kfactor = *k;
+    kfactor = *k;
     
-    int32 ilog, len;
-    
+#if 1
+    ilog = getDecimalExponent(aExp, aSig);
+#else
     flag bSign;
-    
-
-    
     floatx80 b;
     floatx80 c;
     floatx80 one = int32_to_floatx80(1);
@@ -222,8 +264,9 @@ floatx80 floatx80_to_floatdecimal(floatx80 a, int32 *k)
         }
         ilog = floatx80_to_int32(b);
     }
+#endif
     
-    flag ictr = 0;
+    ictr = 0;
     
 try_again:
     printf("ILOG = %i\n",ilog);
@@ -251,8 +294,8 @@ try_again:
         printf("ILOG is kfactor = %i\n",ilog);
     }
     
-    flag lambda = 0;
-    int iscale = ilog + 1 - len;
+    lambda = 0;
+    iscale = ilog + 1 - len;
     
     if (iscale < 0) {
         lambda = 1;
