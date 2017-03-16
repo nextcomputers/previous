@@ -94,6 +94,76 @@ void tentoint128(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 scale)
     }
 }
 
+void roundtoint128(flag aSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1 )
+{
+    int32 zExp;
+    bits64 zSig, lastBitMask, roundBitsMask;
+    
+    zExp = *aExp;
+    zSig = *aSig0;
+
+    if (0x403E <= zExp) return;
+    
+    if (*aSig1) {
+        zSig |= 1;
+        *aSig1 = 0;
+    }
+
+    if (zExp < 0x3FFF) {
+        if (zExp == 0 && zSig == 0) return;
+        
+        float_raise(float_flag_inexact);
+        
+        switch (float_rounding_mode) {
+            case float_round_nearest_even:
+                if ((zExp == 0x3FFE) && (bits64)(zSig<<1)) {
+                    *aExp = 0x3FFF;
+                    *aSig0 = LIT64(0x8000000000000000);
+                    return;
+                }
+                break;
+            case float_round_down:
+                if (aSign) {
+                    *aExp = 0x3FFF;
+                    *aSig0 = LIT64(0x8000000000000000);
+                    return;
+                }
+                break;
+            case float_round_up:
+                if (!aSign) {
+                    *aExp = 0x3FFF;
+                    *aSig0 = LIT64(0x8000000000000000);
+                    return;
+                }
+                break;
+        }
+        *aExp = 0;
+        *aSig0 = 0;
+        return;
+    }
+    lastBitMask = 1;
+    lastBitMask <<= 0x403E - zExp;
+    roundBitsMask = lastBitMask - 1;
+
+    if ( float_rounding_mode == float_round_nearest_even ) {
+        zSig += lastBitMask>>1;
+        if ((zSig & roundBitsMask) == 0 ) zSig &= ~ lastBitMask;
+    } else if (float_rounding_mode != float_round_to_zero) {
+        if (aSign ^ (float_rounding_mode == float_round_up)) {
+            zSig += roundBitsMask;
+        }
+    }
+    zSig &= ~ roundBitsMask;
+    if (zSig == 0) {
+        ++zExp;
+        zSig = LIT64( 0x8000000000000000 );
+    }
+    if ( zSig != *aSig0 ) float_raise(float_flag_inexact);
+    
+    *aExp = zExp;
+    *aSig0 = zSig;
+}
+
 int32 getDecimalExponent(int32 aExp, bits64 aSig)
 {
     flag zSign;
@@ -234,37 +304,7 @@ floatx80 floatx80_to_floatdecimal(floatx80 a, int32 *k)
 
     kfactor = *k;
     
-#if 1
     ilog = getDecimalExponent(aExp, aSig);
-#else
-    flag bSign;
-    floatx80 b;
-    floatx80 c;
-    floatx80 one = int32_to_floatx80(1);
-    floatx80 log2 = packFloatx80(0, 0x3FFD, LIT64(0x9A209A84FBCFF798));
-    floatx80 log2up1 = packFloatx80(0, 0x3FFD, LIT64(0x9A209A84FBCFF799));
-    
-#if 0
-    if (aExp < 0)
-#else
-    if (0)
-#endif
-    {
-        ilog = -4933;
-    } else {
-        b = packFloatx80(0, 0x3FFF, aSig);
-        c = int32_to_floatx80(aExp - 0x3FFF);
-        b = floatx80_add(b, c);
-        b = floatx80_sub(b, one);
-        bSign = extractFloatx80Sign(b);
-        if (bSign) {
-            b = floatx80_mul(b, log2up1);
-        } else {
-            b = floatx80_mul(b, log2);
-        }
-        ilog = floatx80_to_int32(b);
-    }
-#endif
     
     ictr = 0;
     
@@ -285,30 +325,23 @@ try_again:
         if (len < 1) {
             len = 1;
         }
+        if (kfactor > ilog) {
+            ilog = kfactor;
+            printf("ILOG is kfactor = %i\n",ilog);
+        }
     }
     
     printf("LEN = %i\n",len);
-    
-    if (kfactor <= 0 && kfactor > ilog) {
-        ilog = kfactor;
-        printf("ILOG is kfactor = %i\n",ilog);
-    }
     
     lambda = 0;
     iscale = ilog + 1 - len;
     
     if (iscale < 0) {
         lambda = 1;
-#if 0
-        if (iscale <= -4908) { // do we need this?
-            iscale += 24;
-            temp_for_a9 = 24;
-        }
-#endif
         iscale = -iscale;
     }
     
-    printf("ISCALE = %i, LAMDA = %i\n",iscale,lambda);
+    printf("ISCALE = %i, LAMBDA = %i\n",iscale,lambda);
     
     tentoint128(&xExp, &xSig0, &xSig1, iscale);
     
@@ -321,58 +354,34 @@ try_again:
     } else {
         div128by128(&zExp, &zSig0, &zSig1, xExp, xSig0, xSig1);
     }
-    if (zSig1) zSig0 |= 1;
     
-    floatx80 z = packFloatx80(aSign, zExp, zSig0);
-    z = floatx80_round_to_int(z);
-    zSig0 = extractFloatx80Frac(z);
-    zExp = extractFloatx80Exp(z);
-    zSig1 = 0;
+    printf("BEFORE: zExp = %04x, zSig0 = %16llx, zSig1 = %16llx\n",zExp,zSig0,zSig1);
+
+    roundtoint128(aSign, &zExp, &zSig0, &zSig1);
+
+    printf("AFTER: zExp = %04x, zSig0 = %16llx, zSig1 = %16llx\n",zExp,zSig0,zSig1);
     
     if (ictr == 0) {
-        
+
         tentoint128(&xExp, &xSig0, &xSig1, len - 1);
         
-        zSig0 = extractFloatx80Frac(z);
-        zExp = extractFloatx80Exp(z);
-        
-        if (zExp < xExp || ((zExp == xExp) && lt128(zSig0, 0, xSig0, xSig1))) { // z < x
+        if (zExp < xExp || ((zExp == xExp) && lt128(zSig0, zSig1, xSig0, xSig1))) { // z < x
             ilog -= 1;
             ictr = 1;
-            mul128by128(&xExp, &xSig0, &xSig1, 0x4002, LIT64(0xA000000000000000), 0);
             goto try_again;
         }
         
         mul128by128(&xExp, &xSig0, &xSig1, 0x4002, LIT64(0xA000000000000000), 0);
         
-        if (zExp > xExp || ((zExp == xExp) && lt128(xSig0, xSig1, zSig0, 0))) { // z > x
+        if (zExp > xExp || ((zExp == xExp) && lt128(xSig0, xSig1, zSig0, zSig1))) { // z > x
             ilog += 1;
             ictr = 1;
             goto try_again;
         }
-#if 0 // what is this for?
-        div128by128(&zExp, &zSig0, &zSig1, 0x4002, LIT64(0xA000000000000000), 0);
-        ilog += 1;
-#endif
-    } else {
-
-        tentoint128(&xExp, &xSig0, &xSig1, len);
-#if 0 // what is this for?
-        if ((zExp == xExp) && eq128(zSig0, 0, xSig0, xSig1)) { // z == x
-            ilog += 1;
-            len += 1;
-            div128by128(&zExp, &zSig0, &zSig1, 0x4002, LIT64(0xA000000000000000), 0);
-            mul128by128(&xExp, &xSig0, &xSig1, 0x4002, LIT64(0xA000000000000000), 0);
-        }
-#endif
     }
     
-//    if (zSig1) zSig0 |= 1;
-    
-    z = packFloatx80(0, zExp, zSig0);
-    
     decSign = aSign;
-    decSig = floatx80_to_int64(z);
+    decSig = zSig0 >> (0x403E - zExp);
     decExp = (ilog < 0) ? -ilog : ilog;
     if (decExp > 999) {
         float_raise(float_flag_invalid);
