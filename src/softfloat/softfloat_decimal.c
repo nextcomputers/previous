@@ -12,6 +12,71 @@ Arithmetic Package, Release 2a.
 | Methods for converting decimal floats to binary extended precision floats.
 *----------------------------------------------------------------------------*/
 
+void round128to64(flag aSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1)
+{
+    flag increment;
+    int32 zExp;
+    bits64 zSig0, zSig1;
+    
+    zExp = *aExp;
+    zSig0 = *aSig0;
+    zSig1 = *aSig1;
+    
+    increment = ( (sbits64) zSig1 < 0 );
+    if (float_rounding_mode != float_round_nearest_even) {
+        if (float_rounding_mode == float_round_to_zero) {
+            increment = 0;
+        } else {
+            if (aSign) {
+                increment = (float_rounding_mode == float_round_down) && zSig1;
+            } else {
+                increment = (float_rounding_mode == float_round_up) && zSig1;
+            }
+        }
+    }
+    
+    if (increment) {
+        ++zSig0;
+        if (zSig0 == 0) {
+            ++zExp;
+            zSig0 = LIT64(0x8000000000000000);
+        } else {
+            zSig0 &= ~ (((bits64) (zSig1<<1) == 0) & (float_rounding_mode == float_round_nearest_even));
+        }
+    } else {
+        if ( zSig0 == 0 ) zExp = 0;
+    }
+    
+    *aExp = zExp;
+    *aSig0 = zSig0;
+    *aSig1 = 0;
+}
+
+void mul128by128round(flag aSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 bExp, bits64 bSig0, bits64 bSig1)
+{
+    int32 zExp;
+    bits64 zSig0, zSig1, zSig2, zSig3;
+    
+    zExp = *aExp;
+    zSig0 = *aSig0;
+    zSig1 = *aSig1;
+    
+    round128to64(aSign, &bExp, &bSig0, &bSig1);
+    
+    zExp += bExp - 0x3FFE;
+    mul128To256(zSig0, zSig1, bSig0, bSig1, &zSig0, &zSig1, &zSig2, &zSig3);
+    zSig1 |= (zSig2 | zSig3) != 0;
+    if ( 0 < (sbits64) zSig0 ) {
+        shortShift128Left( zSig0, zSig1, 1, &zSig0, &zSig1 );
+        --zExp;
+    }
+    *aExp = zExp;
+    *aSig0 = zSig0;
+    *aSig1 = zSig1;
+    
+    round128to64(aSign, aExp, aSig0, aSig1);
+}
+
 void mul128by128(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 bExp, bits64 bSig0, bits64 bSig1)
 {
     int32 zExp;
@@ -33,25 +98,24 @@ void mul128by128(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 bExp, bits64 b
     *aSig1 = zSig1;
 }
 
-void div128by128(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 bExp, bits64 bSig0, bits64 bSig1)
+void div128by128(int32 *paExp, bits64 *paSig0, bits64 *paSig1, int32 bExp, bits64 bSig0, bits64 bSig1)
 {
-    int32 zExp;
-    bits64 zSig0, zSig1;
+    int32 zExp, aExp;
+    bits64 zSig0, zSig1, aSig0, aSig1;
     bits64 rem0, rem1, rem2, rem3, term0, term1, term2, term3;
     
-    zExp = *aExp;
-    zSig0 = *aSig0;
-    zSig1 = *aSig1;
+    aExp = *paExp;
+    aSig0 = *paSig0;
+    aSig1 = *paSig1;
     
-    zExp -= bExp - 0x3FFE;
-    rem1 = 0;
-    if ( le128( bSig0, bSig1, zSig0, zSig1 ) ) {
-        shift128Right( zSig0, zSig1, 1, &zSig0, &zSig1 );
+    zExp = aExp - bExp + 0x3FFE;
+    if ( le128( bSig0, bSig1, aSig0, aSig1 ) ) {
+        shift128Right( aSig0, aSig1, 1, &aSig0, &aSig1 );
         ++zExp;
     }
-    zSig0 = estimateDiv128To64( zSig0, zSig1, bSig0 );
+    zSig0 = estimateDiv128To64( aSig0, aSig1, bSig0 );
     mul128By64To192( bSig0, bSig1, zSig0, &term0, &term1, &term2 );
-    sub192( zSig0, zSig1, 0, term0, term1, term2, &rem0, &rem1, &rem2 );
+    sub192( aSig0, aSig1, 0, term0, term1, term2, &rem0, &rem1, &rem2 );
     while ( (sbits64) rem0 < 0 ) {
         --zSig0;
         add192( rem0, rem1, rem2, 0, bSig0, bSig1, &rem0, &rem1, &rem2 );
@@ -67,12 +131,12 @@ void div128by128(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 bExp, bits64 b
         zSig1 |= ( ( rem1 | rem2 | rem3 ) != 0 );
     }
 
-    *aExp = zExp;
-    *aSig0 = zSig0;
-    *aSig1 = zSig1;
+    *paExp = zExp;
+    *paSig0 = zSig0;
+    *paSig1 = zSig1;
 }
 
-void tentoint128(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 scale)
+void tentoint128(flag aSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 scale)
 {
     int32 mExp;
     bits64 mSig0, mSig1;
@@ -87,7 +151,7 @@ void tentoint128(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 scale)
     
     while (scale) {
         if (scale & 1) {
-            mul128by128(aExp, aSig0, aSig1, mExp, mSig0, mSig1);
+            mul128by128round(aSign, aExp, aSig0, aSig1, mExp, mSig0, mSig1);
         }
         mul128by128(&mExp, &mSig0, &mSig1, mExp, mSig0, mSig1);
         scale >>= 1;
@@ -217,7 +281,7 @@ floatx80 floatdecimal_to_floatx80(floatx80 a)
     zSig1 = 0;
     zSign = decSign;
     
-    tentoint128(&xExp, &xSig0, &xSig1, decExp);
+    tentoint128(zSign, &xExp, &xSig0, &xSig1, decExp);
     
     if (decExpSign) {
         div128by128(&zExp, &zSig0, &zSig1, xExp, xSig0, xSig1);
@@ -322,7 +386,7 @@ try_again:
     
     printf("ISCALE = %i, LAMBDA = %i\n",iscale,lambda);
     
-    tentoint128(&xExp, &xSig0, &xSig1, iscale);
+    tentoint128(0, &xExp, &xSig0, &xSig1, iscale);
     
     zExp = aExp;
     zSig0 = aSig;
