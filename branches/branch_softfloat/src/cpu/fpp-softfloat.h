@@ -458,9 +458,9 @@ STATIC_INLINE void from_pack (fptype *fp, uae_u32 *wrd, uae_s32 kfactor)
     uae_u64 digit;
     
     if ((f.high & 0x7FFF) == 0x7FFF) {
-        wrd[0] = (uae_u32)(fp->high << 16);
-        wrd[1] = fp->low >> 32;
-        wrd[2] = (uae_u32)fp->low;
+        wrd[0] = (uae_u32)(f.high << 16);
+        wrd[1] = f.low >> 32;
+        wrd[2] = (uae_u32)f.low;
     } else {
         exponent = f.high & 0x3FFF;
         significand = f.low;

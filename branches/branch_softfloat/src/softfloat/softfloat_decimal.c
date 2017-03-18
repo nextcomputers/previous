@@ -216,6 +216,9 @@ int32 getDecimalExponent(int32 aExp, bits64 aSig)
     if (aSig == 0 || aExp == 0x3FFF) {
         return 0;
     }
+    if (aExp < 0) {
+        return -4932;
+    }
 
     aSig ^= LIT64(0x8000000000000000);
     aExp -= 0x3FFF;
