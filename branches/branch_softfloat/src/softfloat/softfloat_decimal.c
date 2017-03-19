@@ -52,7 +52,7 @@ void round128to64(flag aSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1)
     *aSig1 = 0;
 }
 
-void mul128by128round(flag aSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 bExp, bits64 bSig0, bits64 bSig1)
+void mul128by128round(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 bExp, bits64 bSig0, bits64 bSig1)
 {
     int32 zExp;
     bits64 zSig0, zSig1, zSig2, zSig3;
@@ -61,7 +61,7 @@ void mul128by128round(flag aSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1, int
     zSig0 = *aSig0;
     zSig1 = *aSig1;
     
-    round128to64(aSign, &bExp, &bSig0, &bSig1);
+    round128to64(0, &bExp, &bSig0, &bSig1);
     
     zExp += bExp - 0x3FFE;
     mul128To256(zSig0, zSig1, bSig0, bSig1, &zSig0, &zSig1, &zSig2, &zSig3);
@@ -74,7 +74,7 @@ void mul128by128round(flag aSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1, int
     *aSig0 = zSig0;
     *aSig1 = zSig1;
     
-    round128to64(aSign, aExp, aSig0, aSig1);
+    round128to64(0, aExp, aSig0, aSig1);
 }
 
 void mul128by128(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 bExp, bits64 bSig0, bits64 bSig1)
@@ -136,10 +136,36 @@ void div128by128(int32 *paExp, bits64 *paSig0, bits64 *paSig1, int32 bExp, bits6
     *paSig1 = zSig1;
 }
 
-void tentoint128(flag aSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 scale)
+void tentoint128(flag mSign, flag eSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 scale)
 {
+    int8 save_rounding_mode;
     int32 mExp;
     bits64 mSig0, mSig1;
+    
+    save_rounding_mode = float_rounding_mode;
+    switch (float_rounding_mode) {
+        case float_round_nearest_even:
+            break;
+        case float_round_down:
+            if (mSign != eSign) {
+                float_rounding_mode = float_round_up;
+            }
+            break;
+        case float_round_up:
+            if (mSign != eSign) {
+                float_rounding_mode = float_round_down;
+            }
+            break;
+        case float_round_to_zero:
+            if (eSign == 0) {
+                float_rounding_mode = float_round_down;
+            } else {
+                float_rounding_mode = float_round_up;
+            }
+            break;
+        default:
+            break;
+    }
     
     *aExp = 0x3FFF;
     *aSig0 = LIT64(0x8000000000000000);
@@ -151,11 +177,13 @@ void tentoint128(flag aSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 sc
     
     while (scale) {
         if (scale & 1) {
-            mul128by128round(aSign, aExp, aSig0, aSig1, mExp, mSig0, mSig1);
+            mul128by128round(aExp, aSig0, aSig1, mExp, mSig0, mSig1);
         }
         mul128by128(&mExp, &mSig0, &mSig1, mExp, mSig0, mSig1);
         scale >>= 1;
     }
+    
+    float_rounding_mode = save_rounding_mode;
 }
 
 int64 tentointdec(int32 scale)
@@ -284,7 +312,7 @@ floatx80 floatdecimal_to_floatx80(floatx80 a)
     zSig1 = 0;
     zSign = decSign;
     
-    tentoint128(zSign, &xExp, &xSig0, &xSig1, decExp);
+    tentoint128(decSign, decExpSign, &xExp, &xSig0, &xSig1, decExp);
     
     if (decExpSign) {
         div128by128(&zExp, &zSig0, &zSig1, xExp, xSig0, xSig1);
@@ -389,7 +417,7 @@ try_again:
     
     printf("ISCALE = %i, LAMBDA = %i\n",iscale,lambda);
     
-    tentoint128(0, &xExp, &xSig0, &xSig1, iscale);
+    tentoint128(lambda, 0, &xExp, &xSig0, &xSig1, iscale);
     
     zExp = aExp;
     zSig0 = aSig;
