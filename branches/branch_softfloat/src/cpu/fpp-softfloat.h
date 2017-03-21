@@ -299,10 +299,14 @@ STATIC_INLINE fptype from_int(uae_s32 src)
     return int32_to_floatx80(src);
 }
 
-STATIC_INLINE void to_pack (fptype *fp, uae_u32 *wrd)
+STATIC_INLINE void to_pack(fptype *fp, uae_u32 *wrd)
 {
-    uae_s32 exp = 0;
-    uae_s64 mant = 0;
+    floatx80 f;
+    int i;
+    uae_s32 exp;
+    uae_s64 mant;
+    uae_u32 pack_exp, pack_int, pack_se, pack_sm;
+    uae_u64 pack_frac;
     
     if (((wrd[0] >> 16) & 0x7fff) == 0x7fff) {
         // infinity has extended exponent and all 0 packed fraction
@@ -317,15 +321,13 @@ STATIC_INLINE void to_pack (fptype *fp, uae_u32 *wrd)
         return;
     }
     
-    int i;
-    int zerocount;
-    uae_s64 multiplier;
+    pack_exp = (wrd[0] >> 16) & 0xFFF;              // packed exponent
+    pack_int = wrd[0] & 0xF;                        // packed integer part
+    pack_frac = ((uae_u64)wrd[1] << 32) | wrd[2];   // packed fraction
+    pack_se = (wrd[0] >> 30) & 1;                   // sign of packed exponent
+    pack_sm = (wrd[0] >> 31) & 1;                   // sign of packed significand
     
-    uae_u32 pack_exp = (wrd[0] >> 16) & 0xFFF;              // packed exponent
-    uae_u32 pack_int = wrd[0] & 0xF;                        // packed integer part
-    uae_u64 pack_frac = ((uae_u64)wrd[1] << 32) | wrd[2];   // packed fraction
-    uae_u32 pack_se = (wrd[0] >> 30) & 1;                   // sign of packed exponent
-    uae_u32 pack_sm = (wrd[0] >> 31) & 1;                   // sign of packed significand
+    exp = 0;
     
     for (i = 0; i < 3; i++) {
         exp *= 10;
@@ -349,107 +351,20 @@ STATIC_INLINE void to_pack (fptype *fp, uae_u32 *wrd)
         mant *= 10;
         mant += (pack_frac >> (60 - i * 4)) & 0xF;
     }
-#if 0
-    if (pack_sm) {
-        mant = -mant;
-    }
-    
-    zerocount = 0;
-    multiplier = 10;
-    if (exp >= 27) {
-        if (pack_se) {
-            for (i = 0; i < 16; i++) {
-                if ((pack_frac >> (i * 4)) & 0xF) {
-                    break;
-                }
-                zerocount++;
-            }
-            
-            exp -= zerocount;
-            
-            while (zerocount) {
-                if (zerocount & 1) {
-                    mant /= multiplier;
-                }
-                multiplier *= multiplier;
-                zerocount >>= 1;
-            }
-        } else {
-            if (pack_int == 0) {
-                zerocount++;
-                for (i = 0; i < 16; i++) {
-                    if ((pack_frac >> (60 - i * 4)) & 0xF) {
-                        break;
-                    }
-                    zerocount++;
-                }
-            }
-            
-            exp -= zerocount;
-            
-            while (zerocount) {
-                if (zerocount & 1) {
-                    mant *= multiplier;
-                }
-                multiplier *= multiplier;
-                zerocount >>= 1;
-            }
-        }
-    }
-    
-    /* TODO: calculate rounding mode */
-    floatx80 z = int64_to_floatx80(mant);
-    floatx80 m = int32_to_floatx80(10);
-    floatx80 a = int32_to_floatx80(1);
-    
-    while (exp) {
-        if (exp & 1) {
-            a = floatx80_mul(a, m);
-        }
-        m = floatx80_mul(m, m);
-        exp >>= 1;
-    }
-    
-    if (pack_se) {
-        z = floatx80_div(z, a);
-    } else {
-        z = floatx80_mul(z, a);
-    }
-    
-    printf("z = %s\n",fp_print(&z));
-    printf("m = %s\n",fp_print(&m));
-    printf("a = %s\n",fp_print(&a));
-    
-    printf("zerocount = %i\n",zerocount);
-    printf("multiplier = %llu\n",multiplier);
-    
-    *fp = z;
-    
-    /* TODO: set inex1 and restore rounding mode */
-    // if mul/div caused inex2 --> set inex1
-    
-#else
-    floatx80 f;
+
     f.high = exp & 0x3FFF;
     f.high |= pack_se ? 0x4000 : 0;
     f.high |= pack_sm ? 0x8000 : 0;
     f.low = mant;
     
     *fp = floatdecimal_to_floatx80(f);
-    
-    printf("z = %s\n",fp_print(fp));
-#endif
 }
-STATIC_INLINE void from_pack (fptype *fp, uae_u32 *wrd, uae_s32 kfactor)
+STATIC_INLINE void from_pack(fptype *fp, uae_u32 *wrd, uae_s32 kfactor)
 {
     floatx80 f = floatx80_to_floatdecimal(*fp, &kfactor);
     
-    uae_u32 pack_exp = 0;   // packed exponent
-    uae_u32 pack_exp4 = 0;
-    uae_u32 pack_int = 0;   // packed integer part
-    uae_u64 pack_frac = 0;  // packed fraction
-    uae_u32 pack_se = 0;    // sign of packed exponent
-    uae_u32 pack_sm = 0;    // sign of packed significand
+    uae_u32 pack_exp, pack_exp4, pack_int, pack_se, pack_sm;
+    uae_u64 pack_frac;
     
     uae_u32 exponent;
     uae_u64 significand;
@@ -479,6 +394,7 @@ STATIC_INLINE void from_pack (fptype *fp, uae_u32 *wrd, uae_s32 kfactor)
         }
         
         pack_exp = 0;
+        pack_exp4 = 0;
         len = 4;
         while (len > 0) {
             len--;
@@ -503,8 +419,6 @@ STATIC_INLINE void from_pack (fptype *fp, uae_u32 *wrd, uae_s32 kfactor)
         wrd[1] = pack_frac >> 32;
         wrd[2] = pack_frac & 0xffffffff;
     }
-    
-    printf("PACKED = %08x %08x %08x\n",wrd[0],wrd[1],wrd[2]);
 }
 
 /* Functions for returning exception state data */
