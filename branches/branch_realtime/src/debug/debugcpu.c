@@ -256,7 +256,7 @@ int DebugCpu_DisAsm(int nArgc, char *psArgs[])
 	for (insts = 0; insts < max_insts && disasm_addr < disasm_upper; insts++)
 	{
         DebugCpu_ShowAddressInfo(disasm_addr);
-        Disasm(debugOutput, (uaecptr)disasm_addr, &nextpc, 1, DISASM_ENGINE_EXT);
+        Disasm(debugOutput, (uaecptr)disasm_addr, &nextpc, 1, DISASM_ENGINE_UAE);
 		disasm_addr = nextpc;
 	}
 	fflush(mydebugOutput);
@@ -350,7 +350,7 @@ int DebugCpu_Register(int nArgc, char *psArgs[])
 	{
 		uaecptr nextpc;
 		/* use the UAE function instead */
-		m68k_dumpstate(debugOutput, &nextpc);
+		m68k_dumpstate(&nextpc);
 		fflush(debugOutput);
 		return DEBUGGER_CMDDONE;
 	}

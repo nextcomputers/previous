@@ -1,3 +1,6 @@
+#ifndef UAE_READCPU_H
+#define UAE_READCPU_H
+
 ENUMDECL {
   Dreg, Areg, Aind, Aipi, Apdi, Ad16, Ad8r,
   absw, absl, PC16, PC8r, imm, imm0, imm1, imm2, immi, am_unknown, am_illg
@@ -31,7 +34,7 @@ ENUMDECL {
     i_MMUOP030, i_PFLUSHN, i_PFLUSH, i_PFLUSHAN, i_PFLUSHA,
     i_PLPAR, i_PLPAW, i_PTESTR, i_PTESTW,
     i_LPSTOP,
-    MAX_OPCODE_FAMILY				/* should always be last of the list */
+    MAX_OPCODE_FAMILY
 } ENUMNAME (instrmnem);
 
 struct mnemolookup {
@@ -43,7 +46,7 @@ struct mnemolookup {
 extern struct mnemolookup lookuptab[];
 
 ENUMDECL {
-    sz_byte, sz_word, sz_long
+    sz_byte, sz_word, sz_long, sz_single, sz_double, sz_extended, sz_packed
 } ENUMNAME (wordsizes);
 
 ENUMDECL {
@@ -106,9 +109,12 @@ extern struct instr {
 	char head, tail, clocks, fetchmode;
 } *table68k;
 
-void read_table68k (void);
-void do_merges (void);
-int get_no_mismatches (void);
-int nr_cpuop_funcs;
+extern void read_table68k (void);
+extern void do_merges (void);
+extern int get_no_mismatches (void);
+extern int nr_cpuop_funcs;
 
 #define _T
+
+#endif /* UAE_READCPU_H */
+

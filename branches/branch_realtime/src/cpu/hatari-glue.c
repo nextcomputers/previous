@@ -47,13 +47,9 @@ int Init680x0(void) {
 	currprefs.cpu_level = changed_prefs.cpu_level = ConfigureParams.System.nCpuLevel;
 
 	switch (currprefs.cpu_level) {
-		case 0 : currprefs.cpu_model = 68000; break;
-		case 1 : currprefs.cpu_model = 68010; break;
-		case 2 : currprefs.cpu_model = 68020; break;
 		case 3 : currprefs.cpu_model = 68030; break;
 		case 4 : currprefs.cpu_model = 68040; break;
-		case 5 : currprefs.cpu_model = 68060; break;
-		default: fprintf (stderr, "Init680x0() : Error, cpu_level unknown\n");
+		default: fprintf (stderr, "Init680x0() : Error, cpu_level not supported (%i)\n",currprefs.cpu_model);
 	}
     
     currprefs.fpu_model = changed_prefs.fpu_model = ConfigureParams.System.n_FPUType;
