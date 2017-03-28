@@ -87,7 +87,7 @@ const char* Main_SpeedMsg() {
         if(ConfigureParams.System.bRealtime) {
             sprintf(speedMsg, "%dMHz/", (int)(ConfigureParams.System.nCpuFreq * speedFactor + 0.5));
         } else {
-            if ((speedFactor < 0.8) || (speedFactor > 1.1))
+            if ((speedFactor < 0.9) || (speedFactor > 1.1))
                 sprintf(speedMsg, "%.1fx%dMHz/", speedFactor, ConfigureParams.System.nCpuFreq);
             else
                 sprintf(speedMsg, "%dMHz/",                   ConfigureParams.System.nCpuFreq);
