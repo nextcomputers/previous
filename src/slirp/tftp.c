@@ -127,7 +127,7 @@ static int tftp_send_error(struct tftp_session *spt,
   struct sockaddr_in saddr, daddr;
   struct mbuf *m;
   struct tftp_t *tp;
-  
+
   m = m_get();
 
   if (!m) {

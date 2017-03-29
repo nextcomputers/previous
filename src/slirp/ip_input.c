@@ -44,7 +44,7 @@
 #include <sys/types.h>
 
 #define container_of(ptr, type, member) ({                      \
-        typeof(((type *) 0)->member) *__mptr = (ptr);     \
+        const typeof(((type *) 0)->member) *__mptr = (ptr);     \
         (type *) ((char *) __mptr - offsetof(type, member));})
 
 
@@ -78,11 +78,11 @@ ip_input(m)
 	struct mbuf *m;
 {
 	register struct ip *ip;
-	int hlen;
+	u_int hlen;
 	
 	DEBUG_CALL("ip_input");
 	DEBUG_ARG("m = %lx", (long)m);
-	DEBUG_ARG("m_len = %d", m->m_len);
+	DEBUG_ARG("m_len = %zu", m->m_len);
 
 	ipstat.ips_total++;
 	
@@ -245,7 +245,9 @@ bad:
  * reassembly of this datagram already exists, then it
  * is given as fp; otherwise have to make a chain.
  */
-struct ip *ip_reass(register struct ip *ip, register struct ipq *fp) {
+struct ip *
+ip_reass(register struct ip *ip, register struct ipq *fp)
+{
 	register struct mbuf *m = dtom(ip);
 	register struct ipasfrag *q;
 	int hlen = ip->ip_hl << 2;
