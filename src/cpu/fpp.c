@@ -29,7 +29,7 @@
 #endif
 
 #define DEBUG_FPP 0
-#define EXCEPTION_FPP 1
+#define EXCEPTION_FPP 0
 #define ARITHMETIC_EXCEPTIONS 1
 
 static int warned = 100;
@@ -529,60 +529,11 @@ static void fpnan (fptype *fp)
 {
     to_exten(fp, xhex_nan[0], xhex_nan[1], xhex_nan[2]);
 }
-
-static void fpclear (fptype *fp)
-{
-    *fp = from_int(0);
-}
 static void fpset (fptype *fp, uae_s32 val)
 {
     *fp = from_int(val);
 }
 
-#if 0
-bool float_is_denormal(uae_u32 wrd1)
-{
-    uae_u16 exp = (wrd1 >> 23) & 0xff;
-    
-    if (exp == 0 && (wrd1 & 0x007fffff)) {
-        return true;
-    }
-    return false;
-}
-bool double_is_denormal(uae_u32 wrd1, uae_u32 wrd2)
-{
-    uae_u16 exp = (wrd1 >> 20) & 0x7ff;
-    
-    if (exp == 0 && ((wrd1 & 0x000fffff) || wrd2)) {
-        return true;
-    }
-    return false;
-}
-void normalize_exten(uae_u32 *pwrd1, uae_u32 *pwrd2, uae_u32 *pwrd3)
-{
-    uae_u32 wrd1 = *pwrd1;
-    uae_u32 wrd2 = *pwrd2;
-    uae_u32 wrd3 = *pwrd3;
-    uae_u16 exp = (wrd1 >> 16) & 0x7fff;
-    // Normalize if unnormal.
-    if (exp != 0 && exp != 0x7fff && !(wrd2 & 0x80000000)) {
-        while (!(wrd2 & 0x80000000) && (wrd2 || wrd3)) {
-            if (exp == 0)
-                break; // Result is denormal
-            wrd2 <<= 1;
-            if (wrd3 & 0x80000000)
-                wrd2 |= 1;
-            wrd3 <<= 1;
-            exp--;
-        }
-        if (!wrd2 && !wrd3)
-            exp = 0;
-        *pwrd1 = (wrd1 & 0x80000000) | (exp << 16);
-        *pwrd2 = wrd2;
-        *pwrd3 = wrd3;
-    }
-}
-#endif
 
 bool fpu_get_constant(fptype *fp, int cr)
 {
