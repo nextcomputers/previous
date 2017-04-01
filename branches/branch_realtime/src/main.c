@@ -10,6 +10,7 @@ const char Main_fileid[] = "Hatari main.c : " __DATE__ " " __TIME__;
 
 #include <time.h>
 #include <errno.h>
+#include <signal.h>
 
 #include "main.h"
 #include "configuration.h"
@@ -530,6 +531,18 @@ static void Main_StatusbarSetup(void) {
 
 /*-----------------------------------------------------------------------*/
 /**
+ * Set signal handlers to catch signals
+ */
+static void Main_SetSignalHandlers(void) {
+#ifndef _WIN32
+    signal(SIGPIPE, SIG_IGN);
+#endif
+    signal(SIGFPE, SIG_IGN);
+}
+
+
+/*-----------------------------------------------------------------------*/
+/**
  * Main
  * 
  * Note: 'argv' cannot be declared const, MinGW would then fail to link.
@@ -537,6 +550,9 @@ static void Main_StatusbarSetup(void) {
 int main(int argc, char *argv[]) {
 	/* Generate random seed */
 	srand(time(NULL));
+    
+    /* Set signal handlers */
+    Main_SetSignalHandlers();
 
 	/* Initialize directory strings */
 	Paths_Init(argv[0]);

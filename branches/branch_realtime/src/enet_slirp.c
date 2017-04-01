@@ -5,7 +5,6 @@
 #include "host.h"
 
 #ifndef _WIN32
-#include <signal.h>
 #include <arpa/inet.h>
 #else
 #undef TCHAR
@@ -141,9 +140,6 @@ void enet_slirp_start(void) {
     
     if (!slirp_inited) {
         Log_Printf(LOG_WARN, "Starting SLIRP");
-#ifndef _WIN32
-        signal(SIGPIPE, SIG_IGN);
-#endif
         slirp_init();
         slirpq = QueueCreate();
         slirp_inited=1;
