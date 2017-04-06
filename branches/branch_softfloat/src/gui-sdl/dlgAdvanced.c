@@ -476,11 +476,5 @@ void Dialog_AdvancedDlg(void) {
         ConfigureParams.System.nRTC = MC68HC68T1;
     else
         ConfigureParams.System.nRTC = MCCS1850;
-	
-	/* MO drives do not work with realtime mode */
-	for (i = 0; i < MO_MAX_DRIVES; i++)
-		if (ConfigureParams.MO.drive[i].bDriveConnected)
-			ConfigureParams.System.bRealtime = false;
-	
 }
 

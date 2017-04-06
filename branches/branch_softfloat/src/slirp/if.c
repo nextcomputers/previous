@@ -7,11 +7,11 @@
 
 #include <slirp.h>
 
-int if_mtu, if_mru;
+size_t if_mtu, if_mru;
 int if_comp;
 int if_maxlinkhdr;
-int     if_queued = 0;                  /* Number of packets queued so far */
-int     if_thresh = 10;                 /* Number of packets queued before we start sending
+int if_queued = 0;                  /* Number of packets queued so far */
+int if_thresh = 10;                 /* Number of packets queued before we start sending
 					 * (to prevent allocing too many mbufs) */
 
 struct  mbuf if_fastq;                  /* fast queue (for interactive data) */
@@ -20,7 +20,9 @@ struct	mbuf *next_m;			/* Pointer to next mbuf to output */
 
 #define ifs_init(ifm) ((ifm)->ifs_next = (ifm)->ifs_prev = (ifm))
 
-static void ifs_insque(struct mbuf *ifm, struct mbuf *ifmhead)
+void
+ifs_insque(ifm, ifmhead)
+	struct mbuf *ifm, *ifmhead;
 {
 	ifm->ifs_next = ifmhead->ifs_next;
 	ifmhead->ifs_next = ifm;
@@ -28,7 +30,9 @@ static void ifs_insque(struct mbuf *ifm, struct mbuf *ifmhead)
 	ifm->ifs_next->ifs_prev = ifm;
 }
 
-static void ifs_remque(struct mbuf *ifm)
+void
+ifs_remque(ifm)
+	struct mbuf *ifm;
 {
 	ifm->ifs_prev->ifs_next = ifm->ifs_next;
 	ifm->ifs_next->ifs_prev = ifm->ifs_prev;
@@ -112,7 +116,8 @@ if_input(ttyp)
 	DEBUG_MISC((dfd, " read %d bytes\n", if_n));
 	
 	if (if_n <= 0) {
-		if (if_n == 0 || (errno != EINTR && errno != EAGAIN)) {
+		int error = WSAGetLastError();
+		if (if_n == 0 || (error != WSAEINTR && error != EAGAIN)) {
 			if (ttyp->up)
 			   link_up--;
 			tty_detached(ttyp, 0);
