@@ -124,6 +124,10 @@ static void bootp_reply(struct bootp_t *bp)
     struct mbuf *m;
     struct bootp_t *rbp;
     struct sockaddr_in saddr, daddr;
+#if BOOTP_VEND_NEXT == 0
+    struct in_addr dns_addr;
+    int val;
+#endif
     int dhcp_msg_type;
     uint8_t *q;
 
