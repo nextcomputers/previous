@@ -14,6 +14,7 @@ floatx80 floatx80_acos(floatx80 a);
 floatx80 floatx80_asin(floatx80 a);
 floatx80 floatx80_atan(floatx80 a);
 floatx80 floatx80_atanh(floatx80 a);
+floatx80 floatx80_cos(floatx80 a);
 floatx80 floatx80_cosh(floatx80 a);
 floatx80 floatx80_etox(floatx80 a);
 floatx80 floatx80_etoxm1(floatx80 a);
@@ -21,6 +22,7 @@ floatx80 floatx80_log10(floatx80 a);
 floatx80 floatx80_log2(floatx80 a);
 floatx80 floatx80_logn(floatx80 a);
 floatx80 floatx80_lognp1(floatx80 a);
+floatx80 floatx80_sin(floatx80 a);
 floatx80 floatx80_tentox(floatx80 a);
 floatx80 floatx80_twotox(floatx80 a);
 
@@ -71,12 +73,17 @@ floatx80 floatx80_acos(floatx80 a)
     if (aExp == 0x7FFF && (bits64) (aSig<<1)) {
         return propagateFloatx80NaNOneArg(a);
     }
-    
+#ifdef DENORMAL_SPECIAL
     if (aExp == 0 && (aSig & one_sig) == 0) { // zero and denormal return pi/2
         float_raise(float_flag_inexact);
         return roundAndPackFloatx80(floatx80_rounding_precision, 0, piby2_exp, pi_sig, 0);
     }
-    
+#else
+    if (aExp == 0 && aSig == 0) {
+        float_raise(float_flag_inexact);
+        return roundAndPackFloatx80(floatx80_rounding_precision, 0, piby2_exp, pi_sig, 0);
+    }
+#endif
     compact = floatx80_make_compact(aExp, aSig);
     
     if (compact >= 0x3FFF8000) { // |X| >= 1
@@ -142,10 +149,12 @@ floatx80 floatx80_asin(floatx80 a)
     
     if (aExp == 0) {
         if (aSig == 0) return packFloatx80(aSign, 0, 0); // zero
+#ifdef DENORMAL_SPECIAL
         if ((aSig & one_sig) == 0) { // denormal
             normalizeFloatx80Subnormal(aSig, &aExp, &aSig);
             return roundAndPackFloatx80(floatx80_rounding_precision, aSign, aExp, aSig, 0);
         }
+#endif
     }
 
     compact = floatx80_make_compact(aExp, aSig);
@@ -212,10 +221,12 @@ floatx80 floatx80_atan(floatx80 a)
     
     if (aExp == 0) {
         if (aSig == 0) return packFloatx80(aSign, 0, 0); // zero
+#ifdef DENORMAL_SPECIAL
         if ((aSig & one_sig) == 0) { // denormal
             normalizeFloatx80Subnormal(aSig, &aExp, &aSig);
             return roundAndPackFloatx80(floatx80_rounding_precision, aSign, aExp, aSig, 0);
         }
+#endif
     }
     
     compact = floatx80_make_compact(aExp, aSig);
@@ -305,10 +316,9 @@ floatx80 floatx80_atan(floatx80 a)
             }
         }
     } else {
-        aSig &= LIT64(0xF800000000000000);
-        aSig |= LIT64(0x0400000000000000);
-        
-        xsave = packFloatx80(aSign, aExp, aSig); // F
+        xsave = a; // F
+        xsave.low &= LIT64(0xF800000000000000);
+        xsave.low |= LIT64(0x0400000000000000);
         fp0 = a;
         fp1 = a; // X
         fp2 = packFloatx80(0, one_exp, one_sig); // 1
@@ -375,10 +385,12 @@ floatx80 floatx80_atanh(floatx80 a)
     
     if (aExp == 0) {
         if (aSig == 0) return packFloatx80(aSign, 0, 0); // zero
+#ifdef DENORMAL_SPECIAL
         if ((aSig & one_sig) == 0) { // denormal
             normalizeFloatx80Subnormal(aSig, &aExp, &aSig);
             return roundAndPackFloatx80(floatx80_rounding_precision, aSign, aExp, aSig, 0);
         }
+#endif
     }
     
     compact = floatx80_make_compact(aExp, aSig);
@@ -416,18 +428,23 @@ floatx80 floatx80_atanh(floatx80 a)
     
     return a;
 }
-#if 0
+
 /*----------------------------------------------------------------------------
  | Cosine
  *----------------------------------------------------------------------------*/
 
-floatx80 floatx80_cos_check(floatx80 a, flag *e)
+floatx80 floatx80_cos(floatx80 a)
 {
-    flag aSign;
-    int32 aExp;
-    bits64 aSig;
+    flag aSign, xSign;
+    int32 aExp, xExp;
+    bits64 aSig, xSig;
     
-    *e = 1;
+    int8 user_rnd_mode, user_rnd_prec;
+    
+    int32 compact, l, n, j;
+    floatx80 fp0, fp1, fp2, fp3, fp4, x, invtwopi, twopi1, twopi2;
+    float32 posneg1, twoto63;
+    flag adjn, endflag;
     
     aSig = extractFloatx80Frac(a);
     aExp = extractFloatx80Exp(a);
@@ -443,13 +460,167 @@ floatx80 floatx80_cos_check(floatx80 a, flag *e)
     
     if (aExp == 0) {
         if (aSig == 0) return packFloatx80(0, one_exp, one_sig);
-        normalizeFloatx80Subnormal(aSig, &aExp, &aSig);
     }
     
-    *e = 0;
-    return a;
+    adjn = 1;
+    
+    user_rnd_mode = float_rounding_mode;
+    user_rnd_prec = floatx80_rounding_precision;
+    
+    compact = floatx80_make_compact(aExp, aSig);
+    
+    fp0 = a;
+    
+    if (compact < 0x3FD78000 || compact > 0x4004BC7E) { // 2^(-40) > |X| > 15 PI
+        if (compact > 0x3FFF8000) { // |X| >= 15 PI
+            // REDUCEX
+        loop:
+            xSign = extractFloatx80Sign(fp0);
+            xExp = extractFloatx80Exp(fp0);
+            xExp -= 0x3FFF;
+            if (xExp <= 28) {
+                l = 0;
+                endflag = 1;
+            } else {
+                l = xExp - 28;
+                endflag = 0;
+            }
+            invtwopi = packFloatx80(0, 0x3FFC-l, LIT64(0xA2F9836E4E44152A)); // INVTWOPI
+            twopi1 = packFloatx80(0, 0x4001 + l, LIT64(0xC90FDAA200000000));
+            twopi2 = packFloatx80(0, 0x3FDF + l, LIT64(0x85A308D400000000));
+
+            twoto63 = 0x5F000000;
+            twoto63 |= xSign ? 0x80000000 : 0x00000000; // SIGN(INARG)*2^63 IN SGL
+
+            fp1 = floatx80_mul(fp0, invtwopi);
+            fp1 = floatx80_add(fp1, float32_to_floatx80(twoto63)); // THE FRACTIONAL PART OF FP1 IS ROUNDED
+            fp1 = floatx80_sub(fp1, float32_to_floatx80(twoto63));
+            fp2 = floatx80_mul(twopi1, fp1); // M*Y1
+            fp1 = floatx80_mul(fp1, twopi2); // M*Y2
+            fp0 = floatx80_sub(fp0, fp2); // (X-MY1)
+            fp0 = floatx80_sub(fp0, fp1); // (X-MY1)-MY2
+            if (endflag <= 0) {
+                goto loop;
+            }
+            goto sinmain;
+        } else {
+            // SINSM
+            fp0 = float32_to_floatx80(0x3F800000); // 1
+
+            float_rounding_mode = user_rnd_mode;
+            floatx80_rounding_precision = user_rnd_prec;
+            
+            if (adjn) {
+                // COSTINY
+                a = floatx80_sub(fp0, float32_to_floatx80(0x00800000));
+            } else {
+                // SINTINY
+                a = floatx80_move(a);
+            }
+            float_raise(float_flag_inexact);
+            
+            return a;
+        }
+    } else {
+    sinmain:
+        fp1 = floatx80_mul(fp0, float64_to_floatx80(LIT64(0x3FE45F306DC9C883))); // X*2/PI
+        
+        n = floatx80_to_int32(fp1);
+        j = 32 + n;
+        
+        fp0 = floatx80_sub(fp0, piby2_tbl[j]); // X-Y1
+        fp0 = floatx80_sub(fp0, float32_to_floatx80(piby2_tbl2[j])); // FP0 IS R = (X-Y1)-Y2
+        
+        if ((n + adjn) & 1) {
+            // COSPOLY
+            fp0 = floatx80_mul(fp0, fp0); // FP0 IS S
+            fp1 = floatx80_mul(fp0, fp0); // FP1 IS T
+            fp2 = float64_to_floatx80(LIT64(0x3D2AC4D0D6011EE3)); // B8
+            fp3 = float64_to_floatx80(LIT64(0xBDA9396F9F45AC19)); // B7
+            
+            xSign = extractFloatx80Sign(fp0); // X IS S
+            xExp = extractFloatx80Exp(fp0);
+            xSig = extractFloatx80Frac(fp0);
+
+            if (((n + adjn) >> 1) & 1) {
+                xSign ^= 1;
+                posneg1 = 0xBF800000; // -1
+            } else {
+                xSign ^= 0;
+                posneg1 = 0x3F800000; // 1
+            } // X IS NOW R'= SGN*R
+            
+            fp2 = floatx80_mul(fp2, fp1); // TB8
+            fp3 = floatx80_mul(fp3, fp1); // TB7
+            fp2 = floatx80_add(fp2, float64_to_floatx80(LIT64(0x3E21EED90612C972))); // B6+TB8
+            fp3 = floatx80_add(fp3, float64_to_floatx80(LIT64(0xBE927E4FB79D9FCF))); // B5+TB7
+            fp2 = floatx80_mul(fp2, fp1); // T(B6+TB8)
+            fp3 = floatx80_mul(fp3, fp1); // T(B5+TB7)
+            fp2 = floatx80_add(fp2, float64_to_floatx80(LIT64(0x3EFA01A01A01D423))); // B4+T(B6+TB8)
+            fp4 = packFloatx80(1, 0x3FF5, LIT64(0xB60B60B60B61D438));
+            fp3 = floatx80_add(fp3, fp4); // B3+T(B5+TB7)
+            fp2 = floatx80_mul(fp2, fp1); // T(B4+T(B6+TB8))
+            fp1 = floatx80_mul(fp1, fp3); // T(B3+T(B5+TB7))
+            fp4 = packFloatx80(0, 0x3FFA, LIT64(0xAAAAAAAAAAAAAB5E));
+            fp2 = floatx80_add(fp2, fp4); // B2+T(B4+T(B6+TB8))
+            fp1 = floatx80_add(fp1, float32_to_floatx80(0xBF000000)); // B1+T(B3+T(B5+TB7))
+            fp0 = floatx80_mul(fp0, fp2); // S(B2+T(B4+T(B6+TB8)))
+            fp0 = floatx80_add(fp0, fp1); // [B1+T(B3+T(B5+TB7))]+[S(B2+T(B4+T(B6+TB8)))]
+            
+            x = packFloatx80(xSign, xExp, xSig);
+            fp0 = floatx80_mul(fp0, x);
+            
+            float_rounding_mode = user_rnd_mode;
+            floatx80_rounding_precision = user_rnd_prec;
+            
+            a = floatx80_add(fp0, float32_to_floatx80(posneg1));
+            
+            float_raise(float_flag_inexact);
+            
+            return a;
+        } else {
+            // SINPOLY
+            xSign = extractFloatx80Sign(fp0); // X IS R
+            xExp = extractFloatx80Exp(fp0);
+            xSig = extractFloatx80Frac(fp0);
+            
+            xSign ^= ((n + adjn) >> 1) & 1; // X IS NOW R'= SGN*R
+            
+            fp0 = floatx80_mul(fp0, fp0); // FP0 IS S
+            fp1 = floatx80_mul(fp0, fp0); // FP1 IS T
+            fp3 = float64_to_floatx80(LIT64(0xBD6AAA77CCC994F5)); // A7
+            fp2 = float64_to_floatx80(LIT64(0x3DE612097AAE8DA1)); // A6
+            fp3 = floatx80_mul(fp3, fp1); // T*A7
+            fp2 = floatx80_mul(fp2, fp1); // T*A6
+            fp3 = floatx80_add(fp3, float64_to_floatx80(LIT64(0xBE5AE6452A118AE4))); // A5+T*A7
+            fp2 = floatx80_add(fp2, float64_to_floatx80(LIT64(0x3EC71DE3A5341531))); // A4+T*A6
+            fp3 = floatx80_mul(fp3, fp1); // T(A5+TA7)
+            fp2 = floatx80_mul(fp2, fp1); // T(A4+TA6)
+            fp3 = floatx80_add(fp3, float64_to_floatx80(LIT64(0xBF2A01A01A018B59))); // A3+T(A5+TA7)
+            fp4 = packFloatx80(0, 0x3FF8, LIT64(0x88888888888859AF));
+            fp2 = floatx80_add(fp2, fp4); // A2+T(A4+TA6)
+            fp1 = floatx80_mul(fp1, fp3); // T(A3+T(A5+TA7))
+            fp2 = floatx80_mul(fp2, fp0); // S(A2+T(A4+TA6))
+            fp4 = packFloatx80(1, 0x3FFC, LIT64(0xAAAAAAAAAAAAAA99));
+            fp1 = floatx80_add(fp1, fp4); // A1+T(A3+T(A5+TA7))
+            fp1 = floatx80_add(fp1, fp2); // [A1+T(A3+T(A5+TA7))]+[S(A2+T(A4+TA6))]
+            
+            x = packFloatx80(xSign, xExp, xSig);
+            fp0 = floatx80_mul(fp0, x); // R'*S
+            fp0 = floatx80_mul(fp0, fp1); // SIN(R')-R'
+            
+            float_rounding_mode = user_rnd_mode;
+            floatx80_rounding_precision = user_rnd_prec;
+            
+            a = floatx80_add(fp0, x);
+            
+            float_raise(float_flag_inexact);
+            
+            return a;
+        }
+    }
 }
-#endif
+
 /*----------------------------------------------------------------------------
  | Hyperbolic cosine
  *----------------------------------------------------------------------------*/
@@ -463,7 +634,7 @@ floatx80 floatx80_cosh(floatx80 a)
     int8 user_rnd_mode, user_rnd_prec;
     
     int32 compact;
-    floatx80 fp0, fp1, one;
+    floatx80 fp0, fp1;
     
     aSig = extractFloatx80Frac(a);
     aExp = extractFloatx80Exp(a);
@@ -476,12 +647,14 @@ floatx80 floatx80_cosh(floatx80 a)
     
     if (aExp == 0) {
         if (aSig == 0) return packFloatx80(0, one_exp, one_sig); // zero
+#ifdef DENORMAL_SPECIAL
         if ((aSig & one_sig) == 0) { // denormal
-            one = packFloatx80(0, one_exp, one_sig);
-            a = floatx80_add(one, float32_to_floatx80(0x00800000));
+            fp0 = packFloatx80(0, one_exp, one_sig);
+            a = floatx80_add(fp0, float32_to_floatx80(0x00800000));
             float_raise(float_flag_inexact);
             return a;
         }
+#endif
     }
     
     user_rnd_mode = float_rounding_mode;
@@ -556,11 +729,13 @@ floatx80 floatx80_etox(floatx80 a)
     
     if (aExp == 0) {
         if (aSig == 0) return packFloatx80(0, one_exp, one_sig);
+#ifdef DENORMAL_SPECIAL
         if ((aSig & one_sig) == 0) {
             float_raise(float_flag_inexact);
             return floatx80_add(float32_to_floatx80(0x3F800000),
                                 float32_to_floatx80(aSign?0x80800000:0x00800000));
         }
+#endif
     }
     
     user_rnd_mode = float_rounding_mode;
@@ -702,10 +877,12 @@ floatx80 floatx80_etoxm1(floatx80 a)
     
     if (aExp == 0) {
         if (aSig == 0) return packFloatx80(aSign, 0, 0); // zero
+#ifdef DENORMAL_SPECIAL
         if ((aSig & one_sig) == 0) { // denormal
             normalizeFloatx80Subnormal(aSig, &aExp, &aSig);
             return roundAndPackFloatx80(floatx80_rounding_precision, aSign, aExp, aSig, 0);
         }
+#endif
     }
     
     user_rnd_mode = float_rounding_mode;
@@ -1020,12 +1197,16 @@ floatx80 floatx80_logn(floatx80 a)
             float_raise(float_flag_divbyzero);
             return packFloatx80(1, 0x7FFF, floatx80_default_infinity_low);
         }
+#if 1
         if ((aSig & one_sig) == 0) { // denormal
             normalizeFloatx80Subnormal(aSig, &aExp, &aSig);
             adjk = -100;
             aExp += 100;
             a = packFloatx80(aSign, aExp, aSig);
         }
+#else
+        normalizeFloatx80Subnormal(aSig, &aExp, &aSig);
+#endif
     }
     
     if (aSign) {
@@ -1158,8 +1339,10 @@ floatx80 floatx80_lognp1(floatx80 a)
     
     if (aExp == 0) {
         if (aSig == 0) return packFloatx80(aSign, 0, 0);
+#ifdef DENORMAL_SPECIAL
         normalizeFloatx80Subnormal(aSig, &aExp, &aSig);
         return roundAndPackFloatx80(floatx80_rounding_precision, aSign, aExp, aSig, 0);
+#endif
     }
     
     if (aSign && aExp >= one_exp) {
@@ -1175,7 +1358,7 @@ floatx80 floatx80_lognp1(floatx80 a)
     
     if (aExp < 0x3f99 || (aExp == 0x3f99 && aSig == one_sig)) { // <= min threshold
         float_raise(float_flag_inexact);
-        return a;
+        return floatx80_move(a);
     }
     
     user_rnd_mode = float_rounding_mode;
@@ -1295,19 +1478,24 @@ floatx80 floatx80_lognp1(floatx80 a)
         return a;
     }
 }
-#if 0
+
 /*----------------------------------------------------------------------------
  | Sine
  *----------------------------------------------------------------------------*/
 
-floatx80 floatx80_sin_check(floatx80 a, flag *e)
+floatx80 floatx80_sin(floatx80 a)
 {
-    flag aSign;
-    int32 aExp;
-    bits64 aSig;
+    flag aSign, xSign;
+    int32 aExp, xExp;
+    bits64 aSig, xSig;
     
-    *e = 1;
+    int8 user_rnd_mode, user_rnd_prec;
     
+    int32 compact, l, n, j;
+    floatx80 fp0, fp1, fp2, fp3, fp4, x, invtwopi, twopi1, twopi2;
+    float32 posneg1, twoto63;
+    flag adjn, endflag;
+
     aSig = extractFloatx80Frac(a);
     aExp = extractFloatx80Exp(a);
     aSign = extractFloatx80Sign(a);
@@ -1322,13 +1510,167 @@ floatx80 floatx80_sin_check(floatx80 a, flag *e)
     
     if (aExp == 0) {
         if (aSig == 0) return packFloatx80(aSign, 0, 0);
-        normalizeFloatx80Subnormal(aSig, &aExp, &aSig);
     }
     
-    *e = 0;
-    return a;
+    adjn = 0;
+    
+    user_rnd_mode = float_rounding_mode;
+    user_rnd_prec = floatx80_rounding_precision;
+    
+    compact = floatx80_make_compact(aExp, aSig);
+    
+    fp0 = a;
+    
+    if (compact < 0x3FD78000 || compact > 0x4004BC7E) { // 2^(-40) > |X| > 15 PI
+        if (compact > 0x3FFF8000) { // |X| >= 15 PI
+            // REDUCEX
+        loop:
+            xSign = extractFloatx80Sign(fp0);
+            xExp = extractFloatx80Exp(fp0);
+            xExp -= 0x3FFF;
+            if (xExp <= 28) {
+                l = 0;
+                endflag = 1;
+            } else {
+                l = xExp - 28;
+                endflag = 0;
+            }
+            invtwopi = packFloatx80(0, 0x3FFC-l, LIT64(0xA2F9836E4E44152A)); // INVTWOPI
+            twopi1 = packFloatx80(0, 0x4001 + l, LIT64(0xC90FDAA200000000));
+            twopi2 = packFloatx80(0, 0x3FDF + l, LIT64(0x85A308D400000000));
+            
+            twoto63 = 0x5F000000;
+            twoto63 |= xSign ? 0x80000000 : 0x00000000; // SIGN(INARG)*2^63 IN SGL
+            
+            fp1 = floatx80_mul(fp0, invtwopi);
+            fp1 = floatx80_add(fp1, float32_to_floatx80(twoto63)); // THE FRACTIONAL PART OF FP1 IS ROUNDED
+            fp1 = floatx80_sub(fp1, float32_to_floatx80(twoto63));
+            fp2 = floatx80_mul(twopi1, fp1); // M*Y1
+            fp1 = floatx80_mul(fp1, twopi2); // M*Y2
+            fp0 = floatx80_sub(fp0, fp2); // (X-MY1)
+            fp0 = floatx80_sub(fp0, fp1); // (X-MY1)-MY2
+            if (endflag <= 0) {
+                goto loop;
+            }
+            goto sinmain;
+        } else {
+            // SINSM
+            fp0 = float32_to_floatx80(0x3F800000); // 1
+            
+            float_rounding_mode = user_rnd_mode;
+            floatx80_rounding_precision = user_rnd_prec;
+            
+            if (adjn) {
+                // COSTINY
+                a = floatx80_sub(fp0, float32_to_floatx80(0x00800000));
+            } else {
+                // SINTINY
+                a = floatx80_move(a);
+            }
+            float_raise(float_flag_inexact);
+            
+            return a;
+        }
+    } else {
+    sinmain:
+        fp1 = floatx80_mul(fp0, float64_to_floatx80(LIT64(0x3FE45F306DC9C883))); // X*2/PI
+        
+        n = floatx80_to_int32(fp1);
+        j = 32 + n;
+        
+        fp0 = floatx80_sub(fp0, piby2_tbl[j]); // X-Y1
+        fp0 = floatx80_sub(fp0, float32_to_floatx80(piby2_tbl2[j])); // FP0 IS R = (X-Y1)-Y2
+        
+        if ((n + adjn) & 1) {
+            // COSPOLY
+            fp0 = floatx80_mul(fp0, fp0); // FP0 IS S
+            fp1 = floatx80_mul(fp0, fp0); // FP1 IS T
+            fp2 = float64_to_floatx80(LIT64(0x3D2AC4D0D6011EE3)); // B8
+            fp3 = float64_to_floatx80(LIT64(0xBDA9396F9F45AC19)); // B7
+            
+            xSign = extractFloatx80Sign(fp0); // X IS S
+            xExp = extractFloatx80Exp(fp0);
+            xSig = extractFloatx80Frac(fp0);
+            
+            if (((n + adjn) >> 1) & 1) {
+                xSign ^= 1;
+                posneg1 = 0xBF800000; // -1
+            } else {
+                xSign ^= 0;
+                posneg1 = 0x3F800000; // 1
+            } // X IS NOW R'= SGN*R
+            
+            fp2 = floatx80_mul(fp2, fp1); // TB8
+            fp3 = floatx80_mul(fp3, fp1); // TB7
+            fp2 = floatx80_add(fp2, float64_to_floatx80(LIT64(0x3E21EED90612C972))); // B6+TB8
+            fp3 = floatx80_add(fp3, float64_to_floatx80(LIT64(0xBE927E4FB79D9FCF))); // B5+TB7
+            fp2 = floatx80_mul(fp2, fp1); // T(B6+TB8)
+            fp3 = floatx80_mul(fp3, fp1); // T(B5+TB7)
+            fp2 = floatx80_add(fp2, float64_to_floatx80(LIT64(0x3EFA01A01A01D423))); // B4+T(B6+TB8)
+            fp4 = packFloatx80(1, 0x3FF5, LIT64(0xB60B60B60B61D438));
+            fp3 = floatx80_add(fp3, fp4); // B3+T(B5+TB7)
+            fp2 = floatx80_mul(fp2, fp1); // T(B4+T(B6+TB8))
+            fp1 = floatx80_mul(fp1, fp3); // T(B3+T(B5+TB7))
+            fp4 = packFloatx80(0, 0x3FFA, LIT64(0xAAAAAAAAAAAAAB5E));
+            fp2 = floatx80_add(fp2, fp4); // B2+T(B4+T(B6+TB8))
+            fp1 = floatx80_add(fp1, float32_to_floatx80(0xBF000000)); // B1+T(B3+T(B5+TB7))
+            fp0 = floatx80_mul(fp0, fp2); // S(B2+T(B4+T(B6+TB8)))
+            fp0 = floatx80_add(fp0, fp1); // [B1+T(B3+T(B5+TB7))]+[S(B2+T(B4+T(B6+TB8)))]
+            
+            x = packFloatx80(xSign, xExp, xSig);
+            fp0 = floatx80_mul(fp0, x);
+            
+            float_rounding_mode = user_rnd_mode;
+            floatx80_rounding_precision = user_rnd_prec;
+            
+            a = floatx80_add(fp0, float32_to_floatx80(posneg1));
+            
+            float_raise(float_flag_inexact);
+            
+            return a;
+        } else {
+            // SINPOLY
+            xSign = extractFloatx80Sign(fp0); // X IS R
+            xExp = extractFloatx80Exp(fp0);
+            xSig = extractFloatx80Frac(fp0);
+            
+            xSign ^= ((n + adjn) >> 1) & 1; // X IS NOW R'= SGN*R
+            
+            fp0 = floatx80_mul(fp0, fp0); // FP0 IS S
+            fp1 = floatx80_mul(fp0, fp0); // FP1 IS T
+            fp3 = float64_to_floatx80(LIT64(0xBD6AAA77CCC994F5)); // A7
+            fp2 = float64_to_floatx80(LIT64(0x3DE612097AAE8DA1)); // A6
+            fp3 = floatx80_mul(fp3, fp1); // T*A7
+            fp2 = floatx80_mul(fp2, fp1); // T*A6
+            fp3 = floatx80_add(fp3, float64_to_floatx80(LIT64(0xBE5AE6452A118AE4))); // A5+T*A7
+            fp2 = floatx80_add(fp2, float64_to_floatx80(LIT64(0x3EC71DE3A5341531))); // A4+T*A6
+            fp3 = floatx80_mul(fp3, fp1); // T(A5+TA7)
+            fp2 = floatx80_mul(fp2, fp1); // T(A4+TA6)
+            fp3 = floatx80_add(fp3, float64_to_floatx80(LIT64(0xBF2A01A01A018B59))); // A3+T(A5+TA7)
+            fp4 = packFloatx80(0, 0x3FF8, LIT64(0x88888888888859AF));
+            fp2 = floatx80_add(fp2, fp4); // A2+T(A4+TA6)
+            fp1 = floatx80_mul(fp1, fp3); // T(A3+T(A5+TA7))
+            fp2 = floatx80_mul(fp2, fp0); // S(A2+T(A4+TA6))
+            fp4 = packFloatx80(1, 0x3FFC, LIT64(0xAAAAAAAAAAAAAA99));
+            fp1 = floatx80_add(fp1, fp4); // A1+T(A3+T(A5+TA7))
+            fp1 = floatx80_add(fp1, fp2); // [A1+T(A3+T(A5+TA7))]+[S(A2+T(A4+TA6))]
+            
+            x = packFloatx80(xSign, xExp, xSig);
+            fp0 = floatx80_mul(fp0, x); // R'*S
+            fp0 = floatx80_mul(fp0, fp1); // SIN(R')-R'
+            
+            float_rounding_mode = user_rnd_mode;
+            floatx80_rounding_precision = user_rnd_prec;
+            
+            a = floatx80_add(fp0, x);
+            
+            float_raise(float_flag_inexact);
+            
+            return a;
+        }
+    }
 }
-
+#if 0
 /*----------------------------------------------------------------------------
  | Hyperbolic sine
  *----------------------------------------------------------------------------*/
@@ -1449,12 +1791,14 @@ floatx80 floatx80_tentox(floatx80 a)
     
     if (aExp == 0) {
         if (aSig == 0) return packFloatx80(0, one_exp, one_sig);
+#ifdef DENORMAL_SPECIAL
         if ((aSig & one_sig) == 0) { // denormal
             fp0 = float32_to_floatx80(0x3F800000);
             a = floatx80_add(fp0, float32_to_floatx80(0x00800001|aSign?0x80000000:0));
             float_raise(float_flag_inexact);
             return a;
         }
+#endif
     }
     
     user_rnd_mode = float_rounding_mode;
@@ -1578,12 +1922,14 @@ floatx80 floatx80_twotox(floatx80 a)
     
     if (aExp == 0) {
         if (aSig == 0) return packFloatx80(0, one_exp, one_sig);
+#ifdef DENORMAL_SPECIAL
         if ((aSig & one_sig) == 0) { // denormal
             fp0 = float32_to_floatx80(0x3F800000);
             a = floatx80_add(fp0, float32_to_floatx80(0x00800001|aSign?0x80000000:0));
             float_raise(float_flag_inexact);
             return a;
         }
+#endif
     }
     
     user_rnd_mode = float_rounding_mode;
