@@ -320,18 +320,6 @@ flag floatx80_is_denormal( floatx80 );
 flag floatx80_is_unnormal( floatx80 );
 flag floatx80_is_normal( floatx80 );
 
-// functions are in fsincos.c
-int floatx80_fsincos(floatx80 a, floatx80 *sin_a, floatx80 *cos_a);
-int floatx80_fsin(floatx80 *a);
-int floatx80_fcos(floatx80 *a);
-int floatx80_ftan(floatx80 *a);
-
-// functions are in fyl2x.c
-floatx80 floatx80_flognp1(floatx80 a);
-floatx80 floatx80_flogn(floatx80 a);
-floatx80 floatx80_flog2(floatx80 a);
-floatx80 floatx80_flog10(floatx80 a);
-
 // functions are in softfloat.c
 floatx80 floatx80_move( floatx80 a );
 floatx80 floatx80_abs( floatx80 a );
@@ -345,26 +333,6 @@ floatx80 floatx80_sglmul( floatx80 a, floatx80 b );
 floatx80 floatx80_sgldiv( floatx80 a, floatx80 b );
 floatx80 floatx80_cmp( floatx80 a, floatx80 b );
 floatx80 floatx80_tst( floatx80 a );
-
-// functions are in softfloat_extension.c
-floatx80 floatx80_acos_check(floatx80 a, flag *e);
-floatx80 floatx80_asin_check(floatx80 a, flag *e);
-floatx80 floatx80_atan_check(floatx80 a, flag *e);
-floatx80 floatx80_atanh_check(floatx80 a, flag *e);
-floatx80 floatx80_cos_check(floatx80 a, flag *e);
-floatx80 floatx80_cosh_check(floatx80 a, flag *e);
-floatx80 floatx80_etox_check(floatx80 a, flag *e);
-floatx80 floatx80_etoxm1_check(floatx80 a, flag *e);
-floatx80 floatx80_log10_check(floatx80 a, flag *e);
-floatx80 floatx80_log2_check(floatx80 a, flag *e);
-floatx80 floatx80_logn_check(floatx80 a, flag *e);
-floatx80 floatx80_lognp1_check(floatx80 a, flag *e);
-floatx80 floatx80_sin_check(floatx80 a, flag *e);
-floatx80 floatx80_sinh_check(floatx80 a, flag *e);
-floatx80 floatx80_tan_check(floatx80 a, flag *e);
-floatx80 floatx80_tanh_check(floatx80 a, flag *e);
-floatx80 floatx80_tentox_check(floatx80 a, flag *e);
-floatx80 floatx80_twotox_check(floatx80 a, flag *e);
 
 // functions are in softfloat_fpsp.c
 floatx80 floatx80_acos(floatx80 a);

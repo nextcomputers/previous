@@ -165,81 +165,6 @@ STATIC_INLINE void fp_normalize(fptype *fp)
 }
 
 /* Functions for converting between float formats */
-#ifdef TRANSCENDENTAL_FALLBACK
-static const long double twoto32 = 4294967296.0;
-
-STATIC_INLINE void to_native(long double *fp, fptype fpx)
-{
-    int expon;
-    long double frac;
-    
-    expon = fpx.high & 0x7fff;
-    
-    if (floatx80_is_zero(fpx)) {
-        *fp = floatx80_is_negative(fpx) ? -0.0 : +0.0;
-        return;
-    }
-    if (floatx80_is_nan(fpx)) {
-        *fp = sqrtl(-1);
-        return;
-    }
-    if (floatx80_is_infinity(fpx)) {
-        *fp = floatx80_is_negative(fpx) ? logl(0.0) : (1.0/0.0);
-        return;
-    }
-    
-    frac = (long double)fpx.low / (long double)(twoto32 * 2147483648.0);
-    if (floatx80_is_negative(fpx))
-        frac = -frac;
-    *fp = ldexpl (frac, expon - 16383);
-}
-
-STATIC_INLINE void from_native(long double fp, fptype *fpx)
-{
-    int expon;
-    long double frac;
-    
-    if (signbit(fp))
-        fpx->high = 0x8000;
-    else
-        fpx->high = 0x0000;
-    
-    if (isnan(fp)) {
-        fpx->high |= 0x7fff;
-        fpx->low = LIT64(0xffffffffffffffff);
-        return;
-    }
-    if (isinf(fp)) {
-        fpx->high |= 0x7fff;
-        fpx->low = LIT64(0x0000000000000000);
-        return;
-    }
-    if (fp == 0.0) {
-        fpx->low = LIT64(0x0000000000000000);
-        return;
-    }
-    if (fp < 0.0)
-        fp = -fp;
-    
-    frac = frexpl (fp, &expon);
-    frac += 0.5 / (twoto32 * twoto32);
-    if (frac >= 1.0) {
-        frac /= 2.0;
-        expon++;
-    }
-    fpx->high |= (expon + 16383 - 1) & 0x7fff;
-    fpx->low = (bits64)(frac * (long double)(twoto32 * twoto32));
-    
-    while (!(fpx->low & LIT64( 0x8000000000000000))) {
-        if (fpx->high == 0) {
-            break;
-        }
-        fpx->low <<= 1;
-        fpx->high--;
-    }
-}
-#endif
-
 STATIC_INLINE void to_single(fptype *fp, uae_u32 wrd1)
 {
     float32 f = wrd1;
@@ -760,8 +685,80 @@ STATIC_INLINE void fp_sqrt_double(fptype *a, fptype *b)
 }
 
 
-/* Old fallback functions */
-#ifdef TRANSCENDENTAL_FALLBACK
+
+#if 0 /* Old fallback functions disabled */
+static const long double twoto32 = 4294967296.0;
+
+STATIC_INLINE void to_native(long double *fp, fptype fpx)
+{
+    int expon;
+    long double frac;
+    
+    expon = fpx.high & 0x7fff;
+    
+    if (floatx80_is_zero(fpx)) {
+        *fp = floatx80_is_negative(fpx) ? -0.0 : +0.0;
+        return;
+    }
+    if (floatx80_is_nan(fpx)) {
+        *fp = sqrtl(-1);
+        return;
+    }
+    if (floatx80_is_infinity(fpx)) {
+        *fp = floatx80_is_negative(fpx) ? logl(0.0) : (1.0/0.0);
+        return;
+    }
+    
+    frac = (long double)fpx.low / (long double)(twoto32 * 2147483648.0);
+    if (floatx80_is_negative(fpx))
+        frac = -frac;
+    *fp = ldexpl (frac, expon - 16383);
+}
+STATIC_INLINE void from_native(long double fp, fptype *fpx)
+{
+    int expon;
+    long double frac;
+    
+    if (signbit(fp))
+        fpx->high = 0x8000;
+    else
+        fpx->high = 0x0000;
+    
+    if (isnan(fp)) {
+        fpx->high |= 0x7fff;
+        fpx->low = LIT64(0xffffffffffffffff);
+        return;
+    }
+    if (isinf(fp)) {
+        fpx->high |= 0x7fff;
+        fpx->low = LIT64(0x0000000000000000);
+        return;
+    }
+    if (fp == 0.0) {
+        fpx->low = LIT64(0x0000000000000000);
+        return;
+    }
+    if (fp < 0.0)
+        fp = -fp;
+    
+    frac = frexpl (fp, &expon);
+    frac += 0.5 / (twoto32 * twoto32);
+    if (frac >= 1.0) {
+        frac /= 2.0;
+        expon++;
+    }
+    fpx->high |= (expon + 16383 - 1) & 0x7fff;
+    fpx->low = (bits64)(frac * (long double)(twoto32 * twoto32));
+    
+    while (!(fpx->low & LIT64( 0x8000000000000000))) {
+        if (fpx->high == 0) {
+            break;
+        }
+        fpx->low <<= 1;
+        fpx->high--;
+    }
+}
+
 STATIC_INLINE void fp_sinhf(fptype *a, fptype *b)
 {
     flag e = 0;
