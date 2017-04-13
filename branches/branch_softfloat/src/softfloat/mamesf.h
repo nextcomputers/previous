@@ -26,6 +26,7 @@
 *----------------------------------------------------------------------------*/
 //#include "assert.h"
 #include "sysdeps.h"
+#include "inttypes.h"
 
 typedef int8_t flag;
 typedef uint8_t uint8;
