@@ -413,7 +413,7 @@ floatx80 floatx80_cos(floatx80 a)
     int8 user_rnd_mode, user_rnd_prec;
     
     int32 compact, l, n, j;
-    floatx80 fp0, fp1, fp2, fp3, fp4, x, invtwopi, twopi1, twopi2;
+    floatx80 fp0, fp1, fp2, fp3, fp4, fp5, x, invtwopi, twopi1, twopi2;
     float32 posneg1, twoto63;
     flag adjn, endflag;
     
@@ -445,6 +445,16 @@ floatx80 floatx80_cos(floatx80 a)
     if (compact < 0x3FD78000 || compact > 0x4004BC7E) { // 2^(-40) > |X| > 15 PI
         if (compact > 0x3FFF8000) { // |X| >= 15 PI
             // REDUCEX
+            fp1 = packFloatx80(0, 0, 0);
+            if (compact == 0x7FFEFFFF) {
+                twopi1 = packFloatx80(aSign ^ 1, 0x7FFE, LIT64(0xC90FDAA200000000));
+                twopi2 = packFloatx80(aSign ^ 1, 0x7FDC, LIT64(0x85A308D300000000));
+                fp0 = floatx80_add(fp0, twopi1);
+                fp1 = fp0;
+                fp0 = floatx80_add(fp0, twopi2);
+                fp1 = floatx80_sub(fp1, fp0);
+                fp1 = floatx80_add(fp1, twopi2);
+            }
         loop:
             xSign = extractFloatx80Sign(fp0);
             xExp = extractFloatx80Exp(fp0);
@@ -453,31 +463,40 @@ floatx80 floatx80_cos(floatx80 a)
                 l = 0;
                 endflag = 1;
             } else {
-                l = xExp - 28;
+                l = xExp - 27;
                 endflag = 0;
             }
-            invtwopi = packFloatx80(0, 0x3FFC-l, LIT64(0xA2F9836E4E44152A)); // INVTWOPI
-            twopi1 = packFloatx80(0, 0x4001 + l, LIT64(0xC90FDAA200000000));
-            twopi2 = packFloatx80(0, 0x3FDF + l, LIT64(0x85A308D400000000));
-
+            invtwopi = packFloatx80(0, 0x3FFE - l, LIT64(0xA2F9836E4E44152A)); // INVTWOPI
+            twopi1 = packFloatx80(0, 0x3FFF + l, LIT64(0xC90FDAA200000000));
+            twopi2 = packFloatx80(0, 0x3FDD + l, LIT64(0x85A308D300000000));
+            
             twoto63 = 0x5F000000;
             twoto63 |= xSign ? 0x80000000 : 0x00000000; // SIGN(INARG)*2^63 IN SGL
-
-            fp1 = floatx80_mul(fp0, invtwopi);
-            fp1 = floatx80_add(fp1, float32_to_floatx80(twoto63)); // THE FRACTIONAL PART OF FP1 IS ROUNDED
-            fp1 = floatx80_sub(fp1, float32_to_floatx80(twoto63));
-            fp2 = floatx80_mul(twopi1, fp1); // M*Y1
-            fp1 = floatx80_mul(fp1, twopi2); // M*Y2
-            fp0 = floatx80_sub(fp0, fp2); // (X-MY1)
-            fp0 = floatx80_sub(fp0, fp1); // (X-MY1)-MY2
-            if (endflag <= 0) {
-                goto loop;
+            
+            fp2 = floatx80_mul(fp0, invtwopi);
+            fp2 = floatx80_add(fp2, float32_to_floatx80(twoto63)); // THE FRACTIONAL PART OF FP2 IS ROUNDED
+            fp2 = floatx80_sub(fp2, float32_to_floatx80(twoto63)); // FP2 is N
+            fp4 = floatx80_mul(twopi1, fp2); // W = N*P1
+            fp5 = floatx80_mul(twopi2, fp2); // w = N*P2
+            fp3 = floatx80_add(fp4, fp5); // FP3 is P
+            fp4 = floatx80_sub(fp4, fp3); // W-P
+            fp0 = floatx80_sub(fp0, fp3); // FP0 is A := R - P
+            fp4 = floatx80_add(fp4, fp5); // FP4 is p = (W-P)+w
+            fp3 = fp0; // FP3 is A
+            fp1 = floatx80_sub(fp1, fp4); // FP1 is a := r - p
+            fp0 = floatx80_add(fp0, fp1); // FP0 is R := A+a
+            
+            if (endflag > 0) {
+                n = floatx80_to_int32(fp2);
+                goto sincont;
             }
-            goto sinmain;
+            fp3 = floatx80_sub(fp3, fp0); // A-R
+            fp1 = floatx80_add(fp1, fp3); // FP1 is r := (A-R)+a
+            goto loop;
         } else {
             // SINSM
             fp0 = float32_to_floatx80(0x3F800000); // 1
-
+            
             float_rounding_mode = user_rnd_mode;
             floatx80_rounding_precision = user_rnd_prec;
             
@@ -493,15 +512,15 @@ floatx80 floatx80_cos(floatx80 a)
             return a;
         }
     } else {
-    sinmain:
         fp1 = floatx80_mul(fp0, float64_to_floatx80(LIT64(0x3FE45F306DC9C883))); // X*2/PI
         
         n = floatx80_to_int32(fp1);
         j = 32 + n;
         
-        fp0 = floatx80_sub(fp0, piby2_tbl[j]); // X-Y1
-        fp0 = floatx80_sub(fp0, float32_to_floatx80(piby2_tbl2[j])); // FP0 IS R = (X-Y1)-Y2
+        fp0 = floatx80_sub(fp0, pi_tbl[j]); // X-Y1
+        fp0 = floatx80_sub(fp0, float32_to_floatx80(pi_tbl2[j])); // FP0 IS R = (X-Y1)-Y2
         
+    sincont:
         if ((n + adjn) & 1) {
             // COSPOLY
             fp0 = floatx80_mul(fp0, fp0); // FP0 IS S
@@ -512,7 +531,7 @@ floatx80 floatx80_cos(floatx80 a)
             xSign = extractFloatx80Sign(fp0); // X IS S
             xExp = extractFloatx80Exp(fp0);
             xSig = extractFloatx80Frac(fp0);
-
+            
             if (((n + adjn) >> 1) & 1) {
                 xSign ^= 1;
                 posneg1 = 0xBF800000; // -1
@@ -617,7 +636,7 @@ floatx80 floatx80_cosh(floatx80 a)
     }
     
     if (aExp == 0 && aSig == 0) {
-        return packFloatx80(0, one_exp, one_sig); // zero
+        return packFloatx80(0, one_exp, one_sig);
     }
     
     user_rnd_mode = float_rounding_mode;
@@ -1436,7 +1455,7 @@ floatx80 floatx80_sin(floatx80 a)
     int8 user_rnd_mode, user_rnd_prec;
     
     int32 compact, l, n, j;
-    floatx80 fp0, fp1, fp2, fp3, fp4, x, invtwopi, twopi1, twopi2;
+    floatx80 fp0, fp1, fp2, fp3, fp4, fp5, x, invtwopi, twopi1, twopi2;
     float32 posneg1, twoto63;
     flag adjn, endflag;
 
@@ -1468,6 +1487,16 @@ floatx80 floatx80_sin(floatx80 a)
     if (compact < 0x3FD78000 || compact > 0x4004BC7E) { // 2^(-40) > |X| > 15 PI
         if (compact > 0x3FFF8000) { // |X| >= 15 PI
             // REDUCEX
+            fp1 = packFloatx80(0, 0, 0);
+            if (compact == 0x7FFEFFFF) {
+                twopi1 = packFloatx80(aSign ^ 1, 0x7FFE, LIT64(0xC90FDAA200000000));
+                twopi2 = packFloatx80(aSign ^ 1, 0x7FDC, LIT64(0x85A308D300000000));
+                fp0 = floatx80_add(fp0, twopi1);
+                fp1 = fp0;
+                fp0 = floatx80_add(fp0, twopi2);
+                fp1 = floatx80_sub(fp1, fp0);
+                fp1 = floatx80_add(fp1, twopi2);
+            }
         loop:
             xSign = extractFloatx80Sign(fp0);
             xExp = extractFloatx80Exp(fp0);
@@ -1476,27 +1505,36 @@ floatx80 floatx80_sin(floatx80 a)
                 l = 0;
                 endflag = 1;
             } else {
-                l = xExp - 28;
+                l = xExp - 27;
                 endflag = 0;
             }
-            invtwopi = packFloatx80(0, 0x3FFC-l, LIT64(0xA2F9836E4E44152A)); // INVTWOPI
-            twopi1 = packFloatx80(0, 0x4001 + l, LIT64(0xC90FDAA200000000));
-            twopi2 = packFloatx80(0, 0x3FDF + l, LIT64(0x85A308D400000000));
+            invtwopi = packFloatx80(0, 0x3FFE - l, LIT64(0xA2F9836E4E44152A)); // INVTWOPI
+            twopi1 = packFloatx80(0, 0x3FFF + l, LIT64(0xC90FDAA200000000));
+            twopi2 = packFloatx80(0, 0x3FDD + l, LIT64(0x85A308D300000000));
             
             twoto63 = 0x5F000000;
             twoto63 |= xSign ? 0x80000000 : 0x00000000; // SIGN(INARG)*2^63 IN SGL
             
-            fp1 = floatx80_mul(fp0, invtwopi);
-            fp1 = floatx80_add(fp1, float32_to_floatx80(twoto63)); // THE FRACTIONAL PART OF FP1 IS ROUNDED
-            fp1 = floatx80_sub(fp1, float32_to_floatx80(twoto63));
-            fp2 = floatx80_mul(twopi1, fp1); // M*Y1
-            fp1 = floatx80_mul(fp1, twopi2); // M*Y2
-            fp0 = floatx80_sub(fp0, fp2); // (X-MY1)
-            fp0 = floatx80_sub(fp0, fp1); // (X-MY1)-MY2
-            if (endflag <= 0) {
-                goto loop;
+            fp2 = floatx80_mul(fp0, invtwopi);
+            fp2 = floatx80_add(fp2, float32_to_floatx80(twoto63)); // THE FRACTIONAL PART OF FP2 IS ROUNDED
+            fp2 = floatx80_sub(fp2, float32_to_floatx80(twoto63)); // FP2 is N
+            fp4 = floatx80_mul(twopi1, fp2); // W = N*P1
+            fp5 = floatx80_mul(twopi2, fp2); // w = N*P2
+            fp3 = floatx80_add(fp4, fp5); // FP3 is P
+            fp4 = floatx80_sub(fp4, fp3); // W-P
+            fp0 = floatx80_sub(fp0, fp3); // FP0 is A := R - P
+            fp4 = floatx80_add(fp4, fp5); // FP4 is p = (W-P)+w
+            fp3 = fp0; // FP3 is A
+            fp1 = floatx80_sub(fp1, fp4); // FP1 is a := r - p
+            fp0 = floatx80_add(fp0, fp1); // FP0 is R := A+a
+            
+            if (endflag > 0) {
+                n = floatx80_to_int32(fp2);
+                goto sincont;
             }
-            goto sinmain;
+            fp3 = floatx80_sub(fp3, fp0); // A-R
+            fp1 = floatx80_add(fp1, fp3); // FP1 is r := (A-R)+a
+            goto loop;
         } else {
             // SINSM
             fp0 = float32_to_floatx80(0x3F800000); // 1
@@ -1516,15 +1554,15 @@ floatx80 floatx80_sin(floatx80 a)
             return a;
         }
     } else {
-    sinmain:
         fp1 = floatx80_mul(fp0, float64_to_floatx80(LIT64(0x3FE45F306DC9C883))); // X*2/PI
         
         n = floatx80_to_int32(fp1);
         j = 32 + n;
         
-        fp0 = floatx80_sub(fp0, piby2_tbl[j]); // X-Y1
-        fp0 = floatx80_sub(fp0, float32_to_floatx80(piby2_tbl2[j])); // FP0 IS R = (X-Y1)-Y2
+        fp0 = floatx80_sub(fp0, pi_tbl[j]); // X-Y1
+        fp0 = floatx80_sub(fp0, float32_to_floatx80(pi_tbl2[j])); // FP0 IS R = (X-Y1)-Y2
         
+    sincont:
         if ((n + adjn) & 1) {
             // COSPOLY
             fp0 = floatx80_mul(fp0, fp0); // FP0 IS S
@@ -1707,7 +1745,7 @@ floatx80 floatx80_tan(floatx80 a)
     int8 user_rnd_mode, user_rnd_prec;
     
     int32 compact, l, n, j;
-    floatx80 fp0, fp1, fp2, fp3, fp4, invtwopi, twopi1, twopi2;
+    floatx80 fp0, fp1, fp2, fp3, fp4, fp5, invtwopi, twopi1, twopi2;
     float32 twoto63;
     flag endflag;
     
@@ -1737,6 +1775,16 @@ floatx80 floatx80_tan(floatx80 a)
     if (compact < 0x3FD78000 || compact > 0x4004BC7E) { // 2^(-40) > |X| > 15 PI
         if (compact > 0x3FFF8000) { // |X| >= 15 PI
             // REDUCEX
+            fp1 = packFloatx80(0, 0, 0);
+            if (compact == 0x7FFEFFFF) {
+                twopi1 = packFloatx80(aSign ^ 1, 0x7FFE, LIT64(0xC90FDAA200000000));
+                twopi2 = packFloatx80(aSign ^ 1, 0x7FDC, LIT64(0x85A308D300000000));
+                fp0 = floatx80_add(fp0, twopi1);
+                fp1 = fp0;
+                fp0 = floatx80_add(fp0, twopi2);
+                fp1 = floatx80_sub(fp1, fp0);
+                fp1 = floatx80_add(fp1, twopi2);
+            }
         loop:
             xSign = extractFloatx80Sign(fp0);
             xExp = extractFloatx80Exp(fp0);
@@ -1745,27 +1793,36 @@ floatx80 floatx80_tan(floatx80 a)
                 l = 0;
                 endflag = 1;
             } else {
-                l = xExp - 28;
+                l = xExp - 27;
                 endflag = 0;
             }
-            invtwopi = packFloatx80(0, 0x3FFC-l, LIT64(0xA2F9836E4E44152A)); // INVTWOPI
-            twopi1 = packFloatx80(0, 0x4001 + l, LIT64(0xC90FDAA200000000));
-            twopi2 = packFloatx80(0, 0x3FDF + l, LIT64(0x85A308D400000000));
+            invtwopi = packFloatx80(0, 0x3FFE - l, LIT64(0xA2F9836E4E44152A)); // INVTWOPI
+            twopi1 = packFloatx80(0, 0x3FFF + l, LIT64(0xC90FDAA200000000));
+            twopi2 = packFloatx80(0, 0x3FDD + l, LIT64(0x85A308D300000000));
             
             twoto63 = 0x5F000000;
             twoto63 |= xSign ? 0x80000000 : 0x00000000; // SIGN(INARG)*2^63 IN SGL
             
-            fp1 = floatx80_mul(fp0, invtwopi);
-            fp1 = floatx80_add(fp1, float32_to_floatx80(twoto63)); // THE FRACTIONAL PART OF FP1 IS ROUNDED
-            fp1 = floatx80_sub(fp1, float32_to_floatx80(twoto63));
-            fp2 = floatx80_mul(twopi1, fp1); // M*Y1
-            fp1 = floatx80_mul(fp1, twopi2); // M*Y2
-            fp0 = floatx80_sub(fp0, fp2); // (X-MY1)
-            fp0 = floatx80_sub(fp0, fp1); // (X-MY1)-MY2
-            if (endflag <= 0) {
-                goto loop;
+            fp2 = floatx80_mul(fp0, invtwopi);
+            fp2 = floatx80_add(fp2, float32_to_floatx80(twoto63)); // THE FRACTIONAL PART OF FP2 IS ROUNDED
+            fp2 = floatx80_sub(fp2, float32_to_floatx80(twoto63)); // FP2 is N
+            fp4 = floatx80_mul(twopi1, fp2); // W = N*P1
+            fp5 = floatx80_mul(twopi2, fp2); // w = N*P2
+            fp3 = floatx80_add(fp4, fp5); // FP3 is P
+            fp4 = floatx80_sub(fp4, fp3); // W-P
+            fp0 = floatx80_sub(fp0, fp3); // FP0 is A := R - P
+            fp4 = floatx80_add(fp4, fp5); // FP4 is p = (W-P)+w
+            fp3 = fp0; // FP3 is A
+            fp1 = floatx80_sub(fp1, fp4); // FP1 is a := r - p
+            fp0 = floatx80_add(fp0, fp1); // FP0 is R := A+a
+            
+            if (endflag > 0) {
+                n = floatx80_to_int32(fp2);
+                goto tancont;
             }
-            goto tanmain;
+            fp3 = floatx80_sub(fp3, fp0); // A-R
+            fp1 = floatx80_add(fp1, fp3); // FP1 is r := (A-R)+a
+            goto loop;
         } else {
             float_rounding_mode = user_rnd_mode;
             floatx80_rounding_precision = user_rnd_prec;
@@ -1777,15 +1834,15 @@ floatx80 floatx80_tan(floatx80 a)
             return a;
         }
     } else {
-    tanmain:
         fp1 = floatx80_mul(fp0, float64_to_floatx80(LIT64(0x3FE45F306DC9C883))); // X*2/PI
         
         n = floatx80_to_int32(fp1);
         j = 32 + n;
         
-        fp0 = floatx80_sub(fp0, piby2_tbl[j]); // X-Y1
-        fp0 = floatx80_sub(fp0, float32_to_floatx80(piby2_tbl2[j])); // FP0 IS R = (X-Y1)-Y2
+        fp0 = floatx80_sub(fp0, pi_tbl[j]); // X-Y1
+        fp0 = floatx80_sub(fp0, float32_to_floatx80(pi_tbl2[j])); // FP0 IS R = (X-Y1)-Y2
         
+    tancont:
         if (n & 1) {
             // NODD
             fp1 = fp0; // R
