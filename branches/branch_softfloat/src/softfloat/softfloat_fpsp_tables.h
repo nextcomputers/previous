@@ -1,5 +1,5 @@
 
-floatx80 atan_tbl[128] = {
+static const floatx80 atan_tbl[128] = {
     {0x3FFB, LIT64(0x83D152C5060B7A51)},
     {0x3FFB, LIT64(0x8BC8544565498B8B)},
     {0x3FFB, LIT64(0x93BE406017626B0D)},
@@ -131,7 +131,7 @@ floatx80 atan_tbl[128] = {
 };
 
 
-floatx80 exp_tbl[64] = {
+static const floatx80 exp_tbl[64] = {
     {0x3FFF, LIT64(0x8000000000000000)},
     {0x3FFF, LIT64(0x8164D1F3BC030774)},
     {0x3FFF, LIT64(0x82CD8698AC2BA1D8)},
@@ -198,7 +198,7 @@ floatx80 exp_tbl[64] = {
     {0x3FFF, LIT64(0xFD3E0C0CF486C174)}
 };
 
-float32 exp_tbl2[64] = {
+static const float32 exp_tbl2[64] = {
     0x00000000, 0x9F841A9B, 0x9FC1D5B9, 0xA0728369,
     0x1FC5C95C, 0x1EE85C9F, 0x9FA20729, 0xA07BF9AF,
     0xA0020DCF, 0x205A63DA, 0x1EB70051, 0x1F6EB029,
@@ -218,7 +218,7 @@ float32 exp_tbl2[64] = {
 };
 
 
-floatx80 exp2_tbl[64] = {
+static const floatx80 exp2_tbl[64] = {
     {0x3FFF, LIT64(0x8000000000000000)},
     {0x3FFF, LIT64(0x8164D1F3BC030773)},
     {0x3FFF, LIT64(0x82CD8698AC2BA1D7)},
@@ -286,7 +286,7 @@ floatx80 exp2_tbl[64] = {
 };
 
 
-float32 exp2_tbl2[64] = {
+static const bits32 exp2_tbl2[64] = {
     0x3F738000, 0x3FBEF7CA, 0x3FBDF8A9, 0x3FBCD7C9,
     0xBFBDE8DA, 0x3FBDE85C, 0x3FBEBBF1, 0x3FBB80CA,
     0xBFBA8373, 0xBFBE9670, 0x3FBDB700, 0x3FBEEEB0,
@@ -306,7 +306,7 @@ float32 exp2_tbl2[64] = {
 };
 
 
-floatx80 log_tbl[128] = {
+static const floatx80 log_tbl[128] = {
     {0x3FFE, LIT64(0xFE03F80FE03F80FE)},
     {0x3FF7, LIT64(0xFF015358833C47E2)},
     {0x3FFE, LIT64(0xFA232CF252138AC0)},
@@ -438,7 +438,7 @@ floatx80 log_tbl[128] = {
 };
 
 
-floatx80 pi_tbl[65] = {
+static const floatx80 pi_tbl[65] = {
     {0xC004, LIT64(0xC90FDAA22168C235)},
     {0xC004, LIT64(0xC2C75BCD105D7C23)},
     {0xC004, LIT64(0xBC7EDCF7FF523611)},
@@ -507,7 +507,7 @@ floatx80 pi_tbl[65] = {
 };
 
 
-float32 pi_tbl2[65] = {
+static const float32 pi_tbl2[65] = {
     0x21800000, 0xA0D00000, 0xA1E80000, 0x21480000,
     0xA1200000, 0x21FC0000, 0x21100000, 0xA1580000,
     0x21E00000, 0x20B00000, 0xA1880000, 0x21C40000,
