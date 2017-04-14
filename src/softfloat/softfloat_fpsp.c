@@ -87,6 +87,8 @@ floatx80 floatx80_acos(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     one = packFloatx80(0, one_exp, one_sig);
     fp0 = a;
@@ -152,6 +154,8 @@ floatx80 floatx80_asin(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     one = packFloatx80(0, one_exp, one_sig);
     fp0 = a;
@@ -206,6 +210,8 @@ floatx80 floatx80_atan(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
 
     if (compact < 0x3FFB8000 || compact > 0x4002FFFF) { // |X| >= 16 or |X| < 1/16
         if (compact > 0x3FFF8000) { // |X| >= 16
@@ -380,6 +386,8 @@ floatx80 floatx80_atanh(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     one = packFloatx80(0, one_exp, one_sig);
     fp2 = packFloatx80(aSign, 0x3FFE, one_sig); // SIGN(X) * (1/2)
@@ -437,6 +445,8 @@ floatx80 floatx80_cos(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     compact = floatx80_make_compact(aExp, aSig);
     
@@ -641,6 +651,8 @@ floatx80 floatx80_cosh(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     compact = floatx80_make_compact(aExp, aSig);
     
@@ -715,6 +727,8 @@ floatx80 floatx80_etox(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     adjflag = 0;
     
@@ -856,6 +870,8 @@ floatx80 floatx80_etoxm1(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     if (aExp >= 0x3FFD) { // |X| >= 1/4
         compact = floatx80_make_compact(aExp, aSig);
@@ -1056,6 +1072,8 @@ floatx80 floatx80_log10(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     fp0 = floatx80_logn(a);
     fp1 = packFloatx80(0, 0x3FFD, LIT64(0xDE5BD8A937287195)); // INV_L10
@@ -1111,6 +1129,8 @@ floatx80 floatx80_log2(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     if (aSig == one_sig) { // X is 2^k
         float_rounding_mode = user_rnd_mode;
@@ -1185,6 +1205,8 @@ floatx80 floatx80_logn(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     compact = floatx80_make_compact(aExp, aSig);
     
@@ -1266,9 +1288,9 @@ floatx80 floatx80_logn(floatx80 a)
         
         a = floatx80_add(fp0, saveu);
         
-        if (!floatx80_is_zero(a)) {
+        //if (!floatx80_is_zero(a)) {
             float_raise(float_flag_inexact);
-        }
+        //}
         
         return a;
     }
@@ -1326,6 +1348,8 @@ floatx80 floatx80_lognp1(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     compact = floatx80_make_compact(aExp, aSig);
     
@@ -1434,9 +1458,9 @@ floatx80 floatx80_lognp1(floatx80 a)
         
         a = floatx80_add(fp0, saveu);
         
-        if (!floatx80_is_zero(a)) {
+        //if (!floatx80_is_zero(a)) {
             float_raise(float_flag_inexact);
-        }
+        //}
         
         return a;
     }
@@ -1479,6 +1503,8 @@ floatx80 floatx80_sin(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     compact = floatx80_make_compact(aExp, aSig);
     
@@ -1684,6 +1710,8 @@ floatx80 floatx80_sinh(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     compact = floatx80_make_compact(aExp, aSig);
 
@@ -1767,6 +1795,8 @@ floatx80 floatx80_tan(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     compact = floatx80_make_compact(aExp, aSig);
     
@@ -1950,6 +1980,8 @@ floatx80 floatx80_tanh(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     compact = floatx80_make_compact(aExp, aSig);
     
@@ -2053,6 +2085,8 @@ floatx80 floatx80_tentox(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     fp0 = a;
     
@@ -2176,6 +2210,8 @@ floatx80 floatx80_twotox(floatx80 a)
     
     user_rnd_mode = float_rounding_mode;
     user_rnd_prec = floatx80_rounding_precision;
+    float_rounding_mode = float_round_nearest_even;
+    floatx80_rounding_precision = 80;
     
     fp0 = a;
     
