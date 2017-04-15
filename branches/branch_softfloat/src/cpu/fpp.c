@@ -697,6 +697,7 @@ static void fp_unimp_instruction(uae_u16 opcode, uae_u16 extra, uae_u32 ea, uaec
     }
     
     regs.fp_ea = ea;
+    regs.fp_opword = opcode;
     regs.fp_unimp_ins = true;
     fp_unimp_instruction_exception_pending();
 
@@ -710,6 +711,7 @@ static void fp_unimp_datatype(uae_u16 opcode, uae_u16 extra, uae_u32 ea, uaecptr
     uae_u32 opclass = (extra >> 13) & 7;
     
     regs.fp_ea = ea;
+    regs.fp_opword = opcode;
     regs.fp_unimp_pend = packed ? 2 : 1;
 
     if ((extra & 0x7f) == 4) // FSQRT 4->5
@@ -2037,6 +2039,7 @@ void fpuop_save (uae_u32 opcode)
     regs.fpu_exp_state = 0;
 }
 
+static bool fp_arithmetic(fptype *src, fptype *dst, int extra);
 void fpuop_restore (uae_u32 opcode)
 {
     uaecptr pc = m68k_getpc () - 2;
@@ -2103,8 +2106,98 @@ void fpuop_restore (uae_u32 opcode)
         if ((d & 0xff000000) != 0) { // not null frame
             uae_u32 frame_size = (d >> 16) & 0xff;
             
-            if (frame_size == 0x60 || (frame_size == 0x30 || frame_size == 0x28)) { // busy or unimp
-                // TODO: restore frame contents
+            if (frame_size == 0x60) { // busy
+                fptype src, dst;
+                uae_u32 tmp, v, opclass, cmdreg1b, fpte15, et15, cusavepc;
+                if (incr < 0) {
+                    ad -= 8; // offset to CU_SAVEPC field
+                    tmp = x_get_long (ad);
+                    cusavepc = tmp >> 24;
+                    ad -= 0x20; // offset to FPIARCU field
+                    regs.fpiar = x_get_long (ad);
+                    ad -= 0x14; // offset to ET15 field
+                    tmp = x_get_long (ad);
+                    et15 = (tmp & 0x10000000) >> 28;
+                    ad -= 0x4; // offset to CMDREG1B field
+                    fsave_data.cmdreg1b = x_get_long (ad);
+                    cmdreg1b = fsave_data.cmdreg1b >> 16;
+                    ad -= 0x4; // offset to FPTE15 field
+                    tmp = x_get_long (ad);
+                    fpte15 = (tmp & 0x10000000) >> 28;
+                    ad -= 0x8; // offset to FPTE field
+                    fsave_data.eo[0] = x_get_long (ad);
+                    ad -= 0x4;
+                    fsave_data.eo[1] = x_get_long (ad);
+                    ad -= 0x4;
+                    fsave_data.eo[2] = x_get_long (ad);
+                    to_exten_fmovem(&dst, fsave_data.eo[0], fsave_data.eo[1], fsave_data.eo[2]);
+                    fp_denormalize(&dst, fpte15);
+                    ad -= 0x4; // offset to ET field
+                    fsave_data.eo[0] = x_get_long (ad);
+                    ad -= 0x4;
+                    fsave_data.eo[1] = x_get_long (ad);
+                    ad -= 0x4;
+                    fsave_data.eo[2] = x_get_long (ad);
+                    to_exten_fmovem(&src, fsave_data.eo[0], fsave_data.eo[1], fsave_data.eo[2]);
+                    fp_denormalize(&src, et15);
+                } else {
+                    ad += 0x4; // offset to CU_SAVEPC field
+                    tmp = x_get_long (ad);
+                    cusavepc = tmp >> 24;
+                    ad += 0x20; // offset to FPIARCU field
+                    regs.fpiar = x_get_long (ad);
+                    ad += 0x14; // offset to ET15 field
+                    tmp = x_get_long (ad);
+                    et15 = (tmp & 0x10000000) >> 28;
+                    ad += 0x4; // offset to CMDREG1B field
+                    fsave_data.cmdreg1b = x_get_long (ad);
+                    cmdreg1b = fsave_data.cmdreg1b >> 16;
+                    ad += 0x4; // offset to FPTE15 field
+                    tmp = x_get_long (ad);
+                    fpte15 = (tmp & 0x10000000) >> 28;
+                    ad += 0x8; // offset to FPTE field
+                    fsave_data.eo[0] = x_get_long (ad);
+                    ad += 0x4;
+                    fsave_data.eo[1] = x_get_long (ad);
+                    ad += 0x4;
+                    fsave_data.eo[2] = x_get_long (ad);
+                    to_exten_fmovem(&dst, fsave_data.eo[0], fsave_data.eo[1], fsave_data.eo[2]);
+                    fp_denormalize(&dst, fpte15);
+                    ad += 0x4; // offset to ET field
+                    fsave_data.eo[0] = x_get_long (ad);
+                    ad += 0x4;
+                    fsave_data.eo[1] = x_get_long (ad);
+                    ad += 0x4;
+                    fsave_data.eo[2] = x_get_long (ad);
+                    to_exten_fmovem(&src, fsave_data.eo[0], fsave_data.eo[1], fsave_data.eo[2]);
+                    fp_denormalize(&src, et15);
+                    ad += 0x4;
+                }
+                
+                opclass = (cmdreg1b >> 13) & 0x7; // just to be sure
+                
+                if (cusavepc == 0xFE && (opclass == 0 || opclass == 2)) {
+#if 1 || EXCEPTION_FPP
+                    uae_u32 tmpsrc[3], tmpdst[3];
+                    from_exten_fmovem(&src, &tmpsrc[0], &tmpsrc[1], &tmpsrc[2]);
+                    from_exten_fmovem(&dst, &tmpdst[0], &tmpdst[1], &tmpdst[2]);
+                    write_log (_T("FRESTORE src = %08X %08X %08X, dst = %08X %08X %08X, extra = %04X\n"),
+                               tmpsrc[0], tmpsrc[1], tmpsrc[2], tmpdst[0], tmpdst[1], tmpdst[2], cmdreg1b);
+#endif
+                    fpsr_clear_status();
+                    
+                    v = fp_arithmetic(&src, &dst, cmdreg1b);
+#if 0 // some cheating
+                    fpsr_clear_status();
+                    regs.fp[(cmdreg1b>>7)&7] = dst;
+#else
+                    if (v)
+                        regs.fp[(cmdreg1b>>7)&7] = dst;
+                    
+                    fpsr_check_arithmetic_exception(0, &src, regs.fp_opword, cmdreg1b, regs.fp_ea);
+#endif
+                }
+            } else if((frame_size == 0x30 || frame_size == 0x28)) { // unimp
                 if (incr < 0) {
                     ad -= frame_size;
                 } else {
@@ -2145,6 +2238,8 @@ void fpuop_restore (uae_u32 opcode)
         m68k_areg (regs, opcode & 7) = ad;
     if ((opcode & 0x38) == 0x20)
         m68k_areg (regs, opcode & 7) = ad;
+    
+    fp_exception_pending(false);
 }
 
 static uaecptr fmovem2mem (uaecptr ad, uae_u32 list, int incr, int regdir)
@@ -2744,8 +2839,10 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                 return;
             
             // unimplemented datatype was checked in get_fp_value
-            if (regs.fp_unimp_pend)
+            if (regs.fp_unimp_pend) {
+                fp_exception_pending(false); // simplification: always mid/post-instruction exception
                 return;
+            }
 
             v = fp_arithmetic(&src, &dst, extra);
             
@@ -2753,6 +2850,8 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
 
             if (v)
                 regs.fp[reg] = dst;
+            
+            fp_exception_pending(false); // simplification: always mid/post-instruction exception
             
             return;
         default:
