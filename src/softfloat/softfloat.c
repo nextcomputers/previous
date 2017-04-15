@@ -4240,6 +4240,30 @@ floatx80 floatx80_normalize( floatx80 a )
     return packFloatx80( aSign, aExp, aSig );
     
 }
+        
+floatx80 floatx80_denormalize( floatx80 a, flag eSign)
+{
+    flag aSign;
+    int32 aExp;
+    bits64 aSig;
+    int32 shiftCount;
+
+    aSig = extractFloatx80Frac( a );
+    aExp = extractFloatx80Exp( a );
+    aSign = extractFloatx80Sign( a );
+    
+    if ( eSign ) {
+        shiftCount = 0x8000 - aExp;
+        aExp = 0;
+        if (shiftCount > 63) {
+            aSig = 0;
+        } else {
+            aSig >>= shiftCount;
+        }
+    }
+    return packFloatx80(aSign, aExp, aSig);
+    
+}
 #endif // end of addition for Previous
 
 /*----------------------------------------------------------------------------
