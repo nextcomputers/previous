@@ -1509,14 +1509,39 @@ void mo_insert_disk(int drv) {
     
     if (ConfigureParams.MO.drive[drv].bWriteProtected) {
         modrv[drv].dsk = File_Open(ConfigureParams.MO.drive[drv].szImageName, "rb");
-        modrv[drv].protected=true;
+        if (modrv[drv].dsk == NULL) {
+            Log_Printf(LOG_WARN, "MO Disk%i: Cannot open image file %s\n",
+                       drv, ConfigureParams.MO.drive[drv].szImageName);
+            modrv[drv].inserted=false;
+            modrv[drv].protected=false;
+            Statusbar_AddMessage("Cannot insert magneto-optical disk.", 0);
+            return;
+        } else {
+            modrv[drv].inserted=true;
+            modrv[drv].protected=true;
+        }
     } else {
         modrv[drv].dsk = File_Open(ConfigureParams.MO.drive[drv].szImageName, "rb+");
-        modrv[drv].protected=false;
+        if (modrv[drv].dsk == NULL) {
+            modrv[drv].dsk = File_Open(ConfigureParams.MO.drive[drv].szImageName, "rb");
+            if (modrv[drv].dsk == NULL) {
+                Log_Printf(LOG_WARN, "MO Disk%i: Cannot open image file %s\n",
+                           drv, ConfigureParams.MO.drive[drv].szImageName);
+                modrv[drv].inserted=false;
+                modrv[drv].protected=false;
+                Statusbar_AddMessage("Cannot insert magneto-optical disk.", 0);
+                return;
+            } else {
+                modrv[drv].inserted=true;
+                modrv[drv].protected=true;
+            }
+        } else {
+            modrv[drv].inserted=true;
+            modrv[drv].protected=false;
+        }
     }
-    
+
     Statusbar_AddMessage("Inserting magneto-optical disk.", 0);
-    modrv[drv].inserted=true;
     modrv[drv].dstat&=~DS_EMPTY;
     modrv[drv].dstat|=DS_INSERT;
     modrv[drv].spinning=false;
@@ -1701,13 +1726,34 @@ void MO_Init(void) {
             modrv[i].dstat=modrv[i].estat=modrv[i].hstat=0;
             if (ConfigureParams.MO.drive[i].bDiskInserted &&
                 File_Exists(ConfigureParams.MO.drive[i].szImageName)) {
-                modrv[i].inserted=true;
                 if (ConfigureParams.MO.drive[i].bWriteProtected) {
                     modrv[i].dsk = File_Open(ConfigureParams.MO.drive[i].szImageName, "rb");
-                    modrv[i].protected=true;
+                    if (modrv[i].dsk == NULL) {
+                        Log_Printf(LOG_WARN, "MO Disk%i: Cannot open image file %s\n",
+                                   i, ConfigureParams.MO.drive[i].szImageName);
+                        modrv[i].inserted=false;
+                        modrv[i].protected=false;
+                    } else {
+                        modrv[i].inserted=true;
+                        modrv[i].protected=true;
+                    }
                 } else {
                     modrv[i].dsk = File_Open(ConfigureParams.MO.drive[i].szImageName, "rb+");
-                    modrv[i].protected=false;
+                    if (modrv[i].dsk == NULL) {
+                        modrv[i].dsk = File_Open(ConfigureParams.MO.drive[i].szImageName, "rb");
+                        if (modrv[i].dsk == NULL) {
+                            Log_Printf(LOG_WARN, "MO Disk%i: Cannot open image file %s\n",
+                                       i, ConfigureParams.MO.drive[i].szImageName);
+                            modrv[i].inserted=false;
+                            modrv[i].protected=false;
+                        } else {
+                            modrv[i].inserted=true;
+                            modrv[i].protected=true;
+                        }
+                    } else {
+                        modrv[i].inserted=true;
+                        modrv[i].protected=false;
+                    }
                 }
             } else {
                 modrv[i].dsk = NULL;
