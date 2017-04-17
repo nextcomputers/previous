@@ -2640,6 +2640,8 @@ void fpuop_restore (uae_u32 opcode)
             }
         } else if (ff) {
             write_log (_T("FRESTORE invalid frame format %02X!\n"), ff);
+            Exception(14);
+            return;
         } else {
             fpu_null();
         }
@@ -2662,7 +2664,8 @@ void fpuop_restore (uae_u32 opcode)
                 et15 = (tmp & 0x10000000) >> 28;
                 ad += 0x4; // offset to CMDREG1B field
                 fsave_data.cmdreg1b = x_get_long (ad);
-                cmdreg1b = fsave_data.cmdreg1b >> 16;
+                fsave_data.cmdreg1b >>= 16;
+                cmdreg1b = fsave_data.cmdreg1b;
                 ad += 0x4; // offset to FPTE15 field
                 tmp = x_get_long (ad);
                 fpte15 = (tmp & 0x10000000) >> 28;
@@ -2672,21 +2675,21 @@ void fpuop_restore (uae_u32 opcode)
                 fsave_data.fpt[1] = x_get_long (ad);
                 ad += 0x4;
                 fsave_data.fpt[2] = x_get_long (ad);
-                to_exten_fmovem(&dst, fsave_data.fpt[0], fsave_data.fpt[1], fsave_data.fpt[2]);
-                fp_denormalize(&dst, fpte15);
                 ad += 0x4; // offset to ET field
                 fsave_data.et[0] = x_get_long (ad);
                 ad += 0x4;
                 fsave_data.et[1] = x_get_long (ad);
                 ad += 0x4;
                 fsave_data.et[2] = x_get_long (ad);
-                to_exten_fmovem(&src, fsave_data.et[0], fsave_data.et[1], fsave_data.et[2]);
-                fp_denormalize(&src, et15);
                 ad += 0x4;
                 
                 opclass = (cmdreg1b >> 13) & 0x7; // just to be sure
                 
                 if (cusavepc == 0xFE && (opclass == 0 || opclass == 2)) {
+                    to_exten_fmovem(&dst, fsave_data.fpt[0], fsave_data.fpt[1], fsave_data.fpt[2]);
+                    fp_denormalize(&dst, fpte15);
+                    to_exten_fmovem(&src, fsave_data.et[0], fsave_data.et[1], fsave_data.et[2]);
+                    fp_denormalize(&src, et15);
 #if EXCEPTION_FPP
                     uae_u32 tmpsrc[3], tmpdst[3];
                     from_exten_fmovem(&src, &tmpsrc[0], &tmpsrc[1], &tmpsrc[2]);
@@ -2710,9 +2713,9 @@ void fpuop_restore (uae_u32 opcode)
                 ad += frame_size;
                 
             } else if (frame_size != 0x00) { // not idle
-                
                 write_log (_T("FRESTORE invalid frame format %02X!\n"), frame_size);
-                
+                Exception(14);
+                return;
             }
         } else { // null frame
             fpu_null();
@@ -2748,6 +2751,8 @@ void fpuop_restore (uae_u32 opcode)
                 write_log (_T("FRESTORE of busy frame not supported\n"));
             } else {
                 write_log (_T("FRESTORE invalid frame format %02X!\n"), frame_size);
+                Exception(14);
+                return;
             }
         } else { // null frame
             fpu_null ();

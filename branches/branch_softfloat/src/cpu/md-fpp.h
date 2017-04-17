@@ -592,6 +592,12 @@ STATIC_INLINE uae_u32 fp_get_internal_grs(void)
     return 0.0;
 }
 
+/* Function for denormalizing */
+STATIC_INLINE void fp_denormalize(fptype *fp, int esign)
+{
+    // do nothing
+}
+
 /* Functions for rounding */
 
 // round to float with extended precision exponent
