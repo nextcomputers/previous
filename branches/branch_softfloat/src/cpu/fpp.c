@@ -2598,6 +2598,9 @@ void fpuop_restore (uae_u32 opcode)
     uae_u32 ad;
     uae_u32 d;
     
+    int frame_version;
+    int fpu_version = get_fpu_version();
+    
     regs.fp_exception = false;
     
     if (fault_if_no_6888x (opcode, 0, pc))
@@ -2616,6 +2619,8 @@ void fpuop_restore (uae_u32 opcode)
     
     d = x_get_long (ad);
     ad += 4;
+    
+    frame_version = (d >> 24) & 0xff;
     
     if (currprefs.fpu_model == 68060) {
         int ff = (d >> 8) & 0xff;
@@ -2647,7 +2652,7 @@ void fpuop_restore (uae_u32 opcode)
         }
     } else if (currprefs.fpu_model == 68040) {
         
-        if ((d & 0xff000000) != 0) { // not null frame
+        if (frame_version == fpu_version) { // not null frame
             uae_u32 frame_size = (d >> 16) & 0xff;
             
             if (frame_size == 0x60) { // busy
@@ -2685,44 +2690,56 @@ void fpuop_restore (uae_u32 opcode)
                 
                 opclass = (cmdreg1b >> 13) & 0x7; // just to be sure
                 
-                if (cusavepc == 0xFE && (opclass == 0 || opclass == 2)) {
-                    to_exten_fmovem(&dst, fsave_data.fpt[0], fsave_data.fpt[1], fsave_data.fpt[2]);
-                    fp_denormalize(&dst, fpte15);
-                    to_exten_fmovem(&src, fsave_data.et[0], fsave_data.et[1], fsave_data.et[2]);
-                    fp_denormalize(&src, et15);
+                if (cusavepc == 0xFE) {
+                    if (opclass == 0 || opclass == 2) {
+                        to_exten_fmovem(&dst, fsave_data.fpt[0], fsave_data.fpt[1], fsave_data.fpt[2]);
+                        fp_denormalize(&dst, fpte15);
+                        to_exten_fmovem(&src, fsave_data.et[0], fsave_data.et[1], fsave_data.et[2]);
+                        fp_denormalize(&src, et15);
 #if EXCEPTION_FPP
-                    uae_u32 tmpsrc[3], tmpdst[3];
-                    from_exten_fmovem(&src, &tmpsrc[0], &tmpsrc[1], &tmpsrc[2]);
-                    from_exten_fmovem(&dst, &tmpdst[0], &tmpdst[1], &tmpdst[2]);
-                    write_log (_T("FRESTORE src = %08X %08X %08X, dst = %08X %08X %08X, extra = %04X\n"),
-                               tmpsrc[0], tmpsrc[1], tmpsrc[2], tmpdst[0], tmpdst[1], tmpdst[2], cmdreg1b);
+                        uae_u32 tmpsrc[3], tmpdst[3];
+                        from_exten_fmovem(&src, &tmpsrc[0], &tmpsrc[1], &tmpsrc[2]);
+                        from_exten_fmovem(&dst, &tmpdst[0], &tmpdst[1], &tmpdst[2]);
+                        write_log (_T("FRESTORE src = %08X %08X %08X, dst = %08X %08X %08X, extra = %04X\n"),
+                                   tmpsrc[0], tmpsrc[1], tmpsrc[2], tmpdst[0], tmpdst[1], tmpdst[2], cmdreg1b);
 #endif
-                    fpsr_clear_status();
-                    
-                    v = fp_arithmetic(&src, &dst, cmdreg1b);
-                    
-                    if (v)
-                        regs.fp[(cmdreg1b>>7)&7] = dst;
-                    
-                    fpsr_check_arithmetic_exception(0, &src, regs.fp_opword, cmdreg1b, regs.fp_ea);
+                        fpsr_clear_status();
+                        
+                        v = fp_arithmetic(&src, &dst, cmdreg1b);
+                        
+                        if (v)
+                            regs.fp[(cmdreg1b>>7)&7] = dst;
+                        
+                        fpsr_check_arithmetic_exception(0, &src, regs.fp_opword, cmdreg1b, regs.fp_ea);
+                    } else {
+                        write_log (_T("FRESTORE resume of opclass %d instruction not supported!\n"), opclass);
+                    }
                 }
-            } else if((frame_size == 0x30 || frame_size == 0x28)) { // unimp
+            } else if (frame_size == 0x30 || frame_size == 0x28) { // unimp
                 
                 
                 // TODO: restore frame contents
                 ad += frame_size;
                 
-            } else if (frame_size != 0x00) { // not idle
-                write_log (_T("FRESTORE invalid frame format %02X!\n"), frame_size);
+            } else if (frame_size == 0x00) { // idle
+                regs.fpu_state = 1;
+                regs.fpu_exp_state = 0;
+            } else {
+                write_log (_T("FRESTORE invalid frame size %02X!\n"), frame_size);
                 Exception(14);
                 return;
             }
-        } else { // null frame
+        } else if (frame_version == 0x00) { // null frame
             fpu_null();
+        } else {
+            write_log (_T("FRESTORE invalid frame version %02X!\n"), frame_version);
+            Exception(14);
+            return;
         }
     } else {
         // 6888x
-        if ((d & 0xff000000) != 0) { // not null frame
+        
+        if (frame_version == fpu_version) { // not null frame
             uae_u32 biu_flags;
             uae_u32 frame_size = (d >> 16) & 0xff;
             regs.fpu_state = 1;
@@ -2746,16 +2763,24 @@ void fpuop_restore (uae_u32 opcode)
                 if ((biu_flags & 0x08000000) == 0x00000000) {
                     regs.fpu_exp_state = 2;
                     regs.fp_exp_pend = fpsr_get_vector(regs.fpsr & regs.fpcr & 0xff00);
+                } else {
+                    regs.fpu_exp_state = 0;
+                    regs.fp_exp_pend = 0;
                 }
             } else if (frame_size == 0xB4 || frame_size == 0xD4) {
                 write_log (_T("FRESTORE of busy frame not supported\n"));
+                ad += frame_size;
             } else {
-                write_log (_T("FRESTORE invalid frame format %02X!\n"), frame_size);
+                write_log (_T("FRESTORE invalid frame size %02X!\n"), frame_size);
                 Exception(14);
                 return;
             }
-        } else { // null frame
+        } else if (frame_version == 0x00) { // null frame
             fpu_null ();
+        } else {
+            write_log (_T("FRESTORE invalid frame version %02X!\n"), frame_version);
+            Exception(14);
+            return;
         }
     }
     
