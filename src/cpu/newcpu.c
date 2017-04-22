@@ -976,7 +976,7 @@ static void Exception_mmu (int nr, uaecptr oldpc)
         regs.fp_unimp_ins = false;
         if ((currprefs.cpu_model == 68060 && (currprefs.fpu_model == 0 || (regs.pcr & 2))) ||
             (currprefs.cpu_model == 68040 && currprefs.fpu_model == 0)) {
-            Exception_build_stack_frame(regs.fp_ea, currpc, currpc, nr, 0x4);
+            Exception_build_stack_frame(regs.fp_ea, currpc, regs.instruction_pc, nr, 0x4);
         } else {
             Exception_build_stack_frame(regs.fp_ea, currpc, regs.mmu_ssw, nr, 0x2);
         }

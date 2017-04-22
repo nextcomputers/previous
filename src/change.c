@@ -238,7 +238,6 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
 	bool NeedReset;
 	bool bReInitEnetEmu = false;
     bool bReInitSoundEmu = false;
-	bool bReInitIoMem = false;
 	bool bScreenModeChange = false;
 
 	Dprintf("Changes for:\n");
@@ -278,21 +277,6 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
 	/* Copy details to global, if we reset copy them all */
 	Configuration_Apply(NeedReset);
     
-    /* Check if all necessary files exist */
-    Dialog_CheckFiles();
-    if (bQuitProgram)
-    {
-        SDL_Quit();
-        exit(-2);
-    }
-
-	/* Re-init IO memory map? */
-	if (bReInitIoMem)
-	{
-		Dprintf("- IO mem<\n");
-		IoMem_Init();
-	}
-    
     /* Re-init Ethernet? */
     if (bReInitEnetEmu) {
         Dprintf("- Ethernet<\n");
@@ -315,6 +299,14 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
 	/* Do we need to perform reset? */
 	if (NeedReset)
 	{
+        /* Check if all necessary files exist */
+        Dialog_CheckFiles();
+        if (bQuitProgram)
+        {
+            SDL_Quit();
+            exit(-2);
+        }
+
 		Dprintf("- reset\n");
 		Reset_Cold();
 	}
