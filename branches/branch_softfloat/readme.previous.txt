@@ -198,6 +198,11 @@ input devices.
   > Fixes bug that caused temporary speed anomalies after pausing.
   > Improves dummy RAMDAC emulation.
 
+  Previous v1.7 (unreleased):
+  > Adds SoftFloat emulation for 68882 transcendental FPU instructions.
+  > Improves FRESTORE emulation to support resuming of instructions.
+  > Fixes bug that caused a crash when using write protected image files.
+
 
  7) Running Previous
  -------------------

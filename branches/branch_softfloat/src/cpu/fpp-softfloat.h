@@ -307,6 +307,7 @@ STATIC_INLINE void from_pack(fptype *fp, uae_u32 *wrd, uae_s32 kfactor)
         exponent = f.high & 0x3FFF;
         significand = f.low;
         
+        pack_int = 0;
         pack_frac = 0;
         len = kfactor; // SoftFloat saved len to kfactor variable
         while (len > 0) {

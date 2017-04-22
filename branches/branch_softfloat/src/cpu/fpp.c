@@ -635,31 +635,6 @@ bool fpu_get_constant(fptype *fp, int cr)
     return valid;
 }
 
-/*
- static void fpu_format_error (void)
- {
-	uaecptr newpc;
-	regs.t0 = regs.t1 = 0;
-	MakeSR ();
-	if (!regs.s) {
- regs.usp = m68k_areg (regs, 7);
- m68k_areg (regs, 7) = regs.isp;
-	}
-	regs.s = 1;
-	m68k_areg (regs, 7) -= 2;
-	x_put_long (m68k_areg (regs, 7), 0x0000 + 14 * 4);
-	m68k_areg (regs, 7) -= 4;
-	x_put_long (m68k_areg (regs, 7), m68k_getpc ());
-	m68k_areg (regs, 7) -= 2;
-	x_put_long (m68k_areg (regs, 7), regs.sr);
-	newpc = x_get_long (regs.vbr + 14 * 4);
-	m68k_setpc (newpc);
- #ifdef JIT
-	set_special (SPCFLAG_END_COMPILE);
- #endif
-	regs.fp_exception = true;
- }
- */
 
 static void fp_unimp_instruction(uae_u16 opcode, uae_u16 extra, uae_u32 ea, uaecptr oldpc, fptype *src, int reg, int size)
 {
