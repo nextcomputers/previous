@@ -201,6 +201,8 @@ input devices.
   Previous v1.7 (unreleased):
   > Adds SoftFloat emulation for 68882 transcendental FPU instructions.
   > Improves FRESTORE emulation to support resuming of instructions.
+  > Fixes bug that caused wrong bit pattern in NaN when copied to memory.
+  > Fixes bug in FMOVEM that modified wrong FPU registers.
   > Fixes bug that caused a crash when using write protected image files.
 
 

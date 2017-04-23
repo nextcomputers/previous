@@ -364,11 +364,7 @@ static commonNaNT floatx80ToCommonNaN( floatx80 a )
 static floatx80 commonNaNToFloatx80( commonNaNT a )
 {
     floatx80 z;
-#ifdef SOFTFLOAT_68K
-    z.low = LIT64( 0x4000000000000000 ) | ( a.high>>1 );
-#else
     z.low = LIT64( 0xC000000000000000 ) | ( a.high>>1 );
-#endif
     z.high = ( ( (bits16) a.sign )<<15 ) | 0x7FFF;
     return z;
 
