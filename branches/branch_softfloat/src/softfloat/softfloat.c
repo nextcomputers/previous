@@ -4079,7 +4079,7 @@ floatx80 floatx80_to_floatx80( floatx80 a )
     aSign = extractFloatx80Sign( a );
     
     if ( aExp == 0x7FFF && (bits64) ( aSig<<1 ) ) {
-        return commonNaNToFloatx80( floatx80ToCommonNaN( a ) );
+        return propagateFloatx80NaNOneArg( a );
     }
     if ( aExp == 0 && aSig != 0 ) {
         return normalizeRoundAndPackFloatx80( floatx80_rounding_precision, aSign, aExp, aSig, 0 );
