@@ -149,6 +149,7 @@ input devices.
   incomplete 68040 FRESTORE emulation.
 - Starting sound output or sound input may cause short lags in emulation. This 
   is most likely caused by SDL or host audio hardware and drivers.
+- Network connection sometimes gets lost for unknown reason.
 
 
 
