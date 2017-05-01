@@ -9,7 +9,6 @@
 #ifndef i860cfg_h
 #define i860cfg_h
 
-#include "configuration.h"
 
 /* Emulator configurations - keep in sync with i860_cpu_device::init() */
 
@@ -23,6 +22,8 @@
 #else
 #define CONF_I860 CONF_I860_SPEED
 #endif
+
+#define WITH_SOFTFLOAT_I860  1
 
 /* Emulator configurations */
 
