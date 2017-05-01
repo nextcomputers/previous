@@ -31,6 +31,8 @@ struct {
 void SCSI_Init(void);
 void SCSI_Uninit(void);
 void SCSI_Reset(void);
+void SCSI_Insert(Uint8 target);
+void SCSI_Eject(Uint8 target);
 
 Uint8 SCSIdisk_Send_Status(void);
 Uint8 SCSIdisk_Send_Message(void);

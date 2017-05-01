@@ -1170,10 +1170,32 @@ int Floppy_Insert(int drive) {
     
     if (ConfigureParams.Floppy.drive[drive].bWriteProtected) {
         flpdrv[drive].dsk = File_Open(ConfigureParams.Floppy.drive[drive].szImageName, "rb");
+        if (flpdrv[drive].dsk == NULL) {
+            Log_Printf(LOG_WARN, "Floppy Disk%i: Cannot open image file %s\n",
+                       drive, ConfigureParams.Floppy.drive[drive].szImageName);
+            flpdrv[drive].inserted=false;
+            flpdrv[drive].spinning=false;
+            Statusbar_AddMessage("Cannot insert floppy disk", 0);
+            return 1;
+        }
         flpdrv[drive].protected=true;
     } else {
         flpdrv[drive].dsk = File_Open(ConfigureParams.Floppy.drive[drive].szImageName, "rb+");
         flpdrv[drive].protected=false;
+        if (flpdrv[drive].dsk == NULL) {
+            flpdrv[drive].dsk = File_Open(ConfigureParams.Floppy.drive[drive].szImageName, "rb");
+            if (flpdrv[drive].dsk == NULL) {
+                Log_Printf(LOG_WARN, "Floppy Disk%i: Cannot open image file %s\n",
+                           drive, ConfigureParams.Floppy.drive[drive].szImageName);
+                flpdrv[drive].inserted=false;
+                flpdrv[drive].spinning=false;
+                Statusbar_AddMessage("Cannot insert floppy disk", 0);
+                return 1;
+            }
+            flpdrv[drive].protected=true;
+            Log_Printf(LOG_WARN, "Floppy Disk%i: Image file is not writable. Enabling write protection.\n",
+                       drive);
+        }
     }
     
     flpdrv[drive].inserted=true;

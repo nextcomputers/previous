@@ -2112,7 +2112,6 @@ floatx80 float32_to_floatx80_allowunnormal( float32 a )
     aExp = extractFloat32Exp( a );
     aSign = extractFloat32Sign( a );
     if ( aExp == 0xFF ) {
-        aSig |= 0x00800000;
         return packFloatx80( aSign, 0x7FFF, ( (bits64) aSig )<<40 );
     }
     if ( aExp == 0 ) {
@@ -3064,11 +3063,11 @@ floatx80 float64_to_floatx80_allowunnormal( float64 a )
     aExp = extractFloat64Exp( a );
     aSign = extractFloat64Sign( a );
     if ( aExp == 0x7FF ) {
-        return packFloatx80( aSign, 0x7FFF, ( aSig | LIT64( 0x0010000000000000 ) )<<11 );
+        return packFloatx80( aSign, 0x7FFF, aSig<<11 );
     }
     if ( aExp == 0 ) {
         if ( aSig == 0 ) return packFloatx80( aSign, 0, 0 );
-        return packFloatx80( aSign, 0x3C01, aSig<<11);
+        return packFloatx80( aSign, 0x3C01, aSig<<11 );
     }
     return
     packFloatx80(
@@ -4079,7 +4078,7 @@ floatx80 floatx80_to_floatx80( floatx80 a )
     aSign = extractFloatx80Sign( a );
     
     if ( aExp == 0x7FFF && (bits64) ( aSig<<1 ) ) {
-        return commonNaNToFloatx80( floatx80ToCommonNaN( a ) );
+        return propagateFloatx80NaNOneArg( a );
     }
     if ( aExp == 0 && aSig != 0 ) {
         return normalizeRoundAndPackFloatx80( floatx80_rounding_precision, aSign, aExp, aSig, 0 );
@@ -4238,6 +4237,30 @@ floatx80 floatx80_normalize( floatx80 a )
     aSig <<= shiftCount;
     
     return packFloatx80( aSign, aExp, aSig );
+    
+}
+        
+floatx80 floatx80_denormalize( floatx80 a, flag eSign)
+{
+    flag aSign;
+    int32 aExp;
+    bits64 aSig;
+    int32 shiftCount;
+
+    aSig = extractFloatx80Frac( a );
+    aExp = extractFloatx80Exp( a );
+    aSign = extractFloatx80Sign( a );
+    
+    if ( eSign ) {
+        shiftCount = 0x8000 - aExp;
+        aExp = 0;
+        if (shiftCount > 63) {
+            aSig = 0;
+        } else {
+            aSig >>= shiftCount;
+        }
+    }
+    return packFloatx80(aSign, aExp, aSig);
     
 }
 #endif // end of addition for Previous
