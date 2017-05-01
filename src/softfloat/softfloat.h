@@ -82,6 +82,9 @@ enum {
 | Software IEC/IEEE floating-point rounding mode.
 *----------------------------------------------------------------------------*/
 extern int8 float_rounding_mode;
+#ifdef SOFTFLOAT_I860
+extern int8 float_rounding_mode2;
+#endif
 enum {
 	float_round_nearest_even = 0,
 	float_round_to_zero      = 1,
@@ -93,6 +96,9 @@ enum {
 | Software IEC/IEEE floating-point exception flags.
 *----------------------------------------------------------------------------*/
 extern int8 float_exception_flags;
+#ifdef SOFTFLOAT_I860
+extern int8 float_exception_flags2;
+#endif
 enum {
 	float_flag_invalid = 0x01, float_flag_denormal = 0x02, float_flag_divbyzero = 0x04, float_flag_overflow = 0x08,
     float_flag_underflow = 0x10, float_flag_inexact = 0x20, float_flag_signaling = 0x40, float_flag_decimal = 0x80
@@ -126,6 +132,9 @@ bits64 getFloatInternalGRS( void );
 | exception flags.
 *----------------------------------------------------------------------------*/
 void float_raise( int8 );
+#ifdef SOFTFLOAT_I860
+void float_raise2( int8 );
+#endif
 
 /*----------------------------------------------------------------------------
  | The pattern for a default generated single-precision NaN.
@@ -210,6 +219,9 @@ float32 float32_sqrt( float32 );
 flag float32_eq( float32, float32 );
 flag float32_le( float32, float32 );
 flag float32_lt( float32, float32 );
+#ifdef SOFTFLOAT_I860
+flag float32_gt( float32, float32 );
+#endif
 flag float32_eq_signaling( float32, float32 );
 flag float32_le_quiet( float32, float32 );
 flag float32_lt_quiet( float32, float32 );
@@ -244,6 +256,9 @@ float64 float64_sqrt( float64 );
 flag float64_eq( float64, float64 );
 flag float64_le( float64, float64 );
 flag float64_lt( float64, float64 );
+#ifdef SOFTFLOAT_I860
+flag float64_gt( float64, float64 );
+#endif
 flag float64_eq_signaling( float64, float64 );
 flag float64_le_quiet( float64, float64 );
 flag float64_lt_quiet( float64, float64 );
