@@ -20,7 +20,6 @@
 static i860_cpu_device nd_i860;
 
 extern "C" {
-#include "configuration.h"
     
     static void i860_run_nop(int nHostCycles) {}
     

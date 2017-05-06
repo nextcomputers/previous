@@ -9,6 +9,7 @@
 #ifndef i860cfg_h
 #define i860cfg_h
 
+#include "configuration.h"
 
 /* Emulator configurations - keep in sync with i860_cpu_device::init() */
 
