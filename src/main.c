@@ -99,7 +99,6 @@ const char* Main_SpeedMsg() {
 
 #if ENABLE_TESTING
 static const report_t reports[] = {
-    {"Speed", Main_Speed},
     {"ND",    nd_reports},
     {"Host",  host_report},
 };
@@ -430,10 +429,15 @@ static void Main_Init(void) {
 	Keymap_Init();
 
     /* call menu at startup */
-    if (!File_Exists(sConfigFileName) || ConfigureParams.ConfigDialog.bShowConfigDialogAtStartup)
+    if (!File_Exists(sConfigFileName) || ConfigureParams.ConfigDialog.bShowConfigDialogAtStartup) {
         Dialog_DoProperty();
-    else
-        Dialog_CheckFiles();
+        if (bQuitProgram) {
+            SDL_Quit();
+            exit(-2);
+        }
+    }
+
+    Dialog_CheckFiles();
     
     if (bQuitProgram) {
         SDL_Quit();

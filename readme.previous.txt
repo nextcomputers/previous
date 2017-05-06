@@ -145,7 +145,7 @@ input devices.
 - CPU timings are not correct. You may experience performance differences 
   compared to real hardware.
 - 68882 transcendental FPU instructions produce results identical to 68040 FPSP.
-  The results are slightly different real 68882 results.
+  The results are slightly different from real 68882 results.
 - Starting sound output or sound input may cause short lags in emulation. This 
   is most likely caused by SDL or host audio hardware and drivers.
 - Network connection sometimes gets lost for unknown reason.
