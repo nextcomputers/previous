@@ -1380,7 +1380,9 @@ insretry:
 		TRY (prb2) {
 			Exception (prb);
 		} CATCH (prb2) {
-			cpu_halt (1);
+            write_log("[FATAL] double fault\n");
+            m68k_reset (1); // auto-reset CPU
+			//cpu_halt (1);
 			return;
 		} ENDTRY
 	} ENDTRY
@@ -1462,8 +1464,10 @@ static void m68k_run_mmu040 (void)
 		TRY (prb2) {
 			Exception (prb);
 		} CATCH (prb2) {
-            Log_Printf(LOG_WARN, "[FATAL] double fault");
-            DebugUI();
+            write_log("[FATAL] double fault\n");
+            m68k_reset (1); // auto-reset CPU
+            //cpu_halt (1);
+            return;
 		} ENDTRY
 
 	} ENDTRY
