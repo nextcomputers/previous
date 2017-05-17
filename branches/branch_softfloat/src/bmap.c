@@ -19,106 +19,77 @@ void bmap_put(uae_u32 addr, uae_u32 val);
 #define BMAP_TP         0x90000000
 
 uae_u32 bmap_lget(uaecptr addr) {
-    if (addr%4) {
+    uae_u32 l;
+    
+    if (addr&3) {
         Log_Printf(LOG_WARN, "[BMAP] Unaligned access.");
-        abort();
+        return 0;
     }
+    
+    l = bmap_get(addr>>2);
 
-    return bmap_get(addr/4);
+    return l;
 }
 
 uae_u32 bmap_wget(uaecptr addr) {
-    uae_u32 w = 0;
-    uae_u32 val = bmap_get(addr/4);
+    uae_u32 w;
     
-    switch (addr%4) {
-        case 0:
-            w = val>>16;
-            break;
-        case 2:
-            w = val;
-            break;
-        default:
-            Log_Printf(LOG_WARN, "[BMAP] Unaligned access.");
-            abort();
-            break;
+    if (addr&1) {
+        Log_Printf(LOG_WARN, "[BMAP] Unaligned access.");
+        return 0;
     }
+
+    w = bmap_get(addr>>2);
+    w >>= (2 - (addr&2)) * 8;
+    w &= 0xFFFF;
     
     return w;
 }
 
 uae_u32 bmap_bget(uaecptr addr) {
-    uae_u32 b = 0;
-    uae_u32 val = bmap_get(addr/4);
+    uae_u32 b;
     
-    switch (addr%4) {
-        case 0:
-            b = val>>24;
-            break;
-        case 1:
-            b = val>>16;
-            break;
-        case 2:
-            b = val>>8;
-            break;
-        case 3:
-            b = val;
-            break;
-        default:
-            break;
-    }
+    b = bmap_get(addr>>2);
+    b >>= (3 - (addr&3)) * 8;
+    b &= 0xFF;
     
     return b;
 }
 
 void bmap_lput(uaecptr addr, uae_u32 l) {
-    if (addr%4) {
+    if (addr&3) {
         Log_Printf(LOG_WARN, "[BMAP] Unaligned access.");
-        abort();
+        return;
     }
-        bmap_put(addr/4, l);
+    
+    bmap_put(addr>>2, l);
 }
 
 void bmap_wput(uaecptr addr, uae_u32 w) {
     uae_u32 val;
     
-    switch (addr%4) {
-        case 0:
-            val = w<<16;
-            break;
-        case 2:
-            val = w;
-            break;
-        default:
-            Log_Printf(LOG_WARN, "[BMAP] Unaligned access.");
-            abort();
-            break;
+    if (addr&1) {
+        Log_Printf(LOG_WARN, "[BMAP] Unaligned access.");
+        return;
     }
+
+    val = NEXTbmap[addr>>2];
     
-    bmap_put(addr/4, val);
+    val &= ~(0xFFFF << ((2 - (addr&2)) * 8));
+    val |= w << ((2 - (addr&2)) * 8);
+    
+    bmap_put(addr>>2, val);
 }
 
 void bmap_bput(uaecptr addr, uae_u32 b) {
-    uae_u32 val = 0;
+    uae_u32 val;
     
-    switch (addr%4) {
-        case 0:
-            val = b<<24;
-            break;
-        case 1:
-            val = b<<16;
-            break;
-        case 2:
-            val = b<<8;
-            break;
-        case 3:
-            val = b;
-            break;
-        default:
-            break;
-    }
+    val = NEXTbmap[addr>>2];
+
+    val &= ~(0xFF << ((3 - (addr&3)) * 8));
+    val |= b << ((3 - (addr&3)) * 8);
     
-    bmap_put(addr/4, val);
+    bmap_put(addr>>2, val);
 }
 
 
