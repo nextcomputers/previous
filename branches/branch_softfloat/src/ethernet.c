@@ -13,6 +13,7 @@
 #include "configuration.h"
 #include "sysReg.h"
 #include "dma.h"
+#include "bmap.h"
 #include "ethernet.h"
 #include "enet_slirp.h"
 #include "cycInt.h"
@@ -412,7 +413,7 @@ static void print_buf(Uint8 *buf, Uint32 size) {
 #define ENET_FRAMESIZE_MAX  1518    /* 1500 byte data and 14 byte header, 4 byte CRC */
 
 /* Ethernet periodic check */
-#define ENET_IO_DELAY   20000   /* use 20000 for NeXT hardware test, 500 for status test */
+#define ENET_IO_DELAY   5000    /* use 20000 for NeXT hardware test, 500 for status test */
 #define ENET_IO_SHORT   500     /* use 400 for 68030 hardware test */
 
 enum {
@@ -429,12 +430,12 @@ static bool enet_is_connected(void) {
     if (ConfigureParams.Ethernet.bEthernetConnected) {
         if (enet.tx_mode&TXMODE_DIS_LOOP) {
             if ((ConfigureParams.System.nMachineType == NEXT_CUBE030) ||
-                (ConfigureParams.Ethernet.bTwistedPair && enet_tp_select) ||
-                (!ConfigureParams.Ethernet.bTwistedPair && !enet_tp_select)) {
+                (ConfigureParams.Ethernet.bTwistedPair && bmap_tpe_select) ||
+                (!ConfigureParams.Ethernet.bTwistedPair && !bmap_tpe_select)) {
                 return true;
             }
         } else {
-            if (ConfigureParams.Ethernet.bTwistedPair && enet_tp_select) {
+            if (ConfigureParams.Ethernet.bTwistedPair && bmap_tpe_select) {
                 return true;
             }
         }
@@ -552,12 +553,12 @@ void EN_Control_Write(void) {
 static bool new_enet_is_connected(void) {
     if (ConfigureParams.Ethernet.bEthernetConnected) {
         if (enet.tx_mode&TXMODE_LOOP) {
-            if (ConfigureParams.Ethernet.bTwistedPair && enet_tp_select) {
+            if (ConfigureParams.Ethernet.bTwistedPair && bmap_tpe_select) {
                 return true;
             }
         } else {
-            if ((ConfigureParams.Ethernet.bTwistedPair && enet_tp_select) ||
-                (!ConfigureParams.Ethernet.bTwistedPair && !enet_tp_select)) {
+            if ((ConfigureParams.Ethernet.bTwistedPair && bmap_tpe_select) ||
+                (!ConfigureParams.Ethernet.bTwistedPair && !bmap_tpe_select)) {
                 return true;
             }
         }
