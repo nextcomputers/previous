@@ -73,7 +73,9 @@ static void slirp_tick(void)
         FD_ZERO(&rfds);
         FD_ZERO(&wfds);
         FD_ZERO(&xfds);
+        SDL_LockMutex(slirp_mutex);
         timeout=slirp_select_fill(&nfds,&rfds,&wfds,&xfds); //this can crash
+        SDL_UnlockMutex(slirp_mutex);
         
         if(timeout<0)
             timeout=500;
