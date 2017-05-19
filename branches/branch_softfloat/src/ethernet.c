@@ -538,9 +538,17 @@ static void enet_io(void) {
 #define TXMODE_ENABLE	0x80
 #define RXMODE_ENABLE	0x80
 #define TXMODE_LOOP     0x02
+#define TXMODE_TPE      0x04
+#define ENCTRL_TPE      0x40
 
 void EN_Control_Read(void) { // 0x02006006
-	IoMem[IoAccessCurrentAddress & IO_SEG_MASK] = enet.reset;
+    Uint8 val = enet.reset;
+    if (ConfigureParams.Ethernet.bEthernetConnected && ConfigureParams.Ethernet.bTwistedPair) {
+        val &= ~ENCTRL_TPE;
+    } else {
+        val |= ENCTRL_TPE;
+    }
+    IoMem[IoAccessCurrentAddress & IO_SEG_MASK] = val;
 	Log_Printf(LOG_EN_REG_LEVEL,"[newEN] Control read at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
 }
 
@@ -552,13 +560,9 @@ void EN_Control_Write(void) {
 
 static bool new_enet_is_connected(void) {
     if (ConfigureParams.Ethernet.bEthernetConnected) {
-        if (enet.tx_mode&TXMODE_LOOP) {
-            if (ConfigureParams.Ethernet.bTwistedPair && bmap_tpe_select) {
-                return true;
-            }
-        } else {
-            if ((ConfigureParams.Ethernet.bTwistedPair && bmap_tpe_select) ||
-                (!ConfigureParams.Ethernet.bTwistedPair && !bmap_tpe_select)) {
+        if (!(enet.tx_mode&TXMODE_LOOP)) {
+            if ((ConfigureParams.Ethernet.bTwistedPair && (enet.tx_mode&TXMODE_TPE)) ||
+                (!ConfigureParams.Ethernet.bTwistedPair && !(enet.tx_mode&TXMODE_TPE))) {
                 return true;
             }
         }
@@ -638,13 +642,12 @@ static void new_enet_io(void) {
 			if (new_enet_is_connected()) {
 				/* Send to real world network */
 				enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
-				enet_tx_interrupt(TXSTAT_READY);
 			} else if (enet.tx_mode&TXMODE_LOOP) {
 				/* Loop back */
 				Log_Printf(LOG_WARN, "[newEN] Loopback packet.");
 				enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
-				enet_tx_interrupt(TXSTAT_READY);
 			}
+			enet_tx_interrupt(TXSTAT_READY);
 			enet_tx_buffer.size=0;
 		}
 	}
