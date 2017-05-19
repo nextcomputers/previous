@@ -234,7 +234,8 @@ static const struct Config_Tag configs_Floppy[] =
 static const struct Config_Tag configs_Ethernet[] =
 {
     { "bEthernetConnected", Bool_Tag, &ConfigureParams.Ethernet.bEthernetConnected },
-    
+    { "bTwistedPair", Bool_Tag, &ConfigureParams.Ethernet.bTwistedPair },
+
     { NULL , Error_Tag, NULL }
 };
 
@@ -362,6 +363,7 @@ void Configuration_SetDefault(void)
     
     /* Set defaults for Ethernet */
     ConfigureParams.Ethernet.bEthernetConnected = false;
+    ConfigureParams.Ethernet.bTwistedPair = false;
     
 	/* Set defaults for Keyboard */
 	ConfigureParams.Keyboard.bDisableKeyRepeat = false;
@@ -508,6 +510,9 @@ void Configuration_Apply(bool bReset) {
     
     /* Make sure real time mode is disabled if magneto optical drive is connected */
     Configuration_CheckOpticalSettings();
+    
+    /* Make sure twisted pair ethernet is disabled on 68030 Cube */
+    Configuration_CheckEthernetSettings();
 	
 	/* Clean file and directory names */    
     File_MakeAbsoluteName(ConfigureParams.Rom.szRom030FileName);
@@ -715,6 +720,12 @@ void Configuration_CheckOpticalSettings(void) {
         if (ConfigureParams.MO.drive[i].bDriveConnected) {
             ConfigureParams.System.bRealtime = false;
         }
+    }
+}
+
+void Configuration_CheckEthernetSettings(void) {
+    if (ConfigureParams.System.nMachineType == NEXT_CUBE030) {
+        ConfigureParams.Ethernet.bTwistedPair = false;
     }
 }
 
