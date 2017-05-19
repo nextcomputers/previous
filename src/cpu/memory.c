@@ -1168,6 +1168,7 @@ const char* memory_init(int *nNewNEXTMemSize)
 			map_banks(&dummy_bank, NEXT_CACHE_TAG_START>>16, NEXT_CACHE_TAG_SIZE>>16);
 			write_log("Mapping cache tag memory at $%08x: %ikB\n", NEXT_CACHE_TAG_START, NEXT_CACHE_TAG_SIZE/1024);
 		}
+		bmap_init();
 	}
 
     /* Map NBIC and board spaces via NextBus */

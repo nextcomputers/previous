@@ -26,6 +26,7 @@ void EN_NodeID5_Write(void);
 void EN_CounterLo_Read(void);
 void EN_CounterHi_Read(void);
 
+int enet_tp_select;
 
 struct {
     Uint8 data[64*1024];
