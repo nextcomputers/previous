@@ -425,6 +425,23 @@ bool rx_chain;
 int old_size;
 
 /* Fujitsu ethernet controller */
+static bool enet_is_connected(void) {
+    if (ConfigureParams.Ethernet.bEthernetConnected) {
+        if (enet.tx_mode&TXMODE_DIS_LOOP) {
+            if ((ConfigureParams.System.nMachineType == NEXT_CUBE030) ||
+                (ConfigureParams.Ethernet.bTwistedPair && enet_tp_select) ||
+                (!ConfigureParams.Ethernet.bTwistedPair && !enet_tp_select)) {
+                return true;
+            }
+        } else {
+            if (ConfigureParams.Ethernet.bTwistedPair && enet_tp_select) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 static void enet_io(void) {
 	/* Receive packet */
 	switch (receiver_state) {
@@ -437,6 +454,7 @@ static void enet_io(void) {
 				print_buf(enet_rx_buffer.data, enet_rx_buffer.size);
 				enet_rx_buffer.size+=4;
 				enet_rx_buffer.limit+=4;
+				rx_chain = false;
 				enet.rx_status&=~RXSTAT_PKT_OK;
 				if (enet_rx_buffer.size<ENET_FRAMESIZE_MIN && !(enet.rx_mode&RXMODE_ENA_SHORT)) {
 					Log_Printf(LOG_WARN, "[EN] Received packet is short (%i byte)",enet_rx_buffer.size);
@@ -445,11 +463,9 @@ static void enet_io(void) {
 					break; /* Keep on waiting for a good packet */
 				} else /* Fall through to receiving state */
 					receiver_state = RECV_STATE_RECEIVING;
-			} else if (enet.tx_mode&TXMODE_DIS_LOOP) {
+			} else if (enet_is_connected()) {
 				/* Receive from real world network */
-				if (ConfigureParams.Ethernet.bEthernetConnected) {
-					enet_slirp_queue_poll();
-				}
+				enet_slirp_queue_poll();
 				break;
 			} else
 				break;
@@ -504,18 +520,15 @@ static void enet_io(void) {
 					   enet_tx_buffer.data[0], enet_tx_buffer.data[1], enet_tx_buffer.data[2],
 					   enet_tx_buffer.data[3], enet_tx_buffer.data[4], enet_tx_buffer.data[5]);
 			print_buf(enet_tx_buffer.data, enet_tx_buffer.size);
-			if (enet.tx_mode&TXMODE_DIS_LOOP) {
+			if (enet_is_connected()) {
 				/* Send to real world network */
-				if (ConfigureParams.Ethernet.bEthernetConnected) {
-					enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
-				}
-				enet_tx_buffer.size=0;
-			} else {
+				enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
+			} else if (!(enet.tx_mode&TXMODE_DIS_LOOP)) {
 				/* Loop back */
 				Log_Printf(LOG_WARN, "[EN] Loopback packet.");
 				enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
-				enet_tx_buffer.size=0;
 			}
+			enet_tx_buffer.size=0;
 		}
 	}
 }
@@ -523,6 +536,7 @@ static void enet_io(void) {
 /* AT&T ethernet controller for turbo systems */
 #define TXMODE_ENABLE	0x80
 #define RXMODE_ENABLE	0x80
+#define TXMODE_LOOP     0x02
 
 void EN_Control_Read(void) { // 0x02006006
 	IoMem[IoAccessCurrentAddress & IO_SEG_MASK] = enet.reset;
@@ -533,6 +547,22 @@ void EN_Control_Write(void) {
 	enet.reset=(IoMem[IoAccessCurrentAddress & IO_SEG_MASK])&EN_RESET;
 	Log_Printf(LOG_EN_REG_LEVEL,"[newEN] Control write at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
 	enet_reset();
+}
+
+static bool new_enet_is_connected(void) {
+    if (ConfigureParams.Ethernet.bEthernetConnected) {
+        if (enet.tx_mode&TXMODE_LOOP) {
+            if (ConfigureParams.Ethernet.bTwistedPair && enet_tp_select) {
+                return true;
+            }
+        } else {
+            if ((ConfigureParams.Ethernet.bTwistedPair && enet_tp_select) ||
+                (!ConfigureParams.Ethernet.bTwistedPair && !enet_tp_select)) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 static void new_enet_io(void) {
@@ -547,6 +577,7 @@ static void new_enet_io(void) {
 				print_buf(enet_rx_buffer.data, enet_rx_buffer.size);
 				enet_rx_buffer.size+=4;
 				enet_rx_buffer.limit+=4;
+				rx_chain = false;
 				enet.rx_status&=~RXSTAT_PKT_OK;
 				if (enet_rx_buffer.size<ENET_FRAMESIZE_MIN && !(enet.rx_mode&RXMODE_ENA_SHORT)) {
 					Log_Printf(LOG_WARN, "[newEN] Received packet is short (%i byte)",enet_rx_buffer.size);
@@ -555,11 +586,9 @@ static void new_enet_io(void) {
 					break; /* Keep on waiting for a good packet */
 				} else /* Fall through to receiving state */
 					receiver_state = RECV_STATE_RECEIVING;
-			} else if (!(enet.tx_mode&TXMODE_DIS_LOOP)) {
+			} else if (new_enet_is_connected()) {
 				/* Receive from real world network */
-				if (ConfigureParams.Ethernet.bEthernetConnected) {
-					enet_slirp_queue_poll();
-				}
+				enet_slirp_queue_poll();
 				break;
 			} else
 				break;
@@ -605,20 +634,17 @@ static void new_enet_io(void) {
 					   enet_tx_buffer.data[0], enet_tx_buffer.data[1], enet_tx_buffer.data[2],
 					   enet_tx_buffer.data[3], enet_tx_buffer.data[4], enet_tx_buffer.data[5]);
 			print_buf(enet_tx_buffer.data, enet_tx_buffer.size);
-			if (enet.tx_mode&TXMODE_DIS_LOOP) {
+			if (new_enet_is_connected()) {
+				/* Send to real world network */
+				enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
+				enet_tx_interrupt(TXSTAT_READY);
+			} else if (enet.tx_mode&TXMODE_LOOP) {
 				/* Loop back */
 				Log_Printf(LOG_WARN, "[newEN] Loopback packet.");
 				enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
-				enet_tx_buffer.size=0;
-				enet_tx_interrupt(TXSTAT_READY);
-			} else {
-				/* Send to real world network */
-				if (ConfigureParams.Ethernet.bEthernetConnected) {
-					enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
-				}
-				enet_tx_buffer.size=0;
 				enet_tx_interrupt(TXSTAT_READY);
 			}
+			enet_tx_buffer.size=0;
 		}
 	}
 }
