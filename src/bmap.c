@@ -2,7 +2,6 @@
 #include "configuration.h"
 #include "m68000.h"
 #include "sysdeps.h"
-#include "ethernet.h"
 #include "bmap.h"
 
 
@@ -10,6 +9,8 @@
 
 
 uae_u32  NEXTbmap[16];
+
+int bmap_tpe_select = 0;
 
 uae_u32 bmap_get(uae_u32 addr);
 void bmap_put(uae_u32 addr, uae_u32 val);
@@ -118,7 +119,7 @@ uae_u32 bmap_get(uae_u32 bmap_reg) {
              */
             val = NEXTbmap[BMAP_DATA_RW];
             
-            if (ConfigureParams.Ethernet.bTwistedPair) {
+            if (ConfigureParams.Ethernet.bEthernetConnected && ConfigureParams.Ethernet.bTwistedPair) {
                 val &= ~BMAP_HEARTBEAT;
             } else {
                 val |= BMAP_HEARTBEAT;
@@ -139,10 +140,10 @@ void bmap_put(uae_u32 bmap_reg, uae_u32 val) {
             if ((val&BMAP_TPE) != (NEXTbmap[bmap_reg]&BMAP_TPE)) {
                 if ((val&BMAP_TPE)==BMAP_TPE) {
                     Log_Printf(LOG_WARN, "[BMAP] Switching to twisted pair ethernet.");
-                    enet_tp_select = 1;
+                    bmap_tpe_select = 1;
                 } else if ((val&BMAP_TPE)==0) {
                     Log_Printf(LOG_WARN, "[BMAP] Switching to thin ethernet.");
-                    enet_tp_select = 0;
+                    bmap_tpe_select = 0;
                 }
             }
             break;
@@ -160,5 +161,5 @@ void bmap_init(void) {
     for (i = 0; i < 16; i++) {
         NEXTbmap[i] = 0;
     }
-    enet_tp_select = 0;
+    bmap_tpe_select = 0;
 }

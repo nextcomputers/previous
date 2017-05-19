@@ -7,3 +7,5 @@ void bmap_wput(uaecptr addr, uae_u32 w);
 void bmap_bput(uaecptr addr, uae_u32 b);
 
 void bmap_init(void);
+
+extern int bmap_tpe_select;
