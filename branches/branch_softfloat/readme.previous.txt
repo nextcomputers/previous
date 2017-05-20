@@ -148,7 +148,8 @@ input devices.
   The results are slightly different from real 68882 results.
 - Starting sound output or sound input may cause short lags in emulation. This 
   is most likely caused by SDL or host audio hardware and drivers.
-- Network connection sometimes gets lost for unknown reason.
+- Network connection sometimes gets lost for unknown reason. The message "The 
+  network is disabled or your computer isn't connected to it." shows up.
 
 
 
@@ -199,12 +200,14 @@ input devices.
   > Improves dummy RAMDAC emulation.
 
   Previous v1.7 (unreleased):
+  > Adds support for twisted-pair Ethernet.
   > Adds SoftFloat emulation for 68882 transcendental FPU instructions.
   > Adds SoftFloat emulation for i860 floating point instructions.
   > Improves 68040 FPU emulation to support resuming of instructions.
   > Fixes bug that caused wrong bit pattern in NaN when copied to memory.
   > Fixes bug in FMOVEM that modified wrong FPU registers.
   > Fixes bug that caused a crash when using write protected image files.
+  > Fixes bug that caused Ethernet to permanently stop after DMA timeout.
 
 
  7) Running Previous
