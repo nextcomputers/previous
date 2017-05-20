@@ -525,7 +525,7 @@ static void enet_io(void) {
 				if (enet_is_connected()) {
 					/* Send to real world network */
 					enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
-				} else if (!(enet.tx_mode&TXMODE_DIS_LOOP)) {
+				} else {
 					/* Loop back */
 					Log_Printf(LOG_WARN, "[EN] Loopback packet.");
 					enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
