@@ -504,32 +504,34 @@ static void enet_io(void) {
 	
 	/* Send packet */
 	if (enet.tx_status&TXSTAT_READY) {
-		old_size = enet_tx_buffer.size;
-		tx_done=dma_enet_read_memory();
-		if (enet_tx_buffer.size>15) {
-			if (enet_tx_buffer.size==old_size && !tx_done) {
-				Log_Printf(LOG_WARN, "[EN] Sending packet: Error! Transmitter underflow (no EOP)!");
-				enet_tx_interrupt(TXSTAT_UNDERFLOW);
+		if (enet_is_connected() || !(enet.tx_mode&TXMODE_DIS_LOOP)) {
+			old_size = enet_tx_buffer.size;
+			tx_done=dma_enet_read_memory();
+			if (enet_tx_buffer.size>15) {
+				if (enet_tx_buffer.size==old_size && !tx_done) {
+					Log_Printf(LOG_WARN, "[EN] Sending packet: Error! Transmitter underflow (no EOP)!");
+					enet_tx_interrupt(TXSTAT_UNDERFLOW);
+					enet_tx_buffer.size=0;
+				} else {
+					enet_tx_buffer.size-=15;
+				}
+			}
+			if (tx_done) {
+				Statusbar_BlinkLed(DEVICE_LED_ENET);
+				Log_Printf(LOG_EN_LEVEL, "[EN] Sending packet to %02X:%02X:%02X:%02X:%02X:%02X",
+						   enet_tx_buffer.data[0], enet_tx_buffer.data[1], enet_tx_buffer.data[2],
+						   enet_tx_buffer.data[3], enet_tx_buffer.data[4], enet_tx_buffer.data[5]);
+				print_buf(enet_tx_buffer.data, enet_tx_buffer.size);
+				if (enet.tx_mode&TXMODE_DIS_LOOP) {
+					/* Send to real world network */
+					enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
+				} else {
+					/* Loop back */
+					Log_Printf(LOG_WARN, "[EN] Loopback packet.");
+					enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
+				}
 				enet_tx_buffer.size=0;
-			} else {
-				enet_tx_buffer.size-=15;
 			}
-		}
-		if (tx_done) {
-			Statusbar_BlinkLed(DEVICE_LED_ENET);
-			Log_Printf(LOG_EN_LEVEL, "[EN] Sending packet to %02X:%02X:%02X:%02X:%02X:%02X",
-					   enet_tx_buffer.data[0], enet_tx_buffer.data[1], enet_tx_buffer.data[2],
-					   enet_tx_buffer.data[3], enet_tx_buffer.data[4], enet_tx_buffer.data[5]);
-			print_buf(enet_tx_buffer.data, enet_tx_buffer.size);
-			if (enet_is_connected()) {
-				/* Send to real world network */
-				enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
-			} else if (!(enet.tx_mode&TXMODE_DIS_LOOP)) {
-				/* Loop back */
-				Log_Printf(LOG_WARN, "[EN] Loopback packet.");
-				enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
-			}
-			enet_tx_buffer.size=0;
 		}
 	}
 }
@@ -631,25 +633,27 @@ static void new_enet_io(void) {
 	
 	/* Send packet */
 	if (enet.tx_mode&TXMODE_ENABLE) {
-		old_size = enet_tx_buffer.size;
-		dma_enet_read_memory();
-		if (enet_tx_buffer.size!=old_size) {
-			Statusbar_BlinkLed(DEVICE_LED_ENET);
-			Log_Printf(LOG_EN_LEVEL, "[newEN] Sending packet to %02X:%02X:%02X:%02X:%02X:%02X",
-					   enet_tx_buffer.data[0], enet_tx_buffer.data[1], enet_tx_buffer.data[2],
-					   enet_tx_buffer.data[3], enet_tx_buffer.data[4], enet_tx_buffer.data[5]);
-			print_buf(enet_tx_buffer.data, enet_tx_buffer.size);
-			if (new_enet_is_connected()) {
-				/* Send to real world network */
-				enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
-			} else if (enet.tx_mode&TXMODE_LOOP) {
-				/* Loop back */
-				Log_Printf(LOG_WARN, "[newEN] Loopback packet.");
-				enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
+		if (new_enet_is_connected() || (enet.tx_mode&TXMODE_LOOP)) {
+			old_size = enet_tx_buffer.size;
+			dma_enet_read_memory();
+			if (enet_tx_buffer.size!=old_size) {
+				Statusbar_BlinkLed(DEVICE_LED_ENET);
+				Log_Printf(LOG_EN_LEVEL, "[newEN] Sending packet to %02X:%02X:%02X:%02X:%02X:%02X",
+						   enet_tx_buffer.data[0], enet_tx_buffer.data[1], enet_tx_buffer.data[2],
+						   enet_tx_buffer.data[3], enet_tx_buffer.data[4], enet_tx_buffer.data[5]);
+				print_buf(enet_tx_buffer.data, enet_tx_buffer.size);
+				if (enet.tx_mode&TXMODE_LOOP) {
+					/* Loop back */
+					Log_Printf(LOG_WARN, "[newEN] Loopback packet.");
+					enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
+				} else {
+					/* Send to real world network */
+					enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
+				}
+				enet_tx_buffer.size=0;
 			}
-			enet_tx_interrupt(TXSTAT_READY);
-			enet_tx_buffer.size=0;
 		}
+		enet_tx_interrupt(TXSTAT_READY);
 	}
 }
 
