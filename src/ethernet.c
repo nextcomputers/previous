@@ -522,7 +522,7 @@ static void enet_io(void) {
 						   enet_tx_buffer.data[0], enet_tx_buffer.data[1], enet_tx_buffer.data[2],
 						   enet_tx_buffer.data[3], enet_tx_buffer.data[4], enet_tx_buffer.data[5]);
 				print_buf(enet_tx_buffer.data, enet_tx_buffer.size);
-				if (enet.tx_mode&TXMODE_DIS_LOOP) {
+				if ((enet.tx_mode&TXMODE_DIS_LOOP) || bmap_tpe_select) {
 					/* Send to real world network */
 					enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
 				} else {
