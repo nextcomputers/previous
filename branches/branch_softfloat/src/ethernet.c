@@ -3,7 +3,7 @@
   This file is distributed under the GNU Public License, version 2 or at
   your option any later version. Read the file gpl.txt for details.
 
-   Network adapter for non-turbo NeXT machines.
+   Network adapter for non-turbo and turbo NeXT machines.
 
 */
 
@@ -102,7 +102,7 @@ void EN_TX_Status_Write(void) {
 		enet.tx_status&=~(val&0x0F);
 	}
 	
-    if ((enet.tx_status&enet.tx_mask&0x0F)==0 || (enet.tx_status&enet.tx_mask&0x0F)==TXSTAT_READY) {
+    if ((enet.tx_status&enet.tx_mask&0x0F)==0) {
         set_interrupt(INT_EN_TX, RELEASE_INT);
     }
 }
@@ -116,7 +116,7 @@ void EN_TX_Mask_Write(void) {
     enet.tx_mask=IoMem[IoAccessCurrentAddress & IO_SEG_MASK];
  	Log_Printf(LOG_EN_REG_LEVEL,"[EN] Transmitter masks write at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, IoMem[IoAccessCurrentAddress & IO_SEG_MASK], m68k_getpc());
     
-    if ((enet.tx_status&enet.tx_mask&0x0F)==0 || (enet.tx_status&enet.tx_mask&0x0F)==TXSTAT_READY) {
+    if ((enet.tx_status&enet.tx_mask&0x0F)==0) {
         set_interrupt(INT_EN_TX, RELEASE_INT);
     }
 }
@@ -443,6 +443,19 @@ static bool enet_is_connected(void) {
     return false;
 }
 
+static bool enet_loopback_enabled(void) {
+    if (ConfigureParams.System.nMachineType == NEXT_CUBE030) {
+        if (!(enet.tx_mode&TXMODE_DIS_LOOP)) {
+            return true;
+        }
+    } else {
+        if (!(enet.tx_mode&TXMODE_DIS_LOOP) && !bmap_tpe_select) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static void enet_io(void) {
 	/* Receive packet */
 	switch (receiver_state) {
@@ -504,7 +517,7 @@ static void enet_io(void) {
 	
 	/* Send packet */
 	if (enet.tx_status&TXSTAT_READY) {
-		if (enet_is_connected() || !(enet.tx_mode&TXMODE_DIS_LOOP)) {
+		if (enet_is_connected() || enet_loopback_enabled()) {
 			old_size = enet_tx_buffer.size;
 			tx_done=dma_enet_read_memory();
 			if (enet_tx_buffer.size>15) {
