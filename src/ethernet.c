@@ -413,8 +413,8 @@ static void print_buf(Uint8 *buf, Uint32 size) {
 #define ENET_FRAMESIZE_MAX  1518    /* 1500 byte data and 14 byte header, 4 byte CRC */
 
 /* Ethernet periodic check */
-#define ENET_IO_DELAY   5000    /* use 20000 for NeXT hardware test, 500 for status test */
-#define ENET_IO_SHORT   500     /* use 400 for 68030 hardware test */
+#define ENET_IO_DELAY   500     /* use 2500 for NeXT hardware test, 67 for status test */
+#define ENET_IO_SHORT   67      /* use 50 for 68030 hardware test */
 
 enum {
     RECV_STATE_WAITING,
@@ -689,7 +689,7 @@ void ENET_IO_Handler(void) {
 		enet_io();
 	}
 	
-	CycInt_AddRelativeInterruptTicks(receiver_state==RECV_STATE_WAITING?ENET_IO_DELAY:ENET_IO_SHORT, INTERRUPT_ENET_IO);
+	CycInt_AddRelativeInterruptUs(receiver_state==RECV_STATE_WAITING?ENET_IO_DELAY:ENET_IO_SHORT, INTERRUPT_ENET_IO);
 }
 
 void enet_reset(void) {
