@@ -1105,6 +1105,8 @@ void TDMA_CSR_Write(void) {
 	switch (writecsr&TDMA_CMD_MASK) {
 		case TDMA_RESET:
 			Log_Printf(LOG_DMA_LEVEL,"DMA reset"); break;
+		case TDMA_BUFRESET:
+			Log_Printf(LOG_DMA_LEVEL,"DMA initialize buffers"); break;
 		case (TDMA_RESET | TDMA_BUFRESET):
 		case (TDMA_RESET | TDMA_BUFRESET | TDMA_CLRCOMPLETE):
 			Log_Printf(LOG_DMA_LEVEL,"DMA reset and initialize buffers"); break;
