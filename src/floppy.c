@@ -509,7 +509,7 @@ static void floppy_read(void) {
         flp_io_drv = drive;
         flp_io_state = FLP_STATE_READ;
     }
-    CycInt_AddRelativeInterruptTicks(1000, INTERRUPT_FLP_IO);
+    CycInt_AddRelativeInterruptUs(100, INTERRUPT_FLP_IO);
 }
 
 static void floppy_write(void) {
@@ -566,7 +566,7 @@ static void floppy_write(void) {
         flp_io_drv = drive;
         flp_io_state = FLP_STATE_WRITE;
     }
-    CycInt_AddRelativeInterruptTicks(1000, INTERRUPT_FLP_IO);
+    CycInt_AddRelativeInterruptUs(100, INTERRUPT_FLP_IO);
 }
 
 static void floppy_format(void) {
@@ -591,7 +591,7 @@ static void floppy_format(void) {
         flp_buffer.limit = 4;
         flp_io_drv = drive;
         flp_io_state = FLP_STATE_FORMAT;
-        CycInt_AddRelativeInterruptTicks(100000, INTERRUPT_FLP_IO);
+        CycInt_AddRelativeInterruptUs(10000, INTERRUPT_FLP_IO);
     }
 }
 
@@ -613,7 +613,7 @@ static void floppy_read_id(void) {
     send_rw_status(drive);
     
     flp_io_state = FLP_STATE_INTERRUPT;
-    CycInt_AddRelativeInterruptTicks(1000, INTERRUPT_FLP_IO);
+    CycInt_AddRelativeInterruptUs(100, INTERRUPT_FLP_IO);
 }
 
 static void floppy_recalibrate(void) {
@@ -633,7 +633,7 @@ static void floppy_recalibrate(void) {
         flp.sra &= ~SRA_TRK0_N;
         
         flp_io_state = FLP_STATE_INTERRUPT;
-        CycInt_AddRelativeInterruptTicks(1000000, INTERRUPT_FLP_IO);
+        CycInt_AddRelativeInterruptUs(100000, INTERRUPT_FLP_IO);
     }
 }
 
@@ -656,7 +656,7 @@ static void floppy_seek(Uint8 relative) {
     }
         
     flp_io_state = FLP_STATE_INTERRUPT;
-    CycInt_AddRelativeInterruptTicks(1000000, INTERRUPT_FLP_IO);
+    CycInt_AddRelativeInterruptUs(100000, INTERRUPT_FLP_IO);
 }
 
 static void floppy_interrupt_status(void) {
@@ -712,7 +712,7 @@ static void floppy_unimplemented(void) {
     result_size = 1;
     
     flp_io_state = FLP_STATE_INTERRUPT;
-    CycInt_AddRelativeInterruptTicks(10000, INTERRUPT_FLP_IO);
+    CycInt_AddRelativeInterruptUs(1000, INTERRUPT_FLP_IO);
 }
 
 static void floppy_execute_cmd(void) {
@@ -1098,7 +1098,7 @@ void FLP_IO_Handler(void) {
             return;
     }
     
-    CycInt_AddRelativeInterruptTicks(2000, INTERRUPT_FLP_IO);
+    CycInt_AddRelativeInterruptUs(250, INTERRUPT_FLP_IO);
 }
 
 
