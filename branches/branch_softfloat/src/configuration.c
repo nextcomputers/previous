@@ -508,9 +508,6 @@ void Configuration_Apply(bool bReset) {
 	Configuration_CheckDimensionMemory(ConfigureParams.Dimension.nMemoryBankSize);
 	Configuration_CheckDimensionSettings();
     
-    /* Make sure real time mode is disabled if magneto optical drive is connected */
-    Configuration_CheckOpticalSettings();
-    
     /* Make sure twisted pair ethernet is disabled on 68030 Cube */
     Configuration_CheckEthernetSettings();
 	
@@ -711,16 +708,6 @@ void Configuration_CheckDimensionSettings(void) {
 	if (ConfigureParams.System.nMachineType==NEXT_STATION || !ConfigureParams.Dimension.bEnabled) {
 		ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_CPU;
 	}
-}
-
-void Configuration_CheckOpticalSettings(void) {
-    int i;
-    /* Disable realtime mode if an MO drive is connected */
-    for (i = 0; i < MO_MAX_DRIVES; i++) {
-        if (ConfigureParams.MO.drive[i].bDriveConnected) {
-            ConfigureParams.System.bRealtime = false;
-        }
-    }
 }
 
 void Configuration_CheckEthernetSettings(void) {

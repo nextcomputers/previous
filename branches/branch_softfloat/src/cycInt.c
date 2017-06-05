@@ -134,6 +134,10 @@ static void CycInt_UpdateInterrupt(void) {
 	Sint64 CycleSubtract;
 	int i;
 
+	/* Skip this if pending interrupt type is microsecond */
+	if (PendingInterrupt.type == CYC_INT_US)
+		return;
+
 	/* Find out how many cycles we went over (<=0) */
 	nCyclesOver = PendingInterrupt.time;
 	/* Calculate how many cycles have passed, included time we went over */
