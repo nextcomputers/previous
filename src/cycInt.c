@@ -46,7 +46,6 @@ int    usCheckCycles;
 static Sint64 nCyclesOver;
 Sint64 nCyclesMainCounter;         /* Main cycles counter, counts emulated CPU cycles sind reset */
 
-static const Sint64 TICK_RATE = 8; /* Tick rate is 8MHz */
 
 /* List of possible interrupt handlers to be store in 'PendingInterruptTable',
  * used for 'MemorySnapShot' */
@@ -204,24 +203,17 @@ void CycInt_AddRelativeInterruptCycles(Sint64 CycleTime, interrupt_id Handler) {
 
 /*-----------------------------------------------------------------------*/
 /**
- * Add interrupt to occur from now.
- */
-void CycInt_AddRelativeInterruptTicks(Sint64 TickTime, interrupt_id Handler) {
-    TickTime *= ConfigureParams.System.nCpuFreq;
-    CycInt_AddRelativeInterruptCycles(TickTime / TICK_RATE, Handler);
-}
-
-/*-----------------------------------------------------------------------*/
-/**
  * Add interrupt to occur us microsencods from now
  */
-void CycInt_AddRelativeInterruptUs(Sint64 us, interrupt_id Handler) {
+void CycInt_AddRelativeInterruptUs(Sint64 us, Sint64 usreal, interrupt_id Handler) {
     assert(us >= 0);
     
     if(ConfigureParams.System.bRealtime) {
         /* Update list cycle counts with current PendingInterruptCount before adding a new int, */
         /* because CycInt_SetNewInterrupt can change the active int / PendingInterruptCount */
         if ( ActiveInterrupt > 0 ) CycInt_UpdateInterrupt();
+        
+        if ( usreal > 0 ) us = usreal;
         
         InterruptHandlers[Handler].type = CYC_INT_US;
         InterruptHandlers[Handler].time = host_time_us() + us;
