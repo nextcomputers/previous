@@ -84,10 +84,10 @@ void snd_start_output(Uint8 mode) {
     if (!sound_output_active) {
         Log_Printf(LOG_SND_LEVEL, "[Sound] Starting output loop.");
         sound_output_active = true;
-        CycInt_AddRelativeInterruptTicks(100, INTERRUPT_SND_OUT);
+        CycInt_AddRelativeInterruptCycles(10, INTERRUPT_SND_OUT);
     } else { /* Even re-enable loop if we are already active. This lowers the delay. */
         Log_Printf(LOG_DEBUG, "[Sound] Restarting output loop.");
-        CycInt_AddRelativeInterruptTicks(1, INTERRUPT_SND_OUT);
+        CycInt_AddRelativeInterruptCycles(10, INTERRUPT_SND_OUT);
     }
 }
 
@@ -112,10 +112,10 @@ void snd_start_input(Uint8 mode) {
     if (!sound_input_active) {
         Log_Printf(LOG_SND_LEVEL, "[Sound] Starting input loop.");
         sound_input_active = true;
-        CycInt_AddRelativeInterruptTicks(100, INTERRUPT_SND_IN);
+        CycInt_AddRelativeInterruptCycles(10, INTERRUPT_SND_IN);
     } else { /* Even re-enable loop if we are already active. This lowers the delay. */
         Log_Printf(LOG_DEBUG, "[Sound] Restarting input loop.");
-        CycInt_AddRelativeInterruptTicks(1, INTERRUPT_SND_IN);
+        CycInt_AddRelativeInterruptCycles(10, INTERRUPT_SND_IN);
     }
 }
 
@@ -136,16 +136,16 @@ static void do_dma_sndout_intr(void) {
 }
 
 /*
- At a tick rate of 8MHz and a playback rate of 44.1kHz a sample takes about 181 ticks
- Assuming that the emulation runs at least at 1/3 a s fast as a real m68k checking the 
- sound queue every 60 ticks should be ok.
+ At a playback rate of 44.1kHz a sample takes about 23 microseconds.
+ Assuming that the emulation runs at least 1/3 as fast as a real m68k
+ checking the sound queue every 8 microseconds should be ok.
 */
-static const int SND_CHECK_DELAY = 60;
+static const int SND_CHECK_DELAY = 8;
 void SND_Out_Handler(void) {
     CycInt_AcknowledgeInterrupt();
 
     if(Audio_Output_Queue_Size() > AUDIO_BUFFER_SAMPLES * 2) {
-        CycInt_AddRelativeInterruptTicks(SND_CHECK_DELAY  * AUDIO_BUFFER_SAMPLES, INTERRUPT_SND_OUT);
+        CycInt_AddRelativeInterruptUs(SND_CHECK_DELAY * AUDIO_BUFFER_SAMPLES, 0, INTERRUPT_SND_OUT);
         return;
     }
     
@@ -162,7 +162,7 @@ void SND_Out_Handler(void) {
         if(len) {
             len = snd_send_samples(snd_buffer, len) / 4;
             if(chaining) do_dma_sndout_intr();
-            CycInt_AddRelativeInterruptTicks(SND_CHECK_DELAY, INTERRUPT_SND_OUT);
+            CycInt_AddRelativeInterruptUs(SND_CHECK_DELAY * len, 0, INTERRUPT_SND_OUT);
         } else if(snd_output_active()) {
             kms_sndout_underrun();
         }
@@ -183,7 +183,7 @@ void SND_In_Handler(void) {
 			kms_sndin_overrun();
 		}
 	} else {
-		CycInt_AddRelativeInterruptUs(10000, INTERRUPT_SND_IN);
+		CycInt_AddRelativeInterruptUs(10000, 0, INTERRUPT_SND_IN);
 	}
 }
 

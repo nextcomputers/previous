@@ -388,7 +388,7 @@ void Main_EventHandler(void) {
 void Main_EventHandlerInterrupt() {
     CycInt_AcknowledgeInterrupt();
     Main_EventHandler();
-    CycInt_AddRelativeInterruptUs((1000*1000)/200, INTERRUPT_EVENT_LOOP); // poll events with 200 Hz
+    CycInt_AddRelativeInterruptUs((1000*1000)/200, 0, INTERRUPT_EVENT_LOOP); // poll events with 200 Hz
 }
 
 /*-----------------------------------------------------------------------*/
@@ -449,7 +449,7 @@ static void Main_Init(void) {
 	IoMem_Init();
 	
     /* Start EventHandler */
-    CycInt_AddRelativeInterruptUs(500*1000, INTERRUPT_EVENT_LOOP);
+    CycInt_AddRelativeInterruptUs(500*1000, 0, INTERRUPT_EVENT_LOOP);
     
 	/* done as last, needs CPU & DSP running... */
 	DebugUI_Init();
