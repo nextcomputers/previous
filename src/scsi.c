@@ -137,6 +137,7 @@ struct {
     
     Uint32 lba;
     Uint32 blockcounter;
+    Uint32 lastlba;
     
     Uint8** shadow;
 } SCSIdisk[ESP_MAX_DEVS];
@@ -200,7 +201,7 @@ void SCSI_Insert(Uint8 i) {
     SCSIdisk[i].lun = SCSIdisk[i].status = SCSIdisk[i].message = 0;
     SCSIdisk[i].sense.code = SCSIdisk[i].sense.key = SCSIdisk[i].sense.info = 0;
     SCSIdisk[i].sense.valid = false;
-    SCSIdisk[i].lba = SCSIdisk[i].blockcounter = 0;
+    SCSIdisk[i].lba = SCSIdisk[i].lastlba = SCSIdisk[i].blockcounter = 0;
     
     SCSIdisk[i].shadow = NULL;
     
@@ -482,6 +483,68 @@ static void SCSI_GuessGeometry(Uint32 size, Uint32 *cylinders, Uint32 *heads, Ui
     *sectors=s;
 }
 
+#define SCSI_SEEK_TIME_HD       20000  /* 20 ms max seek time */
+#define SCSI_SECTOR_TIME_HD     350    /* 1.4 MB/sec */
+#define SCSI_SEEK_TIME_FD       200000 /* 200 ms max seek time */
+#define SCSI_SECTOR_TIME_FD     5500   /* 90 kB/sec */
+#define SCSI_SEEK_TIME_CD       500000 /* 500 ms max seek time */
+#define SCSI_SECTOR_TIME_CD     3250   /* 150 kB/sec */
+
+Sint64 SCSI_Seek_Time(void) {
+    Uint8 target = SCSIbus.target;
+    Sint64 seektime, seekoffset, disksize;
+    
+    if (scsi_buffer.disk) {
+        switch (SCSIdisk[target].devtype) {
+            case DEVTYPE_HARDDISK:
+                seektime = SCSI_SEEK_TIME_HD;
+            case DEVTYPE_CD:
+                seektime = SCSI_SEEK_TIME_CD;
+            case DEVTYPE_FLOPPY:
+                seektime = SCSI_SEEK_TIME_FD;
+            default:
+                return 0;
+        }
+        if (SCSIdisk[target].lba < SCSIdisk[target].lastlba) {
+            seekoffset = SCSIdisk[target].lastlba - SCSIdisk[target].lba;
+        } else {
+            seekoffset = SCSIdisk[target].lba - SCSIdisk[target].lastlba;
+        }
+        disksize = SCSIdisk[target].size/BLOCKSIZE;
+        
+        if (disksize <= 0) { /* make sure no zero divide occurs */
+            disksize = seekoffset;
+        }
+        seektime *= seekoffset;
+        seektime /= disksize;
+        
+        if (seektime > 500000) {
+            seektime = 500000;
+        }
+        
+        return seektime;
+    } else {
+        return 0;
+    }
+}
+
+Sint64 SCSI_Sector_Time(void) {
+    if (scsi_buffer.disk) {
+        switch (SCSIdisk[SCSIbus.target].devtype) {
+            case DEVTYPE_HARDDISK:
+                return SCSI_SECTOR_TIME_HD;
+            case DEVTYPE_CD:
+                return SCSI_SECTOR_TIME_FD;
+            case DEVTYPE_FLOPPY:
+                return SCSI_SECTOR_TIME_CD;
+            default:
+                return 1000;
+        }
+    } else {
+        return 100;
+    }
+}
+
 MODEPAGE SCSI_GetModePage(Uint8 pagecode) {
     Uint8 target = SCSIbus.target;
     
@@ -618,6 +681,7 @@ void SCSI_ReadCapacity(Uint8 *cdb) {
 void SCSI_WriteSector(Uint8 *cdb) {
     Uint8 target = SCSIbus.target;
     
+    SCSIdisk[target].lastlba = SCSIdisk[target].lba;
     SCSIdisk[target].lba = SCSI_GetOffset(cdb[0], cdb);
     SCSIdisk[target].blockcounter = SCSI_GetCount(cdb[0], cdb);
     
@@ -704,6 +768,7 @@ void SCSIdisk_Receive_Data(Uint8 val) {
 void SCSI_ReadSector(Uint8 *cdb) {
     Uint8 target = SCSIbus.target;
     
+    SCSIdisk[target].lastlba = SCSIdisk[target].lba;
     SCSIdisk[target].lba = SCSI_GetOffset(cdb[0], cdb);
     SCSIdisk[target].blockcounter = SCSI_GetCount(cdb[0], cdb);
     scsi_buffer.disk=true;
