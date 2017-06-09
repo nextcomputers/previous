@@ -141,7 +141,7 @@ Uint8 mode_dma;
 
 /* Experimental */
 #define ESP_CLOCK_FREQ  20      /* ESP is clocked at 20 MHz */
-#define ESP_DELAY       2500    /* Standard wait time for ESP interrupt (except bus reset and selection timeout) */
+#define ESP_DELAY       100     /* Standard wait time for ESP interrupt (except bus reset and selection timeout) */
 
 
 /* ESP DMA control and status registers */
@@ -444,7 +444,7 @@ void esp_start_command(Uint8 cmd) {
             Log_Printf(LOG_WARN, "ESP Command: Illegal command for actual ESP state ($%02X)!\n",cmd);
             esp_command_clear();
             intstatus |= INTR_ILL;
-            CycInt_AddRelativeInterruptUs(ESP_DELAY, 100, INTERRUPT_ESP);
+            CycInt_AddRelativeInterruptUs(ESP_DELAY, 20, INTERRUPT_ESP);
             return;
         }
     }
@@ -552,7 +552,7 @@ void esp_start_command(Uint8 cmd) {
             Log_Printf(LOG_WARN, "ESP Command: Illegal command!\n");
             esp_command_clear();
             intstatus |= INTR_ILL;
-            CycInt_AddRelativeInterruptUs(ESP_DELAY, 100, INTERRUPT_ESP);
+            CycInt_AddRelativeInterruptUs(ESP_DELAY, 20, INTERRUPT_ESP);
             break;
     }
 }
@@ -738,7 +738,7 @@ void esp_select(bool atn) {
     intstatus = INTR_BS | INTR_FC;
     
     esp_state = INITIATOR;
-    CycInt_AddRelativeInterruptUs(ESP_DELAY, 100, INTERRUPT_ESP);
+    CycInt_AddRelativeInterruptUs(ESP_DELAY, 20, INTERRUPT_ESP);
 }
 
 
@@ -758,12 +758,12 @@ bool esp_transfer_done(bool write) {
     if (esp_counter == 0) { /* Transfer done */
         intstatus = INTR_FC;
         status |= STAT_TC;
-        CycInt_AddRelativeInterruptUs(ESP_DELAY, 100, INTERRUPT_ESP);
+        CycInt_AddRelativeInterruptUs(ESP_DELAY, 20, INTERRUPT_ESP);
         return true;
     } else if ((write && SCSIbus.phase!=PHASE_DI) || (!write && SCSIbus.phase!=PHASE_DO)) { /* Phase change detected */
         esp_command_clear();
         intstatus = INTR_BS;
-        CycInt_AddRelativeInterruptUs(ESP_DELAY, 100, INTERRUPT_ESP);
+        CycInt_AddRelativeInterruptUs(ESP_DELAY, 20, INTERRUPT_ESP);
         return true;
     } /* else continue transfering data, no interrupt */
     return false;
@@ -774,7 +774,7 @@ bool esp_transfer_done(bool write) {
 void esp_transfer_info(void) {
     if(mode_dma) {
         esp_io_state=ESP_IO_STATE_TRANSFERING;
-        CycInt_AddRelativeInterruptUs(1000, 100, INTERRUPT_ESP_IO);
+        CycInt_AddRelativeInterruptUs(SCSI_Seek_Time() + SCSI_Sector_Time(), 100, INTERRUPT_ESP_IO);
     } else {
         Log_Printf(LOG_ESPCMD_LEVEL, "[ESP] start PIO transfer");
         switch (SCSIbus.phase) {
@@ -830,7 +830,7 @@ void ESP_IO_Handler(void) {
             return;
     }
     
-    CycInt_AddRelativeInterruptUs(1000, 100, INTERRUPT_ESP_IO);
+    CycInt_AddRelativeInterruptUs(SCSI_Sector_Time(), 100, INTERRUPT_ESP_IO);
 }
 
 
@@ -875,7 +875,7 @@ void esp_initiator_command_complete(void) {
         if (SCSIbus.phase!=PHASE_MI) { /* Stop sequence if no phase change to msg in occured */
             esp_command_clear();
             intstatus = INTR_BS;
-            CycInt_AddRelativeInterruptUs(ESP_DELAY, 100, INTERRUPT_ESP);
+            CycInt_AddRelativeInterruptUs(ESP_DELAY, 20, INTERRUPT_ESP);
             return;
         }
         
@@ -884,7 +884,7 @@ void esp_initiator_command_complete(void) {
     }
 
     intstatus = INTR_FC;
-    CycInt_AddRelativeInterruptUs(ESP_DELAY, 100, INTERRUPT_ESP);
+    CycInt_AddRelativeInterruptUs(ESP_DELAY, 20, INTERRUPT_ESP);
 }
 
 
@@ -893,7 +893,7 @@ void esp_message_accepted(void) {
     SCSIbus.phase = PHASE_ST; /* set at the end of iccs? */
     intstatus = INTR_BS;
     esp_state = DISCONNECTED; /* CHECK: only disconnected if message was cmd complete? */
-    CycInt_AddRelativeInterruptUs(ESP_DELAY, 100, INTERRUPT_ESP);
+    CycInt_AddRelativeInterruptUs(ESP_DELAY, 20, INTERRUPT_ESP);
 }
 
 

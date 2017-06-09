@@ -204,6 +204,7 @@ void CycInt_AddRelativeInterruptCycles(Sint64 CycleTime, interrupt_id Handler) {
 /*-----------------------------------------------------------------------*/
 /**
  * Add interrupt to occur us microsencods from now
+ * Use usreal if we are in realtime mode
  */
 void CycInt_AddRelativeInterruptUs(Sint64 us, Sint64 usreal, interrupt_id Handler) {
     assert(us >= 0);
@@ -223,6 +224,20 @@ void CycInt_AddRelativeInterruptUs(Sint64 us, Sint64 usreal, interrupt_id Handle
     } else {
         CycInt_AddRelativeInterruptCycles(us * ConfigureParams.System.nCpuFreq, Handler);
     }
+}
+
+/*-----------------------------------------------------------------------*/
+/**
+ * Add interrupt to occur microseconds from now. Convert to cycles.
+ * Use UsTimeFast if we are in realtime mode.
+ */
+void CycInt_AddRelativeInterruptUsCycles(Sint64 us, Sint64 usreal, interrupt_id Handler) {
+    
+    if (ConfigureParams.System.bRealtime && usreal > 0) {
+       us = usreal;
+    }
+
+    CycInt_AddRelativeInterruptCycles(us * ConfigureParams.System.nCpuFreq, Handler);
 }
 
 /*-----------------------------------------------------------------------*/
