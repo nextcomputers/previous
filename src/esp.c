@@ -830,7 +830,7 @@ void ESP_IO_Handler(void) {
             return;
     }
     
-    CycInt_AddRelativeInterruptUs(SCSI_Sector_Time(), 100, INTERRUPT_ESP_IO);
+    CycInt_AddRelativeInterruptUs(100, 0, INTERRUPT_ESP_IO);
 }
 
 
