@@ -498,10 +498,13 @@ Sint64 SCSI_Seek_Time(void) {
         switch (SCSIdisk[target].devtype) {
             case DEVTYPE_HARDDISK:
                 seektime = SCSI_SEEK_TIME_HD;
+                break;
             case DEVTYPE_CD:
                 seektime = SCSI_SEEK_TIME_CD;
+                break;
             case DEVTYPE_FLOPPY:
                 seektime = SCSI_SEEK_TIME_FD;
+                break;
             default:
                 return 0;
         }
@@ -513,7 +516,7 @@ Sint64 SCSI_Seek_Time(void) {
         disksize = SCSIdisk[target].size/BLOCKSIZE;
         
         if (disksize <= 0) { /* make sure no zero divide occurs */
-            disksize = seekoffset;
+            return 0;
         }
         seektime *= seekoffset;
         seektime /= disksize;
@@ -529,14 +532,21 @@ Sint64 SCSI_Seek_Time(void) {
 }
 
 Sint64 SCSI_Sector_Time(void) {
+    int target = SCSIbus.target;
+    Sint64 sectors = SCSIdisk[target].blockcounter;
+    
+    if (sectors <= 0) {
+        sectors = 1;
+    }
+    
     if (scsi_buffer.disk) {
-        switch (SCSIdisk[SCSIbus.target].devtype) {
+        switch (SCSIdisk[target].devtype) {
             case DEVTYPE_HARDDISK:
-                return SCSI_SECTOR_TIME_HD;
+                return sectors * SCSI_SECTOR_TIME_HD;
             case DEVTYPE_CD:
-                return SCSI_SECTOR_TIME_FD;
+                return sectors * SCSI_SECTOR_TIME_CD;
             case DEVTYPE_FLOPPY:
-                return SCSI_SECTOR_TIME_CD;
+                return sectors * SCSI_SECTOR_TIME_FD;
             default:
                 return 1000;
         }
