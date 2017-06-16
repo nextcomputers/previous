@@ -117,6 +117,11 @@ bool Main_PauseEmulation(bool visualize) {
 
 	bEmulationActive = false;
     host_pause_time(!(bEmulationActive));
+    Screen_Pause(true);
+    if (ConfigureParams.Dimension.bEnabled) {
+        dimension_pause(true);
+    }
+    
 	if (visualize) {
 		Statusbar_AddMessage("Emulation paused", 100);
 		/* make sure msg gets shown */
@@ -143,6 +148,10 @@ bool Main_UnPauseEmulation(void) {
 
 	bEmulationActive = true;
     host_pause_time(!(bEmulationActive));
+    Screen_Pause(false);
+    if (ConfigureParams.Dimension.bEnabled) {
+        dimension_pause(false);
+    }
 
 	if (bGrabMouse) {
 		/* Grab mouse pointer again */

@@ -362,6 +362,16 @@ void i860_cpu_device::halt(bool state) {
     }
 }
 
+void i860_cpu_device::pause(bool state) {
+    if(state) {
+        m_halt = true;
+        Log_Printf(LOG_WARN, "[i860] **** PAUSED ****");
+    } else {
+        Log_Printf(LOG_WARN, "[i860] **** RESUMED ****");
+        m_halt = false;
+    }
+}
+
 void i860_cpu_device::dbg_check_wr(UINT32 addr, int size, UINT8* data) {
     if(addr == 0xF83FE800 || addr == 0xF80FF800) {
         switch(*((UINT32*)data)) {

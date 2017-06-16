@@ -409,6 +409,7 @@ public:
     void init();
     void uninit();
     void halt(bool state);
+    void pause(bool state);
     inline bool is_halted() {return m_halt;};
 
     /* Run one i860 cycle */

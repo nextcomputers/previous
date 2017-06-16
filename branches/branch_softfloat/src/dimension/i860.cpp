@@ -52,6 +52,10 @@ extern "C" {
 	void nd_i860_uninit() {
         nd_i860.uninit();
 	}
+    
+    void nd_i860_pause(bool state) {
+        nd_i860.pause(state);
+    }
 	    
     void nd_start_debugger(void) {
         nd_i860.send_msg(MSG_DBG_BREAK);
@@ -534,8 +538,6 @@ error:
 }
 
 void i860_cpu_device::uninit() {
-    if(is_halted()) return;
-    
 	halt(true);
 
     if(m_thread) {

@@ -155,12 +155,14 @@ static void CycInt_UpdateInterrupt(void) {
  */
 bool CycInt_SetNewInterruptUs(void) {
     Sint64 now = host_time_us();
-    for(int i = 0; i < MAX_INTERRUPTS; i++) {
-        if (InterruptHandlers[i].type == CYC_INT_US && now > InterruptHandlers[i].time) {
-            PendingInterrupt = InterruptHandlers[i];
-            PendingInterrupt.time = -1;
-            ActiveInterrupt       = i;
-            return true;
+    if (ConfigureParams.System.bRealtime) {
+        for(int i = 0; i < MAX_INTERRUPTS; i++) {
+            if (InterruptHandlers[i].type == CYC_INT_US && now > InterruptHandlers[i].time) {
+                PendingInterrupt = InterruptHandlers[i];
+                PendingInterrupt.time = -1;
+                ActiveInterrupt       = i;
+                return true;
+            }
         }
     }
     return false;
