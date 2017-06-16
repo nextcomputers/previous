@@ -16,6 +16,8 @@ static SDL_Thread*   repaintThread = NULL;
 static SDL_Window*   ndWindow      = NULL;
 static SDL_Renderer* ndRenderer    = NULL;
 
+SDL_atomic_t blitNDFB;
+
 void blitDimension(SDL_Texture* tex);
 
 static int repainter(void* unused) {
@@ -35,10 +37,16 @@ static int repainter(void* unused) {
     SDL_RenderSetLogicalSize(ndRenderer, r.w, r.h);
     ndTexture = SDL_CreateTexture(ndRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, r.w, r.h);
     
+    SDL_AtomicSet(&blitNDFB, 1);
+    
     while(doRepaint) {
-        blitDimension(ndTexture);
-        SDL_RenderCopy(ndRenderer, ndTexture, NULL, NULL);
-        SDL_RenderPresent(ndRenderer);
+        if (SDL_AtomicGet(&blitNDFB)) {
+            blitDimension(ndTexture);
+            SDL_RenderCopy(ndRenderer, ndTexture, NULL, NULL);
+            SDL_RenderPresent(ndRenderer);
+        } else {
+            host_sleep_ms(100);
+        }
     }
 
     SDL_DestroyTexture(ndTexture);
@@ -101,6 +109,14 @@ void nd_start_interrupts() {
 
 void nd_sdl_uninit() {
     SDL_HideWindow(ndWindow);
+}
+
+void nd_sdl_pause(bool pause) {
+    if (pause) {
+        SDL_AtomicSet(&blitNDFB, 0);
+    } else {
+        SDL_AtomicSet(&blitNDFB, 1);
+    }
 }
 
 void nd_sdl_destroy() {
