@@ -49,6 +49,38 @@ void Sound_Reset(void) {
     }
 }
 
+void Sound_Pause(bool pause) {
+    if (pause) {
+        if (sndout_inited) {
+            Log_Printf(LOG_WARN, "[Audio] Uninitializing audio output device (pause).");
+            sndout_inited=false;
+            Audio_Output_UnInit();
+        }
+        if (sndin_inited) {
+            Log_Printf(LOG_WARN, "[Audio] Uninitializing audio input device (pause).");
+            sndin_inited=false;
+            Audio_Input_UnInit();
+        }
+    } else {
+        if (!sndout_inited && ConfigureParams.Sound.bEnableSound) {
+            Log_Printf(LOG_WARN, "[Audio] Initializing audio output device (resume).");
+            Audio_Output_Init();
+            sndout_inited=true;
+        }
+        if (!sndin_inited && sound_input_active && ConfigureParams.Sound.bEnableSound) {
+            Log_Printf(LOG_WARN, "[Audio] Initializing audio input device (resume).");
+            Audio_Input_Init();
+            sndin_inited=true;
+        }
+        if (sound_output_active && sndout_inited) {
+            Audio_Output_Enable(true);
+        }
+        if (sound_input_active && sndin_inited) {
+            Audio_Input_Enable(true);
+        }
+    }
+}
+
 /* Start and stop sound output */
 struct {
     Uint8 mode;

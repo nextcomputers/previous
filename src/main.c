@@ -26,6 +26,7 @@ const char Main_fileid[] = "Hatari main.c : " __DATE__ " " __TIME__;
 #include "screen.h"
 #include "sdlgui.h"
 #include "shortcut.h"
+#include "snd.h"
 #include "statusbar.h"
 #include "nextMemory.h"
 #include "str.h"
@@ -118,6 +119,7 @@ bool Main_PauseEmulation(bool visualize) {
 	bEmulationActive = false;
     host_pause_time(!(bEmulationActive));
     Screen_Pause(true);
+    Sound_Pause(true);
     if (ConfigureParams.Dimension.bEnabled) {
         dimension_pause(true);
     }
@@ -149,6 +151,7 @@ bool Main_UnPauseEmulation(void) {
 	bEmulationActive = true;
     host_pause_time(!(bEmulationActive));
     Screen_Pause(false);
+    Sound_Pause(false);
     if (ConfigureParams.Dimension.bEnabled) {
         dimension_pause(false);
     }
