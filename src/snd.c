@@ -128,14 +128,11 @@ void snd_stop_output(void) {
 }
 
 void snd_start_input(Uint8 mode) {
-	if (!ConfigureParams.Sound.bEnableSound) {
-		return;
-	}
-	
+    
     /* Starting SDL Audio */
     if (sndin_inited) {
         Audio_Input_Enable(true);
-    } else {
+    } else if (ConfigureParams.Sound.bEnableSound) {
         sndin_inited = true;
         Audio_Input_Init();
         Audio_Input_Enable(true);
@@ -176,7 +173,7 @@ static const int SND_CHECK_DELAY = 8;
 void SND_Out_Handler(void) {
     CycInt_AcknowledgeInterrupt();
 
-    if(Audio_Output_Queue_Size() > AUDIO_BUFFER_SAMPLES * 2) {
+    if (sndout_inited && Audio_Output_Queue_Size() > AUDIO_BUFFER_SAMPLES * 2) {
         CycInt_AddRelativeInterruptUs(SND_CHECK_DELAY * AUDIO_BUFFER_SAMPLES, 0, INTERRUPT_SND_OUT);
         return;
     }
@@ -186,10 +183,8 @@ void SND_Out_Handler(void) {
     bool chaining;
     snd_buffer = dma_sndout_read_memory(&len, &chaining);
     
-    if (!sndout_inited || sndout_state.mute) {
-        if (!sound_output_active) {
-            return;
-        }
+    if (!sound_output_active) {
+        return;
     } else {
         if(len) {
             len = snd_send_samples(snd_buffer, len) / 4;
@@ -340,7 +335,11 @@ void snd_adjust_volume_and_lowpass(Uint8 *buf, int len) {
     int i;
     Sint16 ldata, rdata;
     float ladjust, radjust;
-    if (sndout_state.volume[0] || sndout_state.volume[1] || sndout_state.lowpass) {
+    if (sndout_state.mute) {
+        for (i=0; i<len; i++) {
+            buf[i] = 0;
+        }
+    } else if (sndout_state.volume[0] || sndout_state.volume[1] || sndout_state.lowpass) {
         ladjust = (sndout_state.volume[0]==0)?1:(1-log(sndout_state.volume[0])/log(SND_MAX_VOL));
         radjust = (sndout_state.volume[1]==0)?1:(1-log(sndout_state.volume[1])/log(SND_MAX_VOL));
         

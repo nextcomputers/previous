@@ -39,7 +39,11 @@ void Audio_Output_Queue(Uint8* data, int len) {
 }
 
 Uint32 Audio_Output_Queue_Size() {
-    return SDL_GetQueuedAudioSize(Audio_Output_Device) / 4;
+    if (bSoundOutputWorking) {
+        return SDL_GetQueuedAudioSize(Audio_Output_Device) / 4;
+    } else {
+        return 0;
+    }
 }
 
 /*-----------------------------------------------------------------------*/
@@ -89,7 +93,7 @@ int Audio_Input_Read() {
 			return snd_make_ulaw(sample);
 		}
 	} else {
-        return 0; // silence
+        return snd_make_ulaw(0); // silence
 	}
 }
 
