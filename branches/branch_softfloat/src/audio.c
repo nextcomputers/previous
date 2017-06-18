@@ -30,11 +30,13 @@ static lock_t        recBufferLock;
 
 void Audio_Output_Queue(Uint8* data, int len) {
     int chunkSize = AUDIO_BUFFER_SAMPLES;
-    while(len > 0) {
-        if(len < chunkSize) chunkSize = len;
-        SDL_QueueAudio(Audio_Output_Device, data, chunkSize);
-        data += chunkSize;
-        len  -= chunkSize;
+    if (bSoundOutputWorking) {
+        while (len > 0) {
+            if (len < chunkSize) chunkSize = len;
+            SDL_QueueAudio(Audio_Output_Device, data, chunkSize);
+            data += chunkSize;
+            len  -= chunkSize;
+        }
     }
 }
 

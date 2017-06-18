@@ -724,7 +724,9 @@ Uint8* dma_sndout_read_memory(int* len, bool* chaining) {
 }
 
 void dma_sndout_intr() {
-    dma_interrupt(CHANNEL_SOUNDOUT);
+    if (dma[CHANNEL_SOUNDOUT].csr&DMA_ENABLE) {
+        dma_interrupt(CHANNEL_SOUNDOUT);
+    }
 }
 
 int dma_sndin_write_memory() {

@@ -171,7 +171,14 @@ static void do_dma_sndout_intr(void) {
 */
 static const int SND_CHECK_DELAY = 8;
 void SND_Out_Handler(void) {
+    int len;
+    bool chaining;
+
     CycInt_AcknowledgeInterrupt();
+    
+    if (!sound_output_active) {
+        return;
+    }
 
     if (sndout_inited && Audio_Output_Queue_Size() > AUDIO_BUFFER_SAMPLES * 2) {
         CycInt_AddRelativeInterruptUs(SND_CHECK_DELAY * AUDIO_BUFFER_SAMPLES, 0, INTERRUPT_SND_OUT);
@@ -179,20 +186,15 @@ void SND_Out_Handler(void) {
     }
     
     do_dma_sndout_intr();
-    int len;
-    bool chaining;
     snd_buffer = dma_sndout_read_memory(&len, &chaining);
     
-    if (!sound_output_active) {
-        return;
+    if (len) {
+        len = snd_send_samples(snd_buffer, len) / 4;
+        CycInt_AddRelativeInterruptUs(SND_CHECK_DELAY * len, 0, INTERRUPT_SND_OUT);
     } else {
-        if(len) {
-            len = snd_send_samples(snd_buffer, len) / 4;
-            if(chaining) do_dma_sndout_intr();
-            CycInt_AddRelativeInterruptUs(SND_CHECK_DELAY * len, 0, INTERRUPT_SND_OUT);
-        } else if(snd_output_active()) {
-            kms_sndout_underrun();
-        }
+        kms_sndout_underrun();
+        /* Call do_dma_sndout_intr() a little bit later */
+        CycInt_AddRelativeInterruptUs(100, 0, INTERRUPT_SND_OUT);
     }
 }
 
