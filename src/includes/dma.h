@@ -64,7 +64,7 @@ void dma_m2m_write_memory(void);
 
 void dma_scc_read_memory(void);
 
-Uint8* dma_sndout_read_memory(int* len, bool* chaining);
+Uint8* dma_sndout_read_memory(int* len);
 void   dma_sndout_intr(void);
 int    dma_sndin_write_memory(void);
 

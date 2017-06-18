@@ -172,7 +172,6 @@ static void do_dma_sndout_intr(void) {
 static const int SND_CHECK_DELAY = 8;
 void SND_Out_Handler(void) {
     int len;
-    bool chaining;
 
     CycInt_AcknowledgeInterrupt();
     
@@ -186,10 +185,11 @@ void SND_Out_Handler(void) {
     }
     
     do_dma_sndout_intr();
-    snd_buffer = dma_sndout_read_memory(&len, &chaining);
+    snd_buffer = dma_sndout_read_memory(&len);
     
     if (len) {
-        len = snd_send_samples(snd_buffer, len) / 4;
+        len = snd_send_samples(snd_buffer, len);
+        len = (len / 4) + 1;
         CycInt_AddRelativeInterruptUs(SND_CHECK_DELAY * len, 0, INTERRUPT_SND_OUT);
     } else {
         kms_sndout_underrun();
