@@ -690,10 +690,10 @@ void dma_mo_read_memory(void) {
 }
 
 
-Uint8* dma_sndout_read_memory(int* len, bool* chaining) {
+Uint8* dma_sndout_read_memory(int* len) {
+    int i;
     Uint8* result = NULL;
     *len          = 0;
-    *chaining     = false;
     
     if (dma[CHANNEL_SOUNDOUT].csr&DMA_ENABLE) {
         
@@ -708,10 +708,9 @@ Uint8* dma_sndout_read_memory(int* len, bool* chaining) {
         }
         
         TRY(prb) {
-            *len      = dma[CHANNEL_SOUNDOUT].limit - dma[CHANNEL_SOUNDOUT].next;
-            *chaining = (dma[CHANNEL_SOUNDOUT].csr & DMA_SUPDATE) != 0;
+            *len   = dma[CHANNEL_SOUNDOUT].limit - dma[CHANNEL_SOUNDOUT].next;
             result = malloc(*len * 2);
-            for(int i = 0; dma[CHANNEL_SOUNDOUT].next<dma[CHANNEL_SOUNDOUT].limit; dma[CHANNEL_SOUNDOUT].next++, i++)
+            for(i = 0; dma[CHANNEL_SOUNDOUT].next<dma[CHANNEL_SOUNDOUT].limit; dma[CHANNEL_SOUNDOUT].next++, i++)
                 result[i] = NEXTMemory_ReadByte(dma[CHANNEL_SOUNDOUT].next);
         } CATCH(prb) {
             Log_Printf(LOG_WARN, "[DMA] Channel Sound Out: Bus error reading from %08x",dma[CHANNEL_SOUNDOUT].next);
