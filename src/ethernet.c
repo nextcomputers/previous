@@ -701,6 +701,7 @@ static void new_enet_io(void) {
 				}
 			}
 		}
+		enet.tx_status |= TXSTAT_READY; /* really? */
 	}
 }
 
