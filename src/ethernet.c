@@ -368,18 +368,6 @@ static bool enet_packet_for_me(Uint8 *packet) {
     }
 }
 
-static bool enet_packet_from_me(Uint8 *packet) {
-    if (packet[6] == enet.mac_addr[0] &&
-        packet[7] == enet.mac_addr[1] &&
-        packet[8] == enet.mac_addr[2] &&
-        packet[9] == enet.mac_addr[3] &&
-        packet[10] == enet.mac_addr[4] &&
-        packet[11] == enet.mac_addr[5])
-        return true;
-    else
-        return false;
-}
-
 void enet_receive(Uint8 *pkt, int len) {
     if (enet_packet_for_me(pkt)) {
 #if 1   /* Hack for short packets from SLIRP */
@@ -390,6 +378,7 @@ void enet_receive(Uint8 *pkt, int len) {
 #endif
         memcpy(enet_rx_buffer.data,pkt,len);
         enet_rx_buffer.size=enet_rx_buffer.limit=len;
+		enet.tx_status |= TXSTAT_NET_BUSY;
     } else {
         Log_Printf(LOG_WARN, "[EN] Packet is not for me.");
     }
@@ -413,8 +402,8 @@ static void print_buf(Uint8 *buf, Uint32 size) {
 #define ENET_FRAMESIZE_MAX  1518    /* 1500 byte data and 14 byte header, 4 byte CRC */
 
 /* Ethernet periodic check */
-#define ENET_IO_DELAY   500     /* use 2500 for NeXT hardware test, 67 for status test */
-#define ENET_IO_SHORT   67      /* use 50 for 68030 hardware test */
+#define ENET_IO_DELAY   500     /* use 500 for NeXT hardware test, 20 for status test */
+#define ENET_IO_SHORT   40      /* use 40 for 68030 hardware test */
 
 enum {
     RECV_STATE_WAITING,
@@ -424,39 +413,47 @@ enum {
 bool tx_done;
 bool rx_chain;
 int old_size;
+int en_state;
+
+#define EN_DISCONNECTED	0
+#define EN_LOOPBACK		1
+#define EN_THINWIRE		2
+#define EN_TWISTEDPAIR	3
 
 /* Fujitsu ethernet controller */
-static bool enet_is_connected(void) {
-    if (ConfigureParams.Ethernet.bEthernetConnected) {
-        if (enet.tx_mode&TXMODE_DIS_LOOP) {
-            if ((ConfigureParams.System.nMachineType == NEXT_CUBE030) ||
-                (ConfigureParams.Ethernet.bTwistedPair && bmap_tpe_select) ||
-                (!ConfigureParams.Ethernet.bTwistedPair && !bmap_tpe_select)) {
-                return true;
-            }
-        } else {
-            if (ConfigureParams.Ethernet.bTwistedPair && bmap_tpe_select) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-static bool enet_loopback_enabled(void) {
-    if (ConfigureParams.System.nMachineType == NEXT_CUBE030) {
-        if (!(enet.tx_mode&TXMODE_DIS_LOOP)) {
-            return true;
-        }
-    } else {
-        if (!(enet.tx_mode&TXMODE_DIS_LOOP) && !bmap_tpe_select) {
-            return true;
-        }
-    }
-    return false;
+static int enet_state(void) {
+	if (ConfigureParams.System.nMachineType == NEXT_CUBE030) {
+		if (enet.tx_mode&TXMODE_DIS_LOOP) {
+			if (ConfigureParams.Ethernet.bEthernetConnected) {
+				return EN_THINWIRE;
+			}
+		} else {
+			return EN_LOOPBACK;
+		}
+	} else if (bmap_tpe_select) {
+		if (ConfigureParams.Ethernet.bEthernetConnected) {
+			if (ConfigureParams.Ethernet.bTwistedPair) {
+				return EN_TWISTEDPAIR;
+			}
+		}
+	} else {
+		if (enet.tx_mode&TXMODE_DIS_LOOP) {
+			if (ConfigureParams.Ethernet.bEthernetConnected) {
+				if (!ConfigureParams.Ethernet.bTwistedPair) {
+					return EN_THINWIRE;
+				}
+			}
+		} else {
+			return EN_LOOPBACK;
+		}
+	}
+	return EN_DISCONNECTED;
 }
 
 static void enet_io(void) {
+	
+	en_state = enet_state();
+	
 	/* Receive packet */
 	switch (receiver_state) {
 		case RECV_STATE_WAITING:
@@ -474,10 +471,11 @@ static void enet_io(void) {
 					Log_Printf(LOG_WARN, "[EN] Received packet is short (%i byte)",enet_rx_buffer.size);
 					enet_rx_interrupt(RXSTAT_SHORT_PKT);
 					enet_rx_buffer.size = 0;
+					enet.tx_status &= ~TXSTAT_NET_BUSY;
 					break; /* Keep on waiting for a good packet */
 				} else /* Fall through to receiving state */
 					receiver_state = RECV_STATE_RECEIVING;
-			} else if (enet_is_connected()) {
+			} else if (en_state == EN_THINWIRE || en_state == EN_TWISTEDPAIR) {
 				/* Receive from real world network */
 				enet_slirp_queue_poll();
 				break;
@@ -491,7 +489,8 @@ static void enet_io(void) {
 					Log_Printf(LOG_WARN, "[EN] Receiving packet: Error! Receiver overflow (DMA disabled)!");
 					enet_rx_interrupt(RXSTAT_OVERFLOW);
 					rx_chain = false;
-					enet_rx_buffer.size=0;
+					enet_rx_buffer.size = 0;
+					enet.tx_status &= ~TXSTAT_NET_BUSY;
 					receiver_state = RECV_STATE_WAITING;
 					break; /* Go back to waiting state */
 				}
@@ -503,9 +502,10 @@ static void enet_io(void) {
 					Log_Printf(LOG_EN_LEVEL, "[EN] Receiving packet: Transfer complete.");
 					rx_chain = false;
 					enet_rx_interrupt(RXSTAT_PKT_OK);
-					if (enet_packet_from_me(enet_rx_buffer.data)) {
+					if (en_state == EN_LOOPBACK) { /* same for thin wire loopback? */
 						enet_tx_interrupt(TXSTAT_TX_RECVD);
 					}
+					enet.tx_status &= ~TXSTAT_NET_BUSY;
 					receiver_state = RECV_STATE_WAITING;
 				}
 			}
@@ -517,33 +517,47 @@ static void enet_io(void) {
 	
 	/* Send packet */
 	if (enet.tx_status&TXSTAT_READY) {
-		if (enet_is_connected() || enet_loopback_enabled()) {
-			old_size = enet_tx_buffer.size;
-			tx_done=dma_enet_read_memory();
-			if (enet_tx_buffer.size>15) {
-				if (enet_tx_buffer.size==old_size && !tx_done) {
-					Log_Printf(LOG_WARN, "[EN] Sending packet: Error! Transmitter underflow (no EOP)!");
-					enet_tx_interrupt(TXSTAT_UNDERFLOW);
+		if (en_state != EN_DISCONNECTED) {
+			if (enet.tx_status&TXSTAT_NET_BUSY) {
+				/* Wait until network is free */
+				Log_Printf(LOG_WARN, "[EN] Network is busy. Transmission delayed.");
+			} else {
+				old_size = enet_tx_buffer.size;
+				tx_done=dma_enet_read_memory();
+				if (enet_tx_buffer.size>0) {
+					enet.tx_status &= ~TXSTAT_TX_RECVD;
+					if (enet_tx_buffer.size==old_size && !tx_done) {
+						Log_Printf(LOG_WARN, "[EN] Sending packet: Error! Transmitter underflow (no EOP)!");
+						enet_tx_interrupt(TXSTAT_UNDERFLOW);
+						enet_tx_buffer.size=0;
+					} else if (enet_tx_buffer.size>15) {
+						enet_tx_buffer.size-=15;
+					} else if (tx_done) {
+						Log_Printf(LOG_WARN, "[EN] Transmitter error: Early EOP!");
+						enet_tx_buffer.size=0;
+						tx_done = false;
+					}
+				}
+				if (tx_done) {
+					Statusbar_BlinkLed(DEVICE_LED_ENET);
+					Log_Printf(LOG_EN_LEVEL, "[EN] Sending packet to %02X:%02X:%02X:%02X:%02X:%02X",
+							   enet_tx_buffer.data[0], enet_tx_buffer.data[1], enet_tx_buffer.data[2],
+							   enet_tx_buffer.data[3], enet_tx_buffer.data[4], enet_tx_buffer.data[5]);
+					print_buf(enet_tx_buffer.data, enet_tx_buffer.size);
+					if (en_state == EN_LOOPBACK) {
+						/* Loop back */
+						Log_Printf(LOG_WARN, "[EN] Loopback packet.");
+						enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
+					} else {
+						/* Send to real world network */
+						enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
+						/* Simultaneously receive packet on thin ethernet */
+						if (en_state == EN_THINWIRE) {
+							enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
+						}
+					}
 					enet_tx_buffer.size=0;
-				} else {
-					enet_tx_buffer.size-=15;
 				}
-			}
-			if (tx_done) {
-				Statusbar_BlinkLed(DEVICE_LED_ENET);
-				Log_Printf(LOG_EN_LEVEL, "[EN] Sending packet to %02X:%02X:%02X:%02X:%02X:%02X",
-						   enet_tx_buffer.data[0], enet_tx_buffer.data[1], enet_tx_buffer.data[2],
-						   enet_tx_buffer.data[3], enet_tx_buffer.data[4], enet_tx_buffer.data[5]);
-				print_buf(enet_tx_buffer.data, enet_tx_buffer.size);
-				if (enet_is_connected()) {
-					/* Send to real world network */
-					enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
-				} else {
-					/* Loop back */
-					Log_Printf(LOG_WARN, "[EN] Loopback packet.");
-					enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
-				}
-				enet_tx_buffer.size=0;
 			}
 		}
 	}
@@ -573,19 +587,27 @@ void EN_Control_Write(void) {
 	enet_reset();
 }
 
-static bool new_enet_is_connected(void) {
-    if (ConfigureParams.Ethernet.bEthernetConnected) {
-        if (!(enet.tx_mode&TXMODE_LOOP)) {
-            if ((ConfigureParams.Ethernet.bTwistedPair && (enet.tx_mode&TXMODE_TPE)) ||
-                (!ConfigureParams.Ethernet.bTwistedPair && !(enet.tx_mode&TXMODE_TPE))) {
-                return true;
-            }
-        }
-    }
-    return false;
+static int new_enet_state(void) {
+	if (enet.tx_mode&TXMODE_LOOP) {
+		return EN_LOOPBACK;
+	} else if (ConfigureParams.Ethernet.bEthernetConnected) {
+		if (enet.tx_mode&TXMODE_TPE) {
+			if (ConfigureParams.Ethernet.bTwistedPair) {
+				return EN_TWISTEDPAIR;
+			}
+		} else {
+			if (!ConfigureParams.Ethernet.bTwistedPair) {
+				return EN_THINWIRE;
+			}
+		}
+	}
+	return EN_DISCONNECTED;
 }
 
 static void new_enet_io(void) {
+	
+	en_state = new_enet_state();
+	
 	/* Receive packet */
 	switch (receiver_state) {
 		case RECV_STATE_WAITING:
@@ -603,10 +625,11 @@ static void new_enet_io(void) {
 					Log_Printf(LOG_WARN, "[newEN] Received packet is short (%i byte)",enet_rx_buffer.size);
 					enet_rx_interrupt(RXSTAT_SHORT_PKT);
 					enet_rx_buffer.size = 0;
+					enet.tx_status &= ~TXSTAT_NET_BUSY;
 					break; /* Keep on waiting for a good packet */
 				} else /* Fall through to receiving state */
 					receiver_state = RECV_STATE_RECEIVING;
-			} else if (new_enet_is_connected()) {
+			} else if (en_state == EN_THINWIRE || en_state == EN_TWISTEDPAIR) {
 				/* Receive from real world network */
 				enet_slirp_queue_poll();
 				break;
@@ -620,7 +643,8 @@ static void new_enet_io(void) {
 					Log_Printf(LOG_WARN, "[newEN] Receiving packet: Error! Receiver overflow (DMA disabled)!");
 					enet_rx_interrupt(RXSTAT_OVERFLOW);
 					rx_chain = false;
-					enet_rx_buffer.size=0;
+					enet_rx_buffer.size = 0;
+					enet.tx_status &= ~TXSTAT_NET_BUSY;
 					receiver_state = RECV_STATE_WAITING;
 					break; /* Go back to waiting state */
 				}
@@ -632,9 +656,10 @@ static void new_enet_io(void) {
 					Log_Printf(LOG_EN_LEVEL, "[newEN] Receiving packet: Transfer complete.");
 					rx_chain = false;
 					enet_rx_interrupt(RXSTAT_PKT_OK);
-					if (enet_packet_from_me(enet_rx_buffer.data)) {
+					if (en_state == EN_LOOPBACK) {
 						enet_tx_interrupt(TXSTAT_TX_RECVD);
 					}
+					enet.tx_status &= ~TXSTAT_NET_BUSY;
 					receiver_state = RECV_STATE_WAITING;
 				}
 			}
@@ -646,27 +671,36 @@ static void new_enet_io(void) {
 	
 	/* Send packet */
 	if (enet.tx_mode&TXMODE_ENABLE) {
-		if (new_enet_is_connected() || (enet.tx_mode&TXMODE_LOOP)) {
-			old_size = enet_tx_buffer.size;
-			dma_enet_read_memory();
-			if (enet_tx_buffer.size!=old_size) {
-				Statusbar_BlinkLed(DEVICE_LED_ENET);
-				Log_Printf(LOG_EN_LEVEL, "[newEN] Sending packet to %02X:%02X:%02X:%02X:%02X:%02X",
-						   enet_tx_buffer.data[0], enet_tx_buffer.data[1], enet_tx_buffer.data[2],
-						   enet_tx_buffer.data[3], enet_tx_buffer.data[4], enet_tx_buffer.data[5]);
-				print_buf(enet_tx_buffer.data, enet_tx_buffer.size);
-				if (enet.tx_mode&TXMODE_LOOP) {
-					/* Loop back */
-					Log_Printf(LOG_WARN, "[newEN] Loopback packet.");
-					enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
-				} else {
-					/* Send to real world network */
-					enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
+		if (en_state != EN_DISCONNECTED) {
+			if (enet.tx_status&TXSTAT_NET_BUSY) {
+				/* Wait until network is free */
+				Log_Printf(LOG_WARN, "[EN] Network is busy. Transmission delayed.");
+			} else {
+				dma_enet_read_memory();
+				if (enet_tx_buffer.size>0) {
+					Statusbar_BlinkLed(DEVICE_LED_ENET);
+					Log_Printf(LOG_EN_LEVEL, "[newEN] Sending packet to %02X:%02X:%02X:%02X:%02X:%02X",
+							   enet_tx_buffer.data[0], enet_tx_buffer.data[1], enet_tx_buffer.data[2],
+							   enet_tx_buffer.data[3], enet_tx_buffer.data[4], enet_tx_buffer.data[5]);
+					print_buf(enet_tx_buffer.data, enet_tx_buffer.size);
+					enet.tx_status &= ~TXSTAT_TX_RECVD;
+					if (en_state == EN_LOOPBACK) {
+						/* Loop back */
+						Log_Printf(LOG_WARN, "[newEN] Loopback packet.");
+						enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
+					} else {
+						/* Send to real world network */
+						enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
+						/* Simultaneously receive packet on thin ethernet */
+						if (en_state == EN_THINWIRE) {
+							enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
+						}
+					}
+					enet_tx_buffer.size=0;
+					enet_tx_interrupt(TXSTAT_READY);
 				}
-				enet_tx_buffer.size=0;
 			}
 		}
-		enet_tx_interrupt(TXSTAT_READY);
 	}
 }
 
@@ -712,6 +746,7 @@ void Ethernet_Reset(bool hard) {
         enet_stopped=true;
         enet_rx_buffer.size=enet_tx_buffer.size=0;
         enet_rx_buffer.limit=enet_tx_buffer.limit=64*1024;
+        enet.tx_status=ConfigureParams.System.bTurbo?0:TXSTAT_READY;
         /* Stop SLIRP */
         enet_slirp_stop();
     } else {
