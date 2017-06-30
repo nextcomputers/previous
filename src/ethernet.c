@@ -700,6 +700,12 @@ static void new_enet_io(void) {
 					enet_tx_interrupt(TXSTAT_READY);
 				}
 			}
+		} else { /* disconnected - strange, but required by ROM and 2.2 kernel */
+			if (ConfigureParams.Ethernet.bEthernetConnected) {
+				if (!ConfigureParams.Ethernet.bTwistedPair) {
+					enet_tx_interrupt(TXSTAT_READY);
+				}
+			}
 		}
 		enet.tx_status |= TXSTAT_READY; /* really? */
 	}
