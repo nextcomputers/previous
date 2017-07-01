@@ -664,8 +664,8 @@ static void fp_unimp_instruction(uae_u16 opcode, uae_u16 extra, uae_u32 ea, uaec
         }
     }
     if (warned > 0) {
-        write_log (_T("FPU unimplemented instruction: OP=%04X-%04X EA=%08X PC=%08X\n"),
-                   opcode, extra, ea, oldpc);
+        write_log (_T("FPU unimplemented instruction: OP=%04X-%04X SRC=%08X-%08X-%08X EA=%08X PC=%08X\n"),
+                   opcode, extra, fsave_data.et[0],fsave_data.et[1],fsave_data.et[2], ea, oldpc);
 #if EXCEPTION_FPP == 0
         warned--;
 #endif
@@ -738,8 +738,9 @@ static void fp_unimp_datatype(uae_u16 opcode, uae_u16 extra, uae_u32 ea, uaecptr
         }
     }
     if (warned > 0) {
-        write_log (_T("FPU unimplemented datatype (%s): OP=%04X-%04X EA=%08X PC=%08X\n"),
-                   packed ? "packed" : "denormal", opcode, extra, ea, oldpc);
+        write_log (_T("FPU unimplemented datatype (%s): OP=%04X-%04X SRC=%08X-%08X-%08X EA=%08X PC=%08X\n"),
+                   packed ? "packed" : "denormal", opcode, extra,
+                   packed ? fsave_data.fpt[2] : fsave_data.et[0], fsave_data.et[1], fsave_data.et[2], ea, oldpc);
 #if EXCEPTION_FPP == 0
         warned--;
 #endif
@@ -986,8 +987,12 @@ static bool normalize_or_fault_if_no_denormal_support(uae_u16 opcode, uae_u16 ex
 {
     if (fp_is_unnormal(src) || fp_is_denormal(src)) {
         if (currprefs.cpu_model >= 68040 && currprefs.fpu_model) {
-            fp_unimp_datatype(opcode, extra, ea, oldpc, src, NULL);
-            return true;
+            if (fp_is_zero(src)) {
+                fp_normalize(src); // 68040/060 can only fix unnormal zeros
+            } else {
+                fp_unimp_datatype(opcode, extra, ea, oldpc, src, NULL);
+                return true;
+            }
         } else {
             fp_normalize(src);
         }
@@ -998,8 +1003,12 @@ static bool normalize_or_fault_if_no_denormal_support_dst(uae_u16 opcode, uae_u1
 {
     if (fp_is_unnormal(dst) || fp_is_denormal(dst)) {
         if (currprefs.cpu_model >= 68040 && currprefs.fpu_model) {
-            fp_unimp_datatype(opcode, extra, ea, oldpc, src, NULL);
-            return true;
+            if (fp_is_zero(dst)) {
+                fp_normalize(dst); // 68040/060 can only fix unnormal zeros
+            } else {
+                fp_unimp_datatype(opcode, extra, ea, oldpc, src, NULL);
+                return true;
+            }
         } else {
             fp_normalize(dst);
         }
@@ -1230,7 +1239,7 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
     static int sz2[8] = { 4, 4, 12, 12, 2, 8, 2, 0 };
     
 #if DEBUG_FPP
-    write_log (_T("PUTFP: %f %04X %04X\n"), value, opcode, extra);
+    write_log (_T("PUTFP: %04X %04X\n"), opcode, extra);
 #endif
 #if 0
     if (!(extra & 0x4000)) {
@@ -2577,7 +2586,10 @@ void fpuop_restore (uae_u32 opcode)
     int fpu_version = get_fpu_version();
     
     regs.fp_exception = false;
-    
+#if DEBUG_FPP
+	write_log (_T("frestore_opp at %08x\n"), m68k_getpc ());
+#endif
+	
     if (fault_if_no_6888x (opcode, 0, pc))
         return;
     

@@ -289,7 +289,7 @@ flag floatx80_is_signaling_nan( floatx80 a )
 flag floatx80_is_zero( floatx80 a )
 {
     
-    return ( ( a.high & 0x7FFF ) == 0 ) && ( a.low == 0 );
+    return ( ( a.high & 0x7FFF ) < 0x7FFF ) && ( a.low == 0 );
     
 }
 
