@@ -171,8 +171,10 @@ struct mmu_atc_line {
 	uaecptr tag; // tag is 16 or 17 bits S+logical
 	unsigned valid : 1;
 	unsigned global : 1;
+	unsigned resident : 1;
 	unsigned modified : 1;
 	unsigned write_protect : 1;
+	unsigned supervisor_protect : 1;
 	uaecptr phys; // phys base address
 };
 
@@ -219,8 +221,14 @@ static ALWAYS_INLINE bool mmu_lookup(uaecptr addr, bool data, bool write,
 		if ((tag == mmu_atc_array[data][way][index].tag) && (mmu_atc_array[data][way][index].valid)) {
 			*cl=&mmu_atc_array[data][way][index];
 			// if first write to this take slow path (but modify this slot)
-			if ((!mmu_atc_array[data][way][index].modified & write) || (mmu_atc_array[data][way][index].write_protect & write))
-				return false; 
+			if (!mmu_atc_array[data][way][index].modified && write)
+				return false;
+			// code structure weirdness: this normally succeeds
+			if ((mmu_atc_array[data][way][index].write_protect && write) ||
+				(mmu_atc_array[data][way][index].supervisor_protect && !mmu_is_super) ||
+				!mmu_atc_array[data][way][index].resident) {
+				return false;
+			}
 			return true;
 		}
 		mmu_atc_ways++;
@@ -252,8 +260,14 @@ static ALWAYS_INLINE bool mmu_user_lookup(uaecptr addr, bool super, bool data,
 		if ((tag == mmu_atc_array[data][way][index].tag) && (mmu_atc_array[data][way][index].valid)) {
 			*cl=&mmu_atc_array[data][way][index];
 			// if first write to this take slow path (but modify this slot)
-			if ((!mmu_atc_array[data][way][index].modified & write) || (mmu_atc_array[data][way][index].write_protect & write))
-				return false; 
+			if (!mmu_atc_array[data][way][index].modified && write)
+				return false;
+			// code structure weirdness: this normally succeeds
+			if ((mmu_atc_array[data][way][index].write_protect && write) ||
+				(mmu_atc_array[data][way][index].supervisor_protect && !super) ||
+				!mmu_atc_array[data][way][index].resident) {
+				return false;
+			}
 			return true;
 		}
 		mmu_atc_ways++;
