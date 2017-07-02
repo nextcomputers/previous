@@ -332,12 +332,13 @@ void mmu_bus_error(uaecptr addr, int fc, bool write, int size, bool rmw, uae_u32
         uae_u16 ssw = 0;
         
         if (ismoves) {
+            ismoves = false;
             // MOVES special behavior
             int fc2 = write ? regs.dfc : regs.sfc;
             if (fc2 == 0 || fc2 == 3 || fc2 == 4 || fc2 == 7)
                 ssw |= MMU_SSW_TT1;
-            if ((fc2 & 3) != 3)
-                fc2 &= ~2;
+            if (fc2 == 2 || fc2 == 6)
+                fc2--;
 #if MMUDEBUGMISC > 0
             write_log (_T("040 MMU MOVES fc=%d -> %d\n"), fc, fc2);
 #endif
@@ -489,6 +490,19 @@ static uaecptr mmu_fill_atc(uaecptr addr, bool super, bool data, bool write, str
     SAVE_EXCEPTION;
     TRY(prb) {
         desc = mmu_lookup_pagetable(addr, super, write, status);
+        if (desc & 1) {
+            l->valid = 1;
+            l->resident = 1;
+            l->phys = desc & mmu_pagemaski;
+            l->global = (desc & MMU_MMUSR_G) != 0;
+            l->modified = (desc & MMU_MMUSR_M) != 0;
+            l->write_protect = (desc & MMU_MMUSR_W) != 0;
+            l->supervisor_protect = (desc & MMU_MMUSR_S) != 0;
+        } else {
+            l->valid = 1;
+            l->resident = 0;
+            l->global = 0;
+        }
 #if MMUDEBUG > 2
         write_log(_T("translate: %x,%u,%u,%u -> %x\n"), addr, super, write, data, desc);
 #endif
@@ -498,26 +512,11 @@ static uaecptr mmu_fill_atc(uaecptr addr, bool super, bool data, bool write, str
         RESTORE_EXCEPTION;
         /* bus error during table search */
         desc = 0;
+        l->valid = 0;
+        l->resident = 0;
+        l->global = 0;
         *status = MMU_FSLW_TWE;
-        // goto fail;
     } ENDTRY
-    if ((desc & 1) && (!super && desc & MMU_MMUSR_S)) {
-        *status |= MMU_FSLW_SP;
-#if MMUDEBUG > 1
-        write_log (_T("MMU: supervisor protected %x\n"), addr);
-#endif
-        l->valid = 0;
-        l->global = 0;
-    } else if ((desc & 1) == 0) {
-        l->valid = 0;
-        l->global = 0;
-    } else {
-        l->valid = 1;
-        l->phys = desc & mmu_pagemaski;
-        l->global = (desc & MMU_MMUSR_G) != 0;
-        l->modified = (desc & MMU_MMUSR_M) != 0;
-        l->write_protect = (desc & MMU_MMUSR_W) != 0;
-    }
     
     return desc;
 }
@@ -525,14 +524,24 @@ static uaecptr mmu_fill_atc(uaecptr addr, bool super, bool data, bool write, str
 static ALWAYS_INLINE bool mmu_fill_atc_try(uaecptr addr, bool super, bool data, bool write, struct mmu_atc_line *l1, uae_u32 *status)
 {
     mmu_fill_atc(addr,super,data,write,l1, status);
-    if (!(l1->valid)) {
+    if (!(l1->resident)) {
 #if MMUDEBUG > 2
         write_log(_T("MMU: non-resident page (%x,%x)!\n"), addr, regs.pc);
 #endif
         goto fail;
     }
-    if (write) {
-        if (l1->write_protect) {
+    if (l1->supervisor_protect) {
+        if (!super) {
+            *status |= MMU_FSLW_SP;
+#if MMUDEBUG > 0
+            write_log(_T("MMU: supervisor protected %x by atc \n"), addr);
+#endif
+            mmu_dump_atc();
+            goto fail;
+        }
+    }
+    if (l1->write_protect) {
+        if (write) {
             *status |= MMU_FSLW_WP;
 #if MMUDEBUG > 0
             write_log(_T("MMU: write protected %x by atc \n"), addr);
@@ -540,7 +549,6 @@ static ALWAYS_INLINE bool mmu_fill_atc_try(uaecptr addr, bool super, bool data, 
             mmu_dump_atc();
             goto fail;
         }
-        
     }
     return true;
     
@@ -557,7 +565,7 @@ uaecptr REGPARAM2 mmu_translate(uaecptr addr, bool super, bool data, bool write)
     mmu_user_lookup(addr, super, data, write, &l);
     
     mmu_fill_atc(addr, super, data, write, l, &status);
-    if (!l->valid || (write && l->write_protect)) {
+    if (!l->resident || (write && l->write_protect) || (!super && l->supervisor_protect)) {
 #if MMUDEBUG > 2
         write_log(_T("[MMU] mmu_translate error"));
 #endif
@@ -938,14 +946,16 @@ uae_u32 REGPARAM2 sfc_get_long(uaecptr addr)
     bool data = true;
     uae_u32 res;
     
-    ismoves = true;
     if (likely(!is_unaligned(addr, 4))) {
+        ismoves = true;
         res = mmu_get_user_long(addr, super, data, false, sz_long);
     } else {
         if (likely(!(addr & 1))) {
+            ismoves = true;
             res = (uae_u32)mmu_get_user_word(addr, super, data, false, sz_long) << 16;
             SAVE_EXCEPTION;
             TRY(prb) {
+                ismoves = true;
                 res |= mmu_get_user_word(addr + 2, super, data, false, sz_long);
                 RESTORE_EXCEPTION;
             }
@@ -955,9 +965,11 @@ uae_u32 REGPARAM2 sfc_get_long(uaecptr addr)
                 THROW_AGAIN(prb);
             } ENDTRY
         } else {
+            ismoves = true;
             res = (uae_u32)mmu_get_user_byte(addr, super, data, false, sz_long) << 8;
             SAVE_EXCEPTION;
             TRY(prb) {
+                ismoves = true;
                 res = (res | mmu_get_user_byte(addr + 1, super, data, false, sz_long)) << 8;
                 res = (res | mmu_get_user_byte(addr + 2, super, data, false, sz_long)) << 8;
                 res |= mmu_get_user_byte(addr + 3, super, data, false, sz_long);
@@ -981,13 +993,15 @@ uae_u16 REGPARAM2 sfc_get_word(uaecptr addr)
     bool data = true;
     uae_u16 res;
     
-    ismoves = true;
     if (likely(!is_unaligned(addr, 2))) {
+        ismoves = true;
         res = mmu_get_user_word(addr, super, data, false, sz_word);
     } else {
+        ismoves = true;
         res = (uae_u16)mmu_get_user_byte(addr, super, data, false, sz_word) << 8;
         SAVE_EXCEPTION;
         TRY(prb) {
+            ismoves = true;
             res |= mmu_get_user_byte(addr + 1, super, data, false, sz_word);
             RESTORE_EXCEPTION;
         }
@@ -1018,15 +1032,17 @@ void REGPARAM2 dfc_put_long(uaecptr addr, uae_u32 val)
     bool super = (regs.dfc & 4) != 0;
     bool data = true;
     
-    ismoves = true;
     SAVE_EXCEPTION;
     TRY(prb) {
-        if (likely(!is_unaligned(addr, 4)))
+        if (likely(!is_unaligned(addr, 4))) {
+            ismoves = true;
             mmu_put_user_long(addr, val, super, data, sz_long);
-        else if (likely(!(addr & 1))) {
+        } else if (likely(!(addr & 1))) {
+            ismoves = true;
             mmu_put_user_word(addr, val >> 16, super, data, sz_long);
             mmu_put_user_word(addr + 2, val, super, data, sz_long);
         } else {
+            ismoves = true;
             mmu_put_user_byte(addr, val >> 24, super, data, sz_long);
             mmu_put_user_byte(addr + 1, val >> 16, super, data, sz_long);
             mmu_put_user_byte(addr + 2, val >> 8, super, data, sz_long);
@@ -1048,12 +1064,13 @@ void REGPARAM2 dfc_put_word(uaecptr addr, uae_u16 val)
     bool super = (regs.dfc & 4) != 0;
     bool data = true;
     
-    ismoves = true;
     SAVE_EXCEPTION;
     TRY(prb) {
-        if (likely(!is_unaligned(addr, 2)))
+        if (likely(!is_unaligned(addr, 2))) {
+            ismoves = true;
             mmu_put_user_word(addr, val, super, data, sz_word);
-        else {
+        } else {
+            ismoves = true;
             mmu_put_user_byte(addr, val >> 8, super, data, sz_word);
             mmu_put_user_byte(addr + 1, val, super, data, sz_word);
         }
@@ -1073,9 +1090,9 @@ void REGPARAM2 dfc_put_byte(uaecptr addr, uae_u8 val)
     bool super = (regs.dfc & 4) != 0;
     bool data = true;
     
-    ismoves = true;
     SAVE_EXCEPTION;
     TRY(prb) {
+        ismoves = true;
         mmu_put_user_byte(addr, val, super, data, sz_byte);
         RESTORE_EXCEPTION;
     }
@@ -1180,7 +1197,9 @@ void REGPARAM2 mmu_op_real(uae_u32 opcode, uae_u16 extra)
                 } else {
                     regs.mmusr = desc & (~0xfff|MMU_MMUSR_G|MMU_MMUSR_Ux|MMU_MMUSR_S|
                                          MMU_MMUSR_CM|MMU_MMUSR_M|MMU_MMUSR_W);
-                    regs.mmusr |= MMU_MMUSR_R;
+                    if (l->resident) {
+                        regs.mmusr |= MMU_MMUSR_R;
+                    }
                 }
             }
         }
