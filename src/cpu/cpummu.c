@@ -763,14 +763,14 @@ static void misalignednotfirstcheck(uaecptr addr)
     misalignednotfirst (addr);
 }
 
-uae_u16 REGPARAM2 mmu_get_word_unaligned(uaecptr addr, bool data, bool rmw)
+uae_u16 REGPARAM2 mmu_get_word_unaligned(uaecptr addr, bool rmw)
 {
     uae_u16 res;
     
-    res = (uae_u16)mmu_get_byte(addr, data, sz_word, rmw) << 8;
+    res = (uae_u16)mmu_get_byte(addr, sz_word, rmw) << 8;
     SAVE_EXCEPTION;
     TRY(prb) {
-        res |= mmu_get_byte(addr + 1, data, sz_word, rmw);
+        res |= mmu_get_byte(addr + 1, sz_word, rmw);
         RESTORE_EXCEPTION;
     }
     CATCH(prb) {
@@ -781,15 +781,15 @@ uae_u16 REGPARAM2 mmu_get_word_unaligned(uaecptr addr, bool data, bool rmw)
     return res;
 }
 
-uae_u32 REGPARAM2 mmu_get_long_unaligned(uaecptr addr, bool data, bool rmw)
+uae_u32 REGPARAM2 mmu_get_long_unaligned(uaecptr addr, bool rmw)
 {
     uae_u32 res;
     
     if (likely(!(addr & 1))) {
-        res = (uae_u32)mmu_get_word(addr, data, sz_long, rmw) << 16;
+        res = (uae_u32)mmu_get_word(addr, sz_long, rmw) << 16;
         SAVE_EXCEPTION;
         TRY(prb) {
-            res |= mmu_get_word(addr + 2, data, sz_long, rmw);
+            res |= mmu_get_word(addr + 2, sz_long, rmw);
             RESTORE_EXCEPTION;
         }
         CATCH(prb) {
@@ -798,12 +798,12 @@ uae_u32 REGPARAM2 mmu_get_long_unaligned(uaecptr addr, bool data, bool rmw)
             THROW_AGAIN(prb);
         } ENDTRY
     } else {
-        res = (uae_u32)mmu_get_byte(addr, data, sz_long, rmw) << 8;
+        res = (uae_u32)mmu_get_byte(addr, sz_long, rmw) << 8;
         SAVE_EXCEPTION;
         TRY(prb) {
-            res = (res | mmu_get_byte(addr + 1, data, sz_long, rmw)) << 8;
-            res = (res | mmu_get_byte(addr + 2, data, sz_long, rmw)) << 8;
-            res |= mmu_get_byte(addr + 3, data, sz_long, rmw);
+            res = (res | mmu_get_byte(addr + 1, sz_long, rmw)) << 8;
+            res = (res | mmu_get_byte(addr + 2, sz_long, rmw)) << 8;
+            res |= mmu_get_byte(addr + 3, sz_long, rmw);
             RESTORE_EXCEPTION;
         }
         CATCH(prb) {
@@ -837,10 +837,10 @@ static uae_u16 REGPARAM2 mmu_get_lrmw_word_unaligned(uaecptr addr)
 {
     uae_u16 res;
     
-    res = (uae_u16)mmu_get_user_byte(addr, regs.s != 0, true, true, sz_word) << 8;
+    res = (uae_u16)mmu_get_user_byte(addr, regs.s != 0, true, sz_word) << 8;
     SAVE_EXCEPTION;
     TRY(prb) {
-        res |= mmu_get_user_byte(addr + 1, regs.s != 0, true, true, sz_word);
+        res |= mmu_get_user_byte(addr + 1, regs.s != 0, true, sz_word);
         RESTORE_EXCEPTION;
     }
     CATCH(prb) {
@@ -856,10 +856,10 @@ static uae_u32 REGPARAM2 mmu_get_lrmw_long_unaligned(uaecptr addr)
     uae_u32 res;
     
     if (likely(!(addr & 1))) {
-        res = (uae_u32)mmu_get_user_word(addr, regs.s != 0, true, true, sz_long) << 16;
+        res = (uae_u32)mmu_get_user_word(addr, regs.s != 0, true, sz_long) << 16;
         SAVE_EXCEPTION;
         TRY(prb) {
-            res |= mmu_get_user_word(addr + 2, regs.s != 0, true, true, sz_long);
+            res |= mmu_get_user_word(addr + 2, regs.s != 0, true, sz_long);
             RESTORE_EXCEPTION;
         }
         CATCH(prb) {
@@ -868,12 +868,12 @@ static uae_u32 REGPARAM2 mmu_get_lrmw_long_unaligned(uaecptr addr)
             THROW_AGAIN(prb);
         } ENDTRY
     } else {
-        res = (uae_u32)mmu_get_user_byte(addr, regs.s != 0, true, true, sz_long) << 8;
+        res = (uae_u32)mmu_get_user_byte(addr, regs.s != 0, true, sz_long) << 8;
         SAVE_EXCEPTION;
         TRY(prb) {
-            res = (res | mmu_get_user_byte(addr + 1, regs.s != 0, true, true, sz_long)) << 8;
-            res = (res | mmu_get_user_byte(addr + 2, regs.s != 0, true, true, sz_long)) << 8;
-            res |= mmu_get_user_byte(addr + 3, regs.s != 0, true, true, sz_long);
+            res = (res | mmu_get_user_byte(addr + 1, regs.s != 0, true, sz_long)) << 8;
+            res = (res | mmu_get_user_byte(addr + 2, regs.s != 0, true, sz_long)) << 8;
+            res |= mmu_get_user_byte(addr + 3, regs.s != 0, true, sz_long);
             RESTORE_EXCEPTION;
         }
         CATCH(prb) {
@@ -885,18 +885,18 @@ static uae_u32 REGPARAM2 mmu_get_lrmw_long_unaligned(uaecptr addr)
     return res;
 }
 
-void REGPARAM2 mmu_put_long_unaligned(uaecptr addr, uae_u32 val, bool data, bool rmw)
+void REGPARAM2 mmu_put_long_unaligned(uaecptr addr, uae_u32 val, bool rmw)
 {
     SAVE_EXCEPTION;
     TRY(prb) {
         if (likely(!(addr & 1))) {
-            mmu_put_word(addr, val >> 16, data, sz_long, rmw);
-            mmu_put_word(addr + 2, val, data, sz_long, rmw);
+            mmu_put_word(addr, val >> 16, sz_long, rmw);
+            mmu_put_word(addr + 2, val, sz_long, rmw);
         } else {
-            mmu_put_byte(addr, val >> 24, data, sz_long, rmw);
-            mmu_put_byte(addr + 1, val >> 16, data, sz_long, rmw);
-            mmu_put_byte(addr + 2, val >> 8, data, sz_long, rmw);
-            mmu_put_byte(addr + 3, val, data, sz_long, rmw);
+            mmu_put_byte(addr, val >> 24, sz_long, rmw);
+            mmu_put_byte(addr + 1, val >> 16, sz_long, rmw);
+            mmu_put_byte(addr + 2, val >> 8, sz_long, rmw);
+            mmu_put_byte(addr + 3, val, sz_long, rmw);
         }
         RESTORE_EXCEPTION;
     }
@@ -908,12 +908,12 @@ void REGPARAM2 mmu_put_long_unaligned(uaecptr addr, uae_u32 val, bool data, bool
     } ENDTRY
 }
 
-void REGPARAM2 mmu_put_word_unaligned(uaecptr addr, uae_u16 val, bool data, bool rmw)
+void REGPARAM2 mmu_put_word_unaligned(uaecptr addr, uae_u16 val, bool rmw)
 {
     SAVE_EXCEPTION;
     TRY(prb) {
-        mmu_put_byte(addr, val >> 8, data, sz_word, rmw);
-        mmu_put_byte(addr + 1, val, data, sz_word, rmw);
+        mmu_put_byte(addr, val >> 8, sz_word, rmw);
+        mmu_put_byte(addr + 1, val, sz_word, rmw);
         RESTORE_EXCEPTION;
     }
     CATCH(prb) {
@@ -927,18 +927,17 @@ void REGPARAM2 mmu_put_word_unaligned(uaecptr addr, uae_u16 val, bool data, bool
 uae_u32 REGPARAM2 sfc_get_long(uaecptr addr)
 {
     bool super = (regs.sfc & 4) != 0;
-    bool data = true;
     uae_u32 res;
     
     ismoves = true;
     if (likely(!is_unaligned(addr, 4))) {
-        res = mmu_get_user_long(addr, super, data, false, sz_long);
+        res = mmu_get_user_long(addr, super, false, sz_long);
     } else {
         if (likely(!(addr & 1))) {
-            res = (uae_u32)mmu_get_user_word(addr, super, data, false, sz_long) << 16;
+            res = (uae_u32)mmu_get_user_word(addr, super, false, sz_long) << 16;
             SAVE_EXCEPTION;
             TRY(prb) {
-                res |= mmu_get_user_word(addr + 2, super, data, false, sz_long);
+                res |= mmu_get_user_word(addr + 2, super, false, sz_long);
                 RESTORE_EXCEPTION;
             }
             CATCH(prb) {
@@ -947,12 +946,12 @@ uae_u32 REGPARAM2 sfc_get_long(uaecptr addr)
                 THROW_AGAIN(prb);
             } ENDTRY
         } else {
-            res = (uae_u32)mmu_get_user_byte(addr, super, data, false, sz_long) << 8;
+            res = (uae_u32)mmu_get_user_byte(addr, super, false, sz_long) << 8;
             SAVE_EXCEPTION;
             TRY(prb) {
-                res = (res | mmu_get_user_byte(addr + 1, super, data, false, sz_long)) << 8;
-                res = (res | mmu_get_user_byte(addr + 2, super, data, false, sz_long)) << 8;
-                res |= mmu_get_user_byte(addr + 3, super, data, false, sz_long);
+                res = (res | mmu_get_user_byte(addr + 1, super, false, sz_long)) << 8;
+                res = (res | mmu_get_user_byte(addr + 2, super, false, sz_long)) << 8;
+                res |= mmu_get_user_byte(addr + 3, super, false, sz_long);
                 RESTORE_EXCEPTION;
             }
             CATCH(prb) {
@@ -970,17 +969,16 @@ uae_u32 REGPARAM2 sfc_get_long(uaecptr addr)
 uae_u16 REGPARAM2 sfc_get_word(uaecptr addr)
 {
     bool super = (regs.sfc & 4) != 0;
-    bool data = true;
     uae_u16 res;
     
     ismoves = true;
     if (likely(!is_unaligned(addr, 2))) {
-        res = mmu_get_user_word(addr, super, data, false, sz_word);
+        res = mmu_get_user_word(addr, super, false, sz_word);
     } else {
-        res = (uae_u16)mmu_get_user_byte(addr, super, data, false, sz_word) << 8;
+        res = (uae_u16)mmu_get_user_byte(addr, super, false, sz_word) << 8;
         SAVE_EXCEPTION;
         TRY(prb) {
-            res |= mmu_get_user_byte(addr + 1, super, data, false, sz_word);
+            res |= mmu_get_user_byte(addr + 1, super, false, sz_word);
             RESTORE_EXCEPTION;
         }
         CATCH(prb) {
@@ -996,11 +994,10 @@ uae_u16 REGPARAM2 sfc_get_word(uaecptr addr)
 uae_u8 REGPARAM2 sfc_get_byte(uaecptr addr)
 {
     bool super = (regs.sfc & 4) != 0;
-    bool data = true;
     uae_u8 res;
     
     ismoves = true;
-    res = mmu_get_user_byte(addr, super, data, false, sz_byte);
+    res = mmu_get_user_byte(addr, super, false, sz_byte);
     ismoves = false;
     return res;
 }
@@ -1008,21 +1005,20 @@ uae_u8 REGPARAM2 sfc_get_byte(uaecptr addr)
 void REGPARAM2 dfc_put_long(uaecptr addr, uae_u32 val)
 {
     bool super = (regs.dfc & 4) != 0;
-    bool data = true;
     
     ismoves = true;
     SAVE_EXCEPTION;
     TRY(prb) {
         if (likely(!is_unaligned(addr, 4))) {
-            mmu_put_user_long(addr, val, super, data, sz_long);
+            mmu_put_user_long(addr, val, super, sz_long);
         } else if (likely(!(addr & 1))) {
-            mmu_put_user_word(addr, val >> 16, super, data, sz_long);
-            mmu_put_user_word(addr + 2, val, super, data, sz_long);
+            mmu_put_user_word(addr, val >> 16, super, sz_long);
+            mmu_put_user_word(addr + 2, val, super, sz_long);
         } else {
-            mmu_put_user_byte(addr, val >> 24, super, data, sz_long);
-            mmu_put_user_byte(addr + 1, val >> 16, super, data, sz_long);
-            mmu_put_user_byte(addr + 2, val >> 8, super, data, sz_long);
-            mmu_put_user_byte(addr + 3, val, super, data, sz_long);
+            mmu_put_user_byte(addr, val >> 24, super, sz_long);
+            mmu_put_user_byte(addr + 1, val >> 16, super, sz_long);
+            mmu_put_user_byte(addr + 2, val >> 8, super, sz_long);
+            mmu_put_user_byte(addr + 3, val, super, sz_long);
         }
         RESTORE_EXCEPTION;
     }
@@ -1038,16 +1034,15 @@ void REGPARAM2 dfc_put_long(uaecptr addr, uae_u32 val)
 void REGPARAM2 dfc_put_word(uaecptr addr, uae_u16 val)
 {
     bool super = (regs.dfc & 4) != 0;
-    bool data = true;
     
     ismoves = true;
     SAVE_EXCEPTION;
     TRY(prb) {
         if (likely(!is_unaligned(addr, 2))) {
-            mmu_put_user_word(addr, val, super, data, sz_word);
+            mmu_put_user_word(addr, val, super, sz_word);
         } else {
-            mmu_put_user_byte(addr, val >> 8, super, data, sz_word);
-            mmu_put_user_byte(addr + 1, val, super, data, sz_word);
+            mmu_put_user_byte(addr, val >> 8, super, sz_word);
+            mmu_put_user_byte(addr + 1, val, super, sz_word);
         }
         RESTORE_EXCEPTION;
     }
@@ -1063,12 +1058,11 @@ void REGPARAM2 dfc_put_word(uaecptr addr, uae_u16 val)
 void REGPARAM2 dfc_put_byte(uaecptr addr, uae_u8 val)
 {
     bool super = (regs.dfc & 4) != 0;
-    bool data = true;
     
     ismoves = true;
     SAVE_EXCEPTION;
     TRY(prb) {
-        mmu_put_user_byte(addr, val, super, data, sz_byte);
+        mmu_put_user_byte(addr, val, super, sz_byte);
         RESTORE_EXCEPTION;
     }
     CATCH(prb) {
@@ -1299,18 +1293,18 @@ void uae_mmu_put_lrmw (uaecptr addr, uae_u32 v, int size, int type)
 {
     locked_rmw_cycle = true;
     if (size == sz_byte) {
-        mmu_put_byte(addr, v, true, sz_byte, true);
+        mmu_put_byte(addr, v, sz_byte, true);
     } else if (size == sz_word) {
         if (unlikely(is_unaligned(addr, 2))) {
-            mmu_put_word_unaligned(addr, v, true, true);
+            mmu_put_word_unaligned(addr, v, true);
         } else {
-            mmu_put_word(addr, v, true, sz_word, true);
+            mmu_put_word(addr, v, sz_word, true);
         }
     } else {
         if (unlikely(is_unaligned(addr, 4)))
-            mmu_put_long_unaligned(addr, v, true, true);
+            mmu_put_long_unaligned(addr, v, true);
         else
-            mmu_put_long(addr, v, true, sz_long, true);
+            mmu_put_long(addr, v, sz_long, true);
     }
     locked_rmw_cycle = false;
 }
@@ -1319,18 +1313,18 @@ uae_u32 uae_mmu_get_lrmw (uaecptr addr, int size, int type)
     uae_u32 v;
     locked_rmw_cycle = true;
     if (size == sz_byte) {
-        v = mmu_get_user_byte(addr, regs.s != 0, true, true, sz_byte);
+        v = mmu_get_user_byte(addr, regs.s != 0, true, sz_byte);
     } else if (size == sz_word) {
         if (unlikely(is_unaligned(addr, 2))) {
             v = mmu_get_lrmw_word_unaligned(addr);
         } else {
-            v = mmu_get_user_word(addr, regs.s != 0, true, true, sz_word);
+            v = mmu_get_user_word(addr, regs.s != 0, true, sz_word);
         }
     } else {
         if (unlikely(is_unaligned(addr, 4)))
             v = mmu_get_lrmw_long_unaligned(addr);
         else
-            v = mmu_get_user_long(addr, regs.s != 0, true, true, sz_long);
+            v = mmu_get_user_long(addr, regs.s != 0, true, sz_long);
     }
     locked_rmw_cycle = false;
     return v;
