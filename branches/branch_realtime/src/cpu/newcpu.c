@@ -1380,7 +1380,9 @@ insretry:
 		TRY (prb2) {
 			Exception (prb);
 		} CATCH (prb2) {
-			cpu_halt (1);
+            write_log("[FATAL] double fault\n");
+            m68k_reset (1); // auto-reset CPU
+			//cpu_halt (1);
 			return;
 		} ENDTRY
 	} ENDTRY
@@ -1462,8 +1464,10 @@ static void m68k_run_mmu040 (void)
 		TRY (prb2) {
 			Exception (prb);
 		} CATCH (prb2) {
-            Log_Printf(LOG_WARN, "[FATAL] double fault");
-            DebugUI();
+            write_log("[FATAL] double fault\n");
+            m68k_reset (1); // auto-reset CPU
+            //cpu_halt (1);
+            return;
 		} ENDTRY
 
 	} ENDTRY
@@ -2312,7 +2316,7 @@ void exception2 (uaecptr addr, bool read, int size, uae_u32 fc)
         uae_u32 flags = size == 1 ? MMU030_SSW_SIZE_B : (size == 2 ? MMU030_SSW_SIZE_W : MMU030_SSW_SIZE_L);
         mmu030_page_fault (addr, read, flags, fc);
     } else {
-        mmu_bus_error (addr, fc, read == false, size, false, 0, true);
+        mmu_bus_error (addr, 0, fc, read == false, size, true);
     }
 }
 
