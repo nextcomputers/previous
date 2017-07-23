@@ -110,9 +110,9 @@ STATIC_INLINE const char *fp_print(fptype *fx)
         if (n)
             *fx *= -1.0;
 #ifdef USE_LONG_DOUBLE
-        sprintf(fs, "%c%#.17Le%s%s", n?'-':'+', *fx, "", d?"D":"");
+        sprintf(fs, "%c%#.16Le%s%s", n?'-':'+', *fx, "", d?"D":"");
 #else
-        sprintf(fs, "%c%#.17e%s%s", n?'-':'+', *fx, "", d?"D":"");
+        sprintf(fs, "%c%#.16e%s%s", n?'-':'+', *fx, "", d?"D":"");
 #endif
     }
     

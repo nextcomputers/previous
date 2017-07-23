@@ -12,11 +12,6 @@
 #ifndef FPP_H
 #define FPP_H
 
-#define __USE_ISOC9X  /* We might be able to pick up a NaN */
-
-#include <math.h>
-#include <float.h>
-
 #include <softfloat.h>
 
 
@@ -96,29 +91,32 @@ STATIC_INLINE const char *fp_print(fptype *fx)
 {
     static char fs[32];
     bool n, u, d;
-    long double result = 0.0;
-    int i;
+    fptype x;
+    int32 len;
+    int8 save_exception_flags;
     
     n = floatx80_is_negative(*fx);
     u = floatx80_is_unnormal(*fx);
     d = floatx80_is_denormal(*fx);
-    
-    if (floatx80_is_zero(*fx)) {
-        sprintf(fs, "%c%#.17Le%s%s", n?'-':'+', (long double) 0.0, u?"U":"", d?"D":"");
-    } else if (floatx80_is_infinity(*fx)) {
+
+    if (floatx80_is_infinity(*fx)) {
         sprintf(fs, "%c%s", n?'-':'+', "inf");
     } else if (floatx80_is_signaling_nan(*fx)) {
         sprintf(fs, "%c%s", n?'-':'+', "snan");
     } else if (floatx80_is_nan(*fx)) {
         sprintf(fs, "%c%s", n?'-':'+', "nan");
     } else {
-        for (i = 63; i >= 0; i--) {
-            if (fx->low & (((uae_u64)1)<<i)) {
-                result += (long double) 1.0 / (((uae_u64)1)<<(63-i));
-            }
-        }
-        result *= powl(2.0, (fx->high&0x7FFF) - 0x3FFF);
-        sprintf(fs, "%c%#.17Le%s%s", n?'-':'+', result, u?"U":"", d?"D":"");
+        len = 17;
+        save_exception_flags = float_exception_flags;
+        float_exception_flags = 0;
+        x = floatx80_to_floatdecimal(*fx, &len);
+        
+        sprintf(fs, "%c%01lld.%016llde%c%04d%s%s", n?'-':'+',
+                x.low/LIT64(10000000000000000), x.low%LIT64(10000000000000000),
+                (x.high&0x4000)?'-':'+', x.high&0x3FFF, d?"D":u?"U":"",
+                (float_exception_flags&float_flag_inexact)?"~":"");
+
+        float_exception_flags = save_exception_flags;
     }
     
     return fs;
