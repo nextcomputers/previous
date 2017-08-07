@@ -772,12 +772,21 @@ static void fpu_noinst (uae_u16 opcode, uaecptr pc)
     op_illg (opcode);
 }
 
+static bool if_no_fpu(void)
+{
+    return (regs.pcr & 2) || currprefs.fpu_model <= 0;
+}
+
 static bool fault_if_no_fpu (uae_u16 opcode, uae_u16 extra, uaecptr ea, uaecptr oldpc)
 {
-    if ((regs.pcr & 2) || currprefs.fpu_model <= 0) {
+    if (if_no_fpu()) {
 #if EXCEPTION_FPP
         write_log (_T("no FPU: %04X-%04X PC=%08X\n"), opcode, extra, oldpc);
 #endif
+        if (fpu_mmu_fixup) {
+            m68k_areg (regs, mmufixup[0].reg) = mmufixup[0].value;
+            mmufixup[0].reg = -1;
+        }
         fpu_op_illg (opcode, ea, oldpc);
         return true;
     }
@@ -1062,6 +1071,9 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr old
     
     switch (mode) {
         case 0:
+            if ((size == 0 || size == 1 ||size == 4 || size == 6) && fault_if_no_fpu (opcode, extra, 0, oldpc))
+                return -1;
+            
             switch (size)
         {
             case 6:
@@ -1087,22 +1099,23 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr old
             ad = m68k_areg (regs, reg);
             break;
         case 3:
-            if (currprefs.mmu_model) {
-                mmufixup[0].reg = reg;
-                mmufixup[0].value = m68k_areg (regs, reg);
-                fpu_mmu_fixup = true;
-            }
+            // Also needed by fault_if_no_fpu
+            mmufixup[0].reg = reg;
+            mmufixup[0].value = m68k_areg (regs, reg);
+            fpu_mmu_fixup = true;
             ad = m68k_areg (regs, reg);
             m68k_areg (regs, reg) += reg == 7 ? sz2[size] : sz1[size];
             break;
         case 4:
-            if (currprefs.mmu_model) {
-                mmufixup[0].reg = reg;
-                mmufixup[0].value = m68k_areg (regs, reg);
-                fpu_mmu_fixup = true;
-            }
+            // Also needed by fault_if_no_fpu
+            mmufixup[0].reg = reg;
+            mmufixup[0].value = m68k_areg (regs, reg);
+            fpu_mmu_fixup = true;
             m68k_areg (regs, reg) -= reg == 7 ? sz2[size] : sz1[size];
             ad = m68k_areg (regs, reg);
+            // 68060 no fpu -(an): EA points to -4, not -12 if extended precision
+            if (currprefs.cpu_model == 68060 && if_no_fpu() && sz1[size] == 12)
+                ad += 8;
             break;
         case 5:
             ad = m68k_areg (regs, reg) + (uae_s32) (uae_s16) x_cp_next_iword ();
@@ -1160,10 +1173,14 @@ static int get_fp_value (uae_u32 opcode, uae_u16 extra, fptype *src, uaecptr old
         }
     }
     
+    if (fault_if_no_fpu (opcode, extra, ad, oldpc))
+        return -1;
+    
     *adp = ad;
     uae_u32 adold = ad;
     
     if (currprefs.fpu_model == 68060) {
+        // Skip if 68040 because FSAVE frame can store both src and dst
         if (fault_if_unimplemented_680x0(opcode, extra, ad, oldpc, src, -1)) {
             return -1;
         }
@@ -1252,10 +1269,11 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
     reg = opcode & 7;
     mode = (opcode >> 3) & 7;
     size = (extra >> 10) & 7;
-    ad = -1;
     switch (mode)
     {
         case 0:
+            if ((size == 0 || size == 1 ||size == 4 || size == 6) && fault_if_no_fpu (opcode, extra, 0, oldpc))
+                return -1;
             
             switch (size)
         {
@@ -1297,22 +1315,23 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
             ad = m68k_areg (regs, reg);
             break;
         case 3:
-            if (currprefs.mmu_model) {
-                mmufixup[0].reg = reg;
-                mmufixup[0].value = m68k_areg (regs, reg);
-                fpu_mmu_fixup = true;
-            }
+            // Also needed by fault_if_no_fpu
+            mmufixup[0].reg = reg;
+            mmufixup[0].value = m68k_areg (regs, reg);
+            fpu_mmu_fixup = true;
             ad = m68k_areg (regs, reg);
             m68k_areg (regs, reg) += reg == 7 ? sz2[size] : sz1[size];
             break;
         case 4:
-            if (currprefs.mmu_model) {
-                mmufixup[0].reg = reg;
-                mmufixup[0].value = m68k_areg (regs, reg);
-                fpu_mmu_fixup = true;
-            }
+            // Also needed by fault_if_no_fpu
+            mmufixup[0].reg = reg;
+            mmufixup[0].value = m68k_areg (regs, reg);
+            fpu_mmu_fixup = true;
             m68k_areg (regs, reg) -= reg == 7 ? sz2[size] : sz1[size];
             ad = m68k_areg (regs, reg);
+            // 68060 no fpu -(an): EA points to -4, not -12 if extended precision
+            if (currprefs.cpu_model == 68060 && if_no_fpu() && sz1[size] == 12)
+                ad += 8;
             break;
         case 5:
             ad = m68k_areg (regs, reg) + (uae_s32) (uae_s16) x_cp_next_iword ();
@@ -1344,7 +1363,7 @@ static int put_fp_value (fptype *value, uae_u32 opcode, uae_u16 extra, uaecptr o
     *adp = ad;
 
     if (fault_if_no_fpu (opcode, extra, ad, oldpc))
-        return 1;
+        return -1;
     
     switch (size)
     {
@@ -2108,8 +2127,6 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                         regs.fpiar = m68k_areg (regs, opcode & 7);
                 }
             } else if ((opcode & 0x3f) == 0x3c) {
-                if (fault_if_no_fpu (opcode, extra, 0, pc))
-                    return;
                 if ((extra & 0x2000) == 0) {
                     uae_u32 ext[3];
                     // 68060 FMOVEM.L #imm,more than 1 control register: unimplemented EA
@@ -2126,12 +2143,18 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                         ext[1] = x_cp_next_ilong ();
                     if (extra & 0x0400)
                         ext[2] = x_cp_next_ilong ();
+                    if (fault_if_no_fpu (opcode, extra, 0, pc))
+                        return;
                     if (extra & 0x1000)
                         fpp_set_fpcr (ext[0]);
                     if (extra & 0x0800)
                         fpp_set_fpsr (ext[1]);
                     if (extra & 0x0400)
                         regs.fpiar = ext[2];
+                } else {
+                    // immediate as destination
+                    fpu_noinst (opcode, pc);
+                    return;
                 }
             } else if (extra & 0x2000) {
                 /* FMOVEM FPP->memory */
@@ -2267,8 +2290,6 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
             regs.fpiar = pc;
             reg = (extra >> 7) & 7;
             if ((extra & 0xfc00) == 0x5c00) {
-                if (fault_if_no_fpu (opcode, extra, 0, pc))
-                    return;
                 if (fault_if_unimplemented_680x0 (opcode, extra, ad, pc, &src, reg))
                     return;
                 fpsr_clear_status();
