@@ -1962,7 +1962,7 @@ void m68k_disasm_2 (TCHAR *buf, int bufsize, uaecptr pc, uaecptr *nextpc, int cn
             pc += 2;
             if ((extra & 0xfc00) == 0x5c00) { // FMOVECR (=i_FPP with source specifier = 7)
                 fptype fp;
-                if (fpu_get_constant(&fp, extra))
+                if (fpu_get_constant(&fp, extra & 0x3f))
                     _stprintf(instrname, _T("FMOVECR.X #%s,FP%d"), fp_print(&fp), (extra >> 7) & 7);
                 else
                     _stprintf(instrname, _T("FMOVECR.X #?,FP%d"), (extra >> 7) & 7);
