@@ -1108,16 +1108,23 @@ uae_u32 REGPARAM2 op_illg (uae_u32 opcode)
 // 68030 (68851) MMU instructions only
 bool mmu_op30 (uaecptr pc, uae_u32 opcode, uae_u16 extra, uaecptr extraa)
 {
+    bool fline = false;
+    
     if (extra & 0x8000) {
-        return mmu_op30_ptest (pc, opcode, extra, extraa);
+        fline = mmu_op30_ptest (pc, opcode, extra, extraa);
     } else if ((extra&0xE000)==0x2000 && (extra & 0x1C00)) {
-        return mmu_op30_pflush (pc, opcode, extra, extraa);
+        fline = mmu_op30_pflush (pc, opcode, extra, extraa);
     } else if ((extra&0xE000)==0x2000 && !(extra & 0x1C00)) {
-        return mmu_op30_pload (pc, opcode, extra, extraa);
+        fline = mmu_op30_pload (pc, opcode, extra, extraa);
     } else {
-        return mmu_op30_pmove (pc, opcode, extra, extraa);
+        fline = mmu_op30_pmove (pc, opcode, extra, extraa);
     }
-    return false;
+    
+    if (fline) {
+        m68k_setpc(pc);
+        op_illg(opcode);
+    }
+    return fline;
 }
 
 void mmu_op (uae_u32 opcode, uae_u32 extra)
