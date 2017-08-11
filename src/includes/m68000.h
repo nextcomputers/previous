@@ -147,6 +147,8 @@ extern const char *OpcodeName[];
  * Add CPU cycles.
  */
 static inline void M68000_AddCycles(int cycles) {
+    nCyclesOver += cycles;
+    
     if(PendingInterrupt.type == CYC_INT_CPU)
         PendingInterrupt.time -= cycles;
 

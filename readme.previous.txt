@@ -213,6 +213,7 @@ input devices.
 
 Previous v1.8 (unreleased):
   > Fixes bug that caused FMOVECR to return wrong values in some cases.
+  > Fixes bug in timing system that caused hangs in variable speed mode.
 
 
  7) Running Previous
