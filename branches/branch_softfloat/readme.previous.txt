@@ -211,6 +211,9 @@ input devices.
   > Fixes bug that caused lags in responsiveness during sound output.
   > Fixes bug that caused a crash when using write protected image files.
 
+Previous v1.8 (unreleased):
+  > Fixes bug that caused FMOVECR to return wrong values in some cases.
+
 
  7) Running Previous
  -------------------

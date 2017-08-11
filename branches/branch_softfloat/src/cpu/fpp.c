@@ -89,24 +89,24 @@ static const struct fpp_cr_entry fpp_cr[22] = {
 #define FPP_CR_1E4096   21
 
 struct fpp_cr_entry_undef {
-    uae_u8 constant;
     uae_u32 val[3];
 };
 
+#define FPP_CR_NUM_SPECIAL_UNDEFINED 10
+
 // 68881 and 68882 have identical undefined fields
-static const struct fpp_cr_entry_undef fpp_cr_undef[] = {
-    { 0xff, {0x40000000, 0x00000000, 0x00000000} },
-    { 0x01, {0x40010000, 0xfe000682, 0x00000000} },
-    { 0x02, {0x40010000, 0xffc00503, 0x80000000} },
-    { 0x03, {0x20000000, 0x7fffffff, 0x00000000} },
-    { 0x04, {0x00000000, 0xffffffff, 0xffffffff} },
-    { 0x05, {0x3c000000, 0xffffffff, 0xfffff800} },
-    { 0x06, {0x3f800000, 0xffffff00, 0x00000000} },
-    { 0x07, {0x00010000, 0xf65d8d9c, 0x00000000} },
-    { 0x08, {0x7fff0000, 0x001e0000, 0x00000000} },
-    { 0x09, {0x43ff0000, 0x000e0000, 0x00000000} },
-    { 0x0a, {0x407f0000, 0x00060000, 0x00000000} },
-    { 0x00 }
+static const struct fpp_cr_entry_undef fpp_cr_undef[FPP_CR_NUM_SPECIAL_UNDEFINED+1] = {
+    { {0x40000000, 0x00000000, 0x00000000} },
+    { {0x40010000, 0xfe000682, 0x00000000} },
+    { {0x40010000, 0xffc00503, 0x80000000} },
+    { {0x20000000, 0x7fffffff, 0x00000000} },
+    { {0x00000000, 0xffffffff, 0xffffffff} },
+    { {0x3c000000, 0xffffffff, 0xfffff800} },
+    { {0x3f800000, 0xffffff00, 0x00000000} },
+    { {0x00010000, 0xf65d8d9c, 0x00000000} },
+    { {0x7fff0000, 0x001e0000, 0x00000000} },
+    { {0x43ff0000, 0x000e0000, 0x00000000} },
+    { {0x407f0000, 0x00060000, 0x00000000} }
 };
 
 uae_u32 xhex_nan[]   ={0x7fff0000, 0xffffffff, 0xffffffff};
@@ -559,8 +559,9 @@ static void fpset (fptype *fp, uae_s32 val)
 bool fpu_get_constant(fptype *fp, int cr)
 {
     uae_u32 f[3] = { 0, 0, 0 };
-    int entry = -1;
-    bool valid = true;
+    int entry = 0;
+    int mode = (regs.fpcr >> 4) & 3;
+    int prec = (regs.fpcr >> 6) & 3;
     
     switch (cr)
     {
@@ -632,47 +633,82 @@ bool fpu_get_constant(fptype *fp, int cr)
             break;
         default: // undefined
         {
-            const struct fpp_cr_entry_undef *fcr = fpp_cr_undef;
-            int i;
-            write_log (_T("Undocumented FPU constant access (index %02x)\n"), cr);
-            // Most undefined fields contain this
-            f[0] = fcr[0].val[0];
-            f[1] = fcr[0].val[1];
-            f[2] = fcr[0].val[2];
-            // Other undefined fields
-            for (i = 1; fcr[i].constant; i++) {
-                if (fcr[i].constant == cr) {
-                    f[0] = fcr[i].val[0];
-                    f[1] = fcr[i].val[1];
-                    f[2] = fcr[i].val[2];
+            bool check_f1_adjust = false;
+            int f1_adjust = 0;
+            uae_u32 sr = 0;
+
+            if (cr > FPP_CR_NUM_SPECIAL_UNDEFINED) {
+                cr = 0; // Most undefined fields contain this
+            }
+            f[0] = fpp_cr_undef[cr].val[0];
+            f[1] = fpp_cr_undef[cr].val[1];
+            f[2] = fpp_cr_undef[cr].val[2];
+            // Rounding mode and precision works very strangely here..
+            switch (cr)
+            {
+                case 1:
+                    check_f1_adjust = true;
                     break;
+                case 2:
+                    if (prec == 1 && mode == 3)
+                        f1_adjust = -1;
+                    break;
+                case 3:
+                    if (prec == 1 && (mode == 0 || mode == 3))
+                        sr = FPSR_CC_I;
+                    else
+                        sr = FPSR_CC_NAN;
+                    break;
+                case 7:
+                    sr = FPSR_CC_NAN;
+                    check_f1_adjust = true;
+                    break;
+            }
+            if (check_f1_adjust) {
+                if (prec == 1) {
+                    if (mode == 0) {
+                        f1_adjust = -1;
+                    } else if (mode == 1 || mode == 2) {
+                        f1_adjust = 1;
+                    }
                 }
             }
-            valid = false;
-            break;
+            
+            to_exten_fmovem(fp, f[0], f[1], f[2]);
+            
+            if (prec == 1) fp_round32(fp);
+            if (prec >= 2) fp_round64(fp);
+            
+            if (f1_adjust) {
+                from_exten_fmovem(fp, &f[0], &f[1], &f[2]);
+                f[1] += f1_adjust * 0x80;
+                to_exten_fmovem(fp, f[0], f[1], f[2]);
+            }
+            
+            fpsr_set_result(fp);
+            regs.fpsr |= sr;
         }
+            return false;
     }
     
-    if (entry >= 0) {
-        f[0] = fpp_cr[entry].val[0];
-        f[1] = fpp_cr[entry].val[1];
-        f[2] = fpp_cr[entry].val[2];
-        // if constant is inexact, set inexact bit and round
-        // note: with valid constants, LSB never wraps
-        if (fpp_cr[entry].inexact) {
-            fpsr_set_exception(FPSR_INEX2);
-            f[2] += fpp_cr[entry].rndoff[(regs.fpcr >> 4) & 3];
-        }
+    f[0] = fpp_cr[entry].val[0];
+    f[1] = fpp_cr[entry].val[1];
+    f[2] = fpp_cr[entry].val[2];
+    // if constant is inexact, set inexact bit and round
+    // note: with valid constants, LSB never wraps
+    if (fpp_cr[entry].inexact) {
+        fpsr_set_exception(FPSR_INEX2);
+        f[2] += fpp_cr[entry].rndoff[mode];
     }
     
     to_exten_fmovem(fp, f[0], f[1], f[2]);
     
-    if (((regs.fpcr >> 6) & 3) == 1) fp_round32(fp);
-    if (((regs.fpcr >> 6) & 3) >= 2) fp_round64(fp);
+    if (prec == 1) fp_round32(fp);
+    if (prec >= 2) fp_round64(fp);
     
     fpsr_set_result(fp);
 
-    return valid;
+    return true;
 }
 
 
