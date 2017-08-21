@@ -212,6 +212,7 @@ input devices.
   > Fixes bug that caused a crash when using write protected image files.
 
 Previous v1.8 (unreleased):
+  > Removes support for host keyboard repeat because it became useless.
   > Fixes bug that caused FMOVECR to return wrong values in some cases.
   > Fixes bug in timing system that caused hangs in variable speed mode.
 
