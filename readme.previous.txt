@@ -1,6 +1,6 @@
 
 
-                                 Previous 1.7
+                                 Previous 1.8
 
 
 
@@ -211,7 +211,7 @@ input devices.
   > Fixes bug that caused lags in responsiveness during sound output.
   > Fixes bug that caused a crash when using write protected image files.
 
-Previous v1.8 (unreleased):
+Previous v1.8:
   > Removes support for host keyboard repeat because it became useless.
   > Fixes bug that caused FMOVECR to return wrong values in some cases.
   > Fixes bug in timing system that caused hangs in variable speed mode.
