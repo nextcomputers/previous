@@ -32,7 +32,7 @@ char *ua (const char *s) {
 #define BOOL_TYPE "int"
 /* Define the minimal 680x0 where NV flags are not affected by xBCD instructions.  */
 #define xBCD_KEEPS_N_FLAG 4
-#define xBCD_KEEPS_V_FLAG 3
+#define xBCD_KEEPS_V_FLAG 2
 
 static FILE *headerfile;
 static FILE *stblfile;
@@ -619,9 +619,16 @@ static const char *gen_nextibyte (int flags)
     return buffer;
 }
 
-static void makefromsr (void)
+static void makefromsr(void)
 {
     printf ("\tMakeFromSR();\n");
+    if (using_ce || isce020())
+        printf ("\tregs.ipl_pin = intlev ();\n");
+}
+
+static void makefromsr_t0(void)
+{
+    printf ("\tMakeFromSR_T0();\n");
     if (using_ce || isce020())
         printf ("\tregs.ipl_pin = intlev ();\n");
 }
@@ -696,6 +703,25 @@ static void fill_prefetch_1 (int o)
     }
 }
 
+// don't check trace bits
+static void fill_prefetch_full_ntx (void)
+{
+    if (using_prefetch) {
+        fill_prefetch_1 (0);
+        irc2ir ();
+        fill_prefetch_1 (2);
+    } else if (isprefetch020()) {
+        did_prefetch = 2;
+        total_ce020 -= 4;
+        returntail (false);
+        if (cpu_level >= 3)
+            printf ("\tfill_prefetch_030_ntx();\n");
+        else if (cpu_level == 2)
+            printf ("\tfill_prefetch_020_ntx();\n");
+    }
+}
+
+// check trace bits
 static void fill_prefetch_full (void)
 {
     if (using_prefetch) {
@@ -707,9 +733,11 @@ static void fill_prefetch_full (void)
         total_ce020 -= 4;
         returntail (false);
         if (cpu_level >= 3)
-            printf ("\tfill_prefetch_030 ();\n");
+            printf ("\tfill_prefetch_030();\n");
         else if (cpu_level == 2)
-            printf ("\tfill_prefetch_020 ();\n");
+            printf ("\tfill_prefetch_020();\n");
+    } else if (!using_prefetch_020 && cpu_level >= 2) {
+        printf("\tif(regs.t0) check_t0_trace();\n");
     }
 }
 
@@ -724,8 +752,10 @@ static void fill_prefetch_full_000 (void)
 // 68020+
 static void fill_prefetch_full_020 (void)
 {
-    if (!using_prefetch_020)
+    if (!using_prefetch_020) {
+        printf("\tif(regs.t0) check_t0_trace();\n");
         return;
+    }
     fill_prefetch_full ();
 }
 
@@ -3150,14 +3180,10 @@ static void gen_opcode (unsigned int opcode)
                 printf ("\tsrc &= 0xFF;\n");
             }
             addcycles000 (8);
-            if (cpu_level <= 1) {
-                sync_m68k_pc ();
-                fill_prefetch_full ();
-            } else {
-                fill_prefetch_next ();
-            }
             printf ("\tregs.sr %c= src;\n", curi->mnemo == i_EORSR ? '^' : '|');
-            makefromsr ();
+            makefromsr_t0();
+            sync_m68k_pc ();
+            fill_prefetch_full_ntx();
             break;
         case i_ANDSR:
             printf ("\tMakeSR ();\n");
@@ -3166,14 +3192,10 @@ static void gen_opcode (unsigned int opcode)
                 printf ("\tsrc |= 0xFF00;\n");
             }
             addcycles000 (8);
-            if (cpu_level <= 1) {
-                sync_m68k_pc ();
-                fill_prefetch_full ();
-            } else {
-                fill_prefetch_next ();
-            }
             printf ("\tregs.sr &= src;\n");
-            makefromsr ();
+            makefromsr_t0();
+            sync_m68k_pc ();
+            fill_prefetch_full_ntx();
             break;
         case i_SUB:
         {
@@ -3707,14 +3729,10 @@ static void gen_opcode (unsigned int opcode)
                 addcycles000 (4);
                 printf ("\tregs.sr = src;\n");
             }
-            makefromsr ();
-            if (cpu_level <= 1) {
-                // 68000 does 2xprefetch
-                sync_m68k_pc ();
-                fill_prefetch_full ();
-            } else {
-                fill_prefetch_next ();
-            }
+            makefromsr_t0();
+            // does full prefetch because S-bit change may change memory mapping under the CPU
+            sync_m68k_pc ();
+            fill_prefetch_full_ntx();
             break;
         case i_SWAP:
             genamode (curi, curi->smode, "srcreg", sz_long, "src", 1, 0, 0);
@@ -3772,7 +3790,7 @@ static void gen_opcode (unsigned int opcode)
             genamode (curi, curi->smode, "srcreg", curi->size, "src", 1, 0, 0);
             gen_set_fault_pc ();
             sync_m68k_pc ();
-            printf ("\tException (src + 32);\n");
+            printf ("\tException_cpu(src + 32);\n");
             did_prefetch = 1;
             clear_m68k_offset();
             break;
@@ -3824,7 +3842,7 @@ static void gen_opcode (unsigned int opcode)
                 printf("\t}\n");
             }
             printf("\tregs.sr = sr;\n");
-            makefromsr ();
+            makefromsr();
             printf ("\tm68k_setstopped ();\n");
             sync_m68k_pc ();
             // STOP does not prefetch anything
@@ -3838,11 +3856,11 @@ static void gen_opcode (unsigned int opcode)
             printf("\t\tException(8); goto %s;\n", endlabelstr);
             printf("\t}\n");
             printf("\tregs.sr = %s (4);\n", srcwi);
-            makefromsr ();
+            makefromsr();
             printf ("\tm68k_setstopped();\n");
             m68k_pc_offset += 4;
             sync_m68k_pc ();
-            fill_prefetch_full ();
+            fill_prefetch_full_ntx();
             break;
         case i_RTE:
             addop_ce020 (curi, 0);
@@ -3856,7 +3874,7 @@ static void gen_opcode (unsigned int opcode)
                 printf ("\t\tgoto %s;\n", endlabelstr);
                 printf ("\t}\n");
                 setpc ("pc");
-                makefromsr ();
+                makefromsr();
             } else if (cpu_level == 1 && using_prefetch) {
                 int old_brace_level = n_braces;
                 printf ("\tuae_u16 newsr; uae_u32 newpc;\n");
@@ -3873,11 +3891,11 @@ static void gen_opcode (unsigned int opcode)
                 printf ("\t\tnewsr = sr; newpc = pc;\n");
                 printf ("\t\tif (frame == 0x0) { m68k_areg (regs, 7) += offset; break; }\n");
                 printf ("\t\telse if (frame == 0x8) { m68k_areg (regs, 7) += offset + 50; break; }\n");
-                printf ("\t\telse { m68k_areg (regs, 7) += offset; Exception (14); goto %s; }\n", endlabelstr);
+                printf ("\t\telse { m68k_areg (regs, 7) += offset; Exception_cpu(14); goto %s; }\n", endlabelstr);
                 printf ("\t\tregs.sr = newsr; MakeFromSR ();\n}\n");
                 pop_braces (old_brace_level);
                 printf ("\tregs.sr = newsr;\n");
-                makefromsr ();
+                makefromsr();
                 printf ("\tif (newpc & 1) {\n");
                 printf ("\t\texception3i (0x%04X, newpc);\n", opcode);
                 printf ("\t\tgoto %s;\n", endlabelstr);
@@ -3928,14 +3946,14 @@ static void gen_opcode (unsigned int opcode)
                         printf ("\t\telse if (frame == 0xb) { m68k_areg (regs, 7) += offset + 84; break; }\n");
                     }
                 }
-                printf ("\t\telse { m68k_areg (regs, 7) += offset; Exception (14); goto %s; }\n", endlabelstr);
+                printf ("\t\telse { m68k_areg (regs, 7) += offset; Exception_cpu(14); goto %s; }\n", endlabelstr);
                 printf ("\t\tregs.sr = newsr;\n");
-                makefromsr ();
+                makefromsr_t0();
                 printf ("}\n");
                 pop_braces (old_brace_level);
                 printf ("\tregs.sr = newsr;\n");
                 addcycles_ce020 (4);
-                makefromsr ();
+                makefromsr_t0();
                 printf ("\tif (newpc & 1) {\n");
                 printf ("\t\texception3i (0x%04X, newpc);\n", opcode);
                 printf ("\t\tgoto %s;\n", endlabelstr);
@@ -3947,7 +3965,7 @@ static void gen_opcode (unsigned int opcode)
             /* PC is set and prefetch filled. */
             clear_m68k_offset();
             tail_ce020_done = true;
-            fill_prefetch_full ();
+            fill_prefetch_full_ntx();
             branch_inst = 1;
             next_cpu_level = cpu_level - 1;
             break;
@@ -4046,7 +4064,7 @@ static void gen_opcode (unsigned int opcode)
             sync_m68k_pc ();
             fill_prefetch_next ();
             printf ("\tif (GET_VFLG ()) {\n");
-            printf ("\t\tException (7);\n");
+            printf ("\t\tException_cpu(7);\n");
             printf ("\t\tgoto %s;\n", endlabelstr);
             printf ("\t}\n");
             need_endlabel = 1;
@@ -4059,7 +4077,7 @@ static void gen_opcode (unsigned int opcode)
             printf ("\tregs.sr &= 0xFF00; sr &= 0xFF;\n");
             printf ("\tregs.sr |= sr;\n");
             setpc ("pc");
-            makefromsr ();
+            makefromsr();
             printf ("\tif (%s & 1) {\n", getpc);
             printf ("\t\tuaecptr faultpc = %s;\n", getpc);
             setpc ("oldpc");
@@ -4373,7 +4391,7 @@ static void gen_opcode (unsigned int opcode)
             if (cpu_level > 1)
                 printf ("\t\tdivbyzero_special (0, dst);\n");
             incpc ("%d", m68k_pc_offset);
-            printf ("\t\tException (5);\n");
+            printf ("\t\tException_cpu(5);\n");
             printf ("\t\tgoto %s;\n", endlabelstr);
             printf ("\t} else {\n");
             printf ("\t\tuae_u32 newv = (uae_u32)dst / (uae_u32)(uae_u16)src;\n");
@@ -4411,7 +4429,7 @@ static void gen_opcode (unsigned int opcode)
             if (cpu_level > 1)
                 printf ("\t\tdivbyzero_special (1, dst);\n");
             incpc ("%d", m68k_pc_offset);
-            printf ("\t\tException (5);\n");
+            printf ("\t\tException_cpu(5);\n");
             printf ("\t\tgoto %s;\n", endlabelstr);
             printf ("\t}\n");
             printf ("\tCLEAR_CZNV ();\n");
@@ -4501,13 +4519,13 @@ static void gen_opcode (unsigned int opcode)
             addcycles000 (4);
             printf ("\tif (dst > src) {\n");
             printf ("\t\tSET_NFLG (0);\n");
-            printf ("\t\tException (6);\n");
+            printf ("\t\tException_cpu(6);\n");
             printf ("\t\tgoto %s;\n", endlabelstr);
             printf ("\t}\n");
             addcycles000 (2);
             printf ("\tif ((uae_s32)dst < 0) {\n");
             printf ("\t\tSET_NFLG (1);\n");
-            printf ("\t\tException (6);\n");
+            printf ("\t\tException_cpu(6);\n");
             printf ("\t\tgoto %s;\n", endlabelstr);
             printf ("\t}\n");
             fill_prefetch_next ();
@@ -4535,7 +4553,7 @@ static void gen_opcode (unsigned int opcode)
             }
             printf ("\tSET_ZFLG (upper == reg || lower == reg);\n");
             printf ("\tSET_CFLG_ALWAYS (lower <= upper ? reg < lower || reg > upper : reg > upper || reg < lower);\n");
-            printf ("\tif ((extra & 0x800) && GET_CFLG ()) { Exception (6); goto %s; }\n}\n", endlabelstr);
+            printf ("\tif ((extra & 0x800) && GET_CFLG ()) { Exception_cpu(6); goto %s; }\n}\n", endlabelstr);
             need_endlabel = 1;
             break;
             
@@ -5133,7 +5151,7 @@ static void gen_opcode (unsigned int opcode)
             if (curi->smode != am_unknown && curi->smode != am_illg)
                 genamode (curi, curi->smode, "srcreg", curi->size, "dummy", 1, 0, 0);
             fill_prefetch_0 ();
-            printf ("\tif (cctrue (%d)) { Exception (7); goto %s; }\n", curi->cc, endlabelstr);
+            printf ("\tif (cctrue (%d)) { Exception_cpu(7); goto %s; }\n", curi->cc, endlabelstr);
             need_endlabel = 1;
             break;
         case i_DIVL:
@@ -5324,6 +5342,11 @@ static void gen_opcode (unsigned int opcode)
                 printf ("\t\tgoto %s;\n", endlabelstr);
                 printf ("\t}\n");
                 need_endlabel = 1;
+            } else {
+                printf ("\tif (regs.fp_branch) {\n");
+                printf ("\t\tregs.fp_branch = false;\n");
+                printf ("\t\tif(regs.t0) check_t0_trace();\n");
+                printf ("\t}\n");
             }
             break;
         case i_FScc:
@@ -5365,6 +5388,11 @@ static void gen_opcode (unsigned int opcode)
                 printf ("\t\tgoto %s;\n", endlabelstr);
                 printf ("\t}\n");
                 need_endlabel = 1;
+            } else {
+                printf ("\tif (regs.fp_branch) {\n");
+                printf ("\t\tregs.fp_branch = false;\n");
+                printf ("\t\tif(regs.t0) check_t0_trace();\n");
+                printf ("\t}\n");
             }
             break;
         case i_FSAVE:
