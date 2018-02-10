@@ -152,10 +152,10 @@ int m68k_move2c (int regno, uae_u32 *regp)
 		case 0x804: regs.isp = *regp; if (regs.m == 0) m68k_areg (regs, 7) = regs.isp; break;
 			/* 68040 only */
 		case 0x805: regs.mmusr = *regp; break;
-			/* 68040/060 */
-		case 0x806: regs.urp = *regp & 0xfffffe00; break;
+			/* 68040 stores all bits, 68060 zeroes low 9 bits */
+		case 0x806: regs.urp = *regp & (currprefs.cpu_model == 68060 ? 0xfffffe00 : 0xffffffff); break;
 		case 0x807:
-                regs.srp = *regp & 0xfffffe00;
+                regs.srp = *regp & (currprefs.cpu_model == 68060 ? 0xfffffe00 : 0xffffffff);
                 host_darkmatter(regs.srp == regs.urp);
                 break;
 			/* 68060 only */
@@ -644,6 +644,64 @@ void divbyzero_special (bool issigned, uae_s32 dst)
 	}
 }
 
+/* DIVU overflow
+ *
+ * 68000: V=1 N=1
+ * 68020: V=1 N=X
+ * 68040: V=1
+ * 68060: V=1
+ *
+ * X) N is set if original 32-bit destination value is negative.
+ *
+ */
+
+void setdivuoverflowflags(uae_u32 dividend, uae_u16 divisor)
+{
+    if (currprefs.cpu_model >= 68040) {
+        SET_VFLG(1);
+    } else if (currprefs.cpu_model >= 68020) {
+        SET_VFLG(1);
+        if ((uae_s32)dividend < 0)
+            SET_NFLG(1);
+    } else {
+        SET_VFLG(1);
+        SET_NFLG(1);
+    }
+}
+
+/*
+ * DIVS overflow
+ *
+ * 68000: V = 1 N = 1
+ * 68020: V = 1 ZN = X
+ * 68040: V = 1
+ * 68060: V = 1
+ *
+ * X) if absolute overflow(Check getDivs68kCycles for details) : Z = 0, N = 0
+ * if not absolute overflow : N is set if internal result BYTE is negative, Z is set if it is zero!
+ *
+ */
+
+void setdivsoverflowflags(uae_s32 dividend, uae_s16 divisor)
+{
+    if (currprefs.cpu_model >= 68040) {
+        SET_VFLG(1);
+    } else if (currprefs.cpu_model >= 68020) {
+        SET_VFLG(1);
+        // absolute overflow?
+        if (((uae_u32)abs(dividend) >> 16) >= (uae_u16)abs(divisor))
+            return;
+        uae_u32 aquot = (uae_u32)abs(dividend) / (uae_u16)abs(divisor);
+        if ((uae_s8)aquot == 0)
+            SET_ZFLG(1);
+        if ((uae_s8)aquot < 0)
+            SET_NFLG(1);
+    } else {
+        SET_VFLG(1);
+        SET_NFLG(1);
+    }
+}
+
 #ifndef CPUEMU_68000_ONLY
 
 #if !defined (uae_s64)
@@ -675,7 +733,7 @@ STATIC_INLINE int div_unsigned (uae_u32 src_hi, uae_u32 src_lo, uae_u32 div, uae
 bool m68k_divl (uae_u32 opcode, uae_u32 src, uae_u16 extra)
 {
 	if (src == 0) {
-		Exception (5);
+		Exception_cpu (5);
 		return false;
 	}
 #if defined (uae_s64)
