@@ -3,6 +3,9 @@
 /* Define if you have a PNG compatible library */
 #cmakedefine HAVE_LIBPNG 1
 
+/* Define if you have a PCAP compatible library */
+#cmakedefine HAVE_PCAP 1
+
 /* Define if you have a readline compatible library */
 #cmakedefine HAVE_LIBREADLINE 1
 

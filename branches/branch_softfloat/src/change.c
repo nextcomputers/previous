@@ -250,7 +250,10 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
     /* Note: SCSI, MO and floppy disk insert/eject called from GUI */
     
     /* Do we need to change Ethernet connection? */
-    if (!NeedReset && current->Ethernet.bEthernetConnected != changed->Ethernet.bEthernetConnected) {
+    if (!NeedReset &&
+        (current->Ethernet.bEthernetConnected != changed->Ethernet.bEthernetConnected ||
+         current->Ethernet.nHostInterface != changed->Ethernet.nHostInterface ||
+         strcmp(current->Ethernet.szInterfaceName, changed->Ethernet.szInterfaceName))) {
         bReInitEnetEmu = true;
     }
     

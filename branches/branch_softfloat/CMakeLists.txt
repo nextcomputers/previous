@@ -79,6 +79,11 @@ if(X11_FOUND)
 	set(HAVE_X11 1)
 endif(X11_FOUND)
 
+find_package(PCAP)
+if(PCAP_FOUND)
+	set(HAVE_PCAP 1)
+endif(PCAP_FOUND)
+
 # ################
 # CPP Definitions:
 # ################

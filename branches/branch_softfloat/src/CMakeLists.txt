@@ -1,10 +1,10 @@
 set(SOURCES
-	adb.c audio.c bmap.c cfgopts.c configuration.c options.c change.c
-	control.c cycInt.c dialog.c dma.c esp.c enet_slirp.c ethernet.c
-	file.c floppy.c ioMem.c ioMemTabNEXT.c ioMemTabTurbo.c 
-	keymap.c kms.c m68000.c main.c mo.c nbic.c nextMemory.c paths.c printer.c queue.c 
-	ramdac.c reset.c rs.c rtcnvram.c scandir.c scc.c fast_screen.c host.c
-    scsi.c shortcut.c snd.c statusbar.c str.c sysReg.c tmc.c unzip.c
+	adb.c audio.c bmap.c cfgopts.c configuration.c options.c change.c 
+	control.c cycInt.c dialog.c dma.c esp.c enet_slirp.c enet_pcap.c 
+	ethernet.c file.c floppy.c ioMem.c ioMemTabNEXT.c ioMemTabTurbo.c 
+	keymap.c kms.c m68000.c main.c mo.c nbic.c nextMemory.c paths.c printer.c 
+	queue.c ramdac.c reset.c rs.c rtcnvram.c scandir.c scc.c fast_screen.c host.c 
+	scsi.c shortcut.c snd.c statusbar.c str.c sysReg.c tmc.c unzip.c 
 	utils.c video.c zip.c)
 
 # When building for OSX, define specific sources for gui and ressources
@@ -114,6 +114,10 @@ endif(PNG_FOUND)
 if(X11_FOUND)
 	target_link_libraries(Previous ${X11_LIBRARIES})
 endif(X11_FOUND)
+
+if(PCAP_FOUND)
+	target_link_libraries(Previous ${PCAP_LIBRARY})
+endif(PCAP_FOUND)
 
 if(PORTAUDIO_FOUND)
 	target_link_libraries(Previous ${PORTAUDIO_LIBRARY})

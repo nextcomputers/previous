@@ -16,6 +16,7 @@
 #include "bmap.h"
 #include "ethernet.h"
 #include "enet_slirp.h"
+#include "enet_pcap.h"
 #include "cycInt.h"
 #include "statusbar.h"
 
@@ -87,6 +88,11 @@ bool enet_stopped;
 
 
 void enet_reset(void);
+
+void (*enet_output)(void);
+void (*enet_input)(Uint8 *pkt, int pkt_len);
+void (*enet_start)(Uint8 *mac);
+void (*enet_stop)(void);
 
 void EN_TX_Status_Read(void) { // 0x02006000
     IoMem[IoAccessCurrentAddress & IO_SEG_MASK] = enet.tx_status;
@@ -477,7 +483,7 @@ static void enet_io(void) {
 					receiver_state = RECV_STATE_RECEIVING;
 			} else if (en_state == EN_THINWIRE || en_state == EN_TWISTEDPAIR) {
 				/* Receive from real world network */
-				enet_slirp_queue_poll();
+				enet_output();
 				break;
 			} else
 				break;
@@ -550,7 +556,7 @@ static void enet_io(void) {
 						enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
 					} else {
 						/* Send to real world network */
-						enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
+						enet_input(enet_tx_buffer.data,enet_tx_buffer.size);
 						/* Simultaneously receive packet on thin ethernet */
 						if (en_state == EN_THINWIRE) {
 							enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
@@ -631,7 +637,7 @@ static void new_enet_io(void) {
 					receiver_state = RECV_STATE_RECEIVING;
 			} else if (en_state == EN_THINWIRE || en_state == EN_TWISTEDPAIR) {
 				/* Receive from real world network */
-				enet_slirp_queue_poll();
+				enet_output();
 				break;
 			} else
 				break;
@@ -690,7 +696,7 @@ static void new_enet_io(void) {
 						enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
 					} else {
 						/* Send to real world network */
-						enet_slirp_input(enet_tx_buffer.data,enet_tx_buffer.size);
+						enet_input(enet_tx_buffer.data,enet_tx_buffer.size);
 						/* Simultaneously receive packet on thin ethernet */
 						if (en_state == EN_THINWIRE) {
 							enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
@@ -717,9 +723,9 @@ void ENET_IO_Handler(void) {
 	if (enet.reset&EN_RESET) {
 		Log_Printf(LOG_WARN, "Stopping Ethernet Transmitter/Receiver");
 		enet_stopped=true;
-		/* Stop SLIRP */
+		/* Stop SLIRP/PCAP */
 		if (ConfigureParams.Ethernet.bEthernetConnected) {
-			enet_slirp_stop();
+			enet_stop();
 		}
 		return;
 	}
@@ -740,29 +746,49 @@ void enet_reset(void) {
         Log_Printf(LOG_WARN, "Starting Ethernet Transmitter/Receiver");
         enet_stopped=false;
         CycInt_AddRelativeInterruptUs(ENET_IO_DELAY, 0, INTERRUPT_ENET_IO);
-        /* Start SLIRP */
+        /* Start SLIRP/PCAP */
         if (ConfigureParams.Ethernet.bEthernetConnected) {
-            enet_slirp_start();
+            enet_start(enet.mac_addr);
         }
     }
 }
 
 void Ethernet_Reset(bool hard) {
+    static int init_done = 0;
+
     if (hard) {
         enet.reset=EN_RESET;
         enet_stopped=true;
         enet_rx_buffer.size=enet_tx_buffer.size=0;
         enet_rx_buffer.limit=enet_tx_buffer.limit=64*1024;
         enet.tx_status=ConfigureParams.System.bTurbo?0:TXSTAT_READY;
-        /* Stop SLIRP */
-        enet_slirp_stop();
+    }
+    
+    if (init_done) {
+        /* Stop SLIRP/PCAP */
+        enet_stop();
+    }
+#if HAVE_PCAP
+    if (ConfigureParams.Ethernet.nHostInterface == ENET_PCAP) {
+        enet_output = enet_pcap_queue_poll;
+        enet_input  = enet_pcap_input;
+        enet_start  = enet_pcap_start;
+        enet_stop   = enet_pcap_stop;
+    } else
+#endif
+    {
+        enet_output = enet_slirp_queue_poll;
+        enet_input  = enet_slirp_input;
+        enet_start  = enet_slirp_start;
+        enet_stop   = enet_slirp_stop;
+    }
+    init_done = 1;
+    
+    if (ConfigureParams.Ethernet.bEthernetConnected && !(enet.reset&EN_RESET)) {
+        /* Start SLIRP/PCAP */
+        enet_start(enet.mac_addr);
     } else {
-        if (ConfigureParams.Ethernet.bEthernetConnected && !(enet.reset&EN_RESET)) {
-            /* Start SLIRP */
-            enet_slirp_start();
-        } else {
-            /* Stop SLIRP */
-            enet_slirp_stop();
-        }
+        /* Stop SLIRP/PCAP */
+        enet_stop();
     }
 }

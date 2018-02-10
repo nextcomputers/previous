@@ -137,7 +137,7 @@ void enet_slirp_stop(void) {
     }
 }
 
-void enet_slirp_start(void) {
+void enet_slirp_start(Uint8 *mac) {
     struct in_addr guest_addr;
     
     if (!slirp_inited) {
