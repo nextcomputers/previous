@@ -209,9 +209,17 @@ typedef struct {
 
 
 /* Ethernet configuration */
+typedef enum
+{
+    ENET_SLIRP,
+    ENET_PCAP
+} ENET_INTERFACE;
+
 typedef struct {
     bool bEthernetConnected;
     bool bTwistedPair;
+    ENET_INTERFACE nHostInterface;
+    char szInterfaceName[FILENAME_MAX];
 } CNF_ENET;
 
 typedef enum

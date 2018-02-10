@@ -20,6 +20,7 @@ void DlgFloppy_Main(void);
 void DlgSCSI_Main(void);
 void DlgOptical_Main(void);
 void DlgEthernet_Main(void);
+bool DlgEthernetAdvanced(void);
 void DlgSound_Main(void);
 void DlgPrinter_Main(void);
 void Dialog_JoyDlg(void);
