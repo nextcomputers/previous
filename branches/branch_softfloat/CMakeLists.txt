@@ -66,7 +66,6 @@ endif(READLINE_FOUND)
 find_package(ZLIB)
 if(ZLIB_FOUND)
 	set(HAVE_LIBZ 1)
-	set(HAVE_ZLIB_H 1)
 endif(ZLIB_FOUND)
 
 find_package(PNG)
@@ -108,22 +107,15 @@ execute_process(COMMAND pkg-config --cflags-only-other sdl2
 # Check for optional headers:
 # ###########################
 
-check_include_files(termios.h HAVE_TERMIOS_H)
 check_include_files(strings.h HAVE_STRINGS_H)
-check_include_files(malloc.h HAVE_MALLOC_H)
-check_include_files(sys/times.h HAVE_SYS_TIMES_H)
 check_include_files("sys/socket.h;sys/un.h" HAVE_UNIX_DOMAIN_SOCKETS)
 
 # #############################
 # Check for optional functions:
 # #############################
 
-check_function_exists(cfmakeraw HAVE_CFMAKERAW)
 check_function_exists(setenv HAVE_SETENV)
 check_function_exists(select HAVE_SELECT)
-check_function_exists(posix_memalign HAVE_POSIX_MEMALIGN)
-check_function_exists(memalign HAVE_MEMALIGN)
-
 check_function_exists(gettimeofday HAVE_GETTIMEOFDAY)
 check_function_exists(nanosleep HAVE_NANOSLEEP)
 check_function_exists(alphasort HAVE_ALPHASORT)
