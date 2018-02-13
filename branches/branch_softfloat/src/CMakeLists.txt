@@ -119,10 +119,6 @@ if(PCAP_FOUND)
 	target_link_libraries(Previous ${PCAP_LIBRARY})
 endif(PCAP_FOUND)
 
-if(PORTAUDIO_FOUND)
-	target_link_libraries(Previous ${PORTAUDIO_LIBRARY})
-endif(PORTAUDIO_FOUND)
-
 if(WIN32)
 	# Needed for socket() on Windows
 	target_link_libraries(Previous ws2_32 Iphlpapi)

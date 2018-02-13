@@ -809,9 +809,6 @@ bool Opt_ParseParameters(int argc, const char * const argv[])
 			}
 			else if (strcasecmp(argv[i], "falcon") == 0)
 			{
-#if ENABLE_DSP_EMU
-		ConfigureParams.System.nDSPType = DSP_TYPE_EMU;
-#endif
 				ConfigureParams.System.nCpuLevel = 3;
 				ConfigureParams.System.nCpuFreq = 16;
 			}
@@ -841,11 +838,7 @@ bool Opt_ParseParameters(int argc, const char * const argv[])
 			}
 			else if (strcasecmp(argv[i], "emu") == 0)
 			{
-#if ENABLE_DSP_EMU
 				ConfigureParams.System.nDSPType = DSP_TYPE_EMU;
-#else
-				return Opt_ShowError(OPT_DSP, argv[i], "DSP type 'emu' support not compiled in");
-#endif
 			}
 			else
 			{

@@ -113,7 +113,6 @@ check_include_files(strings.h HAVE_STRINGS_H)
 check_include_files(malloc.h HAVE_MALLOC_H)
 check_include_files(sys/times.h HAVE_SYS_TIMES_H)
 check_include_files("sys/socket.h;sys/un.h" HAVE_UNIX_DOMAIN_SOCKETS)
-check_include_files(SDL2/SDL_config.h HAVE_SDL2_SDL_CONFIG_H)
 
 # #############################
 # Check for optional functions:
