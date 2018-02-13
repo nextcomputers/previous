@@ -9,9 +9,6 @@
 /* Define if you have a readline compatible library */
 #cmakedefine HAVE_LIBREADLINE 1
 
-/* Define if you have the PortAudio library */
-#cmakedefine HAVE_PORTAUDIO 1
-
 /* Define if you have a X11 environment */
 #cmakedefine HAVE_X11 1
 
@@ -24,14 +21,8 @@
 /* Define to 1 if you have the <termios.h> header file. */
 #cmakedefine HAVE_TERMIOS_H 1
 
-/* Define to 1 if you have the <glob.h> header file. */
-#cmakedefine HAVE_GLOB_H 1
-
 /* Define to 1 if you have the <strings.h> header file. */
 #cmakedefine HAVE_STRINGS_H 1
-
-/* Define to 1 if you have the <SDL/SDL_config.h> header file. */
-#cmakedefine HAVE_SDL_SDL_CONFIG_H 1
 
 /* Define to 1 if you have the <sys/times.h> header file. */
 #cmakedefine HAVE_SYS_TIMES_H 1
@@ -72,9 +63,6 @@
 
 /* Relative path from bindir to datadir */
 #define BIN2DATADIR "@BIN2DATADIR@"
-
-/* Define to 1 to enable DSP 56k emulation for Falcon mode */
-#cmakedefine ENABLE_DSP_EMU 1
 
 /* Define to 1 to enable trace logs - undefine to slightly increase speed */
 #cmakedefine ENABLE_TRACING 1
