@@ -49,7 +49,6 @@ bool DlgEthernetAdvanced(void)
     pcap_if_t *alldevs;
     pcap_if_t *dev;
     char errbuf[PCAP_ERRBUF_SIZE];
-    bool bDone;
     bool bNone;
     
 	SDLGui_CenterDlg(enetpcapdlg);
@@ -69,28 +68,30 @@ bool DlgEthernetAdvanced(void)
             sprintf(pcap_list, "no interface found");
             bNone = true;
         } else {
-            if (strlen(dev->name) < 12) {
-                sprintf(pcap_list, "%s", dev->name);
-            } else {
-                sprintf(pcap_list, "string is too long");
-            }
+			// shorten device name to 30 chars if longer, on windows use dev->description instead of dev->name
+			size_t maxLen = 30;
+			char   name[FILENAME_MAX];
+#ifdef _WIN32
+			strcpy(name, dev->description);
+#else
+			strcpy(name, dev->name);
+#endif
+			size_t len    = strlen(name);
+			if(len > maxLen) {
+				name[maxLen/2] = '\0';
+				snprintf(pcap_list, maxLen+2, "%s..%s", name, &name[len-maxLen/2]);
+			} else {
+				strcpy(pcap_list, name);
+			}				
             bNone = false;
         }
-        bDone = false;
 
 		but = SDLGui_DoDialog(enetpcapdlg, NULL);
 		
 		switch (but) {
             case DLGENETPCAP_SELECT:
-                if (!bNone) {
-                    if (strlen(dev->name) < 12) {
-                        sprintf(ConfigureParams.Ethernet.szInterfaceName, "%s", dev->name);
-                    } else {
-                        printf("Error: Ethernet interface string too long\n");
-                        bNone = true;
-                    }
-                }
-                bDone = true;
+                if (!bNone)
+                    snprintf(ConfigureParams.Ethernet.szInterfaceName, FILENAME_MAX, "%s", dev->name);
 				break;
 			case DLGENETPCAP_NEXT:
                 if (!bNone) {

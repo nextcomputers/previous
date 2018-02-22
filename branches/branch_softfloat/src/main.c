@@ -14,8 +14,6 @@ const char Main_fileid[] = "Hatari main.c : " __DATE__ " " __TIME__;
 
 #include "main.h"
 #include "configuration.h"
-#include "control.h"
-#include "options.h"
 #include "dialog.h"
 #include "ioMem.h"
 #include "keymap.h"
@@ -66,7 +64,7 @@ static Uint64 lastCycles;
 static double speedFactor;
 static char   speedMsg[32];
 
-void Main_Speed(double realTime, double hostTime) {
+static void Main_Speed(double realTime, double hostTime) {
     double dRT = realTime - lastRT;
     speedFactor = nCyclesMainCounter - lastCycles;
     speedFactor /= ConfigureParams.System.nCpuFreq;
@@ -257,7 +255,6 @@ void Main_EventHandler(void) {
     bool bContinueProcessing;
     SDL_Event event;
     int events;
-    int remotepause;
     
     if(++statusBarUpdate > 400) {
         double vt;
@@ -292,10 +289,7 @@ void Main_EventHandler(void) {
                 break;
         }
         
-        /* check remote process control */
-        remotepause = Control_CheckUpdates();
-        
-        if ( bEmulationActive || remotepause ) {
+        if (bEmulationActive) {
             double time_offset = host_real_time_offset() * 1000;
             if(time_offset > 10)
                 events = SDL_WaitEventTimeout(&event, time_offset);
@@ -420,7 +414,7 @@ static void Main_Init(void) {
 
 	/* Init SDL's video subsystem. Note: Audio and joystick subsystems
 	   will be initialized later (failures there are not fatal). */
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | Opt_GetNoParachuteFlag()) < 0)
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
 	{
 		fprintf(stderr, "Could not initialize the SDL library:\n %s\n", SDL_GetError() );
 		exit(-1);

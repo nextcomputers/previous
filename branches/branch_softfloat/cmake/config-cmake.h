@@ -9,17 +9,11 @@
 /* Define if you have a readline compatible library */
 #cmakedefine HAVE_LIBREADLINE 1
 
-/* Define if you have a X11 environment */
-#cmakedefine HAVE_X11 1
-
 /* Define to 1 if you have the `z' library (-lz). */
 #cmakedefine HAVE_LIBZ 1
 
 /* Define to 1 if you have the <strings.h> header file. */
 #cmakedefine HAVE_STRINGS_H 1
-
-/* Define to 1 if you have unix domain sockets */
-#cmakedefine HAVE_UNIX_DOMAIN_SOCKETS 1
 
 /* Define to 1 if you have the 'setenv' function. */
 #cmakedefine HAVE_SETENV 1

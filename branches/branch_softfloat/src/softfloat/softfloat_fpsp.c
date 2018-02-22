@@ -33,7 +33,7 @@
  | Function for compactifying extended double-precision floating point values.
  *----------------------------------------------------------------------------*/
 
-int32 floatx80_make_compact(int32 aExp, bits64 aSig)
+static int32 floatx80_make_compact(int32 aExp, bits64 aSig)
 {
     return (aExp<<16)|(aSig>>48);
 }
@@ -627,7 +627,6 @@ floatx80 floatx80_cos(floatx80 a)
 
 floatx80 floatx80_cosh(floatx80 a)
 {
-    flag aSign;
     int32 aExp;
     bits64 aSig;
     
@@ -638,7 +637,6 @@ floatx80 floatx80_cosh(floatx80 a)
     
     aSig = extractFloatx80Frac(a);
     aExp = extractFloatx80Exp(a);
-    aSign = extractFloatx80Sign(a);
     
     if (aExp == 0x7FFF) {
         if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a);

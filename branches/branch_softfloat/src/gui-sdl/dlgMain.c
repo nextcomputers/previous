@@ -90,10 +90,12 @@ int Dialog_MainDlg(bool *bReset, bool *bLoadedSnapshot)
 
 	maindlg[MAINDLG_RESET].state &= ~SG_SELECTED;
     
-    if(ConfigureParams.ConfigDialog.bShowConfigDialogAtStartup)
-        maindlg[MAINDLG_SHOW].state |= SG_SELECTED;
-    else
-        maindlg[MAINDLG_SHOW].state &= ~SG_SELECTED;
+    if(ConfigureParams.ConfigDialog.bShowConfigDialogAtStartup) {
+        maindlg[MAINDLG_SHOW].state |= SG_SELECTED;		
+	}
+    else {
+        maindlg[MAINDLG_SHOW].state &= ~SG_SELECTED;		
+	}
 
 	do
 	{

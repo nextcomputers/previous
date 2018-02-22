@@ -40,6 +40,13 @@ else()
 	    CACHE BOOL "Built Hatari as Mac OS X application bundle")
 endif(APPLE)
 
+if(WIN32)
+	find_library(PCAP_LIBRARY
+		NAMES pcap wpcap
+		HINTS ${PCAP_ROOT_DIR}/Lib
+	)
+endif(WIN32)
+
 # ####################
 # Check for libraries:
 # ####################
@@ -73,11 +80,6 @@ if(PNG_FOUND)
 	set(HAVE_LIBPNG 1)
 endif(PNG_FOUND)
 
-find_package(X11)
-if(X11_FOUND)
-	set(HAVE_X11 1)
-endif(X11_FOUND)
-
 find_package(PCAP)
 if(PCAP_FOUND)
 	set(HAVE_PCAP 1)
@@ -108,7 +110,6 @@ execute_process(COMMAND pkg-config --cflags-only-other sdl2
 # ###########################
 
 check_include_files(strings.h HAVE_STRINGS_H)
-check_include_files("sys/socket.h;sys/un.h" HAVE_UNIX_DOMAIN_SOCKETS)
 
 # #############################
 # Check for optional functions:
@@ -184,8 +185,3 @@ configure_file(${CMAKE_SOURCE_DIR}/cmake/config-cmake.h
 		${CMAKE_BINARY_DIR}/config.h)
 
 add_subdirectory(src)
-
-include(FindPythonInterp)
-if(PYTHONINTERP_FOUND)
-	add_subdirectory(python-ui)
-endif(PYTHONINTERP_FOUND)

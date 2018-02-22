@@ -72,7 +72,7 @@ typedef struct {
 | otherwise returns 0.
 *----------------------------------------------------------------------------*/
 
-flag float32_is_nan( float32 a )
+static flag float32_is_nan( float32 a )
 {
 
     return ( 0xFF000000 < (bits32) ( a<<1 ) );
@@ -160,7 +160,7 @@ static float32 propagateFloat32NaN( float32 a, float32 b )
 | otherwise returns 0.
 *----------------------------------------------------------------------------*/
 
-flag float64_is_nan( float64 a )
+static flag float64_is_nan( float64 a )
 {
 
     return ( LIT64( 0xFFE0000000000000 ) < (bits64) ( a<<1 ) );
@@ -407,11 +407,10 @@ static floatx80 commonNaNToFloatx80( commonNaNT a )
 
 floatx80 propagateFloatx80NaN( floatx80 a, floatx80 b )
 {
-    flag aIsNaN, aIsSignalingNaN, bIsNaN, bIsSignalingNaN;
+    flag aIsNaN, aIsSignalingNaN, bIsSignalingNaN;
 
     aIsNaN = floatx80_is_nan( a );
     aIsSignalingNaN = floatx80_is_signaling_nan( a );
-    bIsNaN = floatx80_is_nan( b );
     bIsSignalingNaN = floatx80_is_signaling_nan( b );
 #ifdef SOFTFLOAT_68K
     a.low |= LIT64( 0x4000000000000000 );
@@ -423,7 +422,7 @@ floatx80 propagateFloatx80NaN( floatx80 a, floatx80 b )
     b.low |= LIT64( 0xC000000000000000 );
     if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling );
     if ( aIsNaN ) {
-        return ( aIsSignalingNaN & bIsNaN ) ? b : a;
+        return ( aIsSignalingNaN ) ? b : a;
     }
     else {
         return b;
@@ -497,7 +496,7 @@ flag extractFloatx80Sign( floatx80 a )
 | otherwise returns 0.
 *----------------------------------------------------------------------------*/
 
-flag float128_is_nan( float128 a )
+static flag float128_is_nan( float128 a )
 {
 
     return
