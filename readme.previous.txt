@@ -63,6 +63,7 @@ Required:
 - The SDL library v2.0.5 or later (http://www.libsdl.org)
 - The libpng PNG reference library (http://www.libpng.org)
 - The zlib compression library (http://www.gzip.org/zlib/)
+- The pcap library https://github.com/the-tcpdump-group/libpcap or https://www.winpcap.org/
 
 
 Don't forget to also install the header files of these libraries for compiling
@@ -77,6 +78,11 @@ and various IDEs like Xcode on Mac OS X. To run CMake, you've got to pass the
 path to the sources of Previous as parameter, for example run the following if
 you are in the topmost directory of the Previous source tree:
 	cmake .
+
+On Windows, MinGW/MSYS recommended for building Previous. CMake needs a few extra
+ arguments for generating the makefiles:
+ 
+cmake -G "MSYS Makefiles" -DPCAP_ROOT_DIR=/c/MinGW/WpdPack .
 
 If you're tracking Previous version control, it's preferable to do
 the build in a separate build directory as above would overwrite

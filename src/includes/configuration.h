@@ -354,7 +354,7 @@ void Configuration_Apply(bool bReset);
 int Configuration_CheckMemory(int *banksize);
 int  Configuration_CheckDimensionMemory(int *banksize);
 void Configuration_CheckDimensionSettings(void);
-void Configuration_CheckEthernetSettings();
+void Configuration_CheckEthernetSettings(void);
 void Configuration_Load(const char *psFileName);
 void Configuration_Save(void);
 void Configuration_MemorySnapShot_Capture(bool bSave);

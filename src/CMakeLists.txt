@@ -1,6 +1,6 @@
 set(SOURCES
-	adb.c audio.c bmap.c cfgopts.c configuration.c options.c change.c 
-	control.c cycInt.c dialog.c dma.c esp.c enet_slirp.c enet_pcap.c 
+	adb.c audio.c bmap.c cfgopts.c configuration.c change.c 
+	cycInt.c dialog.c dma.c esp.c enet_slirp.c enet_pcap.c 
 	ethernet.c file.c floppy.c ioMem.c ioMemTabNEXT.c ioMemTabTurbo.c 
 	keymap.c kms.c m68000.c main.c mo.c nbic.c nextMemory.c paths.c printer.c 
 	queue.c ramdac.c reset.c rs.c rtcnvram.c scandir.c scc.c fast_screen.c host.c 
@@ -9,10 +9,6 @@ set(SOURCES
 
 # When building for OSX, define specific sources for gui and ressources
 if(ENABLE_OSX_BUNDLE)
-	set(GUIOSX_SOURCES
-	    gui-osx/AlertHooks.m gui-osx/PrefsController.m gui-osx/Shared.m
-	    gui-osx/CreateFloppyController.m gui-osx/SDLMain.m)
-	set_source_files_properties(${GUIOSX_SOURCES} PROPERTIES LANGUAGE C)
 	set(GUIOSX_RSRCS
 	    gui-osx/Previous.icns gui-osx/English.lproj gui-osx/French.lproj)
 endif(ENABLE_OSX_BUNDLE)
@@ -26,9 +22,7 @@ if(WIN32)
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -mwindows")
 endif(WIN32)
 
-	set(CPUDIR cpu)
-
-include_directories(${CMAKE_BINARY_DIR} includes debug softfloat ${CPUDIR} 
+include_directories(${CMAKE_BINARY_DIR} includes debug softfloat cpu
 		    dsp dimension slirp ${SDL2_INCLUDE_DIR})
 
 if(ZLIB_FOUND)
@@ -39,24 +33,23 @@ if(PNG_FOUND)
 	include_directories(${PNG_INCLUDE_DIR})
 endif(PNG_FOUND)
 
-if(X11_FOUND)
-	include_directories(${X11_INCLUDE_DIR})
-endif(X11_FOUND)
+if(PCAP_FOUND)
+	include_directories(${PCAP_INCLUDE_DIR})
+endif(PCAP_FOUND)
 
-
-link_directories(${CMAKE_CURRENT_BINARY_DIR}/debug ${CMAKE_CURRENT_BINARY_DIR}/softfloat ${CMAKE_CURRENT_BINARY_DIR}/gui-sdl ${CMAKE_CURRENT_BINARY_DIR}/${CPUDIR} ${CMAKE_CURRENT_BINARY_DIR}/dsp ${CMAKE_CURRENT_BINARY_DIR}/dimension ${CMAKE_CURRENT_BINARY_DIR}/slirp) 
+link_directories(${CMAKE_CURRENT_BINARY_DIR}/debug ${CMAKE_CURRENT_BINARY_DIR}/softfloat ${CMAKE_CURRENT_BINARY_DIR}/gui-sdl ${CMAKE_CURRENT_BINARY_DIR}/cpu ${CMAKE_CURRENT_BINARY_DIR}/dsp ${CMAKE_CURRENT_BINARY_DIR}/dimension ${CMAKE_CURRENT_BINARY_DIR}/slirp)
 
 add_subdirectory(debug)
 add_subdirectory(softfloat)
 add_subdirectory(gui-sdl)
-add_subdirectory(${CPUDIR})
+add_subdirectory(cpu)
 add_subdirectory(dsp)
 add_subdirectory(dimension)
 add_subdirectory(slirp)
 
 # When building for OSX, add specific sources
 if(ENABLE_OSX_BUNDLE)
-	add_executable(Previous MACOSX_BUNDLE ${GUIOSX_RSRCS} ${SOURCES} ${GUIOSX_SOURCES})
+	add_executable(Previous MACOSX_BUNDLE ${GUIOSX_RSRCS} ${SOURCES})
 	set_target_properties(Previous PROPERTIES MACOSX_BUNDLE_INFO_PLIST
 			      ${CMAKE_CURRENT_SOURCE_DIR}/gui-osx/Info-Previous.plist)
 	set(MACOSX_BUNDLE_ICON_FILE Previous.icns)
@@ -110,10 +103,6 @@ endif(ZLIB_FOUND)
 if(PNG_FOUND)
 	target_link_libraries(Previous ${PNG_LIBRARY})
 endif(PNG_FOUND)
-
-if(X11_FOUND)
-	target_link_libraries(Previous ${X11_LIBRARIES})
-endif(X11_FOUND)
 
 if(PCAP_FOUND)
 	target_link_libraries(Previous ${PCAP_LIBRARY})

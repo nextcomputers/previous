@@ -5,6 +5,9 @@
 #include "host.h"
 
 #if HAVE_PCAP
+#if defined _WIN32
+#undef mkdir
+#endif
 #include <pcap.h>
 
 /****************/

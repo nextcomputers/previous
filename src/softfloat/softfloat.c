@@ -65,7 +65,7 @@ int8 floatx80_internal_mode = float_round_nearest_even;
  | Functions for storing sign, exponent and significand of extended
  | double-precision floating-point intermediate result for external use.
  *----------------------------------------------------------------------------*/
-void saveFloatx80Internal( int8 prec, flag zSign, int32 zExp, bits64 zSig0, bits64 zSig1 )
+static void saveFloatx80Internal( int8 prec, flag zSign, int32 zExp, bits64 zSig0, bits64 zSig1 )
 {
     floatx80_internal_sign = zSign;
     floatx80_internal_exp = zExp;
@@ -76,7 +76,7 @@ void saveFloatx80Internal( int8 prec, flag zSign, int32 zExp, bits64 zSig0, bits
     
 }
 
-void saveFloat64Internal( flag zSign, int16 zExp, bits64 zSig )
+static void saveFloat64Internal( flag zSign, int16 zExp, bits64 zSig )
 {
     floatx80_internal_sign = zSign;
     floatx80_internal_exp = zExp + 0x3C01;
@@ -87,7 +87,7 @@ void saveFloat64Internal( flag zSign, int16 zExp, bits64 zSig )
 
 }
 
-void saveFloat32Internal( flag zSign, int16 zExp, bits32 zSig )
+static void saveFloat32Internal( flag zSign, int16 zExp, bits32 zSig )
 {
     floatx80_internal_sign = zSign;
     floatx80_internal_exp = zExp + 0x3F81;
@@ -104,7 +104,7 @@ void saveFloat32Internal( flag zSign, int16 zExp, bits32 zSig )
  | double-precision floating-point intermediate result for external use.
  *----------------------------------------------------------------------------*/
 
-void getRoundedFloatInternal( int8 roundingPrecision, flag *pzSign, int32 *pzExp, bits64 *pzSig )
+static void getRoundedFloatInternal( int8 roundingPrecision, flag *pzSign, int32 *pzExp, bits64 *pzSig )
 {
     int64 roundIncrement, roundMask, roundBits;
     flag increment;
@@ -143,7 +143,7 @@ void getRoundedFloatInternal( int8 roundingPrecision, flag *pzSign, int32 *pzExp
     roundBits = zSig0 & roundMask;
     
     zSig0 += roundIncrement;
-    if ( zSig0 < roundIncrement ) {
+    if ( zSig0 < (bits64)roundIncrement ) {
         ++zExp;
         zSig0 = LIT64( 0x8000000000000000 );
     }
@@ -560,7 +560,7 @@ static int64 roundAndPackInt64( flag zSign, bits64 absZ0, bits64 absZ1 )
 	overflow:
 		float_raise( float_flag_invalid );
 		return
-				zSign ? (sbits64) LIT64( 0x8000000000000000 )
+				zSign ? LIT64( 0x8000000000000000 )
 			: LIT64( 0x7FFFFFFFFFFFFFFF );
 	}
 	if ( absZ1 ) float_exception_flags |= float_flag_inexact;
@@ -1370,7 +1370,7 @@ floatx80 roundAndPackFloatx80( int8 roundingPrecision, flag zSign, int32 zExp, b
         saveFloatx80Internal( roundingPrecision, zSign, zExp, zSig0, zSig1 );
     }
     zSig0 += roundIncrement;
-    if ( zSig0 < roundIncrement ) {
+    if ( zSig0 < (bits64)roundIncrement ) {
         ++zExp;
         zSig0 = LIT64( 0x8000000000000000 );
     }
@@ -1454,7 +1454,7 @@ precision80:
 #endif
 
 #ifdef SOFTFLOAT_68K // 21-01-2017: Added for Previous
-floatx80 roundSigAndPackFloatx80( int8 roundingPrecision, flag zSign, int32 zExp, bits64 zSig0, bits64 zSig1 )
+static floatx80 roundSigAndPackFloatx80( int8 roundingPrecision, flag zSign, int32 zExp, bits64 zSig0, bits64 zSig1 )
 {
     int8 roundingMode;
     flag roundNearestEven, isTiny;
@@ -1530,7 +1530,7 @@ floatx80 roundSigAndPackFloatx80( int8 roundingPrecision, flag zSign, int32 zExp
         saveFloatx80Internal( roundingPrecision, zSign, zExp, zSig0, zSig1 );
     }
     zSig0 += roundIncrement;
-    if ( zSig0 < roundIncrement ) {
+    if ( zSig0 < (bits64)roundIncrement ) {
         ++zExp;
         zSig0 = LIT64( 0x8000000000000000 );
     }

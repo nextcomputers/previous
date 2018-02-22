@@ -20,7 +20,6 @@ const char Screen_fileid[] = "Previous fast_screen.c : " __DATE__ " " __TIME__;
 #include "dimension.h"
 #include "paths.h"
 #include "screen.h"
-#include "control.h"
 #include "statusbar.h"
 #include "video.h"
 
@@ -238,11 +237,6 @@ static int repainter(void* unused) {
         exit(-2);
     }
     
-    if (!bInFullScreen) {
-        /* re-embed the new SDL window */
-        Control_ReparentWindow(width, height, bInFullScreen);
-    }
-    
     Statusbar_Init(sdlscrn);
     
 	if (bGrabMouse) {
@@ -338,11 +332,6 @@ void Screen_Init(void) {
     
     /* Statusbar height */
     height += Statusbar_SetHeight(width, height);
-    
-    if (bInFullScreen) {
-        /* unhide the WM window for fullscreen */
-        Control_ReparentWindow(width, height, bInFullScreen);
-    }
     
     /* Set new video mode */
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");

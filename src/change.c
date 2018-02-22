@@ -19,7 +19,6 @@ const char Change_fileid[] = "Hatari change.c : " __DATE__ " " __TIME__;
 #include "dialog.h"
 #include "ioMem.h"
 #include "m68000.h"
-#include "options.h"
 #include "reset.h"
 #include "screen.h"
 #include "statusbar.h"
@@ -334,7 +333,7 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
  */
 static bool Change_Options(int argc, const char *argv[])
 {
-	bool bOK;
+	bool bOK = false;
 	CNF_PARAMS current;
 
 	Main_PauseEmulation(false);
@@ -342,10 +341,9 @@ static bool Change_Options(int argc, const char *argv[])
 	/* get configuration changes */
 	current = ConfigureParams;
 	ConfigureParams.Screen.bFullScreen = bInFullScreen;
-	bOK = Opt_ParseParameters(argc, argv);
 
 	/* Check if reset is required and ask user if he really wants to continue */
-	if (bOK && Change_DoNeedReset(&current, &ConfigureParams)
+	if (Change_DoNeedReset(&current, &ConfigureParams)
 	    && current.Log.nAlertDlgLogLevel > LOG_FATAL) {
 		bOK = DlgAlert_Query("The emulated system must be "
 				     "reset to apply these changes. "

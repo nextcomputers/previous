@@ -34,7 +34,6 @@
 #include "dialog.h"
 #include "screen.h"
 #include "video.h"
-#include "options.h"
 #include "log.h"
 #include "debugui.h"
 #include "debugcpu.h"

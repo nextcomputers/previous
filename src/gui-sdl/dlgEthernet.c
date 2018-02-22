@@ -103,7 +103,7 @@ void DlgEthernet_Main(void)
 
     if (ConfigureParams.Ethernet.nHostInterface == ENET_PCAP) {
         enetdlg[DLGENET_PCAP].state |= SG_SELECTED;
-        sprintf(pcap_interface, "PCAP (%s)", ConfigureParams.Ethernet.szInterfaceName);
+        snprintf(pcap_interface, sizeof(pcap_interface), "PCAP: %s", ConfigureParams.Ethernet.szInterfaceName);
     } else {
         enetdlg[DLGENET_SLIRP].state |= SG_SELECTED;
         sprintf(pcap_interface, "PCAP");
@@ -138,7 +138,7 @@ void DlgEthernet_Main(void)
 #if HAVE_PCAP
             case DLGENET_PCAP:
                 if (DlgEthernetAdvanced()) {
-                    sprintf(pcap_interface, "PCAP (%s)", ConfigureParams.Ethernet.szInterfaceName);
+					snprintf(pcap_interface, sizeof(pcap_interface), "PCAP: %s", ConfigureParams.Ethernet.szInterfaceName);
                 } else {
                     sprintf(pcap_interface, "PCAP");
                     enetdlg[DLGENET_PCAP].state &= ~SG_SELECTED;
