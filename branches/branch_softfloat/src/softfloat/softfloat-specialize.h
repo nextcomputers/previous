@@ -407,10 +407,11 @@ static floatx80 commonNaNToFloatx80( commonNaNT a )
 
 floatx80 propagateFloatx80NaN( floatx80 a, floatx80 b )
 {
-    flag aIsNaN, aIsSignalingNaN, bIsSignalingNaN;
+    flag aIsNaN, aIsSignalingNaN, bIsNaN, bIsSignalingNaN;
 
     aIsNaN = floatx80_is_nan( a );
     aIsSignalingNaN = floatx80_is_signaling_nan( a );
+    bIsNaN = floatx80_is_nan( b );
     bIsSignalingNaN = floatx80_is_signaling_nan( b );
 #ifdef SOFTFLOAT_68K
     a.low |= LIT64( 0x4000000000000000 );
@@ -422,7 +423,7 @@ floatx80 propagateFloatx80NaN( floatx80 a, floatx80 b )
     b.low |= LIT64( 0xC000000000000000 );
     if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling );
     if ( aIsNaN ) {
-        return ( aIsSignalingNaN ) ? b : a;
+        return ( aIsSignalingNaN & bIsNaN ) ? b : a;
     }
     else {
         return b;

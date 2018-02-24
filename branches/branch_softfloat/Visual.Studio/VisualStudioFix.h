@@ -176,5 +176,3 @@
 	extern	void Win_OpenCon(void);
 
 #endif
-
-#define HAVE_UNIX_DOMAIN_SOCKETS 0

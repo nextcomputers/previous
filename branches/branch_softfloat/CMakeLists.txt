@@ -40,13 +40,6 @@ else()
 	    CACHE BOOL "Built Hatari as Mac OS X application bundle")
 endif(APPLE)
 
-if(WIN32)
-	find_library(PCAP_LIBRARY
-		NAMES pcap wpcap
-		HINTS ${PCAP_ROOT_DIR}/Lib
-	)
-endif(WIN32)
-
 # ####################
 # Check for libraries:
 # ####################
