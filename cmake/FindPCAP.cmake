@@ -21,6 +21,7 @@
 
 find_path(PCAP_ROOT_DIR
     NAMES include/pcap.h
+    HINTS /c/MinGW/WpdPack
 )
 
 find_path(PCAP_INCLUDE_DIR
@@ -29,8 +30,8 @@ find_path(PCAP_INCLUDE_DIR
 )
 
 find_library(PCAP_LIBRARY
-    NAMES pcap
-    HINTS ${PCAP_ROOT_DIR}/lib
+    NAMES pcap wpcap
+    HINTS ${PCAP_ROOT_DIR}/lib ${PCAP_ROOT_DIR}/Lib
 )
 
 include(FindPackageHandleStandardArgs)

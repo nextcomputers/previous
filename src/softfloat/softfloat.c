@@ -560,7 +560,7 @@ static int64 roundAndPackInt64( flag zSign, bits64 absZ0, bits64 absZ1 )
 	overflow:
 		float_raise( float_flag_invalid );
 		return
-				zSign ? LIT64( 0x8000000000000000 )
+				zSign ? (sbits64) LIT64( 0x8000000000000000 )
 			: LIT64( 0x7FFFFFFFFFFFFFFF );
 	}
 	if ( absZ1 ) float_exception_flags |= float_flag_inexact;

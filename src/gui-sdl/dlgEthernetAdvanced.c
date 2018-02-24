@@ -106,7 +106,7 @@ bool DlgEthernetAdvanced(void)
 				break;
 		}
 	}
-    while (but != DLGENETPCAP_CANCEL && but != DLGENETPCAP_SELECT && but != SDLGUI_QUIT
+    while (but != DLGENETPCAP_SELECT && but != SDLGUI_QUIT
 	       && but != SDLGUI_ERROR && !bQuitProgram && !bNone);
     
     pcap_freealldevs(alldevs);
