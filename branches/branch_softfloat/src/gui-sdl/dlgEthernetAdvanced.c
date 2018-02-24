@@ -20,15 +20,17 @@ const char DlgEthernetAdvanced_fileid[] = "Previous dlgEthernetAdvanced.c : " __
 #define DLGENETPCAP_SELECT  4
 #define DLGENETPCAP_NEXT    5
 
+#define PCAP_LIST_MAX       26
+#define PCAP_LIST_LEN       ((PCAP_LIST_MAX)+4)
 
-char pcap_list[20] = "";
+char pcap_list[PCAP_LIST_LEN] = "";
 
 /* The Boot options dialog: */
 static SGOBJ enetpcapdlg[] =
 {
 	{ SGBOX, 0, 0, 0,0, 36,8, NULL },
 	{ SGTEXT, 0, 0, 2,1, 31,1, "Select Host Ethernet Interface:" },
-    { SGTEXT, 0, 0, 3,3, 12,1, pcap_list },
+    { SGTEXT, 0, 0, 3,3, PCAP_LIST_LEN,1, pcap_list },
     
 	{ SGBUTTON, 0, 0, 4,6, 8,1, "Cancel" },
     { SGBUTTON, SG_DEFAULT, 0, 14,6, 8,1, "Select" },
@@ -48,6 +50,8 @@ bool DlgEthernetAdvanced(void)
 	int but;
     pcap_if_t *alldevs;
     pcap_if_t *dev;
+    size_t len;
+    char name[FILENAME_MAX];
     char errbuf[PCAP_ERRBUF_SIZE];
     bool bNone;
     
@@ -64,34 +68,35 @@ bool DlgEthernetAdvanced(void)
     
 	do
 	{
-        if (dev == NULL) {
-            sprintf(pcap_list, "no interface found");
-            bNone = true;
-        } else {
-			// shorten device name to 30 chars if longer, on windows use dev->description instead of dev->name
-			size_t maxLen = 30;
-			char   name[FILENAME_MAX];
+        /* on windows use dev->description instead of dev->name */
 #ifdef _WIN32
+        if (dev && dev->name && dev->description) {
 			strcpy(name, dev->description);
 #else
+        if (dev && dev->name) {
 			strcpy(name, dev->name);
 #endif
-			size_t len    = strlen(name);
-			if(len > maxLen) {
-				name[maxLen/2] = '\0';
-				snprintf(pcap_list, maxLen+2, "%s..%s", name, &name[len-maxLen/2]);
+            /* shorten device name if too long */
+			len = strlen(name);
+			if (len >= PCAP_LIST_LEN) {
+				name[PCAP_LIST_MAX/2] = '\0';
+				snprintf(pcap_list, PCAP_LIST_LEN, "%s...%s", name, &name[len-PCAP_LIST_MAX/2]);
 			} else {
 				strcpy(pcap_list, name);
 			}				
             bNone = false;
+        } else {
+            sprintf(pcap_list, "no interface found");
+            bNone = true;
         }
 
 		but = SDLGui_DoDialog(enetpcapdlg, NULL);
 		
 		switch (but) {
             case DLGENETPCAP_SELECT:
-                if (!bNone)
+                if (!bNone) {
                     snprintf(ConfigureParams.Ethernet.szInterfaceName, FILENAME_MAX, "%s", dev->name);
+                }
 				break;
 			case DLGENETPCAP_NEXT:
                 if (!bNone) {
