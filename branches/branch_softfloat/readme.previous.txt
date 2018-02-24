@@ -61,9 +61,14 @@ For using Previous, you need to have installed the following libraries:
 
 Required:
 - The SDL library v2.0.5 or later (http://www.libsdl.org)
-- The libpng PNG reference library (http://www.libpng.org)
 - The zlib compression library (http://www.gzip.org/zlib/)
-- The pcap library https://github.com/the-tcpdump-group/libpcap or https://www.winpcap.org/
+
+Optional:
+- The libpng PNG reference library (http://www.libpng.org)
+  This is required for printing to files.
+- The pcap library (https://github.com/the-tcpdump-group/libpcap or 
+  https://www.winpcap.org)
+  This is required if networking via PCAP is preferred over SLiRP.
 
 
 Don't forget to also install the header files of these libraries for compiling
@@ -79,10 +84,10 @@ path to the sources of Previous as parameter, for example run the following if
 you are in the topmost directory of the Previous source tree:
 	cmake .
 
-On Windows, MinGW/MSYS recommended for building Previous. CMake needs a few extra
- arguments for generating the makefiles:
+On Windows MinGW/MSYS is recommended for building Previous. CMake needs an 
+extra argument for generating the makefiles:
  
-cmake -G "MSYS Makefiles" -DPCAP_ROOT_DIR=/c/MinGW/WpdPack .
+	cmake -G "MSYS Makefiles" .
 
 If you're tracking Previous version control, it's preferable to do
 the build in a separate build directory as above would overwrite
@@ -221,6 +226,10 @@ Previous v1.8:
   > Removes support for host keyboard repeat because it became useless.
   > Fixes bug that caused FMOVECR to return wrong values in some cases.
   > Fixes bug in timing system that caused hangs in variable speed mode.
+
+Previous v1.9 (unreleased):
+  > Adds support for networking via PCAP library.
+  > Improves 68030 and 68040 CPU to support all tracing modes.
 
 
  7) Running Previous
