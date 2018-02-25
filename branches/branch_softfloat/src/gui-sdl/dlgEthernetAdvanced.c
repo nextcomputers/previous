@@ -20,8 +20,7 @@ const char DlgEthernetAdvanced_fileid[] = "Previous dlgEthernetAdvanced.c : " __
 #define DLGENETPCAP_SELECT  4
 #define DLGENETPCAP_NEXT    5
 
-#define PCAP_LIST_MAX       26
-#define PCAP_LIST_LEN       ((PCAP_LIST_MAX)+4)
+#define PCAP_LIST_LEN       29
 
 char pcap_list[PCAP_LIST_LEN] = "";
 
@@ -50,7 +49,6 @@ bool DlgEthernetAdvanced(void)
 	int but;
     pcap_if_t *alldevs;
     pcap_if_t *dev;
-    size_t len;
     char name[FILENAME_MAX];
     char errbuf[PCAP_ERRBUF_SIZE];
     bool bNone;
@@ -76,14 +74,7 @@ bool DlgEthernetAdvanced(void)
         if (dev && dev->name) {
 			strcpy(name, dev->name);
 #endif
-            /* shorten device name if too long */
-			len = strlen(name);
-			if (len >= PCAP_LIST_LEN) {
-				name[PCAP_LIST_MAX/2] = '\0';
-				snprintf(pcap_list, PCAP_LIST_LEN, "%s...%s", name, &name[len-PCAP_LIST_MAX/2]);
-			} else {
-				strcpy(pcap_list, name);
-			}				
+            File_ShrinkName(pcap_list, name, PCAP_LIST_LEN);
             bNone = false;
         } else {
             sprintf(pcap_list, "no interface found");
