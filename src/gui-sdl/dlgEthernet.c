@@ -23,10 +23,9 @@ const char DlgEthernet_fileid[] = "Previous dlgEthernet.c : " __DATE__ " " __TIM
 
 #define DLGENET_EXIT        12
 
-#define PCAP_INTERFACE_MAX  20
-#define PCAP_INTERFACE_LEN  ((PCAP_INTERFACE_MAX)-1)
+#define PCAP_INTERFACE_LEN  20
 
-char pcap_interface[PCAP_INTERFACE_MAX] = "PCAP";
+char pcap_interface[PCAP_INTERFACE_LEN] = "PCAP";
 
 /* The Boot options dialog: */
 static SGOBJ enetdlg[] =
@@ -43,7 +42,7 @@ static SGOBJ enetdlg[] =
     { SGBOX, 0, 0, 26,3, 24,9, NULL },
     { SGTEXT, 0, 0, 28,4, 14,1, "Host interface" },
     { SGRADIOBUT, 0, 0, 29,6, 7,1, "SLiRP" },
-    { SGRADIOBUT, 0, 0, 29,8, PCAP_INTERFACE_MAX,1, pcap_interface },
+    { SGRADIOBUT, 0, 0, 29,8, PCAP_INTERFACE_LEN,1, pcap_interface },
     
     { SGTEXT, 0, 0, 4,13, 15,1, "Note: PCAP requires super user privileges." },
     
@@ -106,7 +105,7 @@ void DlgEthernet_Main(void)
 
     if (ConfigureParams.Ethernet.nHostInterface == ENET_PCAP) {
         enetdlg[DLGENET_PCAP].state |= SG_SELECTED;
-        snprintf(pcap_interface, PCAP_INTERFACE_LEN, "PCAP: %s", ConfigureParams.Ethernet.szInterfaceName);
+        snprintf(pcap_interface, PCAP_INTERFACE_LEN-1, "PCAP: %s", ConfigureParams.Ethernet.szInterfaceName);
     } else {
         enetdlg[DLGENET_SLIRP].state |= SG_SELECTED;
         sprintf(pcap_interface, "PCAP");
@@ -141,7 +140,7 @@ void DlgEthernet_Main(void)
 #if HAVE_PCAP
             case DLGENET_PCAP:
                 if (DlgEthernetAdvanced()) {
-					snprintf(pcap_interface, PCAP_INTERFACE_LEN, "PCAP: %s", ConfigureParams.Ethernet.szInterfaceName);
+					snprintf(pcap_interface, PCAP_INTERFACE_LEN-1, "PCAP: %s", ConfigureParams.Ethernet.szInterfaceName);
                 } else {
                     sprintf(pcap_interface, "PCAP");
                     enetdlg[DLGENET_PCAP].state &= ~SG_SELECTED;
