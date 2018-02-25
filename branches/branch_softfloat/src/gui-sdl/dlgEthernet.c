@@ -23,7 +23,7 @@ const char DlgEthernet_fileid[] = "Previous dlgEthernet.c : " __DATE__ " " __TIM
 
 #define DLGENET_EXIT        12
 
-#define PCAP_INTERFACE_LEN  20
+#define PCAP_INTERFACE_LEN  19
 
 char pcap_interface[PCAP_INTERFACE_LEN] = "PCAP";
 
@@ -105,7 +105,7 @@ void DlgEthernet_Main(void)
 
     if (ConfigureParams.Ethernet.nHostInterface == ENET_PCAP) {
         enetdlg[DLGENET_PCAP].state |= SG_SELECTED;
-        snprintf(pcap_interface, PCAP_INTERFACE_LEN-1, "PCAP: %s", ConfigureParams.Ethernet.szInterfaceName);
+        snprintf(pcap_interface, PCAP_INTERFACE_LEN, "PCAP: %s", ConfigureParams.Ethernet.szInterfaceName);
     } else {
         enetdlg[DLGENET_SLIRP].state |= SG_SELECTED;
         sprintf(pcap_interface, "PCAP");
@@ -140,7 +140,7 @@ void DlgEthernet_Main(void)
 #if HAVE_PCAP
             case DLGENET_PCAP:
                 if (DlgEthernetAdvanced()) {
-					snprintf(pcap_interface, PCAP_INTERFACE_LEN-1, "PCAP: %s", ConfigureParams.Ethernet.szInterfaceName);
+					snprintf(pcap_interface, PCAP_INTERFACE_LEN, "PCAP: %s", ConfigureParams.Ethernet.szInterfaceName);
                 } else {
                     sprintf(pcap_interface, "PCAP");
                     enetdlg[DLGENET_PCAP].state &= ~SG_SELECTED;
