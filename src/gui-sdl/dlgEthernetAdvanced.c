@@ -66,12 +66,15 @@ bool DlgEthernetAdvanced(void)
     
 	do
 	{
-        /* on windows use dev->description instead of dev->name */
-#ifdef _WIN32
-        if (dev && dev->name && dev->description) {
-			strcpy(name, dev->description);
-#else
         if (dev && dev->name) {
+#ifdef _WIN32
+            /* on windows use dev->description instead of dev->name */
+            if (dev->description) {
+                strcpy(name, dev->description);
+            } else {
+                strcpy(name, dev->name);
+            }
+#else
 			strcpy(name, dev->name);
 #endif
             File_ShrinkName(pcap_list, name, PCAP_LIST_LEN);
