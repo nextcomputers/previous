@@ -79,6 +79,8 @@ void Main_SpeedReset(void) {
     host_time(&realTime, &hostTime);
     lastRT     = realTime;
     lastCycles = nCyclesMainCounter;
+    
+    Log_Printf(LOG_WARN, "Realtime mode %s.\n", ConfigureParams.System.bRealtime ? "enabled" : "disabled");
 }
 
 const char* Main_SpeedMsg() {
