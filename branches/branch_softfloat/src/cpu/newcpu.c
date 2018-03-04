@@ -187,10 +187,10 @@ void set_cpu_caches (bool flush)
 			dcaches030[(regs.caar >> 4) & (CACHELINES030 - 1)].valid[(regs.caar >> 2) & 3] = 0;
 			regs.cacr &= ~0x400;
 		}
+#if 0 // FIXME
 	} else if (currprefs.cpu_model == 68040) {
-        if(ConfigureParams.System.bRealtime) {
-#if 0 /* FIXME */
-            if(regs.cacr & 0x8000) {
+        if (ConfigureParams.System.bRealtime) {
+            if (regs.cacr & 0x8000) {
                 flush_icache(0, -1);
                 x_prefetch   = getc_iword_mmu040;
                 x_get_ilong  = getc_ilong_mmu040;
@@ -198,9 +198,7 @@ void set_cpu_caches (bool flush)
                 x_get_ibyte  = getc_ibyte_mmu040;
                 x_next_iword = nextc_iword_mmu040;
                 x_next_ilong = nextc_ilong_mmu040;
-            } else
-#endif
-            {
+            } else {
                 x_prefetch   = get_iword_mmu040;
                 x_get_ilong  = get_ilong_mmu040;
                 x_get_iword  = get_iword_mmu040;
@@ -209,6 +207,7 @@ void set_cpu_caches (bool flush)
                 x_next_ilong = next_ilong_mmu040;
             }
         }
+#endif
 	}
 }
 
@@ -282,11 +281,9 @@ void build_cpufunctbl (void)
 	}
 	write_log ("Building CPU, %d opcodes (%d %d)\n",
 		opcnt, lvl, currprefs.cpu_compatible ? 1 : 0);
-	write_log ("CPU=%d, MMU=%d, FPU=%d ($%02x), JIT%s=%d, realtime=%d\n",
+	write_log ("CPU=%d, MMU=%d, FPU=%d ($%02x)\n",
                currprefs.cpu_model, currprefs.mmu_model,
-               currprefs.fpu_model, currprefs.fpu_revision,
-		currprefs.cachesize ? (currprefs.compfpu ? "=CPU/FPU" : "=CPU") : "",
-		currprefs.cachesize, ConfigureParams.System.bRealtime);
+               currprefs.fpu_model, currprefs.fpu_revision);
 	set_cpu_caches (0);
 	if (currprefs.mmu_model) {
         if (currprefs.cpu_model >= 68040) {
