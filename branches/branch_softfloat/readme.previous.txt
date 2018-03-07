@@ -1,6 +1,6 @@
 
 
-                                 Previous 1.8
+                                 Previous 1.9
 
 
 
@@ -227,7 +227,7 @@ Previous v1.8:
   > Fixes bug that caused FMOVECR to return wrong values in some cases.
   > Fixes bug in timing system that caused hangs in variable speed mode.
 
-Previous v1.9 (unreleased):
+Previous v1.9:
   > Adds support for networking via PCAP library.
   > Improves 68030 and 68040 CPU to support all tracing modes.
 

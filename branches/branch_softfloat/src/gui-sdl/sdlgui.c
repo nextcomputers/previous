@@ -893,6 +893,9 @@ int SDLGui_DoDialog(SGOBJ *dlg, SDL_Event *pEventOut)
  						               dlg[obj].w*sdlgui_fontwidth+4, dlg[obj].h*sdlgui_fontheight+4);
 						retbutton=obj;
 						break;
+					 case SGHIDDEN:
+						retbutton=obj;
+						break;
 					}
 				}
 				if (oldbutton > 0 && dlg[oldbutton].type == SGBUTTON)
