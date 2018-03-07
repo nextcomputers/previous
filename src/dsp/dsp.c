@@ -134,9 +134,9 @@ void DSP_SetIRQB(void)
 /**
  * Handling DMA transfers.
  */
+#if ENABLE_DSP_EMU
 static void DSP_HandleDMA(void)
 {
-#if ENABLE_DSP_EMU
 	if (dsp_core.dma_mode && dsp_core.dma_request && dma_dsp_ready()) {
 		/* Set the counter according to selected DMA mode */
 		if (dsp_core.dma_address_counter==0) {
@@ -165,8 +165,8 @@ static void DSP_HandleDMA(void)
 			return;
 		}
 	}
-#endif
 }
+#endif
 
 
 /**
@@ -225,6 +225,7 @@ void DSP_UnInit(void)
  */
 void DSP_Reset(void)
 {
+#if ENABLE_DSP_EMU
     //LogTraceFlags = TRACE_DSP_ALL;
 	if (ConfigureParams.System.bDSPMemoryExpansion) {
 		DSP_RAMSIZE = DSP_RAMSIZE_96kB;
@@ -237,7 +238,7 @@ void DSP_Reset(void)
 		bDspEmulated = false;
 	}
 	Statusbar_SetDspLed(false);
-#if ENABLE_DSP_EMU
+
 	dsp_core_reset();
 	save_cycles = 0;
 #endif

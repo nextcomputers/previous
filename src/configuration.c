@@ -235,6 +235,9 @@ static const struct Config_Tag configs_Ethernet[] =
     { "bEthernetConnected", Bool_Tag, &ConfigureParams.Ethernet.bEthernetConnected },
     { "bTwistedPair", Bool_Tag, &ConfigureParams.Ethernet.bTwistedPair },
 
+    { "nHostInterface", Int_Tag, &ConfigureParams.Ethernet.nHostInterface },
+    { "szInterfaceName", String_Tag, ConfigureParams.Ethernet.szInterfaceName },
+
     { NULL , Error_Tag, NULL }
 };
 
@@ -363,6 +366,8 @@ void Configuration_SetDefault(void)
     /* Set defaults for Ethernet */
     ConfigureParams.Ethernet.bEthernetConnected = false;
     ConfigureParams.Ethernet.bTwistedPair = false;
+    ConfigureParams.Ethernet.nHostInterface = ENET_SLIRP;
+    strcpy(ConfigureParams.Ethernet.szInterfaceName, "");
     
 	/* Set defaults for Keyboard */
     ConfigureParams.Keyboard.bSwapCmdAlt = false;

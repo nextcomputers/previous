@@ -434,11 +434,13 @@ void Statusbar_UpdateInfo(void)
         default:
             break;
     }
-    if (ConfigureParams.System.bTurbo)
-        end = Statusbar_AddString(end, (ConfigureParams.System.nCpuFreq==40)?" Nitro":" Turbo");
+    if (ConfigureParams.System.bTurbo) {
+        end = Statusbar_AddString(end, (ConfigureParams.System.nCpuFreq==40)?" Nitro":" Turbo");		
+	}
 
-    if (ConfigureParams.System.bColor)
-        end = Statusbar_AddString(end, " Color");
+    if (ConfigureParams.System.bColor) {
+        end = Statusbar_AddString(end, " Color");		
+	}
 
 	*end = '\0';
 

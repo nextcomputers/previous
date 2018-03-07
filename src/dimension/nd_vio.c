@@ -36,7 +36,7 @@ struct {
 } dmcd;
 
 
-void dmcd_write(uae_u32 step, uae_u8 data) {
+static void dmcd_write(uae_u32 step, uae_u8 data) {
     if (step == 0) {
         dmcd.addr = data;
     } else {
@@ -66,7 +66,7 @@ struct {
 } dcsc[2];
 
 
-void dcsc_write(uae_u8 dev, uae_u32 step, uae_u8 data) {
+static void dcsc_write(uae_u8 dev, uae_u32 step, uae_u8 data) {
     switch (step) {
         case 0:
             dcsc[dev].addr = data;
