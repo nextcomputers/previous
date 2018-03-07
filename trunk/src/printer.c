@@ -17,10 +17,9 @@
 #include "statusbar.h"
 #include "file.h"
 
-#include "png.h"
-
-#define USE_PNG_PRINTING 1
-
+#if HAVE_LIBPNG
+#include <png.h>
+#endif
 
 #define IO_SEG_MASK 0x1FFFF
 
@@ -683,7 +682,7 @@ static const char *lp_get_filename(void) {
 
 
 /* PNG printing functions */
-#if USE_PNG_PRINTING
+#if HAVE_LIBPNG
 const int MAX_PAGE_LEN = 400 * 14; // 14 inches is the length of US legal paper, longest paper that fits into the NeXT printer cartridge
 png_structp png_ptr          = NULL;
 png_infop   png_info_ptr     = NULL;
@@ -696,7 +695,7 @@ const char* png_path;
 #endif
 
 void lp_png_setup(Uint32 data) {
-#if USE_PNG_PRINTING
+#if HAVE_LIBPNG
     int i;
     png_width = ((data >> 16) & 0x7F) * 32;
     
@@ -729,7 +728,7 @@ void lp_png_setup(Uint32 data) {
 }
 
 void lp_png_print(void) {
-#if USE_PNG_PRINTING
+#if HAVE_LIBPNG
     int i;
     
     for (i = 0; i < lp_buffer.size; i++) {
@@ -740,7 +739,7 @@ void lp_png_print(void) {
 }
 
 void lp_png_finish(void) {
-#if USE_PNG_PRINTING
+#if HAVE_LIBPNG
     png_set_IHDR(png_ptr,
                  png_info_ptr,
                  png_width,

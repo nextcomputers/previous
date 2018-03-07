@@ -89,10 +89,12 @@ void Dialog_KeyboardDlg(void)
 	keyboarddlg[DLGKEY_MAPNAME].txt = dlgmapfile;
 #endif
     
-    if (ConfigureParams.Keyboard.bSwapCmdAlt)
-        keyboarddlg[DLGKEY_SWAP].state |= SG_SELECTED;
-    else
-        keyboarddlg[DLGKEY_SWAP].state &= ~SG_SELECTED;
+    if (ConfigureParams.Keyboard.bSwapCmdAlt) {
+        keyboarddlg[DLGKEY_SWAP].state |= SG_SELECTED;		
+	}
+    else {
+        keyboarddlg[DLGKEY_SWAP].state &= ~SG_SELECTED;		
+	}
 
 	/* Show the dialog: */
 	do

@@ -319,7 +319,7 @@ static int BreakCond_MatchBreakPoints(bc_breakpoint_t *bp, int count, const char
 			}
 			if (bp->options.lock) {
                 DebugCpu_InitSession();
-                DebugDsp_InitSession();
+//              DebugDsp_InitSession();
                 DebugInfo_ShowSessionInfo();
             }
             if (bp->options.filename) {

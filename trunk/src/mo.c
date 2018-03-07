@@ -1318,7 +1318,7 @@ void mo_seek(Uint16 command) {
     modrv[dnum].seeking = true;
     modrv[dnum].head_pos = (modrv[dnum].ho_head_pos&0xF000) | (command&0x0FFF);
 #if SEEK_TIMING
-    if (seek_time>modrv[dnum].head_pos) {
+    if ((Uint32)seek_time>modrv[dnum].head_pos) {
         seek_time=seek_time-modrv[dnum].head_pos;
     } else {
         seek_time=modrv[dnum].head_pos-seek_time;

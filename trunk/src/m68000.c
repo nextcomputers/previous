@@ -14,7 +14,6 @@ const char M68000_fileid[] = "Hatari m68000.c : " __DATE__ " " __TIME__;
 #include "hatari-glue.h"
 #include "cycInt.h"
 #include "m68000.h"
-#include "options.h"
 #include "nextMemory.h"
 
 #include "mmu_common.h"

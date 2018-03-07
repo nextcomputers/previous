@@ -45,7 +45,7 @@ int quit_program;  // declared as "int quit_program = 0;" in main.c
 #endif
 
 #ifndef TCHAR
-#define TCHAR char
+typedef char TCHAR;
 #endif
 
 #ifndef STATIC_INLINE

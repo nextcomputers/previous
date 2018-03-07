@@ -206,7 +206,7 @@ icmp_error(
      u_char type,
      u_char code,
      int minsize,
-     char *message)
+     const char *message)
 {
   unsigned hlen, shlen, s_ip_len;
   register struct ip *ip;
