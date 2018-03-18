@@ -12,8 +12,9 @@ Arithmetic Package, Release 2a.
 | Methods for converting decimal floats to binary extended precision floats.
 *----------------------------------------------------------------------------*/
 
-INLINE void round128to64(flag aSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1)
+INLINE void round128to64(flag aSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1, float_ctrl* c)
 {
+    int8 roundingMode;
     flag increment;
     int32 zExp;
     bits64 zSig0, zSig1;
@@ -22,15 +23,16 @@ INLINE void round128to64(flag aSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1)
     zSig0 = *aSig0;
     zSig1 = *aSig1;
     
+    roundingMode = get_float_rounding_mode(c);
     increment = ( (sbits64) zSig1 < 0 );
-    if (float_rounding_mode != float_round_nearest_even) {
-        if (float_rounding_mode == float_round_to_zero) {
+    if (roundingMode != float_round_nearest_even) {
+        if (roundingMode == float_round_to_zero) {
             increment = 0;
         } else {
             if (aSign) {
-                increment = (float_rounding_mode == float_round_down) && zSig1;
+                increment = (roundingMode == float_round_down) && zSig1;
             } else {
-                increment = (float_rounding_mode == float_round_up) && zSig1;
+                increment = (roundingMode == float_round_up) && zSig1;
             }
         }
     }
@@ -41,7 +43,7 @@ INLINE void round128to64(flag aSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1)
             ++zExp;
             zSig0 = LIT64(0x8000000000000000);
         } else {
-            zSig0 &= ~ (((bits64) (zSig1<<1) == 0) & (float_rounding_mode == float_round_nearest_even));
+            zSig0 &= ~ (((bits64) (zSig1<<1) == 0) & (roundingMode == float_round_nearest_even));
         }
     } else {
         if ( zSig0 == 0 ) zExp = 0;
@@ -52,7 +54,7 @@ INLINE void round128to64(flag aSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1)
     *aSig1 = 0;
 }
 
-INLINE void mul128by128round(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 bExp, bits64 bSig0, bits64 bSig1)
+INLINE void mul128by128round(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 bExp, bits64 bSig0, bits64 bSig1, float_ctrl* c)
 {
     int32 zExp;
     bits64 zSig0, zSig1, zSig2, zSig3;
@@ -61,7 +63,7 @@ INLINE void mul128by128round(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 bE
     zSig0 = *aSig0;
     zSig1 = *aSig1;
     
-    round128to64(0, &bExp, &bSig0, &bSig1);
+    round128to64(0, &bExp, &bSig0, &bSig1, c);
     
     zExp += bExp - 0x3FFE;
     mul128To256(zSig0, zSig1, bSig0, bSig1, &zSig0, &zSig1, &zSig2, &zSig3);
@@ -74,7 +76,7 @@ INLINE void mul128by128round(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 bE
     *aSig0 = zSig0;
     *aSig1 = zSig1;
     
-    round128to64(0, aExp, aSig0, aSig1);
+    round128to64(0, aExp, aSig0, aSig1, c);
 }
 
 INLINE void mul128by128(int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 bExp, bits64 bSig0, bits64 bSig1)
@@ -136,31 +138,33 @@ INLINE void div128by128(int32 *paExp, bits64 *paSig0, bits64 *paSig1, int32 bExp
     *paSig1 = zSig1;
 }
 
-INLINE void tentoint128(flag mSign, flag eSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 scale)
+INLINE void tentoint128(flag mSign, flag eSign, int32 *aExp, bits64 *aSig0, bits64 *aSig1, int32 scale, float_ctrl* c)
 {
+    int8 roundingMode;
     int8 save_rounding_mode;
     int32 mExp;
     bits64 mSig0, mSig1;
     
-    save_rounding_mode = float_rounding_mode;
-    switch (float_rounding_mode) {
+    roundingMode = get_float_rounding_mode(c);
+    save_rounding_mode = get_float_rounding_mode(c);
+    switch (roundingMode) {
         case float_round_nearest_even:
             break;
         case float_round_down:
             if (mSign != eSign) {
-                float_rounding_mode = float_round_up;
+                set_float_rounding_mode(float_round_up, c);
             }
             break;
         case float_round_up:
             if (mSign != eSign) {
-                float_rounding_mode = float_round_down;
+                set_float_rounding_mode(float_round_down, c);
             }
             break;
         case float_round_to_zero:
             if (eSign == 0) {
-                float_rounding_mode = float_round_down;
+                set_float_rounding_mode(float_round_down, c);
             } else {
-                float_rounding_mode = float_round_up;
+                set_float_rounding_mode(float_round_up, c);
             }
             break;
         default:
@@ -177,13 +181,13 @@ INLINE void tentoint128(flag mSign, flag eSign, int32 *aExp, bits64 *aSig0, bits
     
     while (scale) {
         if (scale & 1) {
-            mul128by128round(aExp, aSig0, aSig1, mExp, mSig0, mSig1);
+            mul128by128round(aExp, aSig0, aSig1, mExp, mSig0, mSig1, c);
         }
         mul128by128(&mExp, &mSig0, &mSig1, mExp, mSig0, mSig1);
         scale >>= 1;
     }
     
-    float_rounding_mode = save_rounding_mode;
+    set_float_rounding_mode(save_rounding_mode, c);
 }
 
 INLINE int64 tentointdec(int32 scale)
@@ -204,7 +208,7 @@ INLINE int64 tentointdec(int32 scale)
     return decX;
 }
 
-INLINE int64 float128toint64(flag zSign, int32 zExp, bits64 zSig0, bits64 zSig1)
+INLINE int64 float128toint64(flag zSign, int32 zExp, bits64 zSig0, bits64 zSig1, float_ctrl* c)
 {
     int8 roundingMode;
     flag roundNearestEven, increment;
@@ -212,7 +216,7 @@ INLINE int64 float128toint64(flag zSign, int32 zExp, bits64 zSig0, bits64 zSig1)
     
     shift128RightJamming(zSig0, zSig1, 0x403E - zExp, &zSig0, &zSig1);
 
-    roundingMode = float_rounding_mode;
+    roundingMode = get_float_rounding_mode(c);
     roundNearestEven = (roundingMode == float_round_nearest_even);
     increment = ((sbits64)zSig1 < 0);
     if (!roundNearestEven) {
@@ -231,7 +235,7 @@ INLINE int64 float128toint64(flag zSign, int32 zExp, bits64 zSig0, bits64 zSig1)
         zSig0 &= ~ (((bits64)(zSig1<<1) == 0) & roundNearestEven);
     }
     z = zSig0;
-    if (zSig1) float_raise(float_flag_inexact);
+    if (zSig1) float_raise(float_flag_inexact, c);
     return z;
 }
 
@@ -289,7 +293,7 @@ INLINE int32 getDecimalExponent(int32 aExp, bits64 aSig)
 | Decimal to binary
 *----------------------------------------------------------------------------*/
 
-floatx80 floatdecimal_to_floatx80(floatx80 a)
+floatx80 floatdecimal_to_floatx80(floatx80 a, float_ctrl* c)
 {
     flag decSign, zSign, decExpSign;
     int32 decExp, zExp, xExp, shiftCount;
@@ -312,7 +316,7 @@ floatx80 floatdecimal_to_floatx80(floatx80 a)
     zSig1 = 0;
     zSign = decSign;
     
-    tentoint128(decSign, decExpSign, &xExp, &xSig0, &xSig1, decExp);
+    tentoint128(decSign, decExpSign, &xExp, &xSig0, &xSig1, decExp, c);
     
     if (decExpSign) {
         div128by128(&zExp, &zSig0, &zSig1, xExp, xSig0, xSig1);
@@ -320,8 +324,8 @@ floatx80 floatdecimal_to_floatx80(floatx80 a)
         mul128by128(&zExp, &zSig0, &zSig1, xExp, xSig0, xSig1);
     }
     
-    if (zSig1) float_raise(float_flag_decimal);
-    round128to64(zSign, &zExp, &zSig0, &zSig1);
+    if (zSig1) float_raise(float_flag_decimal, c);
+    round128to64(zSign, &zExp, &zSig0, &zSig1, c);
     
     return packFloatx80( zSign, zExp, zSig0 );
 }
@@ -331,7 +335,7 @@ floatx80 floatdecimal_to_floatx80(floatx80 a)
  | Binary to decimal
  *----------------------------------------------------------------------------*/
 
-floatx80 floatx80_to_floatdecimal(floatx80 a, int32 *k)
+floatx80 floatx80_to_floatdecimal(floatx80 a, int32 *k, float_ctrl* c)
 {
     flag aSign, decSign;
     int32 aExp, decExp, zExp, xExp;
@@ -344,7 +348,7 @@ floatx80 floatx80_to_floatdecimal(floatx80 a, int32 *k)
     aSig = extractFloatx80Frac(a);
     
     if (aExp == 0x7FFF) {
-        if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a);
+        if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         return a;
     }
     
@@ -364,7 +368,7 @@ try_again:
     if (kfactor > 0) {
         if (kfactor > 17) {
             kfactor = 17;
-            float_raise(float_flag_invalid);
+            float_raise(float_flag_invalid, c);
         }
         len = kfactor;
     } else {
@@ -394,7 +398,7 @@ try_again:
     printf("ISCALE = %i, LAMBDA = %i\n",iscale,lambda);
 #endif
     
-    tentoint128(lambda, 0, &xExp, &xSig0, &xSig1, iscale);
+    tentoint128(lambda, 0, &xExp, &xSig0, &xSig1, iscale, c);
     
     zExp = aExp;
     zSig0 = aSig;
@@ -409,7 +413,7 @@ try_again:
     printf("BEFORE: zExp = %04x, zSig0 = %16llx, zSig1 = %16llx\n",zExp,zSig0,zSig1);
 #endif
     
-    decSig = float128toint64(aSign, zExp, zSig0, zSig1);
+    decSig = float128toint64(aSign, zExp, zSig0, zSig1, c);
 
 #ifdef SOFTFLOAT_DECIMAL_DEBUG
     printf("AFTER: decSig = %llu\n",decSig);
@@ -437,7 +441,7 @@ try_again:
     decSign = aSign;
     decExp = (ilog < 0) ? -ilog : ilog;
     if (decExp > 999) {
-        float_raise(float_flag_invalid);
+        float_raise(float_flag_invalid, c);
     }
     if (ilog < 0) decExp |= 0x4000;
     

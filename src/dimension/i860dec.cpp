@@ -606,7 +606,7 @@ void i860_cpu_device::insn_st_ctrl (UINT32 insn)
 		UINT32 tmp = m_cregs[CR_FSR] & ~0x003e01ef;
 		m_cregs[CR_FSR] = enew | tmp;
 
-		float_set_rounding_mode (GET_FSR_RM());
+		float_set_rounding_mode (GET_FSR_RM(), &m_fpcs);
 	}
 	else if (csrc2 != CR_FIR)
 		m_cregs[csrc2] = get_iregval (isrc1);

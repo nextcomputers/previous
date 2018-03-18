@@ -80,12 +80,39 @@ typedef float64 FLOAT64;
 #define FLOAT64_IS_NEG(x)       ((x) & LIT64(0x8000000000000000))
 #define FLOAT64_IS_ZERO(x)      (((x) & LIT64(0x7FFFFFFFFFFFFFFF)) == LIT64(0x0000000000000000))
 
-static inline void float_set_rounding_mode (int mode) {
+#define float32_add(x,y)        float32_add(x,y,&m_fpcs)
+#define float32_sub(x,y)        float32_sub(x,y,&m_fpcs)
+#define float32_mul(x,y)        float32_mul(x,y,&m_fpcs)
+#define float32_div(x,y)        float32_div(x,y,&m_fpcs)
+#define float32_sqrt(x)         float32_sqrt(x,&m_fpcs)
+#define float32_to_int32(x)     float32_to_int32(x,&m_fpcs)
+#define float32_to_int32_round_to_zero(x)     float32_to_int32_round_to_zero(x,&m_fpcs)
+#define float32_to_float64(x)   float32_to_float64(x,&m_fpcs)
+#define float32_gt(x,y)         float32_gt(x,y,&m_fpcs)
+#define float32_le(x,y)         float32_le(x,y,&m_fpcs)
+#define float32_eq(x,y)         float32_eq(x,y,&m_fpcs)
+#define float64_add(x,y)        float64_add(x,y,&m_fpcs)
+#define float64_sub(x,y)        float64_sub(x,y,&m_fpcs)
+#define float64_mul(x,y)        float64_mul(x,y,&m_fpcs)
+#define float64_div(x,y)        float64_div(x,y,&m_fpcs)
+#define float64_sqrt(x)         float64_sqrt(x,&m_fpcs)
+#define float64_to_int32(x)     float64_to_int32(x,&m_fpcs)
+#define float64_to_int32_round_to_zero(x)     float64_to_int32_round_to_zero(x,&m_fpcs)
+#define float64_to_float32(x)   float64_to_float32(x,&m_fpcs)
+#define float64_gt(x,y)         float64_gt(x,y,&m_fpcs)
+#define float64_le(x,y)         float64_le(x,y,&m_fpcs)
+#define float64_eq(x,y)         float64_eq(x,y,&m_fpcs)
+
+static inline void reset_fpcs(float_ctrl* fp_control) {
+    float_init(fp_control);
+}
+
+static inline void float_set_rounding_mode (int mode, float_ctrl* fp_control) {
     switch (mode) {
-        case 0: float_rounding_mode2 = float_round_nearest_even; break;
-        case 1: float_rounding_mode2 = float_round_down;         break;
-        case 2: float_rounding_mode2 = float_round_up;           break;
-        case 3: float_rounding_mode2 = float_round_to_zero;      break;
+        case 0: fp_control->float_rounding_mode = float_round_nearest_even; break;
+        case 1: fp_control->float_rounding_mode = float_round_down;         break;
+        case 2: fp_control->float_rounding_mode = float_round_up;           break;
+        case 3: fp_control->float_rounding_mode = float_round_to_zero;      break;
     }
 }
 
@@ -103,6 +130,8 @@ static inline void float_set_rounding_mode (int mode) {
 
 typedef float FLOAT32;
 typedef double FLOAT64;
+
+typedef int float_ctrl;
 
 #define FLOAT32_ZERO            0.0
 #define FLOAT32_ONE             1.0
@@ -136,7 +165,11 @@ typedef double FLOAT64;
 #define float64_le(x,y)         ((x)<=(y))
 #define float64_eq(x,y)         ((x)==(y))
 
-static inline void float_set_rounding_mode (int mode) {
+static inline void reset_fpcs(float_ctrl* dummy) {
+    *dummy = 0;
+}
+
+static inline void float_set_rounding_mode (int mode, float_ctrl* dummy) {
     switch (mode) {
         case 0: fesetround(FE_TONEAREST);  break;
         case 1: fesetround(FE_DOWNWARD);   break;
@@ -426,6 +459,9 @@ private:
     // debugger
     void debugger(char cmd, const char* format, ...);
     void debugger();
+    
+    // softfloat control and status
+    float_ctrl m_fpcs;
     
     /* Message port for host->i860 communication */
     volatile int m_port;
