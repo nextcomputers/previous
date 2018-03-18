@@ -444,6 +444,8 @@ void i860_cpu_device::init() {
                CFGS[CONF_I860], host_num_cpus(),
                ConfigureParams.Dimension.bI860Thread ? "using seperate thread for i860" : "i860 running on m68k thread. WARNING: expect slow emulation");
     
+    reset_fpcs(&m_fpcs);
+    
     m_single_stepping   = 0;
     m_lastcmd           = 0;
     m_console_idx       = 0;
