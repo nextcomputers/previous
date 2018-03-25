@@ -230,7 +230,7 @@ void host_unlock(lock_t* lock) {
 }
 
 thread_t* host_thread_create(thread_func_t func, void* data) {
-  return SDL_CreateThread(func, "[ND] Thread", data);
+  return SDL_CreateThread(func, "Thread", data);
 }
 
 int host_thread_wait(thread_t* thread) {

@@ -67,12 +67,8 @@ static void (* const pIntHandlerFunctions[MAX_INTERRUPTS])(void) =
     SND_In_Handler,
     Printer_IO_Handler,
     Main_EventHandlerInterrupt,
-    nd0_vbl_handler,
-    nd0_video_vbl_handler,
-    nd1_vbl_handler,
-    nd1_video_vbl_handler,
-    nd2_vbl_handler,
-    nd2_video_vbl_handler,
+    nd_vbl_handler,
+    nd_video_vbl_handler,
 };
 
 static INTERRUPTHANDLER InterruptHandlers[MAX_INTERRUPTS];

@@ -34,28 +34,7 @@ NextDimension::~NextDimension() {
 
 void NextDimension::reset(void) {
     i860.set_run_func();
-    switch (slot) {
-        case 2: sdl.start_interrupts(INTERRUPT_ND0_VBL, INTERRUPT_ND0_VIDEO_VBL); break;
-        case 4: sdl.start_interrupts(INTERRUPT_ND1_VBL, INTERRUPT_ND1_VIDEO_VBL); break;
-        case 6: sdl.start_interrupts(INTERRUPT_ND2_VBL, INTERRUPT_ND2_VIDEO_VBL); break;
-    }
-}
-
-void NextDimension::interrupt(interrupt_id intr) {
-    switch(intr) {
-        case INTERRUPT_ND0_VBL:
-        case INTERRUPT_ND1_VBL:
-        case INTERRUPT_ND2_VBL:
-            sdl.vbl_handler(intr);
-            break;
-        case INTERRUPT_ND0_VIDEO_VBL:
-        case INTERRUPT_ND1_VIDEO_VBL:
-        case INTERRUPT_ND2_VIDEO_VBL:
-            sdl.video_vbl_handler(intr);
-            break;
-        default:
-            break;
-    }
+    sdl.start_interrupts();
 }
 
 void NextDimension::pause(bool pause) {

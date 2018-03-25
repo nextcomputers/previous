@@ -16,21 +16,20 @@ class NDSDL {
     SDL_Window*   ndWindow;
     SDL_Renderer* ndRenderer;
     SDL_atomic_t  blitNDFB;
-    bool          ndVBLtoggle;
-    bool          ndVideoVBLtoggle;
     Uint32*       vram;
     
     static int    repainter(void *_this);
     int           repainter(void);
 public:
+    bool          ndVBLtoggle;
+    bool          ndVideoVBLtoggle;
+
     NDSDL(int slot, Uint32* vram);
     void    init(void);
     void    uninit(void);
     void    pause(bool pause);
     void    destroy(void);
-    void    start_interrupts(interrupt_id vbl, interrupt_id video_vbl);
-    void    vbl_handler(interrupt_id id);
-    void    video_vbl_handler(interrupt_id id);
+    void    start_interrupts();
 };
 
 extern "C" {
@@ -39,13 +38,8 @@ extern "C" {
     extern const int VIDEO_VBL_MS;
     extern const int BLANK_MS;
     
-    void nd0_vbl_handler(void);
-    void nd0_video_vbl_handler(void);
-    void nd1_vbl_handler(void);
-    void nd1_video_vbl_handler(void);
-    void nd2_vbl_handler(void);
-    void nd2_video_vbl_handler(void);
-    
+    void nd_vbl_handler(void);
+    void nd_video_vbl_handler(void);    
     void nd_sdl_destroy(void);
 #ifdef __cplusplus
 }
