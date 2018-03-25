@@ -140,7 +140,7 @@ public:
     Uint8           rom_command;
     Uint32          rom_last_addr;;
     Uint8           dmem[512];
-    uae_u32         bankmask[4];
+    Uint32          bankmask[4];
 
     NextDimension(int slot);
     void mem_init(void);
@@ -162,7 +162,6 @@ public:
     virtual void   slot_bput(Uint32 addr, Uint8 val);
 
     virtual void   reset(void);
-    virtual void   interrupt(interrupt_id intr);
     virtual void   pause(bool pause);
 
     static Uint8  i860_cs8get  (NextDimension* nd, Uint32 addr);
@@ -193,11 +192,6 @@ public:
         
     bool   handle_msgs(void);  /* i860 thread message handler */
     void   send_msg(int msg);
-
-    Uint32 io_lget(Uint32 addr);
-    Uint32 io_wget(Uint32 addr);
-    Uint32 io_bget(Uint32 addr);
-    void   io_lput(Uint32 addr, Uint32 l);
 
     void   set_blank_state(int src, bool state);
     void   video_dev_write(Uint8 addr, Uint32 step, Uint8 data);

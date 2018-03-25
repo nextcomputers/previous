@@ -55,24 +55,6 @@ int NDSDL::repainter(void) {
     return 0;
 }
 
-void NDSDL::vbl_handler(interrupt_id intr) {
-    CycInt_AcknowledgeInterrupt();
-    
-    host_blank(slot, ND_DISPLAY, ndVBLtoggle);
-    ndVBLtoggle = !ndVBLtoggle;
-     // 136Hz with toggle gives 68Hz, blank time is 1/2 frame time
-    CycInt_AddRelativeInterruptUs((1000*1000)/136, 0, intr);
-}
-
-void NDSDL::video_vbl_handler(interrupt_id intr) {
-    CycInt_AcknowledgeInterrupt();
-    
-    host_blank(slot, ND_VIDEO, ndVideoVBLtoggle);
-    ndVideoVBLtoggle = !ndVideoVBLtoggle;
-    // 120Hz with toggle gives 60Hz NTSC, blank time is 1/2 frame time
-    CycInt_AddRelativeInterruptUs((1000*1000)/120, 0, intr);
-}
-
 void NDSDL::init(void) {
     if(!(repaintThread)) {
         int x, y, w, h;
@@ -95,7 +77,7 @@ void NDSDL::init(void) {
     }
 }
 
-void NDSDL::start_interrupts(interrupt_id vbl, interrupt_id video_vbl) {
+void NDSDL::start_interrupts() {
     char name[32];
     
     if (!(repaintThread) && ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_DUAL) {
@@ -103,19 +85,35 @@ void NDSDL::start_interrupts(interrupt_id vbl, interrupt_id video_vbl) {
         repaintThread = SDL_CreateThread(NDSDL::repainter, name, this);
     }
     
-    CycInt_AddRelativeInterruptUs(1000, 0, vbl);
-    CycInt_AddRelativeInterruptUs(1000, 0, video_vbl);
+    CycInt_AddRelativeInterruptUs(1000, 0, INTERRUPT_ND_VBL);
+    CycInt_AddRelativeInterruptUs(1000, 0, INTERRUPT_ND_VIDEO_VBL);
 }
 
-void nd0_vbl_handler(void)       {nextbus[2]->interrupt(INTERRUPT_ND0_VBL);}
-void nd0_video_vbl_handler(void) {nextbus[2]->interrupt(INTERRUPT_ND0_VIDEO_VBL);}
+void nd_vbl_handler(void)       {
+    CycInt_AcknowledgeInterrupt();
 
-void nd1_vbl_handler(void)       {nextbus[4]->interrupt(INTERRUPT_ND1_VBL);}
-void nd1_video_vbl_handler(void) {nextbus[4]->interrupt(INTERRUPT_ND1_VIDEO_VBL);}
+    for(int slot = 2; slot < 16; slot += 2) {
+        if(NextDimension* nd = dynamic_cast<NextDimension*>(nextbus[slot])) {
+            host_blank(nd->slot, ND_DISPLAY, nd->sdl.ndVBLtoggle);
+            nd->sdl.ndVBLtoggle = !nd->sdl.ndVBLtoggle;
+        }
+    }
+    // 136Hz with toggle gives 68Hz, blank time is 1/2 frame time
+    CycInt_AddRelativeInterruptUs((1000*1000)/136, 0, INTERRUPT_ND_VBL);
+}
+void nd_video_vbl_handler(void) {
+    CycInt_AcknowledgeInterrupt();
 
-void nd2_vbl_handler(void)       {nextbus[6]->interrupt(INTERRUPT_ND2_VBL);}
-void nd2_video_vbl_handler(void) {nextbus[6]->interrupt(INTERRUPT_ND2_VIDEO_VBL);}
-
+    for(int slot = 2; slot < 16; slot += 2) {
+        if(NextDimension* nd = dynamic_cast<NextDimension*>(nextbus[slot])) {
+            host_blank(slot, ND_VIDEO, nd->sdl.ndVideoVBLtoggle);
+            nd->sdl.ndVideoVBLtoggle = !nd->sdl.ndVideoVBLtoggle;
+        }
+    }
+    
+    // 120Hz with toggle gives 60Hz NTSC, blank time is 1/2 frame time
+    CycInt_AddRelativeInterruptUs((1000*1000)/120, 0, INTERRUPT_ND_VIDEO_VBL);
+}
 
 void NDSDL::uninit(void) {
     SDL_HideWindow(ndWindow);

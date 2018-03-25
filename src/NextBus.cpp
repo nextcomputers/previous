@@ -30,7 +30,6 @@ void NextBusSlot::board_lput(Uint32 addr, Uint32 val) {bus_error(addr, "lput");}
 void NextBusSlot::board_wput(Uint32 addr, Uint16 val) {bus_error(addr, "wput");}
 void NextBusSlot::board_bput(Uint32 addr, Uint8 val)  {bus_error(addr, "bput");}
 
-void NextBusSlot::interrupt(interrupt_id id) {}
 void NextBusSlot::reset(void) {}
 void NextBusSlot::pause(bool pause) {}
 

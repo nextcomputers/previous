@@ -61,7 +61,6 @@ public:
     
     virtual void   reset(void);
     virtual void   pause(bool pause);
-    virtual void   interrupt(interrupt_id id);
 };
 
 class NextBusBoard : public NextBusSlot {
