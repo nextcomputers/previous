@@ -19,6 +19,10 @@
 #ifndef HATARI_M68000_H
 #define HATARI_M68000_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+    
 #include "sysdeps.h"
 #include "memory.h"
 #include "newcpu.h"     /* for regs */
@@ -169,4 +173,8 @@ void M68000_CheckCpuSettings(void);
 void M68000_BusError(Uint32 addr, bool bReadWrite);
 void M68000_Exception(Uint32 ExceptionVector , int ExceptionSource);
 
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+        
 #endif

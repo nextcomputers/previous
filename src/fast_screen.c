@@ -17,7 +17,8 @@ const char Screen_fileid[] = "Previous fast_screen.c : " __DATE__ " " __TIME__;
 #include "configuration.h"
 #include "log.h"
 #include "m68000.h"
-#include "dimension.h"
+#include "dimension.hpp"
+#include "nd_mem.hpp"
 #include "paths.h"
 #include "screen.h"
 #include "statusbar.h"
@@ -112,11 +113,11 @@ static void blitColor(SDL_Texture* tex) {
 /*
  Dimension format is 8bit per pixel, big-endian: RRGGBBAA
  */
-void blitDimension(SDL_Texture* tex) {
+void blitDimension(Uint32* vram, SDL_Texture* tex) {
 #if ND_STEP
-    Uint32* src = (Uint32*)&ND_vram[0];
+    Uint32* src = (Uint32*)&vram[0];
 #else
-    Uint32* src = (Uint32*)&ND_vram[16];
+    Uint32* src = (Uint32*)&vram[16];
 #endif
     void*   pixels;
     int     d;
@@ -178,7 +179,7 @@ void blitDimension(SDL_Texture* tex) {
  */
 static void blitScreen(SDL_Texture* tex) {
     if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
-        blitDimension(tex);
+        blitDimension(0, tex);
         return;
     }
     if(ConfigureParams.System.bColor) {

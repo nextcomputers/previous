@@ -1,3 +1,13 @@
+#pragma once
+
+#ifndef __SYSREG_H__
+#define __SYSREG_H__
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* NeXT system registers emulation */
 
 /* Interrupts */
@@ -88,3 +98,9 @@ void System_Timer_Write(void);
 
 void ColorVideo_CMD_Write(void);
 void color_video_interrupt(void);
+    
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __SYSREG_H__ */

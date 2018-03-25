@@ -13,7 +13,7 @@ const char DlgMain_fileid[] = "Hatari dlgMain.c : " __DATE__ " " __TIME__;
 #include "dialog.h"
 #include "sdlgui.h"
 #include "screen.h"
-#include "dimension.h"
+#include "dimension.hpp"
 
 
 #define MAINDLG_ABOUT    2

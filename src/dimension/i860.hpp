@@ -30,12 +30,7 @@
 
 #include "i860cfg.h"
 #include "host.h"
-#include "nd_sdl.h"
-
-const int LOG_WARN = 3;
-const int ND_SLOT  = 2; // HACK: one day we should put the whole ND in a C++ class or make an array of NeXTbus slots
-
-extern "C" void Log_Printf(int nType, const char *psFormat, ...);
+#include "nd_sdl.hpp"
 
 typedef uint64_t UINT64;
 typedef int64_t INT64;
@@ -52,16 +47,12 @@ typedef int8_t  INT8;
 typedef int64_t offs_t;
 
 extern "C" {
-#include "dimension.h"
-
-    void   nd_nbic_interrupt(void);
-    bool   nd_dbg_cmd(const char* cmd);
-    void   Statusbar_SetNdLed(int state);
+    class NextDimension;
     
-    void   nd_set_blank_state(int src, bool state);
-
-    typedef void (*mem_rd_func)(UINT32, UINT32*);
-    typedef void (*mem_wr_func)(UINT32, const UINT32*);
+    void   nd_nbic_interrupt(void);
+    void   Statusbar_SetNdLed(int state);
+    typedef void (*mem_rd_func)(NextDimension*, UINT32, UINT32*);
+    typedef void (*mem_wr_func)(NextDimension*, UINT32, const UINT32*);
 }
 
 #if WITH_SOFTFLOAT_I860
@@ -131,7 +122,7 @@ static inline void float_set_rounding_mode (int mode, float_ctrl* fp_control) {
 typedef float FLOAT32;
 typedef double FLOAT64;
 
-typedef int float_ctrl;
+#define float_ctrl int
 
 #define FLOAT32_ZERO            0.0
 #define FLOAT32_ONE             1.0
@@ -432,40 +423,41 @@ public:
     }
 };
 
+class NextDimension;
+
 class i860_cpu_device {
 public:
+    NextDimension* nd;
+    
 	// construction/destruction
-    i860_cpu_device();
+    i860_cpu_device(NextDimension* nd);
     
     /* External interface */
-    void send_msg(int msg);
-    void init();
-    void uninit();
+    void init(void);
+    void set_run_func(void);
+    void uninit(void);
     void halt(bool state);
     void pause(bool state);
-    inline bool is_halted() {return m_halt;};
+    inline bool is_halted(void) {return m_halt;};
 
     /* Run one i860 cycle */
-    void    run_cycle();
+    void    run_cycle(void);
     /* Run the i860 thread */
     void run();
     /* i860 thread message handler */
-    bool   handle_msgs();
-    /* External interrupt for i860 emulator */
-    void   interrupt();
+    bool   handle_msgs(int msg);
+    
+    static int thread(void* data);
     
     const char* reports(double realTime, double hostTIme);
 private:
     // debugger
     void debugger(char cmd, const char* format, ...);
-    void debugger();
+    void debugger(void);
     
     // softfloat control and status
     float_ctrl m_fpcs;
     
-    /* Message port for host->i860 communication */
-    volatile int m_port;
-    lock_t       m_port_lock;
     thread_t*    m_thread;
 
     UINT64 m_insn_decoded;
@@ -594,7 +586,7 @@ private:
 	 * Halt state. Can be set externally
 	 */
     volatile bool m_halt;
-    
+        
 	/* Indicate an instruction just generated a trap,
      needs to go to the trap address or a control-flow 
      instruction, so we know the PC is updated.  */

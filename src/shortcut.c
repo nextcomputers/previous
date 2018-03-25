@@ -14,7 +14,7 @@ const char ShortCut_fileid[] = "Hatari shortcut.c : " __DATE__ " " __TIME__;
 #include "dialog.h"
 #include "file.h"
 #include "m68000.h"
-#include "dimension.h"
+#include "dimension.hpp"
 #include "reset.h"
 #include "screen.h"
 #include "configuration.h"

@@ -14,8 +14,8 @@
 #include "main.h"
 
 /* NeXTdimension blank handling, see nd_sdl.c */
-void nd_display_blank(void);
-void nd_video_blank(void);
+void nd_display_blank(int num);
+void nd_video_blank(int num);
 
 #define NUM_BLANKS 3
 static const char* BLANKS[] = {
@@ -69,22 +69,22 @@ void host_reset() {
 }
 
 void host_blank(int slot, int src, bool state) {
-    slot = 1 << slot;
+    int bit = 1 << slot;
     if(state) {
-        blank[src] |=  slot;
+        blank[src] |=  bit;
         vblCounter[src]++;
     }
     else
-        blank[src] &= ~slot;
+        blank[src] &= ~bit;
     switch (src) {
-        case ND_DISPLAY:   nd_display_blank(); break;
-        case ND_VIDEO:     nd_video_blank();   break;
+        case ND_DISPLAY:   nd_display_blank(slot); break;
+        case ND_VIDEO:     nd_video_blank(slot);   break;
     }
 }
 
 bool host_blank_state(int slot, int src) {
-    slot = 1 << slot;
-    return blank[src] & slot;
+    int bit = 1 << slot;
+    return blank[src] & bit;
 }
 
 void host_hardclock(int expected, int actual) {

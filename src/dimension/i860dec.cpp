@@ -152,7 +152,7 @@ UINT64 i860_cpu_device::ifetch64(const UINT32 pc, const UINT32 vaddr, int const 
         insn64 |= rdcs8(paddr+1); insn64 <<= 8;
         insn64 |= rdcs8(paddr+0);
     } else {
-        nd_board_rd64_be(paddr, (UINT32*)&insn64);
+        NextDimension::i860_rd64_be(nd, paddr, (UINT32*)&insn64);
     }
     m_icache[cidx] = insn64;
     
@@ -230,7 +230,7 @@ UINT32 i860_cpu_device::get_address_translation(UINT32 vaddr, UINT32 voffset, UI
 
 	/* Get page directory entry at DTB:DIR:00.  */
 	pg_dir_entry_a = dtb | (vdir << 2);
-    nd_board_rd32_le(pg_dir_entry_a, &pg_dir_entry);
+    NextDimension::i860_rd32_le(nd, pg_dir_entry_a, &pg_dir_entry);
 
 	/* Check for non-present PDE.  */
 	if (!(pg_dir_entry & 1))
@@ -275,7 +275,7 @@ UINT32 i860_cpu_device::get_address_translation(UINT32 vaddr, UINT32 voffset, UI
 	/* Get page table entry at PFA1:PAGE:00.  */
 	pfa1 = pg_dir_entry & I860_PAGE_FRAME_MASK;
 	pg_tbl_entry_a = pfa1 | (vpage << 2);
-    nd_board_rd32_le(pg_tbl_entry_a, &pg_tbl_entry);
+    NextDimension::i860_rd32_le(nd, pg_tbl_entry_a, &pg_tbl_entry);
 
 	/* Check for non-present PTE.  */
 	if (!(pg_tbl_entry & 1))
@@ -318,8 +318,8 @@ UINT32 i860_cpu_device::get_address_translation(UINT32 vaddr, UINT32 voffset, UI
 	/* Update A bit and check D bit.  */
 	ttpde = pg_dir_entry | 0x20;
 	ttpte = pg_tbl_entry | 0x20;
-    nd_board_wr32_le(pg_dir_entry_a, &ttpde);
-    nd_board_wr32_le(pg_tbl_entry_a, &ttpte);
+    NextDimension::i860_wr32_le(nd, pg_dir_entry_a, &ttpde);
+    NextDimension::i860_wr32_le(nd, pg_tbl_entry_a, &ttpte);
 
 	if (is_write && is_dataref && (pg_tbl_entry & 0x40) == 0)
 	{
@@ -384,7 +384,7 @@ inline void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data) {
 #endif
     
 	/* Now do the actual write.  */
-    wrmem[size](addr, (UINT32*)data);
+    wrmem[size](nd, addr, (UINT32*)data);
 }
 
 
@@ -423,7 +423,7 @@ inline void i860_cpu_device::readmem_emu (UINT32 addr, int size, UINT8 *dest)
 		return;
 	}
 #endif
-    rdmem[size](addr, (UINT32*)dest);
+    rdmem[size](nd, addr, (UINT32*)dest);
 }
 
 
@@ -465,16 +465,16 @@ inline void i860_cpu_device::writemem_emu (UINT32 addr, int size, UINT8 *data, U
 #endif
         
     if(size == 8 && wmask != 0xff) {
-        if (wmask & 0x80) wrmem[1](addr+0, (UINT32*)&data[0]);
-        if (wmask & 0x40) wrmem[1](addr+1, (UINT32*)&data[1]);
-        if (wmask & 0x20) wrmem[1](addr+2, (UINT32*)&data[2]);
-        if (wmask & 0x10) wrmem[1](addr+3, (UINT32*)&data[3]);
-        if (wmask & 0x08) wrmem[1](addr+4, (UINT32*)&data[4]);
-        if (wmask & 0x04) wrmem[1](addr+5, (UINT32*)&data[5]);
-        if (wmask & 0x02) wrmem[1](addr+6, (UINT32*)&data[6]);
-        if (wmask & 0x01) wrmem[1](addr+7, (UINT32*)&data[7]);
+        if (wmask & 0x80) wrmem[1](nd, addr+0, (UINT32*)&data[0]);
+        if (wmask & 0x40) wrmem[1](nd, addr+1, (UINT32*)&data[1]);
+        if (wmask & 0x20) wrmem[1](nd, addr+2, (UINT32*)&data[2]);
+        if (wmask & 0x10) wrmem[1](nd, addr+3, (UINT32*)&data[3]);
+        if (wmask & 0x08) wrmem[1](nd, addr+4, (UINT32*)&data[4]);
+        if (wmask & 0x04) wrmem[1](nd, addr+5, (UINT32*)&data[5]);
+        if (wmask & 0x02) wrmem[1](nd, addr+6, (UINT32*)&data[6]);
+        if (wmask & 0x01) wrmem[1](nd, addr+7, (UINT32*)&data[7]);
     } else {
-        wrmem[size](addr, (UINT32*)data);
+        wrmem[size](nd, addr, (UINT32*)data);
     }
 }
 

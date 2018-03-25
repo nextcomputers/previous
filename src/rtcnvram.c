@@ -13,7 +13,7 @@
 #include "ioMemTables.h"
 #include "m68000.h"
 #include "configuration.h"
-#include "dimension.h"
+#include "dimension.hpp"
 #include "sysReg.h"
 #include "rtcnvram.h"
 
@@ -878,7 +878,7 @@ void nvram_init(void) {
 	if (ConfigureParams.Dimension.bEnabled) {
 		rtc.ram[17] |= USE_CONSOLE_SLOT;
 		if (ConfigureParams.Dimension.bMainDisplay) {
-			rtc.ram[17] |= (ND_SLOT>>1)<<3;
+			rtc.ram[17] |= (/*ND_SLOT*/2>>1)<<3;
 		}
     }
 

@@ -28,7 +28,7 @@
 #endif
 #include "main.h"
 #include "dsp.h"
-#include "dimension.h"
+#include "dimension.hpp"
 #include "reset.h"
 #include "cycInt.h"
 #include "dialog.h"
@@ -1224,6 +1224,8 @@ void doint (void)
  * Handle special flags
  */
 
+static int vpos = 0;
+
 static int do_specialties (int cycles)
 {
 	if (regs.spcflags & SPCFLAG_DOTRACE)
@@ -1527,7 +1529,6 @@ void m68k_go (int may_quit)
 				break;
 		}
 
-			quit_program = 0;
 			hardboot = 0;
 
 #ifdef DEBUGGER

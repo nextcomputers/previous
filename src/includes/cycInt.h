@@ -10,6 +10,10 @@
 #ifndef HATARI_CYCINT_H
 #define HATARI_CYCINT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Interrupt handlers in system */
 typedef enum
 {
@@ -29,8 +33,12 @@ typedef enum
   INTERRUPT_SND_IN,
   INTERRUPT_LP_IO,
   INTERRUPT_EVENT_LOOP,
-  INTERRUPT_ND_VBL,
-  INTERRUPT_ND_VIDEO_VBL,
+  INTERRUPT_ND0_VBL,
+  INTERRUPT_ND0_VIDEO_VBL,
+  INTERRUPT_ND1_VBL,
+  INTERRUPT_ND1_VIDEO_VBL,
+  INTERRUPT_ND2_VBL,
+  INTERRUPT_ND2_VIDEO_VBL,
   MAX_INTERRUPTS
 } interrupt_id;
 
@@ -50,7 +58,7 @@ typedef struct
     void (*pFunction)(void);
 } INTERRUPTHANDLER;
 
-INTERRUPTHANDLER PendingInterrupt;
+extern INTERRUPTHANDLER PendingInterrupt;
 
 extern int64_t nCyclesMainCounter;
 extern int64_t nCyclesOver;
@@ -66,5 +74,9 @@ void CycInt_AddRelativeInterruptUsCycles(int64_t us, int64_t usreal, interrupt_i
 void CycInt_RemovePendingInterrupt(interrupt_id Handler);
 bool CycInt_InterruptActive(interrupt_id Handler);
 bool CycInt_SetNewInterruptUs(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ifndef HATARI_CYCINT_H */

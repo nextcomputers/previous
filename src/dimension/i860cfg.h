@@ -24,7 +24,7 @@
 #define CONF_I860 CONF_I860_SPEED
 #endif
 
-#define WITH_SOFTFLOAT_I860  1
+#define WITH_SOFTFLOAT_I860  0
 
 /* Emulator configurations */
 
