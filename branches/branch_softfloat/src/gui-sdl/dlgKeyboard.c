@@ -14,8 +14,7 @@ const char DlgKeyboard_fileid[] = "Previous dlgKeyboard.c : " __DATE__ " " __TIM
 #include "sdlgui.h"
 #include "file.h"
 #include "screen.h"
-#include "dimension.h"
-
+#include "dimension.hpp"
 
 #define ENABLE_LOADED_OPTION 0
 

@@ -21,7 +21,7 @@ const char Video_fileid[] = "Previous video.c : " __DATE__ " " __TIME__;
 #include "dma.h"
 #include "sysReg.h"
 #include "tmc.h"
-#include "nd_sdl.h"
+#include "nd_sdl.hpp"
 
 /*--------------------------------------------------------------*/
 /* Local functions prototypes                                   */
@@ -34,7 +34,6 @@ const char Video_fileid[] = "Previous video.c : " __DATE__ " " __TIME__;
  */
 void Video_Reset(void) {
 	Video_StartInterrupts(0);
-    nd_start_interrupts();
 }
 
 #define NEXT_VBL_FREQ 68

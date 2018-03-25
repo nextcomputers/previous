@@ -5,10 +5,17 @@
   your option any later version. Read the file gpl.txt for details.
 */
 
+#pragma once
+
 #ifndef HATARI_CONFIGURATION_H
 #define HATARI_CONFIGURATION_H
 
+
 #include <stdio.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
 #define ENABLE_TESTING 0
 
@@ -358,5 +365,9 @@ void Configuration_CheckEthernetSettings(void);
 void Configuration_Load(const char *psFileName);
 void Configuration_Save(void);
 void Configuration_MemorySnapShot_Capture(bool bSave);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 #endif
