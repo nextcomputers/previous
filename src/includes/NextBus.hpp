@@ -12,7 +12,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
-
     void nextbus_init(void);
 
     Uint32 nextbus_slot_lget(Uint32 addr);
@@ -36,6 +35,9 @@ extern "C" {
 #endif /* __cplusplus */
 
 #ifdef __cplusplus
+
+#define FOR_EACH_SLOT(slot) for(int (slot) = 2; (slot) < 8; (slot) += 2)
+#define IF_NEXT_DIMENSION(slot, nd) if(NextDimension* nd = dynamic_cast<NextDimension*>(nextbus[(slot)]))
 
 class NextBusSlot {
 public:

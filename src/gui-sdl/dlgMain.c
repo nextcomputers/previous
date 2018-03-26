@@ -107,7 +107,7 @@ int Dialog_MainDlg(bool *bReset, bool *bLoadedSnapshot)
 			Dialog_AboutDlg();
 			break;
 		 case MAINDLG_GRAPH:
-			Dialog_DimensionDlg();
+			Dialog_GraphicsDlg();
 			break;
 		 case MAINDLG_ENET:
 			DlgEthernet_Main();

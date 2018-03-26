@@ -80,7 +80,7 @@ static Uint32 LedColorOn, LedColorOnWP, LedColorOff, SysColorOn, SysColorOff, Ds
 static Uint32 NdColorOn, NdColorCS8, NdColorOff;
 static Uint32 GrayBg, LedColorBg;
 
-#define MAX_MESSAGE_LEN 69 /* changed for Previous, was 50 */
+#define MAX_MESSAGE_LEN 80
 typedef struct msg_item {
 	struct msg_item *next;
 	char msg[MAX_MESSAGE_LEN+1];
@@ -379,16 +379,18 @@ static char *Statusbar_AddString(char *buffer, const char *more)
 void Statusbar_UpdateInfo(void)
 {
 	char *end = DefaultMessage.msg;
-	char memsize[8];
+	char memsize[16];
+    char slot[16];
 	
 	/* Message for NeXTdimension */
-	if (ConfigureParams.Dimension.bEnabled &&
-		ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
+	if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
 		end = Statusbar_AddString(end, "33MHz/i860XR/");
-		sprintf(memsize, "%iMB/",Configuration_CheckDimensionMemory(ConfigureParams.Dimension.nMemoryBankSize));
+		sprintf(memsize, "%iMB/",Configuration_CheckDimensionMemory(ConfigureParams.Dimension.board[ConfigureParams.Screen.nMonitorNum].nMemoryBankSize));
 		end = Statusbar_AddString(end, memsize);
 		end = Statusbar_AddString(end, "NeXTdimension");
-		*end = '\0';
+        sprintf(slot, " slot(%d)", ND_SLOT(ConfigureParams.Screen.nMonitorNum));
+        end = Statusbar_AddString(end, slot);
+        *end = '\0';
 		assert(end - DefaultMessage.msg < MAX_MESSAGE_LEN);
 		DefaultMessage.shown = false;
 		return;

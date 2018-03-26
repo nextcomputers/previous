@@ -18,6 +18,11 @@
 #include "i860.hpp"
 #include <stdlib.h>
 
+#if defined _WIN32
+#undef mkdir
+#endif
+#include <unistd.h>
+
 extern "C" {
     #include "dimension.hpp"
 
@@ -30,8 +35,8 @@ extern "C" {
     }
 
     static void i860_run_no_thread(int nHostCycles) {
-        for(int slot = 2; slot < 16; slot += 2) {
-            if(NextDimension* nd = dynamic_cast<NextDimension*>(nextbus[slot])) {
+        FOR_EACH_SLOT(slot) {
+            IF_NEXT_DIMENSION(slot, nd) {
                 nd->handle_msgs();
                 
                 if(nd->i860.is_halted()) return;

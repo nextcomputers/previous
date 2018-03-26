@@ -115,9 +115,9 @@ static void blitColor(SDL_Texture* tex) {
  */
 void blitDimension(Uint32* vram, SDL_Texture* tex) {
 #if ND_STEP
-    Uint32* src = (Uint32*)&vram[0];
+    Uint32* src = &vram[0];
 #else
-    Uint32* src = (Uint32*)&vram[16];
+    Uint32* src = &vram[16];
 #endif
     void*   pixels;
     int     d;
@@ -179,7 +179,9 @@ void blitDimension(Uint32* vram, SDL_Texture* tex) {
  */
 static void blitScreen(SDL_Texture* tex) {
     if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
-        blitDimension(0, tex);
+        Uint32* vram = nd_vram_for_slot(ND_SLOT(ConfigureParams.Screen.nMonitorNum));
+        if(vram)
+            blitDimension(vram, tex);
         return;
     }
     if(ConfigureParams.System.bColor) {

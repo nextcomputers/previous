@@ -92,8 +92,8 @@ void NDSDL::start_interrupts() {
 void nd_vbl_handler(void)       {
     CycInt_AcknowledgeInterrupt();
 
-    for(int slot = 2; slot < 16; slot += 2) {
-        if(NextDimension* nd = dynamic_cast<NextDimension*>(nextbus[slot])) {
+    FOR_EACH_SLOT(slot) {
+        IF_NEXT_DIMENSION(slot, nd) {
             host_blank(nd->slot, ND_DISPLAY, nd->sdl.ndVBLtoggle);
             nd->sdl.ndVBLtoggle = !nd->sdl.ndVBLtoggle;
         }
@@ -104,8 +104,8 @@ void nd_vbl_handler(void)       {
 void nd_video_vbl_handler(void) {
     CycInt_AcknowledgeInterrupt();
 
-    for(int slot = 2; slot < 16; slot += 2) {
-        if(NextDimension* nd = dynamic_cast<NextDimension*>(nextbus[slot])) {
+    FOR_EACH_SLOT(slot) {
+        IF_NEXT_DIMENSION(slot, nd) {
             host_blank(slot, ND_VIDEO, nd->sdl.ndVideoVBLtoggle);
             nd->sdl.ndVideoVBLtoggle = !nd->sdl.ndVideoVBLtoggle;
         }
@@ -124,9 +124,9 @@ void NDSDL::pause(bool pause) {
 }
 
 void nd_sdl_destroy(void) {
-    for(int slot = 2; slot < 16; slot += 2) {
-        if(NextDimension* d = dynamic_cast<NextDimension*>(nextbus[slot])) {
-            d->sdl.destroy();
+    FOR_EACH_SLOT(slot) {
+        IF_NEXT_DIMENSION(slot, nd) {
+            nd->sdl.destroy();
         }
     }
 }

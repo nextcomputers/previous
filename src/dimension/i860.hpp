@@ -24,7 +24,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#include <unistd.h>
 #include <ctype.h>
 #include <assert.h>
 
@@ -100,10 +99,10 @@ static inline void reset_fpcs(float_ctrl* fp_control) {
 
 static inline void float_set_rounding_mode (int mode, float_ctrl* fp_control) {
     switch (mode) {
-        case 0: fp_control->float_rounding_mode = float_round_nearest_even; break;
-        case 1: fp_control->float_rounding_mode = float_round_down;         break;
-        case 2: fp_control->float_rounding_mode = float_round_up;           break;
-        case 3: fp_control->float_rounding_mode = float_round_to_zero;      break;
+        case 0: set_float_rounding_mode(float_round_nearest_even, fp_control); break;
+        case 1: set_float_rounding_mode(float_round_down, fp_control);         break;
+        case 2: set_float_rounding_mode(float_round_up, fp_control);           break;
+        case 3: set_float_rounding_mode(float_round_to_zero, fp_control);      break;
     }
 }
 
