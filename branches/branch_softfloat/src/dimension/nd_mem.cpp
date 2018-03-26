@@ -400,7 +400,7 @@ void NextDimension::init_mem_banks(void) {
 
 void NextDimension::mem_init(void) {
     write_log("[ND] Slot %i: Memory init: Memory size: %iMB\n", slot,
-              Configuration_CheckDimensionMemory(ConfigureParams.Dimension.nMemoryBankSize));
+              Configuration_CheckDimensionMemory(ConfigureParams.Dimension.board[ND_NUM(slot)].nMemoryBankSize));
 
     /* Initialize banks with error memory */
     init_mem_banks();
@@ -411,11 +411,11 @@ void NextDimension::mem_init(void) {
     /* Map main memory */
     
     for(int bank = 0; bank < 4; bank++) {
-        if (ConfigureParams.Dimension.nMemoryBankSize[bank]) {
-            bankmask[bank] = ND_RAM_BANKMASK|((ConfigureParams.Dimension.nMemoryBankSize[bank]<<20)-1);
+        if (ConfigureParams.Dimension.board[ND_NUM(slot)].nMemoryBankSize[bank]) {
+            bankmask[bank] = ND_RAM_BANKMASK|((ConfigureParams.Dimension.board[ND_NUM(slot)].nMemoryBankSize[bank]<<20)-1);
             map_banks(new ND_RAM(this, bank), (ND_RAM_START+(bank*ND_RAM_BANKSIZE))>>16, ND_RAM_BANKSIZE >> 16);
             write_log("[ND] Slot %i: Mapping main memory bank%d at $%08x: %iMB\n", slot, bank,
-                      (ND_RAM_START+(bank*ND_RAM_BANKSIZE)), ConfigureParams.Dimension.nMemoryBankSize[0]);
+                      (ND_RAM_START+(bank*ND_RAM_BANKSIZE)), ConfigureParams.Dimension.board[ND_NUM(slot)].nMemoryBankSize[0]);
         } else {
             bankmask[bank] = 0;
             map_banks(new ND_Empty(this), (ND_RAM_START+(bank*ND_RAM_BANKSIZE))>>16, ND_RAM_BANKSIZE >> 16);

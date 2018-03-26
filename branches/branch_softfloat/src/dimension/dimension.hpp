@@ -9,17 +9,19 @@
 /* NeXTdimension memory controller revision (0 and 1 allowed) */
 #define ND_STEP 1
 
+#define ND_SLOT(num) ((num)*2+2)
+#define ND_NUM(slot) ((slot)/2-1)
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
     
-typedef void (*i860_run_func)(int);
-extern i860_run_func i860_Run;
-
-
-void nd_start_debugger(void);
-const char* nd_reports(int num, double realTime, double hostTime);
-
+    typedef void (*i860_run_func)(int);
+    extern i860_run_func i860_Run;
+    void nd_start_debugger(void);
+    const char* nd_reports(int num, double realTime, double hostTime);
+    Uint32* nd_vram_for_slot(int slot);
+    
 #define ND_LOG_IO_RD LOG_NONE
 #define ND_LOG_IO_WR LOG_NONE
 

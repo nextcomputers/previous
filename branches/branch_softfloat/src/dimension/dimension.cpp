@@ -284,9 +284,9 @@ bool NextDimension::handle_msgs(void) {
 }
 
 void nd_start_debugger(void) {
-    for(int slot = 2; slot < 16; slot += 2) {
-        if(NextDimension* d = dynamic_cast<NextDimension*>(nextbus[slot])) {
-            d->send_msg(MSG_DBG_BREAK);
+    FOR_EACH_SLOT(slot) {
+        IF_NEXT_DIMENSION(slot, nd) {
+            nd->send_msg(MSG_DBG_BREAK);
         }
     }
 }
@@ -302,6 +302,13 @@ extern "C" {
 
     const char* nd_reports(int slot, double realTime, double hostTime) {
         return ((NextDimension*)nextbus[slot])->i860.reports(realTime, hostTime);
+    }
+    
+    Uint32* nd_vram_for_slot(int slot) {
+        IF_NEXT_DIMENSION(slot, nd)
+            return (Uint32*)nd->vram;
+        else
+            return NULL;
     }
 }
 

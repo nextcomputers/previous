@@ -44,7 +44,7 @@ const char Change_fileid[] = "Hatari change.c : " __DATE__ " " __TIME__;
  */
 bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
 {
-    int i;
+    int i, j;
     
     /* Did we change ROM file? */
     if (current->System.nMachineType == NEXT_CUBE030 && strcmp(current->Rom.szRom030FileName, changed->Rom.szRom030FileName)) {
@@ -200,18 +200,24 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
     }
     
     /* Did we change NeXTdimension? */
-    if (current->Dimension.bEnabled != changed->Dimension.bEnabled ||
-        current->Dimension.bI860Thread != changed->Dimension.bI860Thread ||
-		current->Dimension.bMainDisplay != changed->Dimension.bMainDisplay ||
-        strcmp(current->Dimension.szRomFileName, changed->Dimension.szRomFileName)) {
-        printf("dimension reset\n");
-		return true;
-    }
-    for (i = 0; i < 4; i++) {
-        if (current->Dimension.nMemoryBankSize[i] != changed->Dimension.nMemoryBankSize[i]) {
-            printf("dimension memory size reset\n");
+    for (i = 0; i < ND_MAX_BOARDS; i++) {
+        if (current->Dimension.board[i].bEnabled != changed->Dimension.board[i].bEnabled ||
+            strcmp(current->Dimension.board[i].szRomFileName, changed->Dimension.board[i].szRomFileName)) {
+            printf("dimension reset\n");
             return true;
         }
+        for (j = 0; j < 4; j++) {
+            if (current->Dimension.board[i].nMemoryBankSize[j] != changed->Dimension.board[i].nMemoryBankSize[j]) {
+                printf("dimension memory size reset\n");
+                return true;
+            }
+        }
+    }
+    if (current->Dimension.bI860Thread != changed->Dimension.bI860Thread ||
+        current->Dimension.bMainDisplay != changed->Dimension.bMainDisplay ||
+        current->Dimension.nMainDisplay != changed->Dimension.nMainDisplay) {
+        printf("dimension display reset\n");
+        return true;
     }
 	
 	/* Did we change monitor count? */

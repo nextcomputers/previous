@@ -123,7 +123,7 @@ check_function_exists(strdup HAVE_STRDUP)
 
 # Warning flags:
 if(CMAKE_COMPILER_IS_GNUCC)
-	set(CMAKE_C_FLAGS "-Wcast-qual -g -O0 -Wbad-function-cast -Wpointer-arith ${CMAKE_C_FLAGS} -D__USE_MINGW_ANSI_STDIO=1")
+	set(CMAKE_C_FLAGS "-Wcast-qual -g -Wbad-function-cast -Wpointer-arith ${CMAKE_C_FLAGS} -D__USE_MINGW_ANSI_STDIO=1")
 	set(CMAKE_C_FLAGS "-Wmissing-prototypes -Wstrict-prototypes ${CMAKE_C_FLAGS}")
 	set(CMAKE_C_FLAGS "-Wall -Wwrite-strings -Wsign-compare ${CMAKE_C_FLAGS}")
 	#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra -Wno-unused-parameter -Wno-empty-body")
@@ -132,9 +132,14 @@ if(CMAKE_COMPILER_IS_GNUCC)
 endif(CMAKE_COMPILER_IS_GNUCC)
 
 # Building Previous w/o optimization is no fun...
-IF (CMAKE_BUILD_TYPE STREQUAL "Debug")
-	set(CMAKE_C_FLAGS "-O ${CMAKE_C_FLAGS}")
-ENDIF (CMAKE_BUILD_TYPE STREQUAL "Debug")
+# IF (CMAKE_BUILD_TYPE STREQUAL "Debug")
+# 	set(CMAKE_C_FLAGS "-O3 ${CMAKE_C_FLAGS}")
+# ENDIF (CMAKE_BUILD_TYPE STREQUAL "Debug")
+
+set(OPTIMIZATION_LEVEL 3)
+set(GCC_OPTIMIZATION_LEVEL ${OPTIMIZATION_LEVEL})
+set(CMAKE_C_FLAGS "-O${OPTIMIZATION_LEVEL} ${CMAKE_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "-O${OPTIMIZATION_LEVEL} ${CMAKE_CXX_FLAGS}")
 
 # ####################
 # Paths configuration:

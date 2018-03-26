@@ -154,6 +154,11 @@ extern "C" {
         nextbus[board]->board_bput(addr, val);
     }
     
+    static void remove_board(int slot) {
+        delete nextbus[slot];
+        nextbus[slot] = new NextBusSlot(slot);
+    }
+
     static void insert_board(NextBusBoard* board) {
         delete nextbus[board->slot];
         nextbus[board->slot] = board;
@@ -165,10 +170,16 @@ extern "C" {
 
         if (ConfigureParams.System.nMachineType == NEXT_CUBE030 || ConfigureParams.System.nMachineType == NEXT_CUBE040) {
             for (int i = 0; i < 3; i++) {
-                if (ConfigureParams.Dimension.bEnabled) {
-                    int slot = (i+1)*2;
+                int slot = ND_SLOT(i);
+                if (ConfigureParams.Dimension.board[i].bEnabled) {
                     Log_Printf(LOG_WARN, "[NextBus] NeXTdimension board at slot %i", slot);
-                    insert_board(new NextDimension(slot));
+                    IF_NEXT_DIMENSION(slot, nd) {
+                        // reuse existing ND
+                    } else {
+                        insert_board(new NextDimension(slot));
+                    }
+                } else {
+                    remove_board(slot);
                 }
             }
         }
