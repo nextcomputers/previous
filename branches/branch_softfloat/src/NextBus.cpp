@@ -167,20 +167,12 @@ extern "C" {
     /* Init function for NextBus */
     void nextbus_init(void) {
         insert_board(new M68KBoard(0));
-
-        if (ConfigureParams.System.nMachineType == NEXT_CUBE030 || ConfigureParams.System.nMachineType == NEXT_CUBE040) {
-            for (int i = 0; i < 3; i++) {
-                int slot = ND_SLOT(i);
-                if (ConfigureParams.Dimension.board[i].bEnabled) {
-                    Log_Printf(LOG_WARN, "[NextBus] NeXTdimension board at slot %i", slot);
-                    IF_NEXT_DIMENSION(slot, nd) {
-                        // reuse existing ND
-                    } else {
-                        insert_board(new NextDimension(slot));
-                    }
-                } else {
-                    remove_board(slot);
-                }
+        
+        for (int i = 0; i < ND_MAX_BOARDS; i++) {
+            remove_board(ND_SLOT(i));
+            if (ConfigureParams.Dimension.board[i].bEnabled && ConfigureParams.System.nMachineType != NEXT_STATION) {
+                Log_Printf(LOG_WARN, "[NextBus] NeXTdimension board at slot %i", ND_SLOT(i));
+                insert_board(new NextDimension(ND_SLOT(i)));
             }
         }
     }
