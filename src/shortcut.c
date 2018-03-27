@@ -149,6 +149,7 @@ static void ShortCut_Dimension(void)
     
     while (ConfigureParams.Screen.nMonitorNum < ND_MAX_BOARDS) {
         if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_CPU) {
+            ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_DIMENSION;
             ConfigureParams.Screen.nMonitorNum = 0;
         } else {
             ConfigureParams.Screen.nMonitorNum++;
@@ -159,7 +160,6 @@ static void ShortCut_Dimension(void)
             break;
         }
         if (ConfigureParams.Dimension.board[ConfigureParams.Screen.nMonitorNum].bEnabled) {
-            ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_DIMENSION;
             break;
         }
     }

@@ -80,7 +80,7 @@ static Uint32 LedColorOn, LedColorOnWP, LedColorOff, SysColorOn, SysColorOff, Ds
 static Uint32 NdColorOn, NdColorCS8, NdColorOff;
 static Uint32 GrayBg, LedColorBg;
 
-#define MAX_MESSAGE_LEN 80
+#define MAX_MESSAGE_LEN 69
 typedef struct msg_item {
 	struct msg_item *next;
 	char msg[MAX_MESSAGE_LEN+1];
@@ -387,8 +387,8 @@ void Statusbar_UpdateInfo(void)
 		end = Statusbar_AddString(end, "33MHz/i860XR/");
 		sprintf(memsize, "%iMB/",Configuration_CheckDimensionMemory(ConfigureParams.Dimension.board[ConfigureParams.Screen.nMonitorNum].nMemoryBankSize));
 		end = Statusbar_AddString(end, memsize);
-		end = Statusbar_AddString(end, "NeXTdimension");
-        sprintf(slot, " slot(%d)", ND_SLOT(ConfigureParams.Screen.nMonitorNum));
+		end = Statusbar_AddString(end, "NeXTdimension/");
+        sprintf(slot, "Slot%i", ND_SLOT(ConfigureParams.Screen.nMonitorNum));
         end = Statusbar_AddString(end, slot);
         *end = '\0';
 		assert(end - DefaultMessage.msg < MAX_MESSAGE_LEN);

@@ -127,8 +127,9 @@ void Dialog_CheckFiles(void) {
     }
     for (i = 0; i < ND_MAX_BOARDS; i++) {
         while (ConfigureParams.Dimension.board[i].bEnabled && !File_Exists(ConfigureParams.Dimension.board[i].szRomFileName)) {
+            sprintf(szMachine, "NeXTdimension at slot %i", i*2+2);
             sprintf(szDefault, "%s%cdimension_eeprom.bin", Paths_GetWorkingDir(), PATHSEP);
-            DlgMissing_Rom("NeXTdimension", ConfigureParams.Dimension.board[i].szRomFileName,
+            DlgMissing_Rom(szMachine, ConfigureParams.Dimension.board[i].szRomFileName,
                            szDefault, &ConfigureParams.Dimension.board[i].bEnabled);
             if (bQuitProgram) {
                 Main_RequestQuit();
