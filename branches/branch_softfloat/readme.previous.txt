@@ -231,6 +231,9 @@ Previous v1.9:
   > Adds support for networking via PCAP library.
   > Improves 68030 and 68040 CPU to support all tracing modes.
 
+Previous v2.0 (unreleased):
+  > Adds support for multiple NeXTdimension boards.
+
 
  7) Running Previous
  -------------------
