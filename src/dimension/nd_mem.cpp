@@ -47,9 +47,9 @@
 #define ND_DP_MASK  0x00000FFF
 
 /* NeXTdimension unknown registers */
-#define ND_UNKNWN_START 0xFF400000
-#define ND_UNKNWN_SIZE  0x00000200
-#define ND_UNKNWN_MASK  0x000001FF
+#define ND_CSR_START 0xFF400000
+#define ND_CSR_SIZE  0x00000200
+#define ND_CSR_MASK  0x000001FF
 
 /* Function to fix address for ROM access */
 static uaecptr nd_rom_addr_fix(uaecptr addr)
@@ -218,35 +218,35 @@ public:
 /* Unknown register access functions (memory controller step 1) */
 #if ND_STEP
 
-class ND_Unknown : public ND_Addrbank {
+class ND_CSR : public ND_Addrbank {
 public:
-    ND_Unknown(NextDimension* nd) : ND_Addrbank(nd) {}
+    ND_CSR(NextDimension* nd) : ND_Addrbank(nd) {}
 
      Uint32 lget(Uint32 addr) {
-        write_log("[ND] Slot %i: Unknown lget at %08X\n", nd->slot,addr);
+        write_log("[ND] Slot %i: Board CSR lget at %08X\n", nd->slot,addr);
         return 0;
     }
 
      Uint32 wget(Uint32 addr) {
-        write_log("[ND] Slot %i: Unknown wget at %08X\n",nd->slot,addr);
+        write_log("[ND] Slot %i: Board CSR wget at %08X\n",nd->slot,addr);
         return 0;
     }
 
      Uint32 bget(Uint32 addr) {
-        write_log("[ND] Slot %i: Unknown bget at %08X\n",nd->slot,addr);
+        write_log("[ND] Slot %i: Board CSR bget at %08X\n",nd->slot,addr);
         return 0;
     }
 
      void lput(Uint32 addr, Uint32 l) {
-        write_log("[ND] Slot %i: Unknown lput at %08X: %08X\n",nd->slot,addr,l);
+        write_log("[ND] Slot %i: Board CSR lput at %08X: %08X\n",nd->slot,addr,l);
     }
 
      void wput(Uint32 addr, Uint32 w) {
-        write_log("[ND] Slot %i: Unknown wput at %08X: %04X\n",nd->slot,addr,w);
+        write_log("[ND] Slot %i: Board CSR wput at %08X: %04X\n",nd->slot,addr,w);
     }
 
      void bput(Uint32 addr, Uint32 b) {
-        write_log("[ND] Slot %i: Unknown bput at %08X: %02X\n",nd->slot,addr,b);
+        write_log("[ND] Slot %i: Board CSR bput at %08X: %02X\n",nd->slot,addr,b);
     }
 };
 #endif
@@ -443,7 +443,7 @@ void NextDimension::mem_init(void) {
     write_log("[ND] Slot %i: Mapping RAMDAC registers at $%08x\n", slot, ND_RAMDAC_START);
     map_banks(new ND_RAMDAC(this), ND_RAMDAC_START>>16, 1);
 #if ND_STEP
-    write_log("[ND] Slot %i: Mapping Unknown register at $%08x\n", slot, ND_UNKNWN_START);
-    map_banks(new ND_Unknown(this), ND_UNKNWN_START>>16, 1);
+    write_log("[ND] Slot %i: Mapping board CSR at $%08x\n", slot, ND_CSR_START);
+    map_banks(new ND_CSR(this), ND_CSR_START>>16, 1);
 #endif
 }
