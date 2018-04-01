@@ -35,8 +35,8 @@ static SGOBJ dimensiondlg[] =
     { SGTEXT,     0, 0, 18, 1, 21, 1, "NeXTdimension options" },
     
     { SGBOX,      0, 0, 2,  3, 54, 8, NULL },
-    { SGTEXT,     0, 0, 3,  4, 19, 1, "NeXTdimension board at slot " },
-    { SGTEXT,     0, 0, 31, 4, 9,  1, dimension_slot },
+    { SGTEXT,     0, 0, 3,  4, 28, 1, "NeXTdimension board at slot " },
+    { SGTEXT,     0, 0, 31, 4, 2,  1, dimension_slot },
     { SGBUTTON,   0, 0, 35, 4, 11, 1, "Customize" },
 	
     { SGTEXT, 0, 0, 4 ,6, 13,1, "CPU type:" },

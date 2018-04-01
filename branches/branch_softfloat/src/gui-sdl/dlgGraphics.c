@@ -30,12 +30,12 @@ static SGOBJ graphicsdlg[] =
     { SGTEXT,     0, 0, 20, 1, 16, 1, "Graphics options" },
     
     { SGBOX,      0, 0, 2,  3, 32, 9, NULL },
-    { SGTEXT,     0, 0, 3,  4, 19, 1, "NeXTdimension boards:" },
-    { SGTEXT,     0, 0, 4,  6, 9,  1, "Board at slot 2:" },
+    { SGTEXT,     0, 0, 3,  4, 21, 1, "NeXTdimension boards:" },
+    { SGTEXT,     0, 0, 4,  6, 16, 1, "Board at slot 2:" },
     { SGBUTTON,   0, 0, 22, 6, 10, 1, "Add" },
-    { SGTEXT,     0, 0, 4,  8, 9,  1, "Board at slot 4:" },
+    { SGTEXT,     0, 0, 4,  8, 16, 1, "Board at slot 4:" },
     { SGBUTTON,   0, 0, 22, 8, 10, 1, "Add" },
-    { SGTEXT,     0, 0, 4, 10, 9,  1, "Board at slot 6:" },
+    { SGTEXT,     0, 0, 4, 10, 16, 1, "Board at slot 6:" },
     { SGBUTTON,   0, 0, 22,10, 10, 1, "Add" },
 	
 	{ SGBOX,      0, 0, 35, 3, 19, 9, NULL },
@@ -46,7 +46,7 @@ static SGOBJ graphicsdlg[] =
 
     { SGBOX,      0, 0, 2, 13, 52, 3, NULL },
     { SGTEXT,     0, 0, 3, 14, 13, 1, "Main display:" },
-    { SGCHECKBOX, 0, 0, 18,14, 32, 1, "Console on NeXTdimension" },
+    { SGCHECKBOX, 0, 0, 18,14, 26, 1, "Console on NeXTdimension" },
 
     { SGTEXT,     0, 0, 2, 18, 52, 1, "Note: NeXTdimension does not work with NeXTstations." },
     
