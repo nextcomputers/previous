@@ -468,7 +468,7 @@ void Configuration_SetDefault(void)
     ConfigureParams.System.bMMU = true;
     
     /* Set defaults for Dimension */
-    ConfigureParams.Dimension.bI860Thread  = host_num_cpus() > 4;
+    ConfigureParams.Dimension.bI860Thread  = host_num_cpus() != 1;
     ConfigureParams.Dimension.bMainDisplay = false;
     ConfigureParams.Dimension.nMainDisplay = 0;
     for (i = 0; i < ND_MAX_BOARDS; i++) {
@@ -757,14 +757,16 @@ void Configuration_CheckDimensionSettings(void) {
     } else {
         ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_CPU;
     }
-    if ((ConfigureParams.Dimension.nMainDisplay > (ND_MAX_BOARDS-1)) ||
+    if ((ConfigureParams.Dimension.nMainDisplay >= ND_MAX_BOARDS) ||
         (ConfigureParams.Dimension.nMainDisplay < 0)) {
         ConfigureParams.Dimension.nMainDisplay = 0;
     }
-    if ((ConfigureParams.Screen.nMonitorNum > (ND_MAX_BOARDS-1)) ||
+    if ((ConfigureParams.Screen.nMonitorNum >= ND_MAX_BOARDS) ||
         (ConfigureParams.Screen.nMonitorNum < 0)) {
         ConfigureParams.Screen.nMonitorNum = 0;
     }
+    
+    ConfigureParams.Dimension.bI860Thread = host_num_cpus() != 1;
 }
 
 void Configuration_CheckEthernetSettings(void) {
