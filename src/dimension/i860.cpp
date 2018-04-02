@@ -35,17 +35,19 @@ extern "C" {
     }
 
     static void i860_run_no_thread(int nHostCycles) {
+        int cycles;
+        
         FOR_EACH_SLOT(slot) {
             IF_NEXT_DIMENSION(slot, nd) {
                 nd->handle_msgs();
                 
                 if(nd->i860.is_halted()) return;
                 
-                nHostCycles *= 33; // i860 @ 33MHz
-                nHostCycles /= ConfigureParams.System.nCpuFreq;
-                while (nHostCycles > 0) {
+                cycles = nHostCycles * 33; // i860 @ 33MHz
+                cycles /= ConfigureParams.System.nCpuFreq;
+                while (cycles > 0) {
                     nd->i860.run_cycle();
-                    nHostCycles -= 2;
+                    cycles -= 2;
                 }
             }
         }
