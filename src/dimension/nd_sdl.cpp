@@ -96,6 +96,7 @@ void nd_vbl_handler(void)       {
         IF_NEXT_DIMENSION(slot, nd) {
             host_blank(nd->slot, ND_DISPLAY, nd->sdl.ndVBLtoggle);
             nd->sdl.ndVBLtoggle = !nd->sdl.ndVBLtoggle;
+            nd->i860.i860cycles = (1000*1000*33)/136;
         }
     }
     // 136Hz with toggle gives 68Hz, blank time is 1/2 frame time

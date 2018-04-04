@@ -439,6 +439,8 @@ public:
     void pause(bool state);
     inline bool is_halted(void) {return m_halt;};
 
+    /* i860 cycle counter */
+    int i860cycles;
     /* Run one i860 cycle */
     void    run_cycle(void);
     /* Run the i860 thread */
