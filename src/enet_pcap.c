@@ -71,7 +71,7 @@ void enet_pcap_queue_poll(void)
         {
             struct queuepacket *qp;
             qp=QueueDelete(pcapq);
-            Log_Printf(LOG_WARN, "[PCAP] Getting packet from queue");
+            Log_Print(LOG_WARN, "[PCAP] Getting packet from queue");
             enet_receive(qp->data,qp->len);
             free(qp);
         }
@@ -84,7 +84,7 @@ void enet_pcap_input(Uint8 *pkt, int pkt_len) {
         Log_Printf(LOG_WARN, "[PCAP] Input packet with %i bytes",enet_tx_buffer.size);
         SDL_LockMutex(pcap_mutex);
         if (pcap_sendpacket(pcap_handle, pkt, pkt_len) < 0) {
-            Log_Printf(LOG_WARN, "[PCAP] Error: Couldn't transmit packet!");
+            Log_Print(LOG_WARN, "[PCAP] Error: Couldn't transmit packet!");
         }
         SDL_UnlockMutex(pcap_mutex);
     }
@@ -94,7 +94,7 @@ void enet_pcap_stop(void) {
     int ret;
     
     if (pcap_started) {
-        Log_Printf(LOG_WARN, "Stopping PCAP");
+        Log_Print(LOG_WARN, "Stopping PCAP");
         pcap_started=0;
         QueueDestroy(pcapq);
         SDL_DestroyMutex(pcap_mutex);
@@ -111,7 +111,7 @@ void enet_pcap_start(Uint8 *mac) {
     bpf_u_int32 net = 0xffffffff;
 
     if (!pcap_started) {
-        Log_Printf(LOG_WARN, "Starting PCAP");
+        Log_Print(LOG_WARN, "Starting PCAP");
         
 #if 0
         dev = pcap_lookupdev(errbuf);
@@ -132,7 +132,7 @@ void enet_pcap_start(Uint8 *mac) {
         }
         
         if (pcap_getnonblock(pcap_handle, errbuf) == 0) {
-            Log_Printf(LOG_WARN, "[PCAP] Setting interface to non-blocking mode.");
+            Log_Print(LOG_WARN, "[PCAP] Setting interface to non-blocking mode.");
             if (pcap_setnonblock(pcap_handle, 1, errbuf) != 0) {
                 Log_Printf(LOG_WARN, "[PCAP] Error: Couldn't set interface to non-blocking mode: %s", errbuf);
                 return;

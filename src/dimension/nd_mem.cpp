@@ -104,6 +104,54 @@ public:
     }
 };
 
+const Uint32 MSG_NS_21 = 0x00057430;
+const Uint32 MSG_NS_22 = 0x000517A0;
+const Uint32 MSG_NS_33 = 0x000C3EF0;
+const Uint32 MSG_NS_42 = 0x000EDC90;
+
+class ND_MSG : public ND_Addrbank {
+public:
+    ND_MSG(NextDimension* nd) : ND_Addrbank(nd) {}
+    
+    Uint32 lget(Uint32 addr) {
+        addr &= 0x000FFFFF;
+        switch(addr) {
+            case MSG_NS_21:
+            case MSG_NS_22:
+            case MSG_NS_33:
+            case MSG_NS_42:
+                host_sleep_ms(1);
+                break;
+        }
+        return do_get_mem_long(nd->ram + addr);
+    }
+    
+    Uint32 wget(Uint32 addr) {
+        addr &= 0x000FFFFF;
+        return do_get_mem_word(nd->ram + addr);
+    }
+    
+    Uint32 bget(Uint32 addr) {
+        addr &= 0x000FFFFF;
+        return nd->ram[addr];
+    }
+    
+    void lput(Uint32 addr, Uint32 l) {
+        addr &= 0x000FFFFF;
+        do_put_mem_long(nd->ram + addr, l);
+    }
+    
+    void wput(Uint32 addr, Uint32 w) {
+        addr &= 0x000FFFFF;
+        do_put_mem_word(nd->ram + addr, w);
+    }
+    
+    void bput(Uint32 addr, Uint32 b) {
+        addr &= 0x000FFFFF;
+        nd->ram[addr] = b;
+    }
+};
+
 class ND_Empty : public ND_Addrbank {
 public:
     ND_Empty(NextDimension* nd) : ND_Addrbank(nd) {}
@@ -422,6 +470,14 @@ void NextDimension::mem_init(void) {
             write_log("[ND] Slot %i: Mapping main memory bank%d at $%08x: empty\n", slot, bank,
                       (ND_RAM_START+(bank*ND_RAM_BANKSIZE)));
         }
+    }
+    
+    if(!(ConfigureParams.System.bRealtime)) {
+        // map message ports
+        map_banks(new ND_MSG(this), (ND_RAM_START+MSG_NS_21)>>16, 1);
+        map_banks(new ND_MSG(this), (ND_RAM_START+MSG_NS_22)>>16, 1);
+        map_banks(new ND_MSG(this), (ND_RAM_START+MSG_NS_33)>>16, 1);
+        map_banks(new ND_MSG(this), (ND_RAM_START+MSG_NS_42)>>16, 1);
     }
     
     write_log("[ND] Slot %i: Mapping video memory at $%08x: %iMB\n", slot,

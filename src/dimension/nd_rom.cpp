@@ -77,14 +77,14 @@ void NextDimension::rom_load() {
     rom_last_addr = 0;
     
     if (!File_Exists(ConfigureParams.Dimension.board[ND_NUM(slot)].szRomFileName)) {
-        Log_Printf(LOG_WARN, "[ND] Error: ROM file does not exist or is not readable");
+        Log_Print(LOG_WARN, "[ND] Error: ROM file does not exist or is not readable");
         return;
     }
     
     romfile = File_Open(ConfigureParams.Dimension.board[ND_NUM(slot)].szRomFileName, "rb");
     
     if (romfile==NULL) {
-        Log_Printf(LOG_WARN, "[ND] Error: Cannot open ROM file");
+        Log_Print(LOG_WARN, "[ND] Error: Cannot open ROM file");
         return;
     }
     

@@ -145,7 +145,7 @@ void SCR_Reset(void) {
         case MEMORY_100NS: memory_speed = 0x50; break;
         case MEMORY_80NS: memory_speed = 0xA0; break;
         case MEMORY_60NS: memory_speed = 0xF0; break;
-        default: Log_Printf(LOG_WARN, "SCR1 error: unknown memory speed\n"); break;
+        default: Log_Print(LOG_WARN, "SCR1 error: unknown memory speed\n"); break;
     }
     scr1 |= ((memory_speed&0xF0)|(cpu_speed&0x03));
 }
@@ -245,13 +245,13 @@ void SCR2_Write0(void)
     
     /* DSP bits */
     if (scr2_0&SCR2_DSP_MODE_A) {
-        Log_Printf(LOG_DSP_LEVEL,"[SCR2] DSP Mode A");
+        Log_Print(LOG_DSP_LEVEL,"[SCR2] DSP Mode A");
     }
     if (scr2_0&SCR2_DSP_MODE_B) {
-        Log_Printf(LOG_DSP_LEVEL,"[SCR2] DSP Mode B");
+        Log_Print(LOG_DSP_LEVEL,"[SCR2] DSP Mode B");
     }
     if (!(scr2_0&SCR2_DSP_RESET) && (old_scr2_0&SCR2_DSP_RESET)) {
-        Log_Printf(LOG_DSP_LEVEL,"[SCR2] DSP Reset");
+        Log_Print(LOG_DSP_LEVEL,"[SCR2] DSP Reset");
         DSP_Reset();
     } else if ((scr2_0&SCR2_DSP_RESET) && !(old_scr2_0&SCR2_DSP_RESET)) {
         Log_Printf(LOG_DSP_LEVEL,"[SCR2] DSP Start (mode %i)",(~(scr2_0>>3))&3);
@@ -476,7 +476,7 @@ void HardclockWriteCSR(void) {
         Log_Printf(LOG_HARDCLOCK_LEVEL,"[hardclock] enable periodic interrupt (%i microseconds).", latch_hardclock);
         CycInt_AddRelativeInterruptUs(latch_hardclock, 0, INTERRUPT_HARDCLOCK);
 	} else {
-        Log_Printf(LOG_HARDCLOCK_LEVEL,"[hardclock] disable periodic interrupt.");
+        Log_Print(LOG_HARDCLOCK_LEVEL,"[hardclock] disable periodic interrupt.");
     }
     set_interrupt(INT_TIMER,RELEASE_INT);
 }
