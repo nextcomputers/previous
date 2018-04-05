@@ -216,7 +216,7 @@ void i860_cpu_device::run_cycle() {
     m_dim_cc_valid = false;
     m_flow        &= ~DIM_OP;
     UINT64 insn64  = ifetch64(m_pc);
-    
+        
     if(!(m_pc & 4)) {
         UINT32 savepc  = m_pc;
         
@@ -548,15 +548,9 @@ void i860_cpu_device::run() {
             continue;
         }
         
-        if (i860cycles > 0 || ConfigureParams.System.bRealtime) {
-            /* Run some i860 cycles before re-checking messages */
-            for(int i = 16; --i >= 0;)
-                run_cycle();
-            
-            i860cycles -= 32;
-        } else {
-            host_sleep_ms(1);
-        }
+        /* Run some i860 cycles before re-checking messages*/
+        for(int i = 16; --i >= 0;)
+            run_cycle();
     }
 }
 

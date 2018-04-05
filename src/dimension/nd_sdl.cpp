@@ -8,9 +8,10 @@
 #include "NextBus.hpp"
 
 /* Because of SDL time (in)accuracy, timing is very approximative */
-const int DISPLAY_VBL_MS = 1000 / 68; // main display at 68Hz, actually this is 71.42 Hz because (int)1000/(int)68Hz=14ms
-const int VIDEO_VBL_MS   = 1000 / 60; // NTSC display at 60Hz, actually this is 62.5 Hz because (int)1000/(int)60Hz=16ms
-const int BLANK_MS       = 2;         // Give some blank time for both
+const int      DISPLAY_VBL_MS = 1000 / 68; // main display at 68Hz, actually this is 71.42 Hz because (int)1000/(int)68Hz=14ms
+const int      VIDEO_VBL_MS   = 1000 / 60; // NTSC display at 60Hz, actually this is 62.5 Hz because (int)1000/(int)60Hz=16ms
+const int      BLANK_MS       = 2;         // Give some blank time for both
+const SDL_Rect ND_BOUNDS      = {0,0,1120,832};
 
 NDSDL::NDSDL(int slot, Uint32* vram) : slot(slot), doRepaint(true), repaintThread(NULL), ndWindow(NULL), ndRenderer(NULL), vram(vram) {}
 
@@ -21,23 +22,11 @@ int NDSDL::repainter(void *_this) {
 
 int NDSDL::repainter(void) {
     SDL_SetThreadPriority(SDL_THREAD_PRIORITY_NORMAL);
-    
     SDL_Texture*  ndTexture  = NULL;
-    
-    SDL_Rect r = {0,0,1120,832};
-    
-    ndRenderer = SDL_CreateRenderer(ndWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    
-    if (!ndRenderer) {
-        fprintf(stderr,"[ND] Slot %i: Failed to create renderer!\n", slot);
-        exit(-1);
-    }
-    
-    SDL_RenderSetLogicalSize(ndRenderer, r.w, r.h);
-    ndTexture = SDL_CreateTexture(ndRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, r.w, r.h);
+    ndTexture = SDL_CreateTexture(ndRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, ND_BOUNDS.w, ND_BOUNDS.h);
     
     SDL_AtomicSet(&blitNDFB, 1);
-    
+
     while(doRepaint) {
         if (SDL_AtomicGet(&blitNDFB)) {
             blitDimension(vram, ndTexture);
@@ -49,8 +38,6 @@ int NDSDL::repainter(void) {
     }
 
     SDL_DestroyTexture(ndTexture);
-    SDL_DestroyRenderer(ndRenderer);
-    SDL_DestroyWindow(ndWindow);
 
     return 0;
 }
@@ -62,12 +49,20 @@ void NDSDL::init(void) {
         SDL_GetWindowPosition(sdlWindow, &x, &y);
         SDL_GetWindowSize(sdlWindow, &w, &h);
         sprintf(title, "NeXTdimension (Slot %i)", slot);
-        ndWindow = SDL_CreateWindow(title, (x-w)+1, y, 1120, 832, SDL_WINDOW_HIDDEN);
+        ndWindow = SDL_CreateWindow(title, (x-w)+1, y, ND_BOUNDS.w, ND_BOUNDS.h, SDL_WINDOW_HIDDEN);
         
         if (!ndWindow) {
             fprintf(stderr,"[ND] Slot %i: Failed to create window!\n", slot);
             exit(-1);
         }
+        
+        ndRenderer = SDL_CreateRenderer(ndWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+
+        if (!ndRenderer) {
+            fprintf(stderr,"[ND] Slot %i: Failed to create renderer!\n", slot);
+            exit(-1);
+        }
+        SDL_RenderSetLogicalSize(ndRenderer, ND_BOUNDS.w, ND_BOUNDS.h);
     }
     
     if(ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_DUAL) {
@@ -136,5 +131,7 @@ void NDSDL::destroy(void) {
     doRepaint = false; // stop repaint thread
     int s;
     SDL_WaitThread(repaintThread, &s);
+    SDL_DestroyRenderer(ndRenderer);
+    SDL_DestroyWindow(ndWindow);
     uninit();
 }
