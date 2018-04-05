@@ -109,7 +109,7 @@ void enet_slirp_queue_poll(void)
     {
         struct queuepacket *qp;
         qp=QueueDelete(slirpq);
-        Log_Printf(LOG_WARN, "[SLIRP] Getting packet from queue");
+        Log_Print(LOG_WARN, "[SLIRP] Getting packet from queue");
         enet_receive(qp->data,qp->len);
         free(qp);
     }
@@ -129,7 +129,7 @@ void enet_slirp_stop(void) {
     int ret;
     
     if (slirp_started) {
-        Log_Printf(LOG_WARN, "Stopping SLIRP");
+        Log_Print(LOG_WARN, "Stopping SLIRP");
         slirp_started=0;
         QueueDestroy(slirpq);
         SDL_DestroyMutex(slirp_mutex);
@@ -141,14 +141,14 @@ void enet_slirp_start(Uint8 *mac) {
     struct in_addr guest_addr;
     
     if (!slirp_inited) {
-        Log_Printf(LOG_WARN, "Initializing SLIRP");
+        Log_Print(LOG_WARN, "Initializing SLIRP");
         slirp_inited=1;
         slirp_init();
         inet_aton("10.0.2.15", &guest_addr);
         slirp_redir(0, 42323, guest_addr, 23);
     }
     if (slirp_inited && !slirp_started) {
-        Log_Printf(LOG_WARN, "Starting SLIRP");
+        Log_Print(LOG_WARN, "Starting SLIRP");
         slirp_started=1;
         slirpq = QueueCreate();
         slirp_mutex=SDL_CreateMutex();

@@ -75,7 +75,7 @@ Uint64	LogTraceFlags = TRACE_NONE;
 FILE *TraceFile = NULL;
 
 static FILE *hLogFile = NULL;
-static LOGTYPE TextLogLevel;
+LOGTYPE TextLogLevel;
 static LOGTYPE AlertDlgLogLevel;
 
 /*-----------------------------------------------------------------------*/
@@ -123,7 +123,7 @@ void Log_UnInit(void)
 /**
  * Output string to log file
  */
-void Log_Printf(LOGTYPE nType, const char *psFormat, ...)
+void _Log_Printf(LOGTYPE nType, const char *psFormat, ...)
 {
 	va_list argptr;
 

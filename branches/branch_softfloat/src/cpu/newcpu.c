@@ -156,6 +156,61 @@ void flush_cpu_caches_040(uae_u16 opcode)
     set_cpu_caches(true);
 }
 
+#define ICACHE_SIZE  4096 /* set to 0 to disable instruction cache */
+
+#if ICACHE_SIZE
+#define ICACHE_MASK  ICACHE_SIZE-1
+
+static uae_u32 icachea[ICACHE_SIZE];
+static uae_u16 icached[ICACHE_SIZE];
+
+void flush_icache(int cache) {
+    if(cache & FLUSH_040_ICACHE)
+        memset(icachea, 0, sizeof(icachea));
+}
+
+STATIC_INLINE uae_u32 getc_ilong_mmu040 (int o)
+{
+    uae_u32 pc = m68k_getpci () + o;
+    return uae_mmu040_get_ilong (pc);
+}
+STATIC_INLINE uae_u32 getc_iword_mmu040 (int o)
+{
+    uae_u32 pc = m68k_getpci () + o;
+
+    int cidx = pc&(ICACHE_MASK);
+    if(icachea[cidx] != pc) {
+        icachea[cidx] = pc;
+        icached[cidx] = uae_mmu040_get_iword (pc);
+    }
+    return icached[cidx];
+}
+STATIC_INLINE uae_u32 getc_ibyte_mmu040 (int o)
+{
+    uae_u32 pc = m68k_getpci () + o;
+    return uae_mmu040_get_ibyte (pc);
+}
+STATIC_INLINE uae_u32 nextc_iword_mmu040 (void)
+{
+    uae_u32 pc = m68k_getpci ();
+    m68k_incpci (2);
+
+    int cidx = pc&(ICACHE_MASK);
+    if(icachea[cidx] != pc) {
+        icachea[cidx] = pc;
+        icached[cidx] = uae_mmu040_get_iword (pc);
+    }
+    return icached[cidx];
+}
+STATIC_INLINE uae_u32 nextc_ilong_mmu040 (void)
+{
+    uae_u32 result = nextc_iword_mmu040() << 16;
+    return result | nextc_iword_mmu040();
+}
+#else
+void flush_icache(int cache) {}
+#endif /* ICACHE_SIZE */
+
 void set_cpu_caches (bool flush)
 {
 	int i;
@@ -187,11 +242,11 @@ void set_cpu_caches (bool flush)
 			dcaches030[(regs.caar >> 4) & (CACHELINES030 - 1)].valid[(regs.caar >> 2) & 3] = 0;
 			regs.cacr &= ~0x400;
 		}
-#if 0 // FIXME
 	} else if (currprefs.cpu_model == 68040) {
         if (ConfigureParams.System.bRealtime) {
+#if ICACHE_SIZE
             if (regs.cacr & 0x8000) {
-                flush_icache(0, -1);
+                flush_icache(FLUSH_040_BOTHCACHE);
                 x_prefetch   = getc_iword_mmu040;
                 x_get_ilong  = getc_ilong_mmu040;
                 x_get_iword  = getc_iword_mmu040;
@@ -199,15 +254,17 @@ void set_cpu_caches (bool flush)
                 x_next_iword = nextc_iword_mmu040;
                 x_next_ilong = nextc_ilong_mmu040;
             } else {
+#endif /* ICACHE_SIZE */
                 x_prefetch   = get_iword_mmu040;
                 x_get_ilong  = get_ilong_mmu040;
                 x_get_iword  = get_iword_mmu040;
                 x_get_ibyte  = get_ibyte_mmu040;
                 x_next_iword = next_iword_mmu040;
                 x_next_ilong = next_ilong_mmu040;
+#if ICACHE_SIZE
             }
+#endif /* ICACHE_SIZE */
         }
-#endif
 	}
 }
 

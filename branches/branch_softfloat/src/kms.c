@@ -151,7 +151,7 @@ static void access_km_reg(Uint32 data) {
     Uint8 reg_data = (data>>16)&0xFF;
     
     if (reg_addr==KM_RESET) {
-        Log_Printf(LOG_KMS_LEVEL, "Keyboard/Mouse: Reset");
+        Log_Print(LOG_KMS_LEVEL, "Keyboard/Mouse: Reset");
         kms_response();
         return;
     }
@@ -173,13 +173,13 @@ static void access_km_reg(Uint32 data) {
     if (reg_addr&KM_READ) {
         switch (device_reg) {
             case 0:
-                Log_Printf(LOG_KMS_LEVEL, "Poll device");
+                Log_Print(LOG_KMS_LEVEL, "Poll device");
                 break;
             case 7:
-                Log_Printf(LOG_KMS_LEVEL, "Request device revision");
+                Log_Print(LOG_KMS_LEVEL, "Request device revision");
                 break;
             default:
-                Log_Printf(LOG_WARN, "Unknown device register");
+                Log_Print(LOG_WARN, "Unknown device register");
                 break;
         }
     } else { // device write
@@ -191,7 +191,7 @@ static void access_km_reg(Uint32 data) {
                     break;
                 }                
             default:
-                Log_Printf(LOG_WARN, "Unknown device register");
+                Log_Print(LOG_WARN, "Unknown device register");
                 break;
         }
     }
@@ -205,63 +205,63 @@ void KMS_command(Uint8 command, Uint32 data) {
             return;
 
         case KMSCMD_RESET:
-            Log_Printf(LOG_KMS_LEVEL, "[KMS] Reset");
+            Log_Print(LOG_KMS_LEVEL, "[KMS] Reset");
             Log_Printf(LOG_KMS_LEVEL, "[KMS] Data = %08X",data);
             break;
         case KMSCMD_ASNDOUT:
-            Log_Printf(LOG_KMS_LEVEL, "[KMS] Analog sound out");
+            Log_Print(LOG_KMS_LEVEL, "[KMS] Analog sound out");
             Log_Printf(LOG_KMS_LEVEL, "[KMS] Data = %08X",data);
             break;
         case KMSCMD_KMREG:
-            Log_Printf(LOG_KMS_LEVEL, "[KMS] Access keyboard/mouse register");
+            Log_Print(LOG_KMS_LEVEL, "[KMS] Access keyboard/mouse register");
             Log_Printf(LOG_KMS_LEVEL, "[KMS] Data = %08X",data);
             access_km_reg(data);
             break;
         case KMSCMD_CTRLOUT:
-            Log_Printf(LOG_KMS_LEVEL, "[KMS] Access volume control logic");
+            Log_Print(LOG_KMS_LEVEL, "[KMS] Access volume control logic");
             Log_Printf(LOG_KMS_LEVEL, "[KMS] Data = %08X",data);
             snd_gpo_access(data>>24);
             break;
         case KMSCMD_VOLCTRL:
-            Log_Printf(LOG_KMS_LEVEL, "[KMS] Access volume control (simple)");
+            Log_Print(LOG_KMS_LEVEL, "[KMS] Access volume control (simple)");
             Log_Printf(LOG_KMS_LEVEL, "[KMS] Data = %08X",data);
             break;
             
         default: // commands without data
             if ((command&KMSCMD_SIO_MASK)==KMSCMD_SND_OUT) {
-                Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out command:");
+                Log_Print(LOG_KMS_LEVEL, "[KMS] Sound out command:");
 
                 if (command&SIO_ENABLE) {
-                    Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out enable.");
+                    Log_Print(LOG_KMS_LEVEL, "[KMS] Sound out enable.");
                     if (command&SIO_DBL_SMPL) {
-                        Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out double sample.");
+                        Log_Print(LOG_KMS_LEVEL, "[KMS] Sound out double sample.");
                         if (command&SIO_ZERO) {
-                            Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out double sample by zero filling.");
+                            Log_Print(LOG_KMS_LEVEL, "[KMS] Sound out double sample by zero filling.");
                         } else {
-                            Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out double sample by repetition.");
+                            Log_Print(LOG_KMS_LEVEL, "[KMS] Sound out double sample by repetition.");
                         }
                     } else {
-                        Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out normal sample.");
+                        Log_Print(LOG_KMS_LEVEL, "[KMS] Sound out normal sample.");
                     }
                     snd_start_output(command&(SIO_DBL_SMPL|SIO_ZERO));
                 } else {
-                    Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound out disable.");
+                    Log_Print(LOG_KMS_LEVEL, "[KMS] Sound out disable.");
                     kms.status.snd_dma &= ~(SNDOUT_DMA_UNDERRUN|SNDOUT_DMA_REQUEST);
                     snd_stop_output();
                 }
             } else if ((command&KMSCMD_SIO_MASK)==KMSCMD_SND_IN) {
-                Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound in command");
+                Log_Print(LOG_KMS_LEVEL, "[KMS] Sound in command");
                 
                 if (command&SIO_ENABLE) {
-                    Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound in enable.");
+                    Log_Print(LOG_KMS_LEVEL, "[KMS] Sound in enable.");
                     snd_start_input(command);
                 } else {
-                    Log_Printf(LOG_KMS_LEVEL, "[KMS] Sound in disable.");
+                    Log_Print(LOG_KMS_LEVEL, "[KMS] Sound in disable.");
                     kms.status.snd_dma &= ~(SNDIN_DMA_OVERRUN|SNDIN_DMA_REQUEST);
                     snd_stop_input();
                 }
             } else {
-                Log_Printf(LOG_WARN, "[KMS] Unknown command!");
+                Log_Print(LOG_WARN, "[KMS] Unknown command!");
             }
             return;
     }
@@ -439,13 +439,13 @@ static bool kms_device_enabled(int dev_addr) {
 
 void kms_keydown(Uint8 modkeys, Uint8 keycode) {
     if ((keycode==0x26)&&(modkeys&0x18)) { /* backquote and one or both command keys */
-        Log_Printf(LOG_WARN, "Keyboard initiated NMI!");
+        Log_Print(LOG_WARN, "Keyboard initiated NMI!");
         set_interrupt(INT_NMI, SET_INT);
         return;
     }
     
     if ((keycode==0x25)&&((modkeys&0x28)==0x28)) { /* asterisk and left alt and left command key */
-        Log_Printf(LOG_WARN, "Keyboard initiated CPU reset!");
+        Log_Print(LOG_WARN, "Keyboard initiated CPU reset!");
         host_darkmatter(false);
         M68000_Reset(false);
         return;

@@ -159,7 +159,7 @@ MODEPAGE SCSI_GetModePage(Uint8 pagecode);
 
 /* Initialize/Uninitialize SCSI disks */
 void SCSI_Init(void) {
-    Log_Printf(LOG_WARN, "Loading SCSI disks:\n");
+    Log_Print(LOG_WARN, "Loading SCSI disks:\n");
     
     int i;
     for (i = 0; i < ESP_MAX_DEVS; i++) {
@@ -332,17 +332,17 @@ void SCSI_Emulate_Command(Uint8 *cdb) {
     /* First check for lun-independent commands */
     switch (opcode) {
         case CMD_INQUIRY:
-            Log_Printf(LOG_SCSI_LEVEL, "SCSI command: Inquiry\n");
+            Log_Print(LOG_SCSI_LEVEL, "SCSI command: Inquiry\n");
             SCSI_Inquiry(cdb);
             break;
         case CMD_REQ_SENSE:
-            Log_Printf(LOG_SCSI_LEVEL, "SCSI command: Request sense\n");
+            Log_Print(LOG_SCSI_LEVEL, "SCSI command: Request sense\n");
             SCSI_RequestSense(cdb);
             break;
             /* Check if the specified lun is valid for our disk */
         default:
             if (SCSIdisk[target].lun!=LUN_DISK) {
-                Log_Printf(LOG_SCSI_LEVEL, "SCSI command: Invalid lun! Check condition.\n");
+                Log_Print(LOG_SCSI_LEVEL, "SCSI command: Invalid lun! Check condition.\n");
                 SCSIbus.phase = PHASE_ST;
                 SCSIdisk[target].status = STAT_CHECK_COND; /* status: check condition */
                 SCSIdisk[target].message = MSG_COMPLETE; /* TODO: CHECK THIS! */
@@ -354,41 +354,41 @@ void SCSI_Emulate_Command(Uint8 *cdb) {
             /* Then check for lun-dependent commands */
             switch(opcode) {
                 case CMD_TEST_UNIT_RDY:
-                    Log_Printf(LOG_SCSI_LEVEL, "SCSI command: Test unit ready\n");
+                    Log_Print(LOG_SCSI_LEVEL, "SCSI command: Test unit ready\n");
                     SCSI_TestUnitReady(cdb);
                     break;
                 case CMD_READ_CAPACITY1:
-                    Log_Printf(LOG_SCSI_LEVEL, "SCSI command: Read capacity\n");
+                    Log_Print(LOG_SCSI_LEVEL, "SCSI command: Read capacity\n");
                     SCSI_ReadCapacity(cdb);
                     break;
                 case CMD_READ_SECTOR:
                 case CMD_READ_SECTOR1:
-                    Log_Printf(LOG_SCSI_LEVEL, "SCSI command: Read sector\n");
+                    Log_Print(LOG_SCSI_LEVEL, "SCSI command: Read sector\n");
                     SCSI_ReadSector(cdb);
                     break;
                 case CMD_WRITE_SECTOR:
                 case CMD_WRITE_SECTOR1:
-                    Log_Printf(LOG_SCSI_LEVEL, "SCSI command: Write sector\n");
+                    Log_Print(LOG_SCSI_LEVEL, "SCSI command: Write sector\n");
                     SCSI_WriteSector(cdb);
                     break;
                 case CMD_SEEK:
-                    Log_Printf(LOG_WARN, "SCSI command: Seek\n");
+                    Log_Print(LOG_WARN, "SCSI command: Seek\n");
                     abort();
                     break;
                 case CMD_SHIP:
-                    Log_Printf(LOG_SCSI_LEVEL, "SCSI command: Ship\n");
+                    Log_Print(LOG_SCSI_LEVEL, "SCSI command: Ship\n");
                     SCSI_StartStop(cdb);
                     break;
                 case CMD_MODESELECT:
-                    Log_Printf(LOG_WARN, "SCSI command: Mode select\n");
+                    Log_Print(LOG_WARN, "SCSI command: Mode select\n");
                     abort();
                     break;
                 case CMD_MODESENSE:
-                    Log_Printf(LOG_SCSI_LEVEL, "SCSI command: Mode sense\n");
+                    Log_Print(LOG_SCSI_LEVEL, "SCSI command: Mode sense\n");
                     SCSI_ModeSense(cdb);
                     break;
                 case CMD_FORMAT_DRIVE:
-                    Log_Printf(LOG_SCSI_LEVEL, "SCSI command: Format drive\n");
+                    Log_Print(LOG_SCSI_LEVEL, "SCSI command: Format drive\n");
                     SCSI_FormatDrive(cdb);
                     break;
                     /* as of yet unsupported commands */
@@ -422,7 +422,7 @@ int SCSI_GetCommandLength(Uint8 opcode) {
         case 1: return 10;
         case 5: return 12;
         default:
-            Log_Printf(LOG_WARN, "[SCSI] Unimplemented Group Code!");
+            Log_Print(LOG_WARN, "[SCSI] Unimplemented Group Code!");
             return 6;
     }
 }
@@ -470,7 +470,7 @@ static void SCSI_GuessGeometry(Uint32 size, Uint32 *cylinders, Uint32 *heads, Ui
             }
         }
     }
-    Log_Printf(LOG_SCSI_LEVEL, "[SCSI] Disk geometry: No valid geometry found! Using default.");
+    Log_Print(LOG_SCSI_LEVEL, "[SCSI] Disk geometry: No valid geometry found! Using default.");
     
     h=16;
     s=63;
@@ -696,7 +696,7 @@ void SCSI_WriteSector(Uint8 *cdb) {
     SCSIdisk[target].blockcounter = SCSI_GetCount(cdb[0], cdb);
     
     if (SCSIdisk[target].readonly) {
-        Log_Printf(LOG_SCSI_LEVEL, "[SCSI] Write sector: Disk is write protected! Check condition.");
+        Log_Print(LOG_SCSI_LEVEL, "[SCSI] Write sector: Disk is write protected! Check condition.");
         SCSIdisk[target].status = STAT_CHECK_COND;
         SCSIdisk[target].sense.code = SC_WRITE_PROTECT;
         SCSIdisk[target].sense.valid = false;
@@ -724,7 +724,7 @@ void scsi_write_sector(void) {
         if (ConfigureParams.SCSI.nWriteProtection != WRITEPROT_ON) {
             File_Write(scsi_buffer.data, BLOCKSIZE, offset, SCSIdisk[target].dsk);
         } else {
-            Log_Printf(LOG_SCSI_LEVEL, "[SCSI] WARNING: File write disabled!");
+            Log_Print(LOG_SCSI_LEVEL, "[SCSI] WARNING: File write disabled!");
             if(SCSIdisk[target].shadow) {
                 if(!(SCSIdisk[target].shadow[SCSIdisk[target].lba]))
                     SCSIdisk[target].shadow[SCSIdisk[target].lba] = malloc(BLOCKSIZE);
@@ -849,7 +849,7 @@ void SCSI_Inquiry (Uint8 *cdb) {
             inquiry_bytes[19] = ' ';
             inquiry_bytes[20] = ' ';
             inquiry_bytes[21] = ' ';
-            Log_Printf(LOG_SCSI_LEVEL, "[SCSI] Disk is HDD\n");
+            Log_Print(LOG_SCSI_LEVEL, "[SCSI] Disk is HDD\n");
             break;
         case DEVTYPE_CD:
             inquiry_bytes[0] = DEVTYPE_READONLY;
@@ -860,7 +860,7 @@ void SCSI_Inquiry (Uint8 *cdb) {
             inquiry_bytes[19] = 'R';
             inquiry_bytes[20] = 'O';
             inquiry_bytes[21] = 'M';
-            Log_Printf(LOG_SCSI_LEVEL, "[SCSI] Disk is CD-ROM\n");
+            Log_Print(LOG_SCSI_LEVEL, "[SCSI] Disk is CD-ROM\n");
             break;
         case DEVTYPE_FLOPPY:
             inquiry_bytes[0] = DEVTYPE_DISK;
@@ -871,7 +871,7 @@ void SCSI_Inquiry (Uint8 *cdb) {
             inquiry_bytes[19] = 'P';
             inquiry_bytes[20] = 'P';
             inquiry_bytes[21] = 'Y';
-            Log_Printf(LOG_SCSI_LEVEL, "[SCSI] Disk is Floppy\n");
+            Log_Print(LOG_SCSI_LEVEL, "[SCSI] Disk is Floppy\n");
             break;
             
         default:
@@ -919,7 +919,7 @@ void SCSI_StartStop(Uint8 *cdb) {
             }
             break;
         default:
-            Log_Printf(LOG_WARN, "[SCSI] Invalid start/stop");
+            Log_Print(LOG_WARN, "[SCSI] Invalid start/stop");
             break;
     }
     
@@ -1124,7 +1124,7 @@ void SCSI_FormatDrive(Uint8 *cdb) {
     Log_Printf(LOG_WARN, "[SCSI] Format drive command with parameters %02X\n",cdb[1]&0x1F);
     
     if (format_data) {
-        Log_Printf(LOG_WARN, "[SCSI] Format drive with format data unsupported!\n");
+        Log_Print(LOG_WARN, "[SCSI] Format drive with format data unsupported!\n");
         abort();
     } else {
         SCSIdisk[SCSIbus.target].status = STAT_GOOD;

@@ -55,40 +55,10 @@ static inline void do_put_mem_word(void *a, uae_u16 v)
 
 #else  /* Cpu can not access unaligned memory: */
 
-
-static inline uae_u32 do_get_mem_long(void *a)
-{
-	uae_u8 *b = (uae_u8 *)a;
-
-	return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
-}
-
-static inline uae_u16 do_get_mem_word(void *a)
-{
-	uae_u8 *b = (uae_u8 *)a;
-
-	return (b[0] << 8) | b[1];
-}
-
-
-static inline void do_put_mem_long(void *a, uae_u32 v)
-{
-	uae_u8 *b = (uae_u8 *)a;
-
-	b[0] = v >> 24;
-	b[1] = v >> 16;    
-	b[2] = v >> 8;
-	b[3] = v;
-}
-
-static inline void do_put_mem_word(void *a, uae_u16 v)
-{
-	uae_u8 *b = (uae_u8 *)a;
-
-	b[0] = v >> 8;
-	b[1] = v;
-}
-
+#define do_get_mem_long(a) __builtin_bswap32(*((uae_u32 *)(a)))
+#define do_get_mem_word(a) __builtin_bswap16(*((uae_u16 *)(a)))
+#define do_put_mem_long(a, v) *((uae_u32 *)(a)) = __builtin_bswap32(v)
+#define do_put_mem_word(a, v) *((uae_u16 *)(a)) = __builtin_bswap16(v)
 
 #endif  /* CPU_CAN_ACCESS_UNALIGNED */
 

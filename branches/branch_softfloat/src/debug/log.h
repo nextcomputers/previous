@@ -41,8 +41,12 @@ typedef enum
 extern int Log_Init(void);
 extern int Log_SetAlertLevel(int level);
 extern void Log_UnInit(void);
-extern void Log_Printf(LOGTYPE nType, const char *psFormat, ...)
+extern void _Log_Printf(LOGTYPE nType, const char *psFormat, ...)
 	__attribute__ ((format (printf, 2, 3)));
+    
+#define Log_Printf(__type, __format, ...) if((__type) <= TextLogLevel) _Log_Printf(__type, __format, __VA_ARGS__)
+#define Log_Print(__type, __format) if((__type) <= TextLogLevel) _Log_Printf(__type, __format)
+
 extern void Log_AlertDlg(LOGTYPE nType, const char *psFormat, ...)
 	__attribute__ ((format (printf, 2, 3)));
 extern LOGTYPE Log_ParseOptions(const char *OptionStr);
@@ -119,6 +123,7 @@ extern char *Log_MatchTrace(const char *text, int state);
 
 
 extern FILE *TraceFile;
+extern LOGTYPE TextLogLevel;
 extern Uint64 LogTraceFlags;
 
 #if ENABLE_TRACING

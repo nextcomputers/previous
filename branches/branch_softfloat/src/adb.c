@@ -305,7 +305,7 @@ void adb_bput(Uint32 addr, Uint8 b) {
 }
 
 void ADB_Reset(void) {
-	Log_Printf(LOG_WARN, "[ADB] Reset");
+	Log_Print(LOG_WARN, "[ADB] Reset");
 	adb.intstatus = 0;
 	adb.intmask = 0;
 	adb.config = 0;

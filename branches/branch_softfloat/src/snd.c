@@ -24,7 +24,7 @@ static void sound_init(void) {
         free(snd_buffer);
     snd_buffer = NULL;
     if (!sndout_inited && ConfigureParams.Sound.bEnableSound) {
-        Log_Printf(LOG_WARN, "[Audio] Initializing audio device.");
+        Log_Print(LOG_WARN, "[Audio] Initializing audio device.");
         Audio_Output_Init();
         sndout_inited=true;
     }
@@ -35,7 +35,7 @@ static void sound_uninit(void) {
         free(snd_buffer);
     snd_buffer = NULL;
     if(sndout_inited) {
-        Log_Printf(LOG_WARN, "[Audio] Uninitializing audio device.");
+        Log_Print(LOG_WARN, "[Audio] Uninitializing audio device.");
         sndout_inited=false;
         Audio_Output_UnInit();
     }
@@ -52,23 +52,23 @@ void Sound_Reset(void) {
 void Sound_Pause(bool pause) {
     if (pause) {
         if (sndout_inited) {
-            Log_Printf(LOG_WARN, "[Audio] Uninitializing audio output device (pause).");
+            Log_Print(LOG_WARN, "[Audio] Uninitializing audio output device (pause).");
             sndout_inited=false;
             Audio_Output_UnInit();
         }
         if (sndin_inited) {
-            Log_Printf(LOG_WARN, "[Audio] Uninitializing audio input device (pause).");
+            Log_Print(LOG_WARN, "[Audio] Uninitializing audio input device (pause).");
             sndin_inited=false;
             Audio_Input_UnInit();
         }
     } else {
         if (!sndout_inited && ConfigureParams.Sound.bEnableSound) {
-            Log_Printf(LOG_WARN, "[Audio] Initializing audio output device (resume).");
+            Log_Print(LOG_WARN, "[Audio] Initializing audio output device (resume).");
             Audio_Output_Init();
             sndout_inited=true;
         }
         if (!sndin_inited && sound_input_active && ConfigureParams.Sound.bEnableSound) {
-            Log_Printf(LOG_WARN, "[Audio] Initializing audio input device (resume).");
+            Log_Print(LOG_WARN, "[Audio] Initializing audio input device (resume).");
             Audio_Input_Init();
             sndin_inited=true;
         }
@@ -110,15 +110,15 @@ void snd_start_output(Uint8 mode) {
     if (sndout_inited) {
         Audio_Output_Enable(true);
     } else {
-        Log_Printf(LOG_SND_LEVEL, "[Audio] Not starting. Audio output device not initialized.");
+        Log_Print(LOG_SND_LEVEL, "[Audio] Not starting. Audio output device not initialized.");
     }
     /* Starting sound output loop */
     if (!sound_output_active) {
-        Log_Printf(LOG_SND_LEVEL, "[Sound] Starting output loop.");
+        Log_Print(LOG_SND_LEVEL, "[Sound] Starting output loop.");
         sound_output_active = true;
         CycInt_AddRelativeInterruptCycles(10, INTERRUPT_SND_OUT);
     } else { /* Even re-enable loop if we are already active. This lowers the delay. */
-        Log_Printf(LOG_DEBUG, "[Sound] Restarting output loop.");
+        Log_Print(LOG_DEBUG, "[Sound] Restarting output loop.");
         CycInt_AddRelativeInterruptCycles(10, INTERRUPT_SND_OUT);
     }
 }
@@ -139,11 +139,11 @@ void snd_start_input(Uint8 mode) {
     }
     /* Starting sound output loop */
     if (!sound_input_active) {
-        Log_Printf(LOG_SND_LEVEL, "[Sound] Starting input loop.");
+        Log_Print(LOG_SND_LEVEL, "[Sound] Starting input loop.");
         sound_input_active = true;
         CycInt_AddRelativeInterruptCycles(10, INTERRUPT_SND_IN);
     } else { /* Even re-enable loop if we are already active. This lowers the delay. */
-        Log_Printf(LOG_DEBUG, "[Sound] Restarting input loop.");
+        Log_Print(LOG_DEBUG, "[Sound] Restarting input loop.");
         CycInt_AddRelativeInterruptCycles(10, INTERRUPT_SND_IN);
     }
 }
@@ -307,7 +307,7 @@ int snd_send_samples(Uint8* buffer, int len) {
             Audio_Output_Queue(buffer+len, len);
             return 2*len;
         default:
-            Log_Printf(LOG_WARN, "[Sound] Error: Unknown sound output mode!");
+            Log_Print(LOG_WARN, "[Sound] Error: Unknown sound output mode!");
             return 0;
     }
 }
@@ -390,7 +390,7 @@ static void snd_access_volume_reg(Uint8 databit) {
 }
 
 static void snd_volume_interface_reset(void) {
-    Log_Printf(LOG_VOL_LEVEL, "[Sound] Interface reset.");
+    Log_Print(LOG_VOL_LEVEL, "[Sound] Interface reset.");
     
     bit_num = 0;
     chan_lr = 0;

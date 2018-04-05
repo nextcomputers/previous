@@ -119,21 +119,21 @@ int get_channel(Uint32 address) {
     int channel = address&IO_SEG_MASK;
 
     switch (channel) {
-        case 0x010: Log_Printf(LOG_DMA_LEVEL,"channel SCSI:"); return CHANNEL_SCSI; break;
-        case 0x040: Log_Printf(LOG_DMA_LEVEL,"channel Sound Out:"); return CHANNEL_SOUNDOUT; break;
-        case 0x050: Log_Printf(LOG_DMA_LEVEL,"channel MO Disk:"); return CHANNEL_DISK; break;
-        case 0x080: Log_Printf(LOG_DMA_LEVEL,"channel Sound in:"); return CHANNEL_SOUNDIN; break;
-        case 0x090: Log_Printf(LOG_DMA_LEVEL,"channel Printer:"); return CHANNEL_PRINTER; break;
-        case 0x0c0: Log_Printf(LOG_DMA_LEVEL,"channel SCC:"); return CHANNEL_SCC; break;
-        case 0x0d0: Log_Printf(LOG_DMA_LEVEL,"channel DSP:"); return CHANNEL_DSP; break;
-        case 0x110: Log_Printf(LOG_DMA_LEVEL,"channel Ethernet Tx:"); return CHANNEL_EN_TX; break;
-        case 0x150: Log_Printf(LOG_DMA_LEVEL,"channel Ethernet Rx:"); return CHANNEL_EN_RX; break;
-        case 0x180: Log_Printf(LOG_DMA_LEVEL,"channel Video:"); return CHANNEL_VIDEO; break;
-        case 0x1d0: Log_Printf(LOG_DMA_LEVEL,"channel M2R:"); return CHANNEL_M2R; break;
-        case 0x1c0: Log_Printf(LOG_DMA_LEVEL,"channel R2M:"); return CHANNEL_R2M; break;
+        case 0x010: Log_Print(LOG_DMA_LEVEL,"channel SCSI:"); return CHANNEL_SCSI; break;
+        case 0x040: Log_Print(LOG_DMA_LEVEL,"channel Sound Out:"); return CHANNEL_SOUNDOUT; break;
+        case 0x050: Log_Print(LOG_DMA_LEVEL,"channel MO Disk:"); return CHANNEL_DISK; break;
+        case 0x080: Log_Print(LOG_DMA_LEVEL,"channel Sound in:"); return CHANNEL_SOUNDIN; break;
+        case 0x090: Log_Print(LOG_DMA_LEVEL,"channel Printer:"); return CHANNEL_PRINTER; break;
+        case 0x0c0: Log_Print(LOG_DMA_LEVEL,"channel SCC:"); return CHANNEL_SCC; break;
+        case 0x0d0: Log_Print(LOG_DMA_LEVEL,"channel DSP:"); return CHANNEL_DSP; break;
+        case 0x110: Log_Print(LOG_DMA_LEVEL,"channel Ethernet Tx:"); return CHANNEL_EN_TX; break;
+        case 0x150: Log_Print(LOG_DMA_LEVEL,"channel Ethernet Rx:"); return CHANNEL_EN_RX; break;
+        case 0x180: Log_Print(LOG_DMA_LEVEL,"channel Video:"); return CHANNEL_VIDEO; break;
+        case 0x1d0: Log_Print(LOG_DMA_LEVEL,"channel M2R:"); return CHANNEL_M2R; break;
+        case 0x1c0: Log_Print(LOG_DMA_LEVEL,"channel R2M:"); return CHANNEL_R2M; break;
             
         default:
-            Log_Printf(LOG_WARN, "Unknown DMA channel!\n");
+            Log_Print(LOG_WARN, "Unknown DMA channel!\n");
             return -1;
             break;
     }
@@ -155,7 +155,7 @@ int get_interrupt_type(int channel) {
         case CHANNEL_R2M: return INT_R2M_DMA; break;
                         
         default:
-            Log_Printf(LOG_WARN, "Unknown DMA interrupt!\n");
+            Log_Print(LOG_WARN, "Unknown DMA interrupt!\n");
             return 0;
             break;
     }
@@ -177,32 +177,33 @@ void DMA_CSR_Write(void) {
     Log_Printf(LOG_DMA_LEVEL,"DMA CSR write at $%08x val=$%02x PC=$%08x\n", IoAccessCurrentAddress, writecsr, m68k_getpc());
     
     /* For debugging */
-    if(writecsr&DMA_DEV2M)
-        Log_Printf(LOG_DMA_LEVEL,"DMA from dev to mem");
-    else
-        Log_Printf(LOG_DMA_LEVEL,"DMA from mem to dev");
+    if(writecsr&DMA_DEV2M) {
+        Log_Print(LOG_DMA_LEVEL,"DMA from dev to mem");
+    } else {
+        Log_Print(LOG_DMA_LEVEL,"DMA from mem to dev");
+    }
     
     switch (writecsr&DMA_CMD_MASK) {
         case DMA_RESET:
-            Log_Printf(LOG_DMA_LEVEL,"DMA reset"); break;
+            Log_Print(LOG_DMA_LEVEL,"DMA reset"); break;
         case DMA_INITBUF:
-            Log_Printf(LOG_DMA_LEVEL,"DMA initialize buffers"); break;
+            Log_Print(LOG_DMA_LEVEL,"DMA initialize buffers"); break;
         case (DMA_RESET | DMA_INITBUF):
         case (DMA_RESET | DMA_INITBUF | DMA_CLRCOMPLETE):
-            Log_Printf(LOG_DMA_LEVEL,"DMA reset and initialize buffers"); break;
+            Log_Print(LOG_DMA_LEVEL,"DMA reset and initialize buffers"); break;
         case DMA_CLRCOMPLETE:
-            Log_Printf(LOG_DMA_LEVEL,"DMA end chaining"); break;
+            Log_Print(LOG_DMA_LEVEL,"DMA end chaining"); break;
         case (DMA_SETSUPDATE | DMA_CLRCOMPLETE):
-            Log_Printf(LOG_DMA_LEVEL,"DMA continue chaining"); break;
+            Log_Print(LOG_DMA_LEVEL,"DMA continue chaining"); break;
         case DMA_SETENABLE:
-            Log_Printf(LOG_DMA_LEVEL,"DMA start single transfer"); break;
+            Log_Print(LOG_DMA_LEVEL,"DMA start single transfer"); break;
         case (DMA_SETENABLE | DMA_SETSUPDATE):
         case (DMA_SETENABLE | DMA_SETSUPDATE | DMA_CLRCOMPLETE):
-            Log_Printf(LOG_DMA_LEVEL,"DMA start chaining"); break;
+            Log_Print(LOG_DMA_LEVEL,"DMA start chaining"); break;
         case 0:
-            Log_Printf(LOG_DMA_LEVEL,"DMA no command"); break;
+            Log_Print(LOG_DMA_LEVEL,"DMA no command"); break;
         default:
-            Log_Printf(LOG_DMA_LEVEL,"DMA: unknown command!"); break;
+            Log_Print(LOG_DMA_LEVEL,"DMA: unknown command!"); break;
     }
 
     /* Handle CSR bits */
@@ -398,7 +399,7 @@ void dma_esp_write_memory(void) {
                dma[CHANNEL_SCSI].next,dma[CHANNEL_SCSI].limit-dma[CHANNEL_SCSI].next,esp_counter);
     
     if (!(dma[CHANNEL_SCSI].csr&DMA_ENABLE)) {
-        Log_Printf(LOG_WARN, "[DMA] Channel SCSI: Error! DMA not enabled!");
+        Log_Print(LOG_WARN, "[DMA] Channel SCSI: Error! DMA not enabled!");
         return;
     }
     if ((dma[CHANNEL_SCSI].limit%DMA_BURST_SIZE) || (dma[CHANNEL_SCSI].next%4)) {
@@ -463,11 +464,11 @@ void dma_esp_write_memory(void) {
 
 void dma_esp_flush_buffer(void) {
     if (!(dma[CHANNEL_SCSI].csr&DMA_ENABLE)) {
-        Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Not flushing buffer. DMA not enabled.");
+        Log_Print(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Not flushing buffer. DMA not enabled.");
         return;
     }
     if (dma[CHANNEL_SCSI].direction!=DMA_DEV2M) {
-        Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Not flushing buffer. Bad direction!");
+        Log_Print(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Not flushing buffer. Bad direction!");
         return;
     }
 
@@ -481,7 +482,7 @@ void dma_esp_flush_buffer(void) {
             }
             dma[CHANNEL_SCSI].next+=4;
         } else {
-            Log_Printf(LOG_WARN, "[DMA] Channel SCSI: Not flushing buffer. DMA done.");
+            Log_Print(LOG_WARN, "[DMA] Channel SCSI: Not flushing buffer. DMA done.");
         }
     } CATCH(prb) {
         Log_Printf(LOG_WARN, "[DMA] Channel SCSI: Bus error while flushing to %08x",dma[CHANNEL_SCSI].next);
@@ -497,7 +498,7 @@ void dma_esp_read_memory(void) {
                dma[CHANNEL_SCSI].next,dma[CHANNEL_SCSI].limit-dma[CHANNEL_SCSI].next,esp_counter);
     
     if (!(dma[CHANNEL_SCSI].csr&DMA_ENABLE)) {
-        Log_Printf(LOG_WARN, "[DMA] Channel SCSI: Error! DMA not enabled!");
+        Log_Print(LOG_WARN, "[DMA] Channel SCSI: Error! DMA not enabled!");
         return;
     }
     if ((dma[CHANNEL_SCSI].limit%DMA_BURST_SIZE) || (dma[CHANNEL_SCSI].next%4)) {
@@ -557,9 +558,9 @@ void dma_esp_read_memory(void) {
     } ENDTRY
     
     if ((floppy_select && flp_buffer.size<flp_buffer.limit) || SCSIbus.phase==PHASE_DO) {
-        Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Warning! Data not yet written to disk.");
+        Log_Print(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Warning! Data not yet written to disk.");
         if (espdma_buf_size!=0) {
-            Log_Printf(LOG_WARN, "[DMA] Channel SCSI: WARNING: Loss of data in DMA buffer possible!");
+            Log_Print(LOG_WARN, "[DMA] Channel SCSI: WARNING: Loss of data in DMA buffer possible!");
         }
     }
     
@@ -573,7 +574,7 @@ void dma_mo_write_memory(void) {
                dma[CHANNEL_DISK].next,dma[CHANNEL_DISK].limit-dma[CHANNEL_DISK].next);
     
     if (!(dma[CHANNEL_DISK].csr&DMA_ENABLE)) {
-        Log_Printf(LOG_WARN, "[DMA] Channel MO: Error! DMA not enabled!");
+        Log_Print(LOG_WARN, "[DMA] Channel MO: Error! DMA not enabled!");
         return;
     }
     if ((dma[CHANNEL_DISK].limit%DMA_BURST_SIZE) || (dma[CHANNEL_DISK].next%4)) {
@@ -630,7 +631,7 @@ void dma_mo_read_memory(void) {
                dma[CHANNEL_DISK].next,dma[CHANNEL_DISK].limit-dma[CHANNEL_DISK].next);
     
     if (!(dma[CHANNEL_DISK].csr&DMA_ENABLE)) {
-        Log_Printf(LOG_WARN, "[DMA] Channel MO: Error! DMA not enabled!");
+        Log_Print(LOG_WARN, "[DMA] Channel MO: Error! DMA not enabled!");
         return;
     }
     if ((dma[CHANNEL_DISK].limit%DMA_BURST_SIZE) || (dma[CHANNEL_DISK].next%4)) {
@@ -680,9 +681,9 @@ void dma_mo_read_memory(void) {
     } ENDTRY
     
     if (ecc_buffer[eccin].size<ecc_buffer[eccin].limit) {
-        Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel MO: Warning! Data not yet written to disk.");
+        Log_Print(LOG_DMA_LEVEL, "[DMA] Channel MO: Warning! Data not yet written to disk.");
         if (modma_buf_size!=0) {
-            Log_Printf(LOG_WARN, "[DMA] Channel MO: WARNING: Loss of data in DMA buffer possible!");
+            Log_Print(LOG_WARN, "[DMA] Channel MO: WARNING: Loss of data in DMA buffer possible!");
         }
     }
     
@@ -822,7 +823,7 @@ void dma_enet_write_memory(bool eop) {
                dma[CHANNEL_EN_RX].next,dma[CHANNEL_EN_RX].limit-dma[CHANNEL_EN_RX].next);
     
     if (!(dma[CHANNEL_EN_RX].csr&DMA_ENABLE)) {
-        Log_Printf(LOG_WARN, "[DMA] Channel Ethernet Receive: Error! DMA not enabled!");
+        Log_Print(LOG_WARN, "[DMA] Channel Ethernet Receive: Error! DMA not enabled!");
         return;
     }
     if ((dma[CHANNEL_EN_RX].limit%DMA_BURST_SIZE) || (dma[CHANNEL_EN_RX].next%DMA_BURST_SIZE)) {
@@ -845,7 +846,7 @@ void dma_enet_write_memory(bool eop) {
     
     if (enet_rx_buffer.size==0) {
         if (eop) { /* TODO: check if this is correct */
-            Log_Printf(LOG_WARN, "[DMA] Channel Ethernet Receive: Last buffer of chain done.");
+            Log_Print(LOG_WARN, "[DMA] Channel Ethernet Receive: Last buffer of chain done.");
             dma[CHANNEL_EN_RX].next|=EN_BOP;
         }
         dma[CHANNEL_EN_RX].saved_limit = dma[CHANNEL_EN_RX].next;
@@ -872,7 +873,7 @@ bool dma_enet_read_memory(void) {
         } ENDTRY
         
         if (dma[CHANNEL_EN_TX].limit&EN_EOP) {
-            Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel Ethernet Transmit: Packet done.");
+            Log_Print(LOG_DMA_LEVEL, "[DMA] Channel Ethernet Transmit: Packet done.");
             dma_enet_interrupt(CHANNEL_EN_TX);
             return true;
         }
@@ -900,7 +901,7 @@ void dma_m2m(void) {
     if ((dma[CHANNEL_M2R].csr&DMA_ENABLE) && (dma[CHANNEL_R2M].csr&DMA_ENABLE)) {
         if (((dma[CHANNEL_R2M].limit-dma[CHANNEL_R2M].next)%DMA_BURST_SIZE) ||
             ((dma[CHANNEL_M2R].limit-dma[CHANNEL_M2R].next)%DMA_BURST_SIZE)) {
-            Log_Printf(LOG_WARN, "[DMA] Channel M2M: Error! Memory not burst size aligned!");
+            Log_Print(LOG_WARN, "[DMA] Channel M2M: Error! Memory not burst size aligned!");
             return;
         }
         
@@ -964,7 +965,7 @@ void dma_dsp_write_memory(Uint8 val) {
 			   dma[CHANNEL_DSP].next,dma[CHANNEL_DSP].limit-dma[CHANNEL_DSP].next);
 	
 	if (!(dma[CHANNEL_DSP].csr&DMA_ENABLE)) {
-		Log_Printf(LOG_WARN, "[DMA] Channel DSP: Error! DMA not enabled!");
+		Log_Print(LOG_WARN, "[DMA] Channel DSP: Error! DMA not enabled!");
 		return;
 	}
 	
@@ -992,7 +993,7 @@ Uint8 dma_dsp_read_memory(void) {
 			   dma[CHANNEL_DSP].next,dma[CHANNEL_DSP].limit-dma[CHANNEL_DSP].next);
 	
 	if (!(dma[CHANNEL_DSP].csr&DMA_ENABLE)) {
-		Log_Printf(LOG_WARN, "[DMA] Channel DSP: Error! DMA not enabled!");
+		Log_Print(LOG_WARN, "[DMA] Channel DSP: Error! DMA not enabled!");
 		return val;
 	}
 	
@@ -1017,7 +1018,7 @@ Uint8 dma_dsp_read_memory(void) {
 bool dma_dsp_ready(void) {
 	if (!(dma[CHANNEL_DSP].csr&DMA_ENABLE) ||
 		!(dma[CHANNEL_DSP].next<dma[CHANNEL_DSP].limit)) {
-		Log_Printf(LOG_DEBUG, "[DMA] Channel DSP: Not ready!");
+		Log_Print(LOG_DEBUG, "[DMA] Channel DSP: Not ready!");
 		return false;
 	} else {
 		return true;
@@ -1101,32 +1102,33 @@ void TDMA_CSR_Write(void) {
 	Log_Printf(LOG_DMA_LEVEL,"DMA CSR write at $%08x val=$%08x PC=$%08x\n", IoAccessCurrentAddress, writecsr, m68k_getpc());
 	
 	/* For debugging */
-	if(writecsr&TDMA_DEV2M)
-		Log_Printf(LOG_DMA_LEVEL,"DMA from dev to mem");
-	else
-		Log_Printf(LOG_DMA_LEVEL,"DMA from mem to dev");
-	
+    if(writecsr&TDMA_DEV2M) {
+		Log_Print(LOG_DMA_LEVEL,"DMA from dev to mem");
+    } else {
+		Log_Print(LOG_DMA_LEVEL,"DMA from mem to dev");
+    }
+    
 	switch (writecsr&TDMA_CMD_MASK) {
 		case TDMA_RESET:
-			Log_Printf(LOG_DMA_LEVEL,"DMA reset"); break;
+			Log_Print(LOG_DMA_LEVEL,"DMA reset"); break;
 		case TDMA_BUFRESET:
-			Log_Printf(LOG_DMA_LEVEL,"DMA initialize buffers"); break;
+			Log_Print(LOG_DMA_LEVEL,"DMA initialize buffers"); break;
 		case (TDMA_RESET | TDMA_BUFRESET):
 		case (TDMA_RESET | TDMA_BUFRESET | TDMA_CLRCOMPLETE):
-			Log_Printf(LOG_DMA_LEVEL,"DMA reset and initialize buffers"); break;
+			Log_Print(LOG_DMA_LEVEL,"DMA reset and initialize buffers"); break;
 		case TDMA_CLRCOMPLETE:
-			Log_Printf(LOG_DMA_LEVEL,"DMA end chaining"); break;
+			Log_Print(LOG_DMA_LEVEL,"DMA end chaining"); break;
 		case (TDMA_SETSUPDATE | TDMA_CLRCOMPLETE):
-			Log_Printf(LOG_DMA_LEVEL,"DMA continue chaining"); break;
+			Log_Print(LOG_DMA_LEVEL,"DMA continue chaining"); break;
 		case TDMA_SETENABLE:
-			Log_Printf(LOG_DMA_LEVEL,"DMA start single transfer"); break;
+			Log_Print(LOG_DMA_LEVEL,"DMA start single transfer"); break;
 		case (TDMA_SETENABLE | TDMA_SETSUPDATE):
 		case (TDMA_SETENABLE | TDMA_SETSUPDATE | TDMA_CLRCOMPLETE):
-			Log_Printf(LOG_DMA_LEVEL,"DMA start chaining"); break;
+			Log_Print(LOG_DMA_LEVEL,"DMA start chaining"); break;
 		case 0:
-			Log_Printf(LOG_DMA_LEVEL,"DMA no command"); break;
+			Log_Print(LOG_DMA_LEVEL,"DMA no command"); break;
 		default:
-			Log_Printf(LOG_WARN,"DMA: unknown command!"); break;
+			Log_Print(LOG_WARN,"DMA: unknown command!"); break;
 	}
 	
 	/* Handle CSR bits */
@@ -1162,11 +1164,11 @@ void tdma_flush_buffer(int channel) {
 	int i;
 	
 	if (!(dma[CHANNEL_SCSI].csr&DMA_ENABLE)) {
-		Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Not flushing buffer. DMA not enabled.");
+		Log_Print(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Not flushing buffer. DMA not enabled.");
 		return;
 	}
 	if (dma[CHANNEL_SCSI].direction!=DMA_DEV2M) {
-		Log_Printf(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Not flushing buffer. Bad direction!");
+		Log_Print(LOG_DMA_LEVEL, "[DMA] Channel SCSI: Not flushing buffer. Bad direction!");
 		return;
 	}
 	

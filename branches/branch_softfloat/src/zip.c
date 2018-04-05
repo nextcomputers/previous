@@ -139,7 +139,7 @@ zip_dir *ZIP_GetFiles(const char *pszFileName)
 			err = unzGoToNextFile(uf);
 			if (err != UNZ_OK)
 			{
-				Log_Printf(LOG_ERROR, "ZIP_GetFiles: Error in ZIP-file\n");
+				Log_Print(LOG_ERROR, "ZIP_GetFiles: Error in ZIP-file\n");
 				/* deallocate memory */
 				for (; i > 0; i--)
 					free(filelist[i]);
@@ -336,11 +336,11 @@ static long ZIP_CheckImageFile(unzFile uf, char *filename, int namelen, int *pDi
 
 	if (unzGetCurrentFileInfo(uf, &file_info, filename, namelen, NULL, 0, NULL, 0) != UNZ_OK)
 	{
-		Log_Printf(LOG_ERROR, "Error with zipfile in unzGetCurrentFileInfo\n");
+		Log_Print(LOG_ERROR, "Error with zipfile in unzGetCurrentFileInfo\n");
 		return -1;
 	}
 
-	Log_Printf(LOG_ERROR, "Not an .ST, .MSA or .DIM file.\n");
+	Log_Print(LOG_ERROR, "Not an .ST, .MSA or .DIM file.\n");
 	return 0;
 }
 
@@ -414,7 +414,7 @@ static void *ZIP_ExtractFile(unzFile uf, const char *filename, uLong size)
 
 	if (unzLocateFile(uf,filename, 0) != UNZ_OK)
 	{
-		Log_Printf(LOG_ERROR, "ZIP_ExtractFile: could not find file in archive\n");
+		Log_Print(LOG_ERROR, "ZIP_ExtractFile: could not find file in archive\n");
 		return NULL;
 	}
 
@@ -422,7 +422,7 @@ static void *ZIP_ExtractFile(unzFile uf, const char *filename, uLong size)
 
 	if (err != UNZ_OK)
 	{
-		Log_Printf(LOG_ERROR, "ZIP_ExtractFile: could not get file info\n");
+		Log_Print(LOG_ERROR, "ZIP_ExtractFile: could not get file info\n");
 		return NULL;
 	}
 
@@ -437,7 +437,7 @@ static void *ZIP_ExtractFile(unzFile uf, const char *filename, uLong size)
 	err = unzOpenCurrentFile(uf);
 	if (err != UNZ_OK)
 	{
-		Log_Printf(LOG_ERROR, "ZIP_ExtractFile: could not open file\n");
+		Log_Print(LOG_ERROR, "ZIP_ExtractFile: could not open file\n");
 		free(buf);
 		return NULL;
 	}
@@ -447,7 +447,7 @@ static void *ZIP_ExtractFile(unzFile uf, const char *filename, uLong size)
 		err = unzReadCurrentFile(uf,buf,size_buf);
 		if (err < 0)
 		{
-			Log_Printf(LOG_ERROR, "ZIP_ExtractFile: could not read file\n");
+			Log_Print(LOG_ERROR, "ZIP_ExtractFile: could not read file\n");
 			return NULL;
 		}
 	}
@@ -603,7 +603,7 @@ Uint8 *ZIP_ReadFirstFile(const char *pszFileName, long *pImageSize, const char *
 	/* Get file information (file size!) */
 	if (unzGetCurrentFileInfo(uf, &file_info, pszZipPath, ZIP_PATH_MAX, NULL, 0, NULL, 0) != UNZ_OK)
 	{
-		Log_Printf(LOG_ERROR, "Error with zipfile in unzGetCurrentFileInfo.\n");
+		Log_Print(LOG_ERROR, "Error with zipfile in unzGetCurrentFileInfo.\n");
 		free(pszZipPath);
 		return NULL;
 	}

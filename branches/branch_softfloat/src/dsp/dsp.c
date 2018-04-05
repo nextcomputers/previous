@@ -77,10 +77,10 @@ bool bDspHostInterruptPending = false;
 #if ENABLE_DSP_EMU
 void DSP_HandleTXD(int set) {
     if (set) {
-		Log_Printf(LOG_WARN, "[DSP] Set TXD interrupt");
+		Log_Print(LOG_WARN, "[DSP] Set TXD interrupt");
         //set_dsp_interrupt(SET_INT);
     } else {
-		Log_Printf(LOG_WARN, "[DSP] Release TXD interrupt");
+		Log_Print(LOG_WARN, "[DSP] Release TXD interrupt");
         //set_dsp_interrupt(RELEASE_INT);
     }
 }
@@ -103,10 +103,10 @@ static void DSP_HandleHREQ(int set)
     } else {
 		dsp_core.dma_request = 0;
         if (set) {
-            Log_Printf(LOG_DSP_LEVEL, "[DSP] Set HREQ interrupt");
+            Log_Print(LOG_DSP_LEVEL, "[DSP] Set HREQ interrupt");
 			set_dsp_interrupt(SET_INT);
         } else {
-            Log_Printf(LOG_DSP_LEVEL, "[DSP] Release HREQ interrupt");
+            Log_Print(LOG_DSP_LEVEL, "[DSP] Release HREQ interrupt");
 			set_dsp_interrupt(RELEASE_INT);
         }
     }
