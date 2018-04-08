@@ -7,6 +7,10 @@
 #ifndef HATARI_LOG_H
 #define HATARI_LOG_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+    
 #include <stdbool.h>
 #include <SDL_types.h>
 
@@ -142,5 +146,8 @@ extern Uint64 LogTraceFlags;
 #define LOG_TRACE_PRINT(args...)	fprintf(TraceFile , args)
 #endif
 
-
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+        
 #endif		/* HATARI_LOG_H */

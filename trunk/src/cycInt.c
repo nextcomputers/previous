@@ -37,7 +37,7 @@ const char CycInt_fileid[] = "Previous cycInt.c : " __DATE__ " " __TIME__;
 #include "kms.h"
 #include "configuration.h"
 #include "main.h"
-#include "nd_sdl.h"
+#include "nd_sdl.hpp"
 
 void (*PendingInterruptFunction)(void);
 Sint64 PendingInterruptCounter;

@@ -24,18 +24,12 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#include <unistd.h>
 #include <ctype.h>
 #include <assert.h>
 
 #include "i860cfg.h"
 #include "host.h"
-#include "nd_sdl.h"
-
-const int LOG_WARN = 3;
-const int ND_SLOT  = 2; // HACK: one day we should put the whole ND in a C++ class or make an array of NeXTbus slots
-
-extern "C" void Log_Printf(int nType, const char *psFormat, ...);
+#include "nd_sdl.hpp"
 
 typedef uint64_t UINT64;
 typedef int64_t INT64;
@@ -52,16 +46,12 @@ typedef int8_t  INT8;
 typedef int64_t offs_t;
 
 extern "C" {
-#include "dimension.h"
-
-    void   nd_nbic_interrupt(void);
-    bool   nd_dbg_cmd(const char* cmd);
-    void   Statusbar_SetNdLed(int state);
+    class NextDimension;
     
-    void   nd_set_blank_state(int src, bool state);
-
-    typedef void (*mem_rd_func)(UINT32, UINT32*);
-    typedef void (*mem_wr_func)(UINT32, const UINT32*);
+    void   nd_nbic_interrupt(void);
+    void   Statusbar_SetNdLed(int state);
+    typedef void (*mem_rd_func)(NextDimension*, UINT32, UINT32*);
+    typedef void (*mem_wr_func)(NextDimension*, UINT32, const UINT32*);
 }
 
 #if WITH_SOFTFLOAT_I860
@@ -80,12 +70,39 @@ typedef float64 FLOAT64;
 #define FLOAT64_IS_NEG(x)       ((x) & LIT64(0x8000000000000000))
 #define FLOAT64_IS_ZERO(x)      (((x) & LIT64(0x7FFFFFFFFFFFFFFF)) == LIT64(0x0000000000000000))
 
-static inline void float_set_rounding_mode (int mode) {
+#define float32_add(x,y)        float32_add(x,y,&m_fpcs)
+#define float32_sub(x,y)        float32_sub(x,y,&m_fpcs)
+#define float32_mul(x,y)        float32_mul(x,y,&m_fpcs)
+#define float32_div(x,y)        float32_div(x,y,&m_fpcs)
+#define float32_sqrt(x)         float32_sqrt(x,&m_fpcs)
+#define float32_to_int32(x)     float32_to_int32(x,&m_fpcs)
+#define float32_to_int32_round_to_zero(x)     float32_to_int32_round_to_zero(x,&m_fpcs)
+#define float32_to_float64(x)   float32_to_float64(x,&m_fpcs)
+#define float32_gt(x,y)         float32_gt(x,y,&m_fpcs)
+#define float32_le(x,y)         float32_le(x,y,&m_fpcs)
+#define float32_eq(x,y)         float32_eq(x,y,&m_fpcs)
+#define float64_add(x,y)        float64_add(x,y,&m_fpcs)
+#define float64_sub(x,y)        float64_sub(x,y,&m_fpcs)
+#define float64_mul(x,y)        float64_mul(x,y,&m_fpcs)
+#define float64_div(x,y)        float64_div(x,y,&m_fpcs)
+#define float64_sqrt(x)         float64_sqrt(x,&m_fpcs)
+#define float64_to_int32(x)     float64_to_int32(x,&m_fpcs)
+#define float64_to_int32_round_to_zero(x)     float64_to_int32_round_to_zero(x,&m_fpcs)
+#define float64_to_float32(x)   float64_to_float32(x,&m_fpcs)
+#define float64_gt(x,y)         float64_gt(x,y,&m_fpcs)
+#define float64_le(x,y)         float64_le(x,y,&m_fpcs)
+#define float64_eq(x,y)         float64_eq(x,y,&m_fpcs)
+
+static inline void reset_fpcs(float_ctrl* fp_control) {
+    float_init(fp_control);
+}
+
+static inline void float_set_rounding_mode (int mode, float_ctrl* fp_control) {
     switch (mode) {
-        case 0: float_rounding_mode2 = float_round_nearest_even; break;
-        case 1: float_rounding_mode2 = float_round_down;         break;
-        case 2: float_rounding_mode2 = float_round_up;           break;
-        case 3: float_rounding_mode2 = float_round_to_zero;      break;
+        case 0: set_float_rounding_mode(float_round_nearest_even, fp_control); break;
+        case 1: set_float_rounding_mode(float_round_down, fp_control);         break;
+        case 2: set_float_rounding_mode(float_round_up, fp_control);           break;
+        case 3: set_float_rounding_mode(float_round_to_zero, fp_control);      break;
     }
 }
 
@@ -103,6 +120,8 @@ static inline void float_set_rounding_mode (int mode) {
 
 typedef float FLOAT32;
 typedef double FLOAT64;
+
+#define float_ctrl int
 
 #define FLOAT32_ZERO            0.0
 #define FLOAT32_ONE             1.0
@@ -136,7 +155,11 @@ typedef double FLOAT64;
 #define float64_le(x,y)         ((x)<=(y))
 #define float64_eq(x,y)         ((x)==(y))
 
-static inline void float_set_rounding_mode (int mode) {
+static inline void reset_fpcs(float_ctrl* dummy) {
+    *dummy = 0;
+}
+
+static inline void float_set_rounding_mode (int mode, float_ctrl* dummy) {
     switch (mode) {
         case 0: fesetround(FE_TONEAREST);  break;
         case 1: fesetround(FE_DOWNWARD);   break;
@@ -399,37 +422,43 @@ public:
     }
 };
 
+class NextDimension;
+
 class i860_cpu_device {
 public:
+    NextDimension* nd;
+    
 	// construction/destruction
-    i860_cpu_device();
+    i860_cpu_device(NextDimension* nd);
     
     /* External interface */
-    void send_msg(int msg);
-    void init();
-    void uninit();
+    void init(void);
+    void set_run_func(void);
+    void uninit(void);
     void halt(bool state);
     void pause(bool state);
-    inline bool is_halted() {return m_halt;};
+    inline bool is_halted(void) {return m_halt;};
 
+    /* i860 cycle counter */
+    int i860cycles;
     /* Run one i860 cycle */
-    void    run_cycle();
+    void    run_cycle(void);
     /* Run the i860 thread */
     void run();
     /* i860 thread message handler */
-    bool   handle_msgs();
-    /* External interrupt for i860 emulator */
-    void   interrupt();
+    bool   handle_msgs(int msg);
+    
+    static int thread(void* data);
     
     const char* reports(double realTime, double hostTIme);
 private:
     // debugger
     void debugger(char cmd, const char* format, ...);
-    void debugger();
+    void debugger(void);
     
-    /* Message port for host->i860 communication */
-    volatile int m_port;
-    lock_t       m_port_lock;
+    // softfloat control and status
+    float_ctrl m_fpcs;
+    
     thread_t*    m_thread;
 
     UINT64 m_insn_decoded;
@@ -558,7 +587,7 @@ private:
 	 * Halt state. Can be set externally
 	 */
     volatile bool m_halt;
-    
+        
 	/* Indicate an instruction just generated a trap,
      needs to go to the trap address or a control-flow 
      instruction, so we know the PC is updated.  */
