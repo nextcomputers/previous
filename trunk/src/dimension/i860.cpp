@@ -47,7 +47,7 @@ extern "C" {
                 cycles /= ConfigureParams.System.nCpuFreq;
                 while (cycles > 0) {
                     nd->i860.run_cycle();
-                    cycles -= 2;
+                    cycles --;
                 }
             }
         }
@@ -553,7 +553,7 @@ void i860_cpu_device::run() {
             for(int i = 16; --i >= 0;)
                 run_cycle();
             
-            i860cycles -= 32;
+            i860cycles -= 16;
         } else {
             host_sleep_ms(1);
         }
