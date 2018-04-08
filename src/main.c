@@ -34,9 +34,10 @@ const char Main_fileid[] = "Hatari main.c : " __DATE__ " " __TIME__;
 #include "file.h"
 #include "dsp.h"
 #include "host.h"
-#include "dimension.h"
+#include "dimension.hpp"
 
 #include "hatari-glue.h"
+#include "NextBus.hpp"
 
 #if HAVE_GETTIMEOFDAY
 #include <sys/time.h>
@@ -120,9 +121,7 @@ bool Main_PauseEmulation(bool visualize) {
     host_pause_time(!(bEmulationActive));
     Screen_Pause(true);
     Sound_Pause(true);
-    if (ConfigureParams.Dimension.bEnabled) {
-        dimension_pause(true);
-    }
+    NextBus_Pause(true);
     
 	if (visualize) {
 		Statusbar_AddMessage("Emulation paused", 100);
@@ -152,9 +151,7 @@ bool Main_UnPauseEmulation(void) {
     host_pause_time(!(bEmulationActive));
     Screen_Pause(false);
     Sound_Pause(false);
-    if (ConfigureParams.Dimension.bEnabled) {
-        dimension_pause(false);
-    }
+    NextBus_Pause(false);
 
 	if (bGrabMouse) {
 		/* Grab mouse pointer again */

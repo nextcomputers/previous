@@ -34,7 +34,9 @@ these four paragraphs for those parts of this code that are retained.
 | Underflow tininess-detection mode, statically initialized to default value.
 | (The declaration in `softfloat.h' must match the `int8' type here.)
 *----------------------------------------------------------------------------*/
+#if 0
 int8 float_detect_tininess = float_tininess_before_rounding;
+#endif
 
 /*----------------------------------------------------------------------------
 | Raises the exceptions specified by `flags'.  Floating-point traps can be
@@ -43,13 +45,13 @@ int8 float_detect_tininess = float_tininess_before_rounding;
 | should be simply `float_exception_flags |= flags;'.
 *----------------------------------------------------------------------------*/
 
-void float_raise( int8 flags )
+void float_raise( int8 flags, float_ctrl* c )
 {
 
-    float_exception_flags |= flags;
+    c->float_exception_flags |= flags;
 
 }
-
+#if 0
 #ifdef SOFTFLOAT_I860
 void float_raise2( int8 flags )
 {
@@ -57,6 +59,7 @@ void float_raise2( int8 flags )
     float_exception_flags2 |= flags;
     
 }
+#endif
 #endif
 
 /*----------------------------------------------------------------------------
@@ -97,12 +100,12 @@ flag float32_is_signaling_nan( float32 a )
 | exception is raised.
 *----------------------------------------------------------------------------*/
 
-static commonNaNT float32ToCommonNaN( float32 a )
+static commonNaNT float32ToCommonNaN( float32 a, float_ctrl* c )
 {
     commonNaNT z;
 
 #ifdef SOFTFLOAT_I860
-    if ( float32_is_signaling_nan( a ) ) float_raise2( float_flag_signaling );
+    if ( float32_is_signaling_nan( a ) ) float_raise( float_flag_signaling, c );
 #else
     if ( float32_is_signaling_nan( a ) ) float_raise( float_flag_signaling );
 #endif
@@ -131,7 +134,7 @@ static float32 commonNaNToFloat32( commonNaNT a )
 | signaling NaN, the invalid exception is raised.
 *----------------------------------------------------------------------------*/
 
-static float32 propagateFloat32NaN( float32 a, float32 b )
+static float32 propagateFloat32NaN( float32 a, float32 b, float_ctrl* c )
 {
     flag aIsNaN, aIsSignalingNaN, bIsNaN, bIsSignalingNaN;
 
@@ -142,7 +145,7 @@ static float32 propagateFloat32NaN( float32 a, float32 b )
     a |= 0x00400000;
     b |= 0x00400000;
 #ifdef SOFTFLOAT_I860
-    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise2( float_flag_signaling );
+    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling, c );
 #else
     if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling );
 #endif
@@ -187,12 +190,12 @@ flag float64_is_signaling_nan( float64 a )
 | exception is raised.
 *----------------------------------------------------------------------------*/
 
-static commonNaNT float64ToCommonNaN( float64 a )
+static commonNaNT float64ToCommonNaN( float64 a, float_ctrl* c )
 {
     commonNaNT z;
 
 #ifdef SOFTFLOAT_I860
-    if ( float64_is_signaling_nan( a ) ) float_raise2( float_flag_signaling );
+    if ( float64_is_signaling_nan( a ) ) float_raise( float_flag_signaling, c );
 #else
     if ( float64_is_signaling_nan( a ) ) float_raise( float_flag_signaling );
 #endif
@@ -224,7 +227,7 @@ static float64 commonNaNToFloat64( commonNaNT a )
 | signaling NaN, the invalid exception is raised.
 *----------------------------------------------------------------------------*/
 
-static float64 propagateFloat64NaN( float64 a, float64 b )
+static float64 propagateFloat64NaN( float64 a, float64 b, float_ctrl* c )
 {
     flag aIsNaN, aIsSignalingNaN, bIsNaN, bIsSignalingNaN;
 
@@ -235,7 +238,7 @@ static float64 propagateFloat64NaN( float64 a, float64 b )
     a |= LIT64( 0x0008000000000000 );
     b |= LIT64( 0x0008000000000000 );
 #ifdef SOFTFLOAT_I860
-    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise2( float_flag_signaling );
+    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling, c );
 #else
     if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling );
 #endif
@@ -369,11 +372,11 @@ flag floatx80_is_normal( floatx80 a )
 | invalid exception is raised.
 *----------------------------------------------------------------------------*/
 
-static commonNaNT floatx80ToCommonNaN( floatx80 a )
+static commonNaNT floatx80ToCommonNaN( floatx80 a, float_ctrl* c )
 {
     commonNaNT z;
 
-    if ( floatx80_is_signaling_nan( a ) ) float_raise( float_flag_signaling );
+    if ( floatx80_is_signaling_nan( a ) ) float_raise( float_flag_signaling, c );
     z.sign = a.high>>15;
     z.low = 0;
     z.high = a.low<<1;
@@ -405,7 +408,7 @@ static floatx80 commonNaNToFloatx80( commonNaNT a )
 | `b' is a signaling NaN, the invalid exception is raised.
 *----------------------------------------------------------------------------*/
 
-floatx80 propagateFloatx80NaN( floatx80 a, floatx80 b )
+floatx80 propagateFloatx80NaN( floatx80 a, floatx80 b, float_ctrl* c )
 {
     flag aIsNaN, aIsSignalingNaN, bIsSignalingNaN;
 #ifndef SOFTFLOAT_68K
@@ -419,12 +422,12 @@ floatx80 propagateFloatx80NaN( floatx80 a, floatx80 b )
 #ifdef SOFTFLOAT_68K
     a.low |= LIT64( 0x4000000000000000 );
     b.low |= LIT64( 0x4000000000000000 );
-    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling );
+    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling, c );
     return aIsNaN ? a : b;
 #else
     a.low |= LIT64( 0xC000000000000000 );
     b.low |= LIT64( 0xC000000000000000 );
-    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling );
+    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling, c );
     if ( aIsNaN ) {
         return ( aIsSignalingNaN & bIsNaN ) ? b : a;
     }
@@ -442,10 +445,10 @@ floatx80 propagateFloatx80NaN( floatx80 a, floatx80 b )
  | is raised.
  *----------------------------------------------------------------------------*/
 
-floatx80 propagateFloatx80NaNOneArg(floatx80 a)
+floatx80 propagateFloatx80NaNOneArg( floatx80 a, float_ctrl* c )
 {
     if ( floatx80_is_signaling_nan( a ) )
-        float_raise( float_flag_signaling );
+        float_raise( float_flag_signaling, c );
 
     a.low |= LIT64( 0x4000000000000000 );
     
@@ -529,11 +532,11 @@ flag float128_is_signaling_nan( float128 a )
 | exception is raised.
 *----------------------------------------------------------------------------*/
 
-static commonNaNT float128ToCommonNaN( float128 a )
+static commonNaNT float128ToCommonNaN( float128 a, float_ctrl* c )
 {
     commonNaNT z;
 
-    if ( float128_is_signaling_nan( a ) ) float_raise( float_flag_signaling );
+    if ( float128_is_signaling_nan( a ) ) float_raise( float_flag_signaling, c );
     z.sign = a.high>>63;
     shortShift128Left( a.high, a.low, 16, &z.high, &z.low );
     return z;
@@ -561,7 +564,7 @@ static float128 commonNaNToFloat128( commonNaNT a )
 | `b' is a signaling NaN, the invalid exception is raised.
 *----------------------------------------------------------------------------*/
 
-static float128 propagateFloat128NaN( float128 a, float128 b )
+static float128 propagateFloat128NaN( float128 a, float128 b, float_ctrl* c )
 {
     flag aIsNaN, aIsSignalingNaN, bIsNaN, bIsSignalingNaN;
 
@@ -571,7 +574,7 @@ static float128 propagateFloat128NaN( float128 a, float128 b )
     bIsSignalingNaN = float128_is_signaling_nan( b );
     a.high |= LIT64( 0x0000800000000000 );
     b.high |= LIT64( 0x0000800000000000 );
-    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling );
+    if ( aIsSignalingNaN | bIsSignalingNaN ) float_raise( float_flag_signaling, c );
     if ( aIsNaN ) {
         return ( aIsSignalingNaN & bIsNaN ) ? b : a;
     }

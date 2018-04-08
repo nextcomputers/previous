@@ -125,7 +125,7 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
                 m_single_stepping = 1;
                 break;
             case 'w':
-                nd_dbg_cmd(buf);
+                nd->dbg_cmd(buf);
                 break;
             case 'k':
                 m_console[m_console_idx] = 0;
@@ -181,10 +181,10 @@ void i860_cpu_device::debugger(char cmd, const char* format, ...) {
                          "   b: break - set trap on next instruction\n"
                          "   t: dump traceback buffer (t[count])\n"
                          "   x: give virt->phys translation (x{0xaddress})\n");
-                nd_dbg_cmd(0);
+                nd->dbg_cmd(0);
                 break;
             default:
-                if(!(nd_dbg_cmd(buf)))
+                if(!(nd->dbg_cmd(buf)))
                     fprintf (stderr, "Bad command '%s'. Type '?' for help.\n", buf);
                 break;
         }
@@ -232,7 +232,7 @@ void i860_cpu_device::dbg_memdump (UINT32 addr, int len) {
 			if (GET_DIRBASE_ATE ())
 				phys_addr = get_address_translation (addr, 1  /* is_dataref */, 0 /* is_write */);
 
-			rdmem[1](phys_addr, (UINT32*)&b[i]);
+			rdmem[1](nd, phys_addr, (UINT32*)&b[i]);
 			fprintf (stderr, "%02x ", b[i]);
 			addr++;
 		}

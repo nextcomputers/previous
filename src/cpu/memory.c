@@ -28,6 +28,7 @@ const char Memory_fileid[] = "Previous memory.c : " __DATE__ " " __TIME__;
 #include "nextMemory.h"
 #include "m68000.h"
 #include "configuration.h"
+#include "NextBus.hpp"
 
 #include "newcpu.h"
 

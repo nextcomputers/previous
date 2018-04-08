@@ -5,10 +5,17 @@
   your option any later version. Read the file gpl.txt for details.
 */
 
+#pragma once
+
 #ifndef HATARI_CONFIGURATION_H
 #define HATARI_CONFIGURATION_H
 
+
 #include <stdio.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
 #define ENABLE_TESTING 0
 
@@ -233,6 +240,7 @@ typedef enum
 typedef struct
 {
   MONITORTYPE nMonitorType;
+  int nMonitorNum;
   bool bFullScreen;
   bool bShowStatusbar;
   bool bShowDriveLed;
@@ -310,13 +318,20 @@ typedef struct
   bool bMMU;                      /* TRUE if MMU is enabled */
 } CNF_SYSTEM;
 
+/* Floppy disk drives configuration */
+#define ND_MAX_BOARDS   3
 typedef struct
 {
     bool bEnabled;
-    bool bI860Thread;
-	bool bMainDisplay;
     int  nMemoryBankSize[4];
     char szRomFileName[FILENAME_MAX];
+} NDBOARD;
+
+typedef struct {
+    bool bI860Thread;
+    bool bMainDisplay;
+    int nMainDisplay;
+    NDBOARD board[ND_MAX_BOARDS];
 } CNF_ND;
 
 /* State of system is stored in this structure */
@@ -358,5 +373,9 @@ void Configuration_CheckEthernetSettings(void);
 void Configuration_Load(const char *psFileName);
 void Configuration_Save(void);
 void Configuration_MemorySnapShot_Capture(bool bSave);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 #endif

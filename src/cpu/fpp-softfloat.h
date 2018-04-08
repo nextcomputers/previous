@@ -14,6 +14,7 @@
 
 #include <softfloat.h>
 
+float_ctrl fp_ctrl;
 
 #define	FPCR_ROUNDING_MODE	0x00000030
 #define	FPCR_ROUND_NEAR		0x00000000
@@ -30,60 +31,66 @@ extern uae_u32 fpp_get_fpsr (void);
 
 
 /* Functions for setting host/library modes and getting status */
+STATIC_INLINE void init_fp_mode(void)
+{
+    float_init(&fp_ctrl);
+}
 STATIC_INLINE void set_fp_mode(uae_u32 mode_control)
 {
-    float_detect_tininess = float_tininess_before_rounding;
+    set_float_detect_tininess(float_tininess_before_rounding, &fp_ctrl);
     
     switch(mode_control & FPCR_ROUNDING_PRECISION) {
         case FPCR_PRECISION_SINGLE: // single
-            floatx80_rounding_precision = 32;
+            set_float_rounding_precision(32, &fp_ctrl);
             break;
         case FPCR_PRECISION_DOUBLE: // double
-            floatx80_rounding_precision = 64;
+            set_float_rounding_precision(64, &fp_ctrl);
             break;
         case FPCR_PRECISION_EXTENDED: // extended
-            floatx80_rounding_precision = 80;
+            set_float_rounding_precision(80, &fp_ctrl);
             break;
         default: // double
-            floatx80_rounding_precision = 64;
+            set_float_rounding_precision(64, &fp_ctrl);
             break;
     }
 
     switch(mode_control & FPCR_ROUNDING_MODE) {
         case FPCR_ROUND_NEAR: // to neareset
-            float_rounding_mode = float_round_nearest_even;
+            set_float_rounding_mode(float_round_nearest_even, &fp_ctrl);
             break;
         case FPCR_ROUND_ZERO: // to zero
-            float_rounding_mode = float_round_to_zero;
+            set_float_rounding_mode(float_round_to_zero, &fp_ctrl);
             break;
         case FPCR_ROUND_MINF: // to minus
-            float_rounding_mode = float_round_down;
+            set_float_rounding_mode(float_round_down, &fp_ctrl);
             break;
         case FPCR_ROUND_PINF: // to plus
-            float_rounding_mode = float_round_up;
+            set_float_rounding_mode(float_round_up, &fp_ctrl);
             break;
     }
 }
 STATIC_INLINE void get_fp_status(uae_u32 *status)
 {
-    if (float_exception_flags & float_flag_signaling)
+    int8 flags = get_float_exception_flags(&fp_ctrl);
+    
+    if (flags & float_flag_signaling)
         *status |= 0x4000;
-    if (float_exception_flags & float_flag_invalid)
+    if (flags & float_flag_invalid)
         *status |= 0x2000;
-    if (float_exception_flags & float_flag_overflow)
+    if (flags & float_flag_overflow)
         *status |= 0x1000;
-    if (float_exception_flags & float_flag_underflow)
+    if (flags & float_flag_underflow)
         *status |= 0x0800;
-    if (float_exception_flags & float_flag_divbyzero)
+    if (flags & float_flag_divbyzero)
         *status |= 0x0400;
-    if (float_exception_flags & float_flag_inexact)
+    if (flags & float_flag_inexact)
         *status |= 0x0200;
-    if (float_exception_flags & float_flag_decimal)
+    if (flags & float_flag_decimal)
         *status |= 0x0100;
 }
 STATIC_INLINE void clear_fp_status(void)
 {
-    float_exception_flags = 0;
+    set_float_exception_flags(0, &fp_ctrl);
 }
 
 /* Helper functions */
@@ -107,16 +114,16 @@ STATIC_INLINE const char *fp_print(fptype *fx)
         sprintf(fs, "%c%s", n?'-':'+', "nan");
     } else {
         len = 17;
-        save_exception_flags = float_exception_flags;
-        float_exception_flags = 0;
-        x = floatx80_to_floatdecimal(*fx, &len);
+        save_exception_flags = get_float_exception_flags(&fp_ctrl);
+        set_float_exception_flags(0, &fp_ctrl);
+        x = floatx80_to_floatdecimal(*fx, &len, &fp_ctrl);
         
         sprintf(fs, "%c%01lld.%016llde%c%04d%s%s", n?'-':'+',
                 x.low/LIT64(10000000000000000), x.low%LIT64(10000000000000000),
                 (x.high&0x4000)?'-':'+', x.high&0x3FFF, d?"D":u?"U":"",
-                (float_exception_flags&float_flag_inexact)?"~":"");
+                (get_float_exception_flags(&fp_ctrl)&float_flag_inexact)?"~":"");
 
-        float_exception_flags = save_exception_flags;
+        set_float_exception_flags(save_exception_flags, &fp_ctrl);
     }
     
     return fs;
@@ -170,7 +177,7 @@ STATIC_INLINE void to_single(fptype *fp, uae_u32 wrd1)
 }
 STATIC_INLINE uae_u32 from_single(fptype *fp)
 {
-    float32 f = floatx80_to_float32(*fp);
+    float32 f = floatx80_to_float32(*fp, &fp_ctrl);
     return f;
 }
 
@@ -181,7 +188,7 @@ STATIC_INLINE void to_double(fptype *fp, uae_u32 wrd1, uae_u32 wrd2)
 }
 STATIC_INLINE void from_double(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2)
 {
-    float64 f = floatx80_to_float64(*fp);
+    float64 f = floatx80_to_float64(*fp, &fp_ctrl);
     *wrd1 = f >> 32;
     *wrd2 = (uae_u32)f;
 }
@@ -193,7 +200,7 @@ STATIC_INLINE void to_exten(fptype *fp, uae_u32 wrd1, uae_u32 wrd2, uae_u32 wrd3
 }
 STATIC_INLINE void from_exten(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, uae_u32 *wrd3)
 {
-    floatx80 f = floatx80_to_floatx80(*fp);
+    floatx80 f = floatx80_to_floatx80(*fp, &fp_ctrl);
     *wrd1 = (uae_u32)(f.high << 16);
     *wrd2 = f.low >> 32;
     *wrd3 = (uae_u32)f.low;
@@ -213,9 +220,9 @@ STATIC_INLINE void from_exten_fmovem(fptype *fp, uae_u32 *wrd1, uae_u32 *wrd2, u
 STATIC_INLINE uae_s64 to_int(fptype *src, int size)
 {
     switch (size) {
-        case 0: return floatx80_to_int8(*src);
-        case 1: return floatx80_to_int16(*src);
-        case 2: return floatx80_to_int32(*src);
+        case 0: return floatx80_to_int8(*src, &fp_ctrl);
+        case 1: return floatx80_to_int16(*src, &fp_ctrl);
+        case 2: return floatx80_to_int32(*src, &fp_ctrl);
         default: return 0;
     }
 }
@@ -282,11 +289,11 @@ STATIC_INLINE void to_pack(fptype *fp, uae_u32 *wrd)
     f.high |= pack_sm ? 0x8000 : 0;
     f.low = mant;
     
-    *fp = floatdecimal_to_floatx80(f);
+    *fp = floatdecimal_to_floatx80(f, &fp_ctrl);
 }
 STATIC_INLINE void from_pack(fptype *fp, uae_u32 *wrd, uae_s32 kfactor)
 {
-    floatx80 f = floatx80_to_floatdecimal(*fp, &kfactor);
+    floatx80 f = floatx80_to_floatdecimal(*fp, &kfactor, &fp_ctrl);
     
     uae_u32 pack_exp, pack_exp4, pack_int, pack_se, pack_sm;
     uae_u64 pack_frac;
@@ -350,31 +357,31 @@ STATIC_INLINE void from_pack(fptype *fp, uae_u32 *wrd, uae_s32 kfactor)
 /* Functions for returning exception state data */
 STATIC_INLINE fptype fp_get_internal_overflow(void)
 {
-    return getFloatInternalOverflow();
+    return getFloatInternalOverflow(&fp_ctrl);
 }
 STATIC_INLINE fptype fp_get_internal_underflow(void)
 {
-    return getFloatInternalUnderflow();
+    return getFloatInternalUnderflow(&fp_ctrl);
 }
 STATIC_INLINE fptype fp_get_internal_round_all(void)
 {
-    return getFloatInternalRoundedAll();
+    return getFloatInternalRoundedAll(&fp_ctrl);
 }
 STATIC_INLINE fptype fp_get_internal_round(void)
 {
-    return getFloatInternalRoundedSome();
+    return getFloatInternalRoundedSome(&fp_ctrl);
 }
 STATIC_INLINE fptype fp_get_internal_round_exten(void)
 {
-    return getFloatInternalFloatx80();
+    return getFloatInternalFloatx80(&fp_ctrl);
 }
 STATIC_INLINE fptype fp_get_internal(void)
 {
-    return getFloatInternalUnrounded();
+    return getFloatInternalUnrounded(&fp_ctrl);
 }
 STATIC_INLINE uae_u32 fp_get_internal_grs(void)
 {
-    return (uae_u32)getFloatInternalGRS();
+    return (uae_u32)getFloatInternalGRS(&fp_ctrl);
 }
 
 /* Function for denormalizing */
@@ -388,36 +395,36 @@ STATIC_INLINE void fp_denormalize(fptype *fp, int esign)
 // round to float with extended precision exponent
 STATIC_INLINE void fp_round32(fptype *fp)
 {
-    *fp = floatx80_round32(*fp);
+    *fp = floatx80_round32(*fp, &fp_ctrl);
 }
 
 // round to double with extended precision exponent
 STATIC_INLINE void fp_round64(fptype *fp)
 {
-    *fp = floatx80_round64(*fp);
+    *fp = floatx80_round64(*fp, &fp_ctrl);
 }
 
 // round to float
 STATIC_INLINE void fp_round_single(fptype *fp)
 {
-    *fp = floatx80_round_to_float32(*fp);
+    *fp = floatx80_round_to_float32(*fp, &fp_ctrl);
 }
 
 // round to double
 STATIC_INLINE void fp_round_double(fptype *fp)
 {
-    *fp = floatx80_round_to_float64(*fp);
+    *fp = floatx80_round_to_float64(*fp, &fp_ctrl);
 }
 
 // round to selected precision
 STATIC_INLINE void fp_round(fptype *a)
 {
-    switch(floatx80_rounding_precision) {
+    switch(get_float_rounding_precision(&fp_ctrl)) {
         case 32:
-            *a = floatx80_round_to_float32(*a);
+            *a = floatx80_round_to_float32(*a, &fp_ctrl);
             break;
         case 64:
-            *a = floatx80_round_to_float64(*a);
+            *a = floatx80_round_to_float64(*a, &fp_ctrl);
             break;
         default:
             break;
@@ -427,266 +434,266 @@ STATIC_INLINE void fp_round(fptype *a)
 /* Arithmetic functions */
 STATIC_INLINE void fp_move(fptype *a, fptype *b)
 {
-    *a = floatx80_move(*b);
+    *a = floatx80_move(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_int(fptype *a, fptype *b)
 {
-    *a = floatx80_round_to_int(*b);
+    *a = floatx80_round_to_int(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_intrz(fptype *a, fptype *b)
 {
-    *a = floatx80_round_to_int_toward_zero(*b);
+    *a = floatx80_round_to_int_toward_zero(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_sqrt(fptype *a, fptype *b)
 {
-    *a = floatx80_sqrt(*b);
+    *a = floatx80_sqrt(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_abs(fptype *a, fptype *b)
 {
-    *a = floatx80_abs(*b);
+    *a = floatx80_abs(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_neg(fptype *a, fptype *b)
 {
-    *a = floatx80_neg(*b);
+    *a = floatx80_neg(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_getexp(fptype *a, fptype *b)
 {
-    *a = floatx80_getexp(*b);
+    *a = floatx80_getexp(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_getman(fptype *a, fptype *b)
 {
-    *a = floatx80_getman(*b);
+    *a = floatx80_getman(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_div(fptype *a, fptype *b)
 {
-    *a = floatx80_div(*a, *b);
+    *a = floatx80_div(*a, *b, &fp_ctrl);
 }
 STATIC_INLINE void fp_mod(fptype *a, fptype *b, uae_u64 *q, uae_s8 *s)
 {
-    *a = floatx80_mod(*a, *b, q, s);
+    *a = floatx80_mod(*a, *b, q, s, &fp_ctrl);
 }
 STATIC_INLINE void fp_add(fptype *a, fptype *b)
 {
-    *a = floatx80_add(*a, *b);
+    *a = floatx80_add(*a, *b, &fp_ctrl);
 }
 STATIC_INLINE void fp_mul(fptype *a, fptype *b)
 {
-    *a = floatx80_mul(*a, *b);
+    *a = floatx80_mul(*a, *b, &fp_ctrl);
 }
 STATIC_INLINE void fp_sgldiv(fptype *a, fptype *b)
 {
-    *a = floatx80_sgldiv(*a, *b);
+    *a = floatx80_sgldiv(*a, *b, &fp_ctrl);
 }
 STATIC_INLINE void fp_rem(fptype *a, fptype *b, uae_u64 *q, uae_s8 *s)
 {
-    *a = floatx80_rem(*a, *b, q, s);
+    *a = floatx80_rem(*a, *b, q, s, &fp_ctrl);
 }
 STATIC_INLINE void fp_scale(fptype *a, fptype *b)
 {
-    *a = floatx80_scale(*a, *b);
+    *a = floatx80_scale(*a, *b, &fp_ctrl);
 }
 STATIC_INLINE void fp_sglmul(fptype *a, fptype *b)
 {
-    *a = floatx80_sglmul(*a, *b);
+    *a = floatx80_sglmul(*a, *b, &fp_ctrl);
 }
 STATIC_INLINE void fp_sub(fptype *a, fptype *b)
 {
-    *a = floatx80_sub(*a, *b);
+    *a = floatx80_sub(*a, *b, &fp_ctrl);
 }
 STATIC_INLINE void fp_cmp(fptype *a, fptype *b)
 {
-    *a = floatx80_cmp(*a, *b);
+    *a = floatx80_cmp(*a, *b, &fp_ctrl);
 }
 STATIC_INLINE void fp_tst(fptype *a, fptype *b)
 {
-    *a = floatx80_tst(*b);
+    *a = floatx80_tst(*b, &fp_ctrl);
 }
 
 STATIC_INLINE void fp_sinh(fptype *a, fptype *b)
 {
-    *a = floatx80_sinh(*b);
+    *a = floatx80_sinh(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_lognp1(fptype *a, fptype *b)
 {
-    *a = floatx80_lognp1(*b);
+    *a = floatx80_lognp1(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_etoxm1(fptype *a, fptype *b)
 {
-    *a = floatx80_etoxm1(*b);
+    *a = floatx80_etoxm1(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_tanh(fptype *a, fptype *b)
 {
-    *a = floatx80_tanh(*b);
+    *a = floatx80_tanh(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_atan(fptype *a, fptype *b)
 {
-    *a = floatx80_atan(*b);
+    *a = floatx80_atan(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_asin(fptype *a, fptype *b)
 {
-    *a = floatx80_asin(*b);
+    *a = floatx80_asin(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_atanh(fptype *a, fptype *b)
 {
-    *a = floatx80_atanh(*b);
+    *a = floatx80_atanh(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_sin(fptype *a, fptype *b)
 {
-    *a = floatx80_sin(*b);
+    *a = floatx80_sin(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_tan(fptype *a, fptype *b)
 {
-    *a = floatx80_tan(*b);
+    *a = floatx80_tan(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_etox(fptype *a, fptype *b)
 {
-    *a = floatx80_etox(*b);
+    *a = floatx80_etox(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_twotox(fptype *a, fptype *b)
 {
-    *a = floatx80_twotox(*b);
+    *a = floatx80_twotox(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_tentox(fptype *a, fptype *b)
 {
-    *a = floatx80_tentox(*b);
+    *a = floatx80_tentox(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_logn(fptype *a, fptype *b)
 {
-    *a = floatx80_logn(*b);
+    *a = floatx80_logn(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_log10(fptype *a, fptype *b)
 {
-    *a = floatx80_log10(*b);
+    *a = floatx80_log10(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_log2(fptype *a, fptype *b)
 {
-    *a = floatx80_log2(*b);
+    *a = floatx80_log2(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_cosh(fptype *a, fptype *b)
 {
-    *a = floatx80_cosh(*b);
+    *a = floatx80_cosh(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_acos(fptype *a, fptype *b)
 {
-    *a = floatx80_acos(*b);
+    *a = floatx80_acos(*b, &fp_ctrl);
 }
 STATIC_INLINE void fp_cos(fptype *a, fptype *b)
 {
-    *a = floatx80_cos(*b);
+    *a = floatx80_cos(*b, &fp_ctrl);
 }
 
 /* Functions with fixed precision */
 STATIC_INLINE void fp_move_single(fptype *a, fptype *b)
 {
-    int8 oldprec = floatx80_rounding_precision;
-    floatx80_rounding_precision = 32;
-    *a = floatx80_move(*b);
-    floatx80_rounding_precision = oldprec;
+    int8 oldprec = get_float_rounding_precision(&fp_ctrl);
+    set_float_rounding_precision(32, &fp_ctrl);
+    *a = floatx80_move(*b, &fp_ctrl);
+    set_float_rounding_precision(oldprec, &fp_ctrl);
 }
 STATIC_INLINE void fp_abs_single(fptype *a, fptype *b)
 {
-    int8 oldprec = floatx80_rounding_precision;
-    floatx80_rounding_precision = 32;
-    *a = floatx80_abs(*b);
-    floatx80_rounding_precision = oldprec;
+    int8 oldprec = get_float_rounding_precision(&fp_ctrl);
+    set_float_rounding_precision(32, &fp_ctrl);
+    *a = floatx80_abs(*b, &fp_ctrl);
+    set_float_rounding_precision(oldprec, &fp_ctrl);
 }
 STATIC_INLINE void fp_neg_single(fptype *a, fptype *b)
 {
-    int8 oldprec = floatx80_rounding_precision;
-    floatx80_rounding_precision = 32;
-    *a = floatx80_neg(*b);
-    floatx80_rounding_precision = oldprec;
+    int8 oldprec = get_float_rounding_precision(&fp_ctrl);
+    set_float_rounding_precision(32, &fp_ctrl);
+    *a = floatx80_neg(*b, &fp_ctrl);
+    set_float_rounding_precision(oldprec, &fp_ctrl);
 }
 STATIC_INLINE void fp_add_single(fptype *a, fptype *b)
 {
-    int8 oldprec = floatx80_rounding_precision;
-    floatx80_rounding_precision = 32;
-    *a = floatx80_add(*a, *b);
-    floatx80_rounding_precision = oldprec;
+    int8 oldprec = get_float_rounding_precision(&fp_ctrl);
+    set_float_rounding_precision(32, &fp_ctrl);
+    *a = floatx80_add(*a, *b, &fp_ctrl);
+    set_float_rounding_precision(oldprec, &fp_ctrl);
 }
 STATIC_INLINE void fp_sub_single(fptype *a, fptype *b)
 {
-    int8 oldprec = floatx80_rounding_precision;
-    floatx80_rounding_precision = 32;
-    *a = floatx80_sub(*a, *b);
-    floatx80_rounding_precision = oldprec;
+    int8 oldprec = get_float_rounding_precision(&fp_ctrl);
+    set_float_rounding_precision(32, &fp_ctrl);
+    *a = floatx80_sub(*a, *b, &fp_ctrl);
+    set_float_rounding_precision(oldprec, &fp_ctrl);
 }
 STATIC_INLINE void fp_mul_single(fptype *a, fptype *b)
 {
-    int8 oldprec = floatx80_rounding_precision;
-    floatx80_rounding_precision = 32;
-    *a = floatx80_mul(*a, *b);
-    floatx80_rounding_precision = oldprec;
+    int8 oldprec = get_float_rounding_precision(&fp_ctrl);
+    set_float_rounding_precision(32, &fp_ctrl);
+    *a = floatx80_mul(*a, *b, &fp_ctrl);
+    set_float_rounding_precision(oldprec, &fp_ctrl);
 }
 STATIC_INLINE void fp_div_single(fptype *a, fptype *b)
 {
-    int8 oldprec = floatx80_rounding_precision;
-    floatx80_rounding_precision = 32;
-    *a = floatx80_div(*a, *b);
-    floatx80_rounding_precision = oldprec;
+    int8 oldprec = get_float_rounding_precision(&fp_ctrl);
+    set_float_rounding_precision(32, &fp_ctrl);
+    *a = floatx80_div(*a, *b, &fp_ctrl);
+    set_float_rounding_precision(oldprec, &fp_ctrl);
 }
 STATIC_INLINE void fp_sqrt_single(fptype *a, fptype *b)
 {
-    int8 oldprec = floatx80_rounding_precision;
-    floatx80_rounding_precision = 32;
-    *a = floatx80_sqrt(*b);
-    floatx80_rounding_precision = oldprec;
+    int8 oldprec = get_float_rounding_precision(&fp_ctrl);
+    set_float_rounding_precision(32, &fp_ctrl);
+    *a = floatx80_sqrt(*b, &fp_ctrl);
+    set_float_rounding_precision(oldprec, &fp_ctrl);
 }
 STATIC_INLINE void fp_move_double(fptype *a, fptype *b)
 {
-    int8 oldprec = floatx80_rounding_precision;
-    floatx80_rounding_precision = 64;
-    *a = floatx80_move(*b);
-    floatx80_rounding_precision = oldprec;
+    int8 oldprec = get_float_rounding_precision(&fp_ctrl);
+    set_float_rounding_precision(64, &fp_ctrl);
+    *a = floatx80_move(*b, &fp_ctrl);
+    set_float_rounding_precision(oldprec, &fp_ctrl);
 }
 STATIC_INLINE void fp_abs_double(fptype *a, fptype *b)
 {
-    int8 oldprec = floatx80_rounding_precision;
-    floatx80_rounding_precision = 64;
-    *a = floatx80_abs(*b);
-    floatx80_rounding_precision = oldprec;
+    int8 oldprec = get_float_rounding_precision(&fp_ctrl);
+    set_float_rounding_precision(64, &fp_ctrl);
+    *a = floatx80_abs(*b, &fp_ctrl);
+    set_float_rounding_precision(oldprec, &fp_ctrl);
 }
 STATIC_INLINE void fp_neg_double(fptype *a, fptype *b)
 {
-    int8 oldprec = floatx80_rounding_precision;
-    floatx80_rounding_precision = 64;
-    *a = floatx80_neg(*b);
-    floatx80_rounding_precision = oldprec;
+    int8 oldprec = get_float_rounding_precision(&fp_ctrl);
+    set_float_rounding_precision(64, &fp_ctrl);
+    *a = floatx80_neg(*b, &fp_ctrl);
+    set_float_rounding_precision(oldprec, &fp_ctrl);
 }
 STATIC_INLINE void fp_add_double(fptype *a, fptype *b)
 {
-    int8 oldprec = floatx80_rounding_precision;
-    floatx80_rounding_precision = 64;
-    *a = floatx80_add(*a, *b);
-    floatx80_rounding_precision = oldprec;
+    int8 oldprec = get_float_rounding_precision(&fp_ctrl);
+    set_float_rounding_precision(64, &fp_ctrl);
+    *a = floatx80_add(*a, *b, &fp_ctrl);
+    set_float_rounding_precision(oldprec, &fp_ctrl);
 }
 STATIC_INLINE void fp_sub_double(fptype *a, fptype *b)
 {
-    int8 oldprec = floatx80_rounding_precision;
-    floatx80_rounding_precision = 64;
-    *a = floatx80_sub(*a, *b);
-    floatx80_rounding_precision = oldprec;
+    int8 oldprec = get_float_rounding_precision(&fp_ctrl);
+    set_float_rounding_precision(64, &fp_ctrl);
+    *a = floatx80_sub(*a, *b, &fp_ctrl);
+    set_float_rounding_precision(oldprec, &fp_ctrl);
 }
 STATIC_INLINE void fp_mul_double(fptype *a, fptype *b)
 {
-    int8 oldprec = floatx80_rounding_precision;
-    floatx80_rounding_precision = 64;
-    *a = floatx80_mul(*a, *b);
-    floatx80_rounding_precision = oldprec;
+    int8 oldprec = get_float_rounding_precision(&fp_ctrl);
+    set_float_rounding_precision(64, &fp_ctrl);
+    *a = floatx80_mul(*a, *b, &fp_ctrl);
+    set_float_rounding_precision(oldprec, &fp_ctrl);
 }
 STATIC_INLINE void fp_div_double(fptype *a, fptype *b)
 {
-    int8 oldprec = floatx80_rounding_precision;
-    floatx80_rounding_precision = 64;
-    *a = floatx80_div(*a, *b);
-    floatx80_rounding_precision = oldprec;
+    int8 oldprec = get_float_rounding_precision(&fp_ctrl);
+    set_float_rounding_precision(64, &fp_ctrl);
+    *a = floatx80_div(*a, *b, &fp_ctrl);
+    set_float_rounding_precision(oldprec, &fp_ctrl);
 }
 STATIC_INLINE void fp_sqrt_double(fptype *a, fptype *b)
 {
-    int8 oldprec = floatx80_rounding_precision;
-    floatx80_rounding_precision = 64;
-    *a = floatx80_sqrt(*b);
-    floatx80_rounding_precision = oldprec;
+    int8 oldprec = get_float_rounding_precision(&fp_ctrl);
+    set_float_rounding_precision(64, &fp_ctrl);
+    *a = floatx80_sqrt(*b, &fp_ctrl);
+    set_float_rounding_precision(oldprec, &fp_ctrl);
 }
 
 
