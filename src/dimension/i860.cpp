@@ -15,17 +15,17 @@
 
 ***************************************************************************/
 
-#include "i860.hpp"
 #include <stdlib.h>
-
 #if defined _WIN32
 #undef mkdir
 #endif
 #include <unistd.h>
 
-extern "C" {
-    #include "dimension.hpp"
+#include "i860.hpp"
+#include "dimension.hpp"
+#include "log.h"
 
+extern "C" {
     static void i860_run_nop(int nHostCycles) {}
 
     i860_run_func i860_Run = i860_run_nop;

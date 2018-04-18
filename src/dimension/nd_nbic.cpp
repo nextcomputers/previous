@@ -5,6 +5,7 @@
 #include "sysReg.h"
 #include "nd_nbic.hpp"
 #include "dimension.hpp"
+#include "log.h"
 
 /* NeXTdimention NBIC */
 #define ND_NBIC_INTR    0x80
