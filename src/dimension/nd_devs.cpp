@@ -13,7 +13,6 @@
 #include "nd_sdl.hpp"
 #include "ramdac.h"
 #include "host.h"
-#include "log.h"
 
 /* --------- NEXTDIMENSION DEVICES ---------- */
 

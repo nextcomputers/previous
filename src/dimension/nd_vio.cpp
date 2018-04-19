@@ -12,7 +12,7 @@
 #include "host.h"
 
 
-#define LOG_VID_LEVEL   LOG_NONE
+#define LOG_VID_LEVEL   LOG_WARN
 
 /* --------- NEXTDIMENSION VIDEO I/O ---------- *
  *                                              *
