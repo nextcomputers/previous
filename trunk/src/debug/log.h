@@ -22,7 +22,6 @@ extern "C" {
  */
 typedef enum
 {
-    LOG_NONE,   /* invalid LOG level */
 /* these present user with a dialog and log the issue */
 	LOG_FATAL,	/* Hatari can't continue unless user resolves issue */
 	LOG_ERROR,	/* something user did directly failed (e.g. save) */
@@ -31,6 +30,7 @@ typedef enum
 	LOG_INFO,	/* user action success (e.g. TOS file load) */
 	LOG_TODO,	/* functionality not yet being emulated */
 	LOG_DEBUG,	/* information about internal Hatari working */
+	LOG_NONE	/* invalid LOG level */
 } LOGTYPE;
 
 #ifndef __GNUC__
@@ -41,28 +41,19 @@ typedef enum
 extern int Log_Init(void);
 extern int Log_SetAlertLevel(int level);
 extern void Log_UnInit(void);
-extern void _Log_Printf(LOGTYPE nType, const char *psFormat, ...)
+extern void Log_Printf(LOGTYPE nType, const char *psFormat, ...)
 	__attribute__ ((format (printf, 2, 3)));
 extern void Log_AlertDlg(LOGTYPE nType, const char *psFormat, ...)
 	__attribute__ ((format (printf, 2, 3)));
 extern LOGTYPE Log_ParseOptions(const char *OptionStr);
 extern const char* Log_SetTraceOptions(const char *OptionsStr);
 extern char *Log_MatchTrace(const char *text, int state);
-    
+
 #ifndef __GNUC__
 #undef __attribute__
 #endif
 
-#define _Log_LOG_FATAL(nType, psFormat, ...) _Log_Printf(nType, psFormat, ## __VA_ARGS__)
-#define _Log_LOG_ERROR(nType, psFormat, ...) _Log_Printf(nType, psFormat, ## __VA_ARGS__)
-#define _Log_LOG_WARN(nType, psFormat, ...)  _Log_Printf(nType, psFormat, ## __VA_ARGS__)
-#define _Log_LOG_INFO(nType, psFormat, ...)
-#define _Log_LOG_TODO(nType, psFormat, ...)
-#define _Log_LOG_DEBUG(nType, psFormat, ...)
-#define _Log_LOG_NONE(nType, psFormat, ...)
-    
-#define LOG_LEVEL_COMBINE(prefix, nType, psFormat, ...) prefix ## nType (nType, psFormat, ## __VA_ARGS__)
-#define Log_Printf(nType, psFormat, ...) LOG_LEVEL_COMBINE(_Log_,nType, psFormat, ## __VA_ARGS__)
+
 
 /* Tracing
  * -------
