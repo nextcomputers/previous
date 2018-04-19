@@ -353,10 +353,10 @@ void i860_cpu_device::dump_state()
 void i860_cpu_device::halt(bool state) {
     if(state) {
         m_halt = true;
-        Log_Print(LOG_WARN, "[i860] **** HALTED ****");
+        Log_Printf(LOG_WARN, "[i860] **** HALTED ****");
         Statusbar_SetNdLed(0);
     } else {
-        Log_Print(LOG_WARN, "[i860] **** RESTARTED ****");
+        Log_Printf(LOG_WARN, "[i860] **** RESTARTED ****");
         m_halt = false;
         Statusbar_SetNdLed(1);
     }
@@ -365,9 +365,9 @@ void i860_cpu_device::halt(bool state) {
 void i860_cpu_device::pause(bool state) {
     if(state) {
         m_halt = true;
-        Log_Print(LOG_WARN, "[i860] **** PAUSED ****");
+        Log_Printf(LOG_WARN, "[i860] **** PAUSED ****");
     } else {
-        Log_Print(LOG_WARN, "[i860] **** RESUMED ****");
+        Log_Printf(LOG_WARN, "[i860] **** RESUMED ****");
         m_halt = false;
     }
 }

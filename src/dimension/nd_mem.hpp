@@ -4,6 +4,7 @@
 #define __ND_MEM_H__
 
 #include <sysdeps.h>
+#include "log.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,6 +21,8 @@ extern "C" {
     
 #define ND_NBIC_SPACE   0xFFFFFFE8
 
+#define LOG_ND_MEM      LOG_NONE
+    
 typedef uae_u32 (*nd_mem_get_func)(int, uaecptr) REGPARAM;
 typedef void (*nd_mem_put_func)(int, uaecptr, uae_u32) REGPARAM;
 

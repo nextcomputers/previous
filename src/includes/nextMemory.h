@@ -19,6 +19,8 @@ extern Uint8 NEXTRam[128*1024*1024];
 extern Uint8 NEXTRom[0x20000];
 extern Uint8 NEXTIo[0x20000];
 
+
+
 /* Offset NEXT address to PC pointer: */
 // # define NEXTRAM_ADDR(Var)  ((unsigned long)NEXTRam+((Uint32)(Var) & 0x03ffffff))
 

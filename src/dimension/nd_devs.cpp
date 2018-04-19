@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <limits.h>
 #include <stdlib.h>
 
@@ -12,6 +13,7 @@
 #include "nd_sdl.hpp"
 #include "ramdac.h"
 #include "host.h"
+#include "log.h"
 
 /* --------- NEXTDIMENSION DEVICES ---------- */
 

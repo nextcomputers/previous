@@ -480,10 +480,10 @@ private:
     bool   m_break_on_next_msg;
     UINT32 m_traceback[256];
     int    m_traceback_idx;
-
+    
     /* Program counter (1 x 32-bits).  Reset starts at pc=0xffffff00.  */
     UINT32 m_pc;
-    
+
 	/* Integer registers (32 x 32-bits).  */
 	UINT32  m_iregs[32];
     

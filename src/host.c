@@ -12,6 +12,7 @@
 #include "host.h"
 #include "configuration.h"
 #include "main.h"
+#include "log.h"
 
 /* NeXTdimension blank handling, see nd_sdl.c */
 void nd_display_blank(int num);
@@ -88,9 +89,9 @@ bool host_blank_state(int slot, int src) {
 }
 
 void host_hardclock(int expected, int actual) {
-    if(abs(actual-expected) > 1000)
-        fprintf(stderr, "[Hardclock] expected:%dus actual:%dus\n", expected, actual);
-    else {
+    if(abs(actual-expected) > 1000) {
+        Log_Printf(LOG_WARN, "[Hardclock] expected:%dus actual:%dus\n", expected, actual);
+    } else {
         hardClockExpected += expected;
         hardClockActual   += actual;
     }

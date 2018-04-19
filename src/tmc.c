@@ -67,7 +67,7 @@ static void TurboSCR1_Reset(void) {
 		case MEMORY_100NS: memory_speed = 0x50; break;
 		case MEMORY_80NS: memory_speed = 0xA0; break;
 		case MEMORY_60NS: memory_speed = 0xF0; break;
-		default: Log_Print(LOG_WARN, "Turbo SCR1 error: unknown memory speed\n"); break;
+		default: Log_Printf(LOG_WARN, "Turbo SCR1 error: unknown memory speed\n"); break;
 	}
 	tmc.scr1 = ((memory_speed&0xF0)|(cpu_speed&0x07));
 	if (ConfigureParams.System.nMachineType == NEXT_CUBE040)
@@ -85,16 +85,16 @@ static void TurboSCR1_Reset(void) {
 /* Register read/write functions */
 
 static void tmc_ill_write(Uint8 val) {
-	Log_Print(LOG_WARN, "[TMC] Illegal write!\n");
+	Log_Printf(LOG_WARN, "[TMC] Illegal write!\n");
 }
 
 static Uint8 tmc_unimpl_read(void) {
-	Log_Print(LOG_WARN, "[TMC] Unimplemented read!\n");
+	Log_Printf(LOG_WARN, "[TMC] Unimplemented read!\n");
 	return 0;
 }
 
 static void tmc_unimpl_write(Uint8 val) {
-	Log_Print(LOG_WARN, "[TMC] Unimplemented write!\n");
+	Log_Printf(LOG_WARN, "[TMC] Unimplemented write!\n");
 }
 
 static Uint8 tmc_void_read(void) {
@@ -303,7 +303,7 @@ Uint32 tmc_lget(uaecptr addr) {
 	Uint32 val = 0;
 	
     if (addr%4) {
-        Log_Print(LOG_WARN, "[TMC] Unaligned access.");
+        Log_Printf(LOG_WARN, "[TMC] Unaligned access.");
         abort();
     }
 	
@@ -312,7 +312,7 @@ Uint32 tmc_lget(uaecptr addr) {
 		if (ConfigureParams.System.nCpuFreq==40) {
 			val = tmc.nitro;
 		} else {
-			Log_Print(LOG_WARN, "[TMC] No nitro --> bus error!");
+			Log_Printf(LOG_WARN, "[TMC] No nitro --> bus error!");
 			M68000_BusError(addr, 1);
 		}
 		return val;
@@ -345,7 +345,7 @@ Uint32 tmc_wget(uaecptr addr) {
     Uint32 val = 0;
     
 	if (addr%2) {
-		Log_Print(LOG_WARN, "[TMC] Unaligned access.");
+		Log_Printf(LOG_WARN, "[TMC] Unaligned access.");
 		abort();
 	}
 	
@@ -388,7 +388,7 @@ Uint32 tmc_bget(uaecptr addr) {
 
 void tmc_lput(uaecptr addr, Uint32 l) {
 	if (addr%4) {
-		Log_Print(LOG_WARN, "[TMC] Unaligned access.");
+		Log_Printf(LOG_WARN, "[TMC] Unaligned access.");
 		abort();
 	}
 	
@@ -397,7 +397,7 @@ void tmc_lput(uaecptr addr, Uint32 l) {
 		if (ConfigureParams.System.nCpuFreq==40) {
 			tmc.nitro = l&0x0000011F;
 		} else {
-			Log_Print(LOG_WARN, "[TMC] No nitro --> bus error!");
+			Log_Printf(LOG_WARN, "[TMC] No nitro --> bus error!");
 			M68000_BusError(addr, 0);
 		}
 		return;
@@ -427,7 +427,7 @@ void tmc_lput(uaecptr addr, Uint32 l) {
 
 void tmc_wput(uaecptr addr, Uint32 w) {
 	if (addr%2) {
-		Log_Print(LOG_WARN, "[TMC] Unaligned access.");
+		Log_Printf(LOG_WARN, "[TMC] Unaligned access.");
 		abort();
 	}
 	

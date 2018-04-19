@@ -39,7 +39,7 @@ int rtc_interface_io(Uint8 rtdatabit) {
         case MC68HC68T1: return oldrtc_interface_io(rtdatabit);
         case MCCS1850: return newrtc_interface_io(rtdatabit);
         default:
-            Log_Print(LOG_WARN, "[RTC] error: no I/O function for this chip!");
+            Log_Printf(LOG_WARN, "[RTC] error: no I/O function for this chip!");
             return oldrtc_interface_io(rtdatabit); /* trying old chip */
     }
 }
@@ -63,7 +63,7 @@ void rtc_request_power_down(void) {
         case MC68HC68T1: oldrtc_request_power_down(); return;
         case MCCS1850: newrtc_request_power_down(); return;
         default:
-            Log_Print(LOG_WARN, "[RTC] error: no power down function for this chip!");
+            Log_Printf(LOG_WARN, "[RTC] error: no power down function for this chip!");
             oldrtc_request_power_down(); return; /* trying old chip */
     }
 }
@@ -73,7 +73,7 @@ void rtc_stop_pdown_request(void) {
         case MC68HC68T1: oldrtc_stop_pdown_request(); return;
         case MCCS1850: newrtc_stop_pdown_request(); return;
         default:
-            Log_Print(LOG_WARN, "[RTC] error: no power down function for this chip!");
+            Log_Printf(LOG_WARN, "[RTC] error: no power down function for this chip!");
             oldrtc_stop_pdown_request(); return; /* trying old chip */
     }
 }
@@ -382,7 +382,7 @@ void rtc_put_clock(Uint8 addr, Uint8 val) {
         case 0x32: /* interrupt control register */
             rtc.intctrl = val;
             if (rtc.intctrl&RTC_POWERDOWN) {
-                Log_Print(LOG_WARN, "[RTC] Power down!");
+                Log_Printf(LOG_WARN, "[RTC] Power down!");
                 M68000_Stop();
             }
             break;
@@ -631,7 +631,7 @@ void newrtc_put_clock(Uint8 addr, Uint8 val) {
                 newrtc.status&= ~NRTC_INT_PDOWN;
             }
             if (newrtc.control&NRTC_POWERDOWN) {
-                Log_Print(LOG_WARN, "[newRTC] Power down!");
+                Log_Printf(LOG_WARN, "[newRTC] Power down!");
                 M68000_Stop();
             }
             break;
