@@ -166,12 +166,12 @@ void LP_CSR2_Write(void) {
     
     if ((val&LP_TX_EN) != (nlp.csr.interface&LP_TX_EN)) {
         if (val&LP_TX_EN) {
-            Log_Print(LOG_LP_LEVEL,"[LP] Enable serial interface.");
+            Log_Printf(LOG_LP_LEVEL,"[LP] Enable serial interface.");
             if (ConfigureParams.Printer.bPrinterConnected) {
                 lp_boot_message();
             }
         } else {
-            Log_Print(LOG_LP_LEVEL,"[LP] Disable serial interface.");
+            Log_Printf(LOG_LP_LEVEL,"[LP] Disable serial interface.");
         }
     }
     nlp.csr.interface = val;
@@ -257,27 +257,27 @@ void lp_release_interrupt(void) {
 
 static void lp_gpo(Uint8 cmd) {
     if (cmd&LP_GPO_DENSITY) {
-        Log_Print(LOG_LP_LEVEL,"[LP] Printer 300 DPI mode");
+        Log_Printf(LOG_LP_LEVEL,"[LP] Printer 300 DPI mode");
     }
     if (cmd&LP_GPO_VSYNC) {
-        Log_Print(LOG_LP_LEVEL,"[LP] Printer VSYNC enable");
+        Log_Printf(LOG_LP_LEVEL,"[LP] Printer VSYNC enable");
         lp_interface_status(LP_GPI_VSREQ, false);
     }
     if (cmd&LP_GPO_ENABLE) {
-        Log_Print(LOG_LP_LEVEL,"[LP] Printer enable");
+        Log_Printf(LOG_LP_LEVEL,"[LP] Printer enable");
         lp_interface_status(LP_GPI_VSREQ, true);
     }
     if (cmd&LP_GPO_PWR_RDY) {
-        Log_Print(LOG_LP_LEVEL,"[LP] Printer controller power ready");
+        Log_Printf(LOG_LP_LEVEL,"[LP] Printer controller power ready");
     }
     if (cmd&LP_GPO_CLOCK) {
-        Log_Print(LOG_LP_LEVEL,"[LP] Printer serial data clock");
+        Log_Printf(LOG_LP_LEVEL,"[LP] Printer serial data clock");
     }
     if (cmd&LP_GPO_CMD_BIT) {
-        Log_Print(LOG_LP_LEVEL,"[LP] Printer serial data command bits");
+        Log_Printf(LOG_LP_LEVEL,"[LP] Printer serial data command bits");
     }
     if (cmd&LP_GPO_BUSY) {
-        Log_Print(LOG_LP_LEVEL,"[LP] Printer controller busy");
+        Log_Printf(LOG_LP_LEVEL,"[LP] Printer controller busy");
     }
     lp_gpo_access(cmd);
 }
@@ -340,7 +340,7 @@ void lp_interface_command(Uint8 cmd, Uint32 data) {
             nlp.statmask = (~data)>>24;
             break;
         case LP_CMD_GPI_REQ:
-            Log_Print(LOG_LP_LEVEL,"[LP] Interface command: General purpose input request");
+            Log_Printf(LOG_LP_LEVEL,"[LP] Interface command: General purpose input request");
             lp_gpi();
             break;
         case LP_CMD_MARGINS:
@@ -350,10 +350,10 @@ void lp_interface_command(Uint8 cmd, Uint32 data) {
             
         default: /* Commands with no data */
             if ((cmd&LP_CMD_MASK)==LP_CMD_NODATA) {
-                Log_Print(LOG_LP_LEVEL,"[LP] Interface command: No data command:");
+                Log_Printf(LOG_LP_LEVEL,"[LP] Interface command: No data command:");
 
                 if (cmd&LP_CMD_DATA_EN) {
-                    Log_Print(LOG_LP_LEVEL,"[LP] Enable printer data transfer");
+                    Log_Printf(LOG_LP_LEVEL,"[LP] Enable printer data transfer");
                     /* Setup printing buffer */
                     lp_png_setup(nlp.margins);
                     lp_data_transfer = true;
@@ -364,7 +364,7 @@ void lp_interface_command(Uint8 cmd, Uint32 data) {
                     Statusbar_AddMessage("Laser Printer Printing Page.", 0);
                     CycInt_AddRelativeInterruptUs(1000, 100, INTERRUPT_LP_IO);
                 } else {
-                    Log_Print(LOG_LP_LEVEL,"[LP] Disable printer data transfer");
+                    Log_Printf(LOG_LP_LEVEL,"[LP] Disable printer data transfer");
                     if (lp_data_transfer) {
                         /* Save buffered printing data to image file */
                         lp_png_finish();
@@ -372,17 +372,17 @@ void lp_interface_command(Uint8 cmd, Uint32 data) {
                     lp_data_transfer = false;
                 }
                 if (cmd&LP_CMD_300DPI) {
-                    Log_Print(LOG_LP_LEVEL,"[LP] 300 DPI mode");
+                    Log_Printf(LOG_LP_LEVEL,"[LP] 300 DPI mode");
                 } else {
-                    Log_Print(LOG_LP_LEVEL,"[LP] 400 DPI mode");
+                    Log_Printf(LOG_LP_LEVEL,"[LP] 400 DPI mode");
                 }
                 if (cmd&LP_CMD_NORMAL) {
-                    Log_Print(LOG_LP_LEVEL,"[LP] Normal requests for data transfer");
+                    Log_Printf(LOG_LP_LEVEL,"[LP] Normal requests for data transfer");
                 } else {
-                    Log_Print(LOG_LP_LEVEL,"[LP] Early requests for data transfer");
+                    Log_Printf(LOG_LP_LEVEL,"[LP] Early requests for data transfer");
                 }
             } else {
-                Log_Print(LOG_WARN,"[LP] Interface command: Unknown command!");
+                Log_Printf(LOG_WARN,"[LP] Interface command: Unknown command!");
             }
             break;
     }
@@ -522,54 +522,54 @@ void lp_printer_reset(void) {
 static Uint8 lp_printer_command(Uint8 cmd) {
     switch (cmd) {
         case CMD_STATUS0:
-            Log_Print(LOG_LP_LEVEL, "[LP] Read status register 0");
+            Log_Printf(LOG_LP_LEVEL, "[LP] Read status register 0");
             return lp_printer_status(0);
         case CMD_STATUS1:
-            Log_Print(LOG_LP_LEVEL, "[LP] Read status register 1");
+            Log_Printf(LOG_LP_LEVEL, "[LP] Read status register 1");
             return lp_printer_status(1);
         case CMD_STATUS2:
-            Log_Print(LOG_LP_LEVEL, "[LP] Read status register 2");
+            Log_Printf(LOG_LP_LEVEL, "[LP] Read status register 2");
             return lp_printer_status(2);
         case CMD_STATUS4:
-            Log_Print(LOG_LP_LEVEL, "[LP] Read status register 4");
+            Log_Printf(LOG_LP_LEVEL, "[LP] Read status register 4");
             return lp_printer_status(4);
         case CMD_STATUS5:
-            Log_Print(LOG_LP_LEVEL, "[LP] Read status register 5");
+            Log_Printf(LOG_LP_LEVEL, "[LP] Read status register 5");
             return lp_printer_status(5);
         case CMD_STATUS15:
-            Log_Print(LOG_LP_LEVEL, "[LP] Read status register 15");
+            Log_Printf(LOG_LP_LEVEL, "[LP] Read status register 15");
             return lp_printer_status(15);
         /* Commands with no status */
         case CMD_EXT_CLK:
-            Log_Print(LOG_LP_LEVEL, "[LP] External clock");
+            Log_Printf(LOG_LP_LEVEL, "[LP] External clock");
             return lp_printer_status(16);
         case CMD_PRINTER_CLK:
-            Log_Print(LOG_LP_LEVEL, "[LP] Printer clock");
+            Log_Printf(LOG_LP_LEVEL, "[LP] Printer clock");
             return lp_printer_status(16);
         case CMD_PAUSE:
-            Log_Print(LOG_LP_LEVEL, "[LP] Pause");
+            Log_Printf(LOG_LP_LEVEL, "[LP] Pause");
             return lp_printer_status(16);
         case CMD_UNPAUSE:
-            Log_Print(LOG_LP_LEVEL, "[LP] Unpause");
+            Log_Printf(LOG_LP_LEVEL, "[LP] Unpause");
             return lp_printer_status(16);
         case CMD_DRUM_ON:
-            Log_Print(LOG_LP_LEVEL, "[LP] Drum on");
+            Log_Printf(LOG_LP_LEVEL, "[LP] Drum on");
             return lp_printer_status(16);
         case CMD_DRUM_OFF:
-            Log_Print(LOG_LP_LEVEL, "[LP] Drum off");
+            Log_Printf(LOG_LP_LEVEL, "[LP] Drum off");
             return lp_printer_status(16);
         case CMD_CASSFEED:
-            Log_Print(LOG_LP_LEVEL, "[LP] Cassette feed");
+            Log_Printf(LOG_LP_LEVEL, "[LP] Cassette feed");
             return lp_printer_status(16);
         case CMD_HANDFEED:
-            Log_Print(LOG_LP_LEVEL, "[LP] Hand feed");
+            Log_Printf(LOG_LP_LEVEL, "[LP] Hand feed");
             return lp_printer_status(16);
         case CMD_RETRANSCANC:
-            Log_Print(LOG_LP_LEVEL, "[LP] Cancel retransmission");
+            Log_Printf(LOG_LP_LEVEL, "[LP] Cancel retransmission");
             return lp_printer_status(16);
 
         default:
-            Log_Print(LOG_WARN, "[LP] Unknown command!");
+            Log_Printf(LOG_WARN, "[LP] Unknown command!");
             return lp_printer_status(16);
     }
 }
@@ -617,7 +617,7 @@ void Printer_IO_Handler(void) {
         dma_printer_read_memory();
         
         if (lp_buffer.size==0) {
-            Log_Print(LOG_LP_LEVEL,"[LP] Printing done.");
+            Log_Printf(LOG_LP_LEVEL,"[LP] Printing done.");
             nlp.csr.dma |= LP_DMA_OUT_UNDR;
             lp_set_interrupt();
             return;

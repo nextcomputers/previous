@@ -155,13 +155,6 @@ struct cache030
 	uae_u32 tag;
 };
 
-#define FLUSH_040_NOCACHE   0
-#define FLUSH_040_DCACHE    1
-#define FLUSH_040_ICACHE    2
-#define FLUSH_040_BOTHCACHE 3
-
-extern void flush_icache(int cache);
-
 #define CACHESETS040 64
 #define CACHELINES040 4
 struct cache040
@@ -623,6 +616,20 @@ extern uae_u32 read_dcache030(uaecptr, int);
 extern uae_u32 get_word_icache030(uaecptr addr);
 extern uae_u32 get_long_icache030(uaecptr addr);
 
+uae_u32 fill_icache040(uae_u32 addr);
+extern void put_long_cache_040(uaecptr, uae_u32);
+extern void put_word_cache_040(uaecptr, uae_u32);
+extern void put_byte_cache_040(uaecptr, uae_u32);
+extern uae_u32 get_ilong_cache_040(int);
+extern uae_u32 get_iword_cache_040(int);
+extern uae_u32 get_long_cache_040(uaecptr);
+extern uae_u32 get_word_cache_040(uaecptr);
+extern uae_u32 get_byte_cache_040(uaecptr);
+extern uae_u32 next_iword_cache040(void);
+extern uae_u32 next_ilong_cache040(void);
+extern uae_u32 get_word_icache040(uaecptr addr);
+extern uae_u32 get_long_icache040(uaecptr addr);
+
 extern void (*x_do_cycles)(unsigned long);
 extern void (*x_do_cycles_pre)(unsigned long);
 extern void (*x_do_cycles_post)(unsigned long, uae_u32);
@@ -765,9 +772,11 @@ extern cpuop_func *cpufunctbl[65536] ASM_SYM_FOR_FUNC ("cpufunctbl");
 
 #ifdef JIT
 extern void flush_icache(int);
+extern void flush_icache_hard(int);
 extern void compemu_reset(void);
 #else
-/* #define flush_icache(int) do {} while (0) */
+#define flush_icache(int) do {} while (0)
+#define flush_icache_hard(int) do {} while (0)
 #endif
 bool check_prefs_changed_comp (bool);
 extern void flush_dcache (uaecptr, int);

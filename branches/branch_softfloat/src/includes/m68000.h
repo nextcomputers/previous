@@ -146,6 +146,7 @@ extern int	Pairing;
 extern char	PairingArray[ MAX_OPCODE_FAMILY ][ MAX_OPCODE_FAMILY ];
 extern const char *OpcodeName[];
 
+
 /*-----------------------------------------------------------------------*/
 /**
  * Add CPU cycles.

@@ -103,8 +103,9 @@ static void blitColor(SDL_Texture* tex) {
     Uint32* dst = (Uint32*)pixels;
     for(int y = 0; y < NeXT_SCRN_HEIGHT; y++) {
         Uint16* src = (Uint16*)NEXTColorVideo + (y*pitch);
-        for(int x = 0; x < NeXT_SCRN_WIDTH; x++)
+        for(int x = 0; x < NeXT_SCRN_WIDTH; x++) {
             *dst++ = COL2RGB[*src++];
+        }
     }
     SDL_UnlockTexture(tex);
 }
@@ -122,12 +123,12 @@ void blitDimension(Uint32* vram, SDL_Texture* tex) {
     int     d;
     Uint32  format;
     SDL_QueryTexture(tex, &format, &d, &d, &d);
+    SDL_LockTexture(tex, NULL, &pixels, &d);
+    Uint32* dst = (Uint32*)pixels;
     if(SDL_BYTEORDER == SDL_BIG_ENDIAN) {
         /* Add big-endian accelerated blit loops as needed here */
         switch (format) {
             default: {
-                SDL_LockTexture(tex, NULL, &pixels, &d);
-                Uint32* dst = (Uint32*)pixels;
                 /* fallback to SDL_MapRGB */
                 SDL_PixelFormat* pformat = SDL_AllocFormat(format);
                 for(int y = NeXT_SCRN_HEIGHT; --y >= 0;) {
@@ -138,19 +139,13 @@ void blitDimension(Uint32* vram, SDL_Texture* tex) {
                     src += 32;
                 }
                 SDL_FreeFormat(pformat);
-                SDL_UnlockTexture(tex);
                 break;
             }
         }
     } else {
-       /* Add little-endian accelerated blit loops as needed here */
+        /* Add little-endian accelerated blit loops as needed here */
         switch (format) {
-            case SDL_PIXELFORMAT_RGBA32:
-                SDL_UpdateTexture(tex, NULL, src, (NeXT_SCRN_WIDTH+32)*4);
-                break;
             case SDL_PIXELFORMAT_ARGB8888:
-                SDL_LockTexture(tex, NULL, &pixels, &d);
-                Uint32* dst = (Uint32*)pixels;
                 for(int y = NeXT_SCRN_HEIGHT; --y >= 0;) {
                     for(int x = NeXT_SCRN_WIDTH; --x >= 0;) {
                         // Uint32 LE: AABBGGRR
@@ -160,11 +155,8 @@ void blitDimension(Uint32* vram, SDL_Texture* tex) {
                     }
                     src += 32;
                 }
-                SDL_UnlockTexture(tex);
                 break;
             default: {
-                SDL_LockTexture(tex, NULL, &pixels, &d);
-                Uint32* dst = (Uint32*)pixels;
                 /* fallback to SDL_MapRGB */
                 SDL_PixelFormat* pformat = SDL_AllocFormat(format);
                 for(int y = NeXT_SCRN_HEIGHT; --y >= 0;) {
@@ -175,11 +167,11 @@ void blitDimension(Uint32* vram, SDL_Texture* tex) {
                     src += 32;
                 }
                 SDL_FreeFormat(pformat);
-                SDL_UnlockTexture(tex);
                 break;
             }
         }
     }
+    SDL_UnlockTexture(tex);
 }
 
 /*
@@ -199,9 +191,6 @@ static void blitScreen(SDL_Texture* tex) {
     }
 }
 
-static SDL_Texture*  uiTexture;
-static SDL_Texture*  fbTexture;
-
 /*
  Initializes SDL graphics and then enters repaint loop.
  Loop: Blits the NeXT framebuffer to the fbTexture, blends with the GUI surface and
@@ -219,7 +208,19 @@ static int repainter(void* unused) {
     statusBar.w = width;
     statusBar.h = height - NeXT_SCRN_HEIGHT;
     
+    SDL_Texture*  uiTexture;
+    SDL_Texture*  fbTexture;
+    
     Uint32 r, g, b, a;
+    
+    sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    SDL_RenderSetLogicalSize(sdlRenderer, width, height);
+    
+    uiTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, width, height);
+    SDL_SetTextureBlendMode(uiTexture, SDL_BLENDMODE_BLEND);
+    
+    fbTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, width, height);
+    SDL_SetTextureBlendMode(fbTexture, SDL_BLENDMODE_NONE);
     
     Uint32 format;
     int    d;
@@ -358,15 +359,6 @@ void Screen_Init(void) {
         exit(-1);
     }
 
-    sdlRenderer   = SDL_CreateRenderer(sdlWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    SDL_RenderSetLogicalSize(sdlRenderer, width, height);
-
-    uiTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, width, height);
-    SDL_SetTextureBlendMode(uiTexture, SDL_BLENDMODE_BLEND);
-    
-    fbTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_UNKNOWN, SDL_TEXTUREACCESS_STREAMING, width, height);
-    SDL_SetTextureBlendMode(fbTexture, SDL_BLENDMODE_NONE);
-
     initLatch     = SDL_CreateSemaphore(0);
     repaintThread = SDL_CreateThread(repainter, "[Previous] screen repaint", NULL);
     SDL_SemWait(initLatch);
@@ -382,7 +374,6 @@ void Screen_UnInit(void) {
     doRepaint = false; // stop repaint thread
     int s;
     SDL_WaitThread(repaintThread, &s);
-    
     nd_sdl_destroy();
 }
 

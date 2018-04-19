@@ -202,7 +202,7 @@ void FLP_Select_Write(void) {
     }
     
     if (val&CTRL_EJECT) {
-        Log_Print(LOG_FLP_REG_LEVEL,"[Floppy] Ejecting floppy disk");
+        Log_Printf(LOG_FLP_REG_LEVEL,"[Floppy] Ejecting floppy disk");
         Floppy_Eject(-1);
     }
 }
@@ -263,7 +263,7 @@ int flp_io_drv = 0;
 
 
 void floppy_reset(bool hard) {
-    Log_Print(LOG_WARN,"[Floppy] Reset.");
+    Log_Printf(LOG_WARN,"[Floppy] Reset.");
     
     flp.sra &= ~(SRA_INT|SRA_STEP|SRA_HDSEL|SRA_DIR);
     flp.srb &= ~(SRB_R_TOGGLE|SRB_W_TOGGLE);
@@ -329,7 +329,7 @@ Uint8 cmd_data[8];
 int result_size = 0;
 
 static void floppy_interrupt(void) {
-    Log_Print(LOG_FLP_CMD_LEVEL,"[Floppy] Interrupt.");
+    Log_Printf(LOG_FLP_CMD_LEVEL,"[Floppy] Interrupt.");
     
     if (result_size>0) {
         /* Go to result phase */
@@ -380,7 +380,7 @@ static void check_blocksize(int drive, Uint8 blocksize) {
 
 static void check_protection(int drive) {
     if (flpdrv[drive].protected) {
-        Log_Print(LOG_WARN, "[Floppy] Protection error: Disk is read-only!");
+        Log_Printf(LOG_WARN, "[Floppy] Protection error: Disk is read-only!");
         flp.st[0] |= IC_ABNORMAL;
         flp.st[1] |= ST1_NW;
     }
@@ -503,7 +503,7 @@ static void floppy_read(void) {
     
     /* Match actual track with specified track */
     if (flpdrv[drive].cyl!=c || flpdrv[drive].head!=h || flpdrv[drive].head!=head) {
-        Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Read: track mismatch!");
+        Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Read: track mismatch!");
         flp.st[0]|=IC_ABNORMAL;
         flp.st[2]|=ST2_WC;
     }
@@ -557,7 +557,7 @@ static void floppy_write(void) {
     
     /* Match actual track with specified track */
     if (flpdrv[drive].cyl!=c || flpdrv[drive].head!=h || flpdrv[drive].head!=head) {
-        Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Write: track mismatch!");
+        Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Write: track mismatch!");
         flp.st[0]|=IC_ABNORMAL;
         flp.st[2]|=ST2_WC;
     }
@@ -700,9 +700,9 @@ static void floppy_specify(void) {
     Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Specify: %02X %02X",cmd_data[0],cmd_data[1]);
 
     if (cmd_data[1]&0x01) {
-        Log_Print(LOG_WARN, "[Floppy] Specify: Non-DMA mode");
+        Log_Printf(LOG_WARN, "[Floppy] Specify: Non-DMA mode");
     } else {
-        Log_Print(LOG_WARN, "[Floppy] Specify: DMA mode");
+        Log_Printf(LOG_WARN, "[Floppy] Specify: DMA mode");
     }
     flp.msr |= STAT_RQM;
 }
@@ -713,9 +713,9 @@ static void floppy_configure(void) {
     flp.eis = cmd_data[1]&0x40; /* Enable or disable implied seek */
 
     if (cmd_data[1]&0x10) {
-        Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Configure: disable polling");
+        Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Configure: disable polling");
         if (CycInt_InterruptActive(INTERRUPT_FLP_IO)) {
-            Log_Print(LOG_WARN, "[Floppy] Disable pending reset poll interrupt");
+            Log_Printf(LOG_WARN, "[Floppy] Disable pending reset poll interrupt");
             CycInt_RemovePendingInterrupt(INTERRUPT_FLP_IO);
         }
     }
@@ -745,92 +745,92 @@ static void floppy_execute_cmd(void) {
     
     switch (command&CMD_OPCODE_MSK) {
         case CMD_READ:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Read");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Read");
             floppy_read();
             break;
         case CMD_READ_DEL:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Read and delete");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Read and delete");
             abort();
             break;
         case CMD_WRITE:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Write");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Write");
             floppy_write();
             break;
         case CMD_WRITE_DEL:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Write and delete");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Write and delete");
             abort();
             break;
         case CMD_READ_TRK:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Read track");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Read track");
             abort();
             break;
         case CMD_VERIFY:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Verify");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Verify");
             abort();
             break;
         case CMD_VERSION:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Version");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Version");
             abort();
             break;
         case CMD_FORMAT:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Format");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Format");
             floppy_format();
             break;
         case CMD_SCAN_E:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Scan equal");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Scan equal");
             abort();
             break;
         case CMD_SCAN_LE:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Scan lower or equal");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Scan lower or equal");
             abort();
             break;
         case CMD_SCAN_HE:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Scan higher or equal");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Scan higher or equal");
             abort();
             break;
         case CMD_RECAL:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Recalibrate");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Recalibrate");
             floppy_recalibrate();
             break;
         case CMD_INTSTAT:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Interrupt status");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Interrupt status");
             floppy_interrupt_status();
             break;
         case CMD_SPECIFY:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Specify");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Specify");
             floppy_specify();
             break;
         case CMD_DRV_STATUS:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Drive status");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Drive status");
             abort();
             break;
         case CMD_SEEK:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Seek");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Seek");
             floppy_seek(command&0x80);
             break;
         case CMD_CONFIGURE:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Configure");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Configure");
             floppy_configure();
             break;
         case CMD_DUMPREG:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Dump register");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Dump register");
             abort();
             break;
         case CMD_READ_ID:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Read ID");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Read ID");
             floppy_read_id();
             break;
         case CMD_PERPEND:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Perpendicular");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Perpendicular");
             floppy_perpendicular();
             break;
         case CMD_LOCK:
-            Log_Print(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Lock");
+            Log_Printf(LOG_FLP_CMD_LEVEL, "[Floppy] Command: Lock");
             abort();
             break;
 
         default:
-            Log_Print(LOG_WARN, "[Floppy] Command: Unknown");
+            Log_Printf(LOG_WARN, "[Floppy] Command: Unknown");
             floppy_unimplemented();
             break;
     }
@@ -869,7 +869,7 @@ Uint8 floppy_fifo_read(void) {
         result_size--;
         Log_Printf(LOG_FLP_REG_LEVEL,"[Floppy] FIFO reading byte, val=%02x", val);
     } else {
-        Log_Print(LOG_WARN,"[Floppy] FIFO is emtpy!");
+        Log_Printf(LOG_WARN,"[Floppy] FIFO is emtpy!");
         val = 0;
     }
     
@@ -899,7 +899,7 @@ void floppy_dor_write(Uint8 val) {
         floppy_reset(false);
     } else {
         flp.dor |= DOR_RESET_N;
-        Log_Print(LOG_FLP_REG_LEVEL,"[Floppy] Clear reset state.");
+        Log_Printf(LOG_FLP_REG_LEVEL,"[Floppy] Clear reset state.");
     }
     if (flpdrv[flp.sel].connected) {
         flp.ctrl &= ~CTRL_DRV_ID;
@@ -942,7 +942,7 @@ Uint8 floppy_sra_read(void) {
 /* -- Floppy I/O functions -- */
 
 static void floppy_rw_nodata(void) {
-    Log_Print(LOG_WARN, "[Floppy] Write: No more data from DMA. Stopping.");
+    Log_Printf(LOG_WARN, "[Floppy] Write: No more data from DMA. Stopping.");
     /* Stop transfer */
     flp_sector_counter=0;
     flp.st[0] |= IC_ABNORMAL;
@@ -953,7 +953,7 @@ static void floppy_rw_nodata(void) {
 static void floppy_format_done(void) {
     int drive = flp_io_drv;
     
-    Log_Print(LOG_WARN, "[Floppy] Format: No more data from DMA. Done.");
+    Log_Printf(LOG_WARN, "[Floppy] Format: No more data from DMA. Done.");
     
     flp.st[0] = IC_NORMAL;
     send_rw_status(drive);
@@ -1026,7 +1026,7 @@ static void floppy_format_sector(void) {
     Uint8 bs = flp_buffer.data[3];
     
     if (c!=flpdrv[drive].cyl || h!=flpdrv[drive].head || bs!=flpdrv[drive].blocksize) {
-        Log_Print(LOG_WARN, "[Floppy] Format error. Bad sector data. Stopping.");
+        Log_Printf(LOG_WARN, "[Floppy] Format error. Bad sector data. Stopping.");
         flp_io_state = FLP_STATE_INTERRUPT; /* This is a hack */
         floppy_format_done();
         flp_buffer.size = 0;
@@ -1135,7 +1135,7 @@ void FLP_IO_Handler(void) {
 /* Initialize/Uninitialize floppy disks */
 
 static void Floppy_Init(void) {
-    Log_Print(LOG_WARN, "Loading floppy disks:");
+    Log_Printf(LOG_WARN, "Loading floppy disks:");
     int i;
     
     for (i=0; i<FLP_MAX_DRIVES; i++) {

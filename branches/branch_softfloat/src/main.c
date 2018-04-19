@@ -198,11 +198,10 @@ static void Main_CheckForAccurateDelays(void) {
 	/* If the delay took longer than 10ms, we are on an inaccurate system! */
 	bAccurateDelays = ((nEndTicks - nStartTicks) < 9);
 
-    if (bAccurateDelays) {
+	if (bAccurateDelays)
 		Log_Printf(LOG_WARN, "Host system has accurate delays. (%d)\n", nEndTicks - nStartTicks);
-    } else {
+	else
 		Log_Printf(LOG_WARN, "Host system does not have accurate delays. (%d)\n", nEndTicks - nStartTicks);
-    }
 }
 
 
@@ -410,7 +409,7 @@ static void Main_Init(void) {
 		fprintf(stderr, "Logging/tracing initialization failed\n");
 		exit(-1);
 	}
-	Log_Print(LOG_INFO, PROG_NAME ", compiled on:  " __DATE__ ", " __TIME__ "\n");
+	Log_Printf(LOG_INFO, PROG_NAME ", compiled on:  " __DATE__ ", " __TIME__ "\n");
 
 	/* Init SDL's video subsystem. Note: Audio and joystick subsystems
 	   will be initialized later (failures there are not fatal). */
@@ -599,6 +598,7 @@ int main(int argc, char *argv[]) {
 	/* Run emulation */
 	Main_UnPauseEmulation();
 	M68000_Start();                 /* Start emulation */
+
 
 	/* Un-init emulation system */
 	Main_UnInit();

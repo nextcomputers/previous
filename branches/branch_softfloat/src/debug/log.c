@@ -75,7 +75,7 @@ Uint64	LogTraceFlags = TRACE_NONE;
 FILE *TraceFile = NULL;
 
 static FILE *hLogFile = NULL;
-LOGTYPE TextLogLevel;
+static LOGTYPE TextLogLevel;
 static LOGTYPE AlertDlgLogLevel;
 
 /*-----------------------------------------------------------------------*/
@@ -127,7 +127,7 @@ void _Log_Printf(LOGTYPE nType, const char *psFormat, ...)
 {
 	va_list argptr;
 
-	if (hLogFile && nType <= TextLogLevel)
+	if (hLogFile && nType && nType <= TextLogLevel)
 	{
 		va_start(argptr, psFormat);
 		vfprintf(hLogFile, psFormat, argptr);
@@ -148,7 +148,7 @@ void Log_AlertDlg(LOGTYPE nType, const char *psFormat, ...)
 	va_list argptr;
 
 	/* Output to log file: */
-	if (hLogFile && nType <= TextLogLevel)
+	if (hLogFile && nType && nType <= TextLogLevel)
 	{
 		va_start(argptr, psFormat);
 		vfprintf(hLogFile, psFormat, argptr);
@@ -159,7 +159,7 @@ void Log_AlertDlg(LOGTYPE nType, const char *psFormat, ...)
 	}
 
 	/* Show alert dialog box: */
-	if (sdlscrn && nType <= AlertDlgLogLevel)
+	if (sdlscrn && nType && nType <= AlertDlgLogLevel)
 	{
 		char *psTmpBuf;
 		psTmpBuf = malloc(2048);

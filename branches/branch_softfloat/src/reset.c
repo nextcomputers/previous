@@ -37,15 +37,15 @@ const char Reset_fileid[] = "Hatari reset.c : " __DATE__ " " __TIME__;
  */
 static const char* Reset_NeXT(bool bCold)
 {
-    host_reset();                 /* Reset host related timing vars */
-
-    if (bCold) {
+	if (bCold) {
 		const char* error_str;
 		error_str=memory_init(ConfigureParams.Memory.nMemoryBankSize);
 		if (error_str!=NULL) {
 			return error_str;
 		}
 	}
+    
+    host_reset();                 /* Reset host related timing vars */
     
 	CycInt_Reset();               /* Reset interrupts */
     Main_SpeedReset();            /* Reset speed reporting system */
@@ -65,7 +65,7 @@ static const char* Reset_NeXT(bool bCold)
     NextBus_Reset();              /* Reset NextBus */
 	M68000_Reset(bCold);          /* Reset CPU */
 	DebugCpu_SetDebugging();      /* Re-set debugging flag if needed */
-
+    
 	return NULL;
 }
 

@@ -323,7 +323,7 @@ void MO_IntStatus_Write(void) {
         set_floppy_select(val&MOINT_GPO, true);
     }
     if (val&MOINT_RESET) {
-        Log_Print(LOG_MO_CMD_LEVEL,"[MO] Hard reset\n");
+        Log_Printf(LOG_MO_CMD_LEVEL,"[MO] Hard reset\n");
         mo_reset();
     }
 }
@@ -560,7 +560,7 @@ void mo_formatter_cmd(void) {
     if (mo.ctrlr_csr1==FMT_RESET) {
         Log_Printf(LOG_MO_CMD_LEVEL,"[OSP] Formatter command: Reset (%02X)\n", mo.ctrlr_csr1);
         if (fmt_mode!=FMT_MODE_IDLE) {
-            Log_Print(LOG_WARN,"[OSP] Warning: Formatter reset while busy!\n");
+            Log_Printf(LOG_WARN,"[OSP] Warning: Formatter reset while busy!\n");
         }
         fmt_mode = FMT_MODE_IDLE;
         ecc_state = ECC_STATE_DONE;
@@ -624,7 +624,7 @@ int sector_timer=0;
 #define SECTOR_TIMEOUT_COUNT    100 /* FIXME: what is the correct value? */
 bool fmt_match_id(Uint32 sector_id) {
     if ((mo.init&MOINIT_ID_MASK)==MOINIT_ID_0) {
-        Log_Print(LOG_MO_CMD_LEVEL, "[OSP] Sector ID matching disabled!");
+        Log_Printf(LOG_MO_CMD_LEVEL, "[OSP] Sector ID matching disabled!");
         abort(); /* CHECK: this routine is critical to disk image corruption, check if it gives correct results */
         return true;
     }
@@ -632,7 +632,7 @@ bool fmt_match_id(Uint32 sector_id) {
     Uint32 fmt_id = (mo.tracknumh<<16)|(mo.tracknuml<<8)|mo.sector_num;
     
     if (mo.init&MOINIT_ID_CMP_TRK) {
-        Log_Print(LOG_MO_CMD_LEVEL, "[OSP] Compare only track ID.");
+        Log_Printf(LOG_MO_CMD_LEVEL, "[OSP] Compare only track ID.");
         fmt_id=(fmt_id>>8)&0xFFFF;
         sector_id=(sector_id>>8)&0xFFFF;
     }
@@ -646,7 +646,7 @@ bool fmt_match_id(Uint32 sector_id) {
         if (mo.ctrlr_csr2&MOCSR2_SECT_TIMER) {
             sector_timer++;
             if (sector_timer>SECTOR_TIMEOUT_COUNT) {
-                Log_Print(LOG_WARN, "[OSP] Sector timeout!");
+                Log_Printf(LOG_WARN, "[OSP] Sector timeout!");
                 sector_timer=0;
                 fmt_mode=FMT_MODE_IDLE;
                 osp_interrupt(MOINT_TIMEOUT);
@@ -764,31 +764,31 @@ void ecc_clear_buffer(void) {
 
 void mo_formatter_cmd2(void) {
     if (mo.ctrlr_csr2&MOCSR2_BUF_TOGGLE) {
-        Log_Print(LOG_MO_ECC_LEVEL, "[OSP] Toggle ECC buffer.");
+        Log_Printf(LOG_MO_ECC_LEVEL, "[OSP] Toggle ECC buffer.");
         ecc_toggle_buffer();
     }
     if (mo.ctrlr_csr2&MOCSR2_ECC_CMP) {
-        Log_Print(LOG_MO_ECC_LEVEL, "[OSP] ECC compare.");
+        Log_Printf(LOG_MO_ECC_LEVEL, "[OSP] ECC compare.");
     }
     if (mo.ctrlr_csr2&MOCSR2_CLR_BUFP) {
-        Log_Print(LOG_MO_ECC_LEVEL, "[OSP] Clear ECC buffer.");
+        Log_Printf(LOG_MO_ECC_LEVEL, "[OSP] Clear ECC buffer.");
         ecc_clear_buffer();
     }
     if (mo.ctrlr_csr2&MOCSR2_ECC_BLOCKS) {
-        Log_Print(LOG_MO_ECC_LEVEL, "[OSP] ECC blocks.");
+        Log_Printf(LOG_MO_ECC_LEVEL, "[OSP] ECC blocks.");
     }
     if (mo.ctrlr_csr2&MOCSR2_ECC_MODE) {
-        Log_Print(LOG_MO_ECC_LEVEL, "[OSP] ECC decoding mode.");
+        Log_Printf(LOG_MO_ECC_LEVEL, "[OSP] ECC decoding mode.");
     } else {
-        Log_Print(LOG_MO_ECC_LEVEL, "[OSP] ECC encoding mode.");
+        Log_Printf(LOG_MO_ECC_LEVEL, "[OSP] ECC encoding mode.");
     }
     if (mo.ctrlr_csr2&MOCSR2_SECT_TIMER) {
-        Log_Print(LOG_MO_CMD_LEVEL, "[OSP] Sector timer enabled.");
+        Log_Printf(LOG_MO_CMD_LEVEL, "[OSP] Sector timer enabled.");
     } else {
-        Log_Print(LOG_MO_CMD_LEVEL, "[OSP] Sector timer disabled.");
+        Log_Printf(LOG_MO_CMD_LEVEL, "[OSP] Sector timer disabled.");
     }
     if (mo.ctrlr_csr2&MOCSR2_ECC_DIS) {
-        Log_Print(LOG_MO_ECC_LEVEL, "[OSP] Disable ECC passthrough.");
+        Log_Printf(LOG_MO_ECC_LEVEL, "[OSP] Disable ECC passthrough.");
     }
     
     osp_select(mo.ctrlr_csr2&MOCSR2_DRIVE_SEL);
@@ -820,18 +820,18 @@ int eccout=1;
 
 void ecc_decode(void) {
     if (mo.ctrlr_csr2&MOCSR2_ECC_DIS && !(mo.ctrlr_csr2&MOCSR2_ECC_MODE)) {
-        Log_Print(LOG_MO_ECC_LEVEL, "[OSP] ECC decoding disabled.");
+        Log_Printf(LOG_MO_ECC_LEVEL, "[OSP] ECC decoding disabled.");
         if (mo.ctrlr_csr2&MOCSR2_ECC_BLOCKS && ecc_repeat==true) {
             ecc_toggle_buffer();
         }
     } else if (ecc_buffer[eccin].size==MO_SECTORSIZE_DISK) {
-        Log_Print(LOG_MO_ECC_LEVEL, "[OSP] ECC decoding buffer.");
+        Log_Printf(LOG_MO_ECC_LEVEL, "[OSP] ECC decoding buffer.");
         ecc_buffer[eccin].limit=ecc_buffer[eccin].size=MO_SECTORSIZE_DATA;
         
         int num_errors = rs_decode(ecc_buffer[eccin].data);
         
         if (num_errors<0) {
-            Log_Print(LOG_WARN, "[OSP] ECC: Sector has uncorrectable errors!");
+            Log_Printf(LOG_WARN, "[OSP] ECC: Sector has uncorrectable errors!");
             mo.err_stat = ERRSTAT_ECC;
             osp_interrupt(MOINT_DATA_ERR);
             /* CHECK: Stop ECC and formatter? */
@@ -851,12 +851,12 @@ void ecc_decode(void) {
 }
 void ecc_encode(void) {
     if (mo.ctrlr_csr2&MOCSR2_ECC_DIS && mo.ctrlr_csr2&MOCSR2_ECC_MODE) {
-        Log_Print(LOG_MO_ECC_LEVEL, "[OSP] ECC encoding disabled.");
+        Log_Printf(LOG_MO_ECC_LEVEL, "[OSP] ECC encoding disabled.");
         if (mo.ctrlr_csr2&MOCSR2_ECC_BLOCKS && ecc_repeat==false) {
             ecc_toggle_buffer();
         }
     } else if (ecc_buffer[eccin].limit==MO_SECTORSIZE_DATA) {
-        Log_Print(LOG_MO_ECC_LEVEL, "[OSP] ECC encoding buffer.");
+        Log_Printf(LOG_MO_ECC_LEVEL, "[OSP] ECC encoding buffer.");
         ecc_buffer[eccin].limit=ecc_buffer[eccin].size=MO_SECTORSIZE_DISK;
 
         rs_encode(ecc_buffer[eccin].data);
@@ -968,7 +968,7 @@ void ECC_IO_Handler(void) {
                     ecc_encode();
                 } else { /* From disk read */
                     if (ecc_buffer[eccin].size!=MO_SECTORSIZE_DISK) {
-                        Log_Print(LOG_WARN, "[OSP] ECC waiting for disk read!");
+                        Log_Printf(LOG_WARN, "[OSP] ECC waiting for disk read!");
                         break; /* Loop and wait for disk read */
                     }
                     ecc_decode();
@@ -988,7 +988,7 @@ void ECC_IO_Handler(void) {
             old_size=ecc_buffer[eccout].size;
             dma_mo_write_memory();
             if (ecc_buffer[eccout].size==old_size) {
-                Log_Print(LOG_WARN,"[OSP] DMA not ready! Stopping.");
+                Log_Printf(LOG_WARN,"[OSP] DMA not ready! Stopping.");
                 ecc_sequence_done();
                 return;
             }
@@ -1006,11 +1006,11 @@ void ECC_IO_Handler(void) {
                 }
                 return;
             }
-            Log_Print(LOG_MO_ECC_LEVEL, "[OSP] ECC waiting for disk write!");
+            Log_Printf(LOG_MO_ECC_LEVEL, "[OSP] ECC waiting for disk write!");
             break;
 
         default:
-            Log_Print(LOG_WARN, "[OSP] Warning: ECC was reset while busy!");
+            Log_Printf(LOG_WARN, "[OSP] Warning: ECC was reset while busy!");
             return;
     }
     
@@ -1640,7 +1640,7 @@ void mo_reset(void) {
 
 void mo_push_signals(bool complete, bool attn, int drive) {
     if (drive<0) {
-        Log_Print(LOG_WARN, "[MO] Error: No drive specified for delayed interrupt.");
+        Log_Printf(LOG_WARN, "[MO] Error: No drive specified for delayed interrupt.");
         abort();
     }
     bool interrupt = false;
@@ -1681,7 +1681,7 @@ void mo_set_signals(bool complete, bool attn, int delay) {
                 mo_push_signals(delayed_compl, delayed_attn, delayed_drive);
                 CycInt_RemovePendingInterrupt(INTERRUPT_MO);
             } else {
-                Log_Print(LOG_WARN, "[MO] Warning: Delayed interrupt already in progress!");
+                Log_Printf(LOG_WARN, "[MO] Warning: Delayed interrupt already in progress!");
             }
         }
         delayed_drive=dnum;
@@ -1706,7 +1706,7 @@ void MO_InterruptHandler(void) {
 
 /* Initialize/Uninitialize MO disks */
 void MO_Init(void) {
-    Log_Print(LOG_WARN, "Loading magneto-optical disks:");
+    Log_Printf(LOG_WARN, "Loading magneto-optical disks:");
     int i;
     
     for (i=0; i<MO_MAX_DRIVES; i++) {
@@ -1777,7 +1777,7 @@ void MO_Uninit(void) {
 }
 
 void MO_Insert(int drive) {
-    Log_Print(LOG_WARN, "Loading magneto-optical disk:");
+    Log_Printf(LOG_WARN, "Loading magneto-optical disk:");
     Log_Printf(LOG_WARN, "MO Disk%i: %s\n",drive,ConfigureParams.MO.drive[drive].szImageName);
 
     mo_insert_disk(drive);

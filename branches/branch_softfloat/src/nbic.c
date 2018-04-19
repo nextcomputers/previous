@@ -17,6 +17,8 @@ struct {
 	Uint8 intmask;
 } nbic;
 
+#define LOG_NBIC_LEVEL LOG_NONE
+
 /* Control: 0x02020000 (rw), only non-Turbo */
 #define NBIC_CTRL_IGNSID0	0x10000000 /* Ignore slot ID bit 0 */
 #define NBIC_CTRL_STFWD		0x08000000 /* Store forward */
@@ -36,93 +38,93 @@ struct {
 
 /* Register access functions */
 static Uint8 nbic_control_read0(Uint32 addr) {
-	Log_Printf(LOG_WARN, "[NBIC] Control (byte 0) read at %08X",addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] Control (byte 0) read at %08X",addr);
 	return (nbic.control>>24);
 }
 static Uint8 nbic_control_read1(Uint32 addr) {
-	Log_Printf(LOG_WARN, "[NBIC] Control (byte 1) read at %08X",addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] Control (byte 1) read at %08X",addr);
 	return (nbic.control>>16);
 }
 static Uint8 nbic_control_read2(Uint32 addr) {
-	Log_Printf(LOG_WARN, "[NBIC] Control (byte 2) read at %08X",addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] Control (byte 2) read at %08X",addr);
 	return (nbic.control>>8);
 }
 static Uint8 nbic_control_read3(Uint32 addr) {
-	Log_Printf(LOG_WARN, "[NBIC] Control (byte 3) read at %08X",addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] Control (byte 3) read at %08X",addr);
 	return nbic.control;
 }
 
 static void nbic_control_write0(Uint32 addr, Uint8 val) {
-	Log_Printf(LOG_WARN, "[NBIC] Control (byte 0) write %02X at %08X",val,addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] Control (byte 0) write %02X at %08X",val,addr);
 	nbic.control &= 0x00FFFFFF;
 	nbic.control |= (val&0xFF)<<24;
 }
 static void nbic_control_write1(Uint32 addr, Uint8 val) {
-	Log_Printf(LOG_WARN, "[NBIC] Control (byte 1) write %02X at %08X",val,addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] Control (byte 1) write %02X at %08X",val,addr);
 	nbic.control &= 0xFF00FFFF;
 	nbic.control |= (val&0xFF)<<16;
 }
 static void nbic_control_write2(Uint32 addr, Uint8 val) {
-	Log_Printf(LOG_WARN, "[NBIC] Control (byte 2) write %02X at %08X",val,addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] Control (byte 2) write %02X at %08X",val,addr);
 	nbic.control &= 0xFFFF00FF;
 	nbic.control |= (val&0xFF)<<8;
 }
 static void nbic_control_write3(Uint32 addr, Uint8 val) {
-	Log_Printf(LOG_WARN, "[NBIC] Control (byte 3) write %02X at %08X",val,addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] Control (byte 3) write %02X at %08X",val,addr);
 	nbic.control &= 0xFFFFFF00;
 	nbic.control |= val&0xFF;
 }
 
 
 static Uint8 nbic_id_read0(Uint32 addr) {
-	Log_Printf(LOG_WARN, "[NBIC] ID (byte 0) read at %08X",addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] ID (byte 0) read at %08X",addr);
 	return (nbic.id>>24);
 }
 static Uint8 nbic_id_read1(Uint32 addr) {
-	Log_Printf(LOG_WARN, "[NBIC] ID (byte 1) read at %08X",addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] ID (byte 1) read at %08X",addr);
 	return (nbic.id>>16);
 }
 static Uint8 nbic_id_read2(Uint32 addr) {
-	Log_Printf(LOG_WARN, "[NBIC] ID (byte 2) read at %08X",addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] ID (byte 2) read at %08X",addr);
 	return (nbic.id>>8);
 }
 static Uint8 nbic_id_read3(Uint32 addr) {
-	Log_Printf(LOG_WARN, "[NBIC] ID (byte 3) read at %08X",addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] ID (byte 3) read at %08X",addr);
 	return nbic.id;
 }
 
 static void nbic_id_write0(Uint32 addr, Uint8 val) {
-	Log_Printf(LOG_WARN, "[NBIC] ID (byte 0) write %02X at %08X",val,addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] ID (byte 0) write %02X at %08X",val,addr);
 	nbic.id &= 0x00FFFFFF;
 	nbic.id |= (val&0xFF)<<24;
 }
 static void nbic_id_write1(Uint32 addr, Uint8 val) {
-	Log_Printf(LOG_WARN, "[NBIC] ID (byte 1) write %02X at %08X",val,addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] ID (byte 1) write %02X at %08X",val,addr);
 	nbic.id &= 0xFF00FFFF;
 	nbic.id |= (val&0xFF)<<16;
 }
 static void nbic_id_write2(Uint32 addr, Uint8 val) {
-	Log_Printf(LOG_WARN, "[NBIC] ID (byte 2) write %02X at %08X",val,addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] ID (byte 2) write %02X at %08X",val,addr);
 	nbic.id &= 0xFFFF00FF;
 	nbic.id |= (val&0xFF)<<8;
 }
 static void nbic_id_write3(Uint32 addr, Uint8 val) {
-	Log_Printf(LOG_WARN, "[NBIC] ID (byte 3) write %02X at %08X",val,addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] ID (byte 3) write %02X at %08X",val,addr);
 	nbic.id &= 0xFFFFFF00;
 	nbic.id |= val&0xFF;
 }
 
 static Uint8 nbic_intstatus_read(Uint32 addr) {
-	Log_Printf(LOG_WARN, "[NBIC] Interrupt status read at %08X",addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] Interrupt status read at %08X",addr);
 	return nbic.intstatus;
 }
 
 static Uint8 nbic_intmask_read(Uint32 addr) {
-	Log_Printf(LOG_WARN, "[NBIC] Interrupt mask read at %08X",addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] Interrupt mask read at %08X",addr);
 	return nbic.intmask;
 }
 static void nbic_intmask_write(Uint32 addr, Uint8 val) {
-	Log_Printf(LOG_WARN, "[NBIC] Interrupt mask write %02X at %08X",val,addr);
+	Log_Printf(LOG_NBIC_LEVEL, "[NBIC] Interrupt mask write %02X at %08X",val,addr);
 	nbic.intmask = val;
 }
 
@@ -240,6 +242,7 @@ void nbic_reg_bput(uaecptr addr, Uint32 b) {
 		nbic_write_reg[addr&7](addr,b);
 	}
 }
+
 
 /* NeXTbus CPU board slot space access */
 static Uint8 (*nbic_read_cpu_slot[32])(Uint32) = {

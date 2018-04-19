@@ -51,6 +51,7 @@ static void ShortCut_FullScreen(void)
  */
 static void ShortCut_MouseGrab(void)
 {
+
 	bGrabMouse = !bGrabMouse;        /* Toggle flag */
 
 	/* If we are in windowed mode, toggle the mouse cursor mode now: */

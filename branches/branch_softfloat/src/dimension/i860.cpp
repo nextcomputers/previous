@@ -15,17 +15,17 @@
 
 ***************************************************************************/
 
-#include "i860.hpp"
 #include <stdlib.h>
-
 #if defined _WIN32
 #undef mkdir
 #endif
 #include <unistd.h>
 
-extern "C" {
-    #include "dimension.hpp"
+#include "i860.hpp"
+#include "dimension.hpp"
+#include "log.h"
 
+extern "C" {
     static void i860_run_nop(int nHostCycles) {}
 
     i860_run_func i860_Run = i860_run_nop;
@@ -47,7 +47,7 @@ extern "C" {
                 cycles /= ConfigureParams.System.nCpuFreq;
                 while (cycles > 0) {
                     nd->i860.run_cycle();
-                    cycles -= 2;
+                    cycles --;
                 }
             }
         }
@@ -216,7 +216,7 @@ void i860_cpu_device::run_cycle() {
     m_dim_cc_valid = false;
     m_flow        &= ~DIM_OP;
     UINT64 insn64  = ifetch64(m_pc);
-        
+    
     if(!(m_pc & 4)) {
         UINT32 savepc  = m_pc;
         
@@ -548,9 +548,15 @@ void i860_cpu_device::run() {
             continue;
         }
         
-        /* Run some i860 cycles before re-checking messages*/
-        for(int i = 16; --i >= 0;)
-            run_cycle();
+        if (i860cycles > 0 || ConfigureParams.System.bRealtime) {
+            /* Run some i860 cycles before re-checking messages */
+            for(int i = 16; --i >= 0;)
+                run_cycle();
+            
+            i860cycles -= 16;
+        } else {
+            host_sleep_ms(1);
+        }
     }
 }
 

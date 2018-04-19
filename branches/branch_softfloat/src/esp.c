@@ -156,7 +156,7 @@ void ESP_DMA_CTRL_Write(void) {
     esp_dma.control = IoMem[IoAccessCurrentAddress & IO_SEG_MASK];
         
     if (esp_dma.control&ESPCTRL_FLUSH) {
-        Log_Print(LOG_ESPDMA_LEVEL, "flush DMA buffer\n");
+        Log_Printf(LOG_ESPDMA_LEVEL, "flush DMA buffer\n");
 		if (ConfigureParams.System.bTurbo) {
 			tdma_flush_buffer(0);
 		} else {
@@ -164,45 +164,45 @@ void ESP_DMA_CTRL_Write(void) {
 		}
     }
     if (esp_dma.control&ESPCTRL_CHIP_TYPE) {
-        Log_Print(LOG_ESPDMA_LEVEL, "SCSI controller is WD33C92\n");
+        Log_Printf(LOG_ESPDMA_LEVEL, "SCSI controller is WD33C92\n");
     } else {
-        Log_Print(LOG_ESPDMA_LEVEL, "SCSI controller is NCR53C90\n");
+        Log_Printf(LOG_ESPDMA_LEVEL, "SCSI controller is NCR53C90\n");
     }
     if (esp_dma.control&ESPCTRL_RESET) {
-        Log_Print(LOG_ESPDMA_LEVEL, "reset SCSI controller\n");
+        Log_Printf(LOG_ESPDMA_LEVEL, "reset SCSI controller\n");
         esp_reset_hard();
     }
     if (esp_dma.control&ESPCTRL_DMA_READ) {
-        Log_Print(LOG_ESPDMA_LEVEL, "DMA from SCSI to mem\n");
+        Log_Printf(LOG_ESPDMA_LEVEL, "DMA from SCSI to mem\n");
     } else {
-        Log_Print(LOG_ESPDMA_LEVEL, "DMA from mem to SCSI\n");
+        Log_Printf(LOG_ESPDMA_LEVEL, "DMA from mem to SCSI\n");
     }
     if (esp_dma.control&ESPCTRL_MODE_DMA) {
-        Log_Print(LOG_ESPDMA_LEVEL, "mode DMA\n");
+        Log_Printf(LOG_ESPDMA_LEVEL, "mode DMA\n");
     } else {
-        Log_Print(LOG_ESPDMA_LEVEL, "mode PIO\n");
+        Log_Printf(LOG_ESPDMA_LEVEL, "mode PIO\n");
     }
     if (esp_dma.control&ESPCTRL_ENABLE_INT) {
-        Log_Print(LOG_ESPDMA_LEVEL, "Enable ESP interrupt");
+        Log_Printf(LOG_ESPDMA_LEVEL, "Enable ESP interrupt");
         if (status&STAT_INT) {
             set_interrupt(INT_SCSI, SET_INT);
         }
     } else {
-        Log_Print(LOG_ESPDMA_LEVEL, "Block ESP interrupt");
+        Log_Printf(LOG_ESPDMA_LEVEL, "Block ESP interrupt");
         set_interrupt(INT_SCSI, RELEASE_INT);
     }
     switch (esp_dma.control&ESPCTRL_CLKMASK) {
         case ESPCTRL_CLK10MHz:
-            Log_Print(LOG_ESPDMA_LEVEL, "10 MHz clock\n");
+            Log_Printf(LOG_ESPDMA_LEVEL, "10 MHz clock\n");
             break;
         case ESPCTRL_CLK12MHz:
-            Log_Print(LOG_ESPDMA_LEVEL, "12.5 MHz clock\n");
+            Log_Printf(LOG_ESPDMA_LEVEL, "12.5 MHz clock\n");
             break;
         case ESPCTRL_CLK16MHz:
-            Log_Print(LOG_ESPDMA_LEVEL, "16.6 MHz clock\n");
+            Log_Printf(LOG_ESPDMA_LEVEL, "16.6 MHz clock\n");
             break;
         case ESPCTRL_CLK20MHz:
-            Log_Print(LOG_ESPDMA_LEVEL, "20 MHz clock\n");
+            Log_Printf(LOG_ESPDMA_LEVEL, "20 MHz clock\n");
             break;
         default:
             break;
@@ -363,14 +363,14 @@ Uint8 esp_fifo_read(void) {
         Log_Printf(LOG_ESPFIFO_LEVEL,"ESP FIFO: Reading byte, val=%02x, size = %i", val, fifoflags);
     } else {
         val = 0x00;
-        Log_Print(LOG_WARN, "ESP FIFO read: FIFO is empty!\n");
+        Log_Printf(LOG_WARN, "ESP FIFO read: FIFO is empty!\n");
     }
     return val;
 }
 
 void esp_fifo_write(Uint8 val) {
     if (fifoflags==ESP_FIFO_SIZE) {
-        Log_Print(LOG_WARN, "ESP FIFO write: FIFO overflow! Top of FIFO overwritten\n");
+        Log_Printf(LOG_WARN, "ESP FIFO write: FIFO overflow! Top of FIFO overwritten\n");
         fifo[fifoflags-1] = val;
         status |= STAT_GE;
     } else {
@@ -391,12 +391,12 @@ void esp_fifo_clear(void) {
 /* Functions for handling dual ranked command register */
 void esp_command_write(Uint8 cmd) {
     if ((command[1]&CMD_CMD)==CMD_RESET && (cmd&CMD_CMD)!=CMD_NOP) {
-        Log_Print(LOG_WARN, "ESP command write: Chip reset in command register, not executing command.\n");
+        Log_Printf(LOG_WARN, "ESP command write: Chip reset in command register, not executing command.\n");
     } else {
         command[1] = cmd;
         
         if (esp_cmd_state&ESP_CMD_WAITING) {
-            Log_Print(LOG_WARN, "ESP command write: Error! Top of command register overwritten.\n");
+            Log_Printf(LOG_WARN, "ESP command write: Error! Top of command register overwritten.\n");
             status |= STAT_GE;
         }
     }
@@ -465,65 +465,65 @@ void esp_start_command(Uint8 cmd) {
     switch (cmd & CMD_CMD) {
             /* Miscellaneous */
         case CMD_NOP:
-            Log_Print(LOG_ESPCMD_LEVEL, "ESP Command: NOP\n");
+            Log_Printf(LOG_ESPCMD_LEVEL, "ESP Command: NOP\n");
             esp_finish_command();
             break;
         case CMD_FLUSH:
-            Log_Print(LOG_ESPCMD_LEVEL,"ESP Command: flush FIFO\n");
+            Log_Printf(LOG_ESPCMD_LEVEL,"ESP Command: flush FIFO\n");
             esp_flush_fifo();
             break;
         case CMD_RESET:
-            Log_Print(LOG_ESPCMD_LEVEL,"ESP Command: reset chip\n");
+            Log_Printf(LOG_ESPCMD_LEVEL,"ESP Command: reset chip\n");
             esp_reset_hard();
             break;
         case CMD_BUSRESET:
-            Log_Print(LOG_ESPCMD_LEVEL, "ESP Command: reset SCSI bus\n");
+            Log_Printf(LOG_ESPCMD_LEVEL, "ESP Command: reset SCSI bus\n");
             esp_bus_reset();
             break;
             /* Disconnected */
         case CMD_RESEL:
-            Log_Print(LOG_WARN, "ESP Command: reselect sequence\n");
+            Log_Printf(LOG_WARN, "ESP Command: reselect sequence\n");
             abort();
             break;
         case CMD_SEL:
-            Log_Print(LOG_ESPCMD_LEVEL, "ESP Command: select without ATN sequence\n");
+            Log_Printf(LOG_ESPCMD_LEVEL, "ESP Command: select without ATN sequence\n");
             esp_select(false);
             break;
         case CMD_SELATN:
-            Log_Print(LOG_ESPCMD_LEVEL, "ESP Command: select with ATN sequence\n");
+            Log_Printf(LOG_ESPCMD_LEVEL, "ESP Command: select with ATN sequence\n");
             esp_select(true);
             break;
         case CMD_SELATNS:
-            Log_Print(LOG_WARN, "ESP Command: select with ATN and stop sequence\n");
+            Log_Printf(LOG_WARN, "ESP Command: select with ATN and stop sequence\n");
             abort();
             break;
         case CMD_ENSEL:
-            Log_Print(LOG_ESPCMD_LEVEL, "ESP Command: enable selection/reselection\n");
+            Log_Printf(LOG_ESPCMD_LEVEL, "ESP Command: enable selection/reselection\n");
             esp_finish_command(); /* Our disk doesn't do reselections */
             break;
         case CMD_DISSEL:
-            Log_Print(LOG_WARN, "ESP Command: disable selection/reselection\n");
+            Log_Printf(LOG_WARN, "ESP Command: disable selection/reselection\n");
             abort();
             break;
             /* Initiator */
         case CMD_TI:
-            Log_Print(LOG_ESPCMD_LEVEL, "ESP Command: transfer information\n");
+            Log_Printf(LOG_ESPCMD_LEVEL, "ESP Command: transfer information\n");
             esp_transfer_info();
             break;
         case CMD_ICCS:
-            Log_Print(LOG_ESPCMD_LEVEL, "ESP Command: initiator command complete sequence\n");
+            Log_Printf(LOG_ESPCMD_LEVEL, "ESP Command: initiator command complete sequence\n");
             esp_initiator_command_complete();
             break;
         case CMD_MSGACC:
-            Log_Print(LOG_ESPCMD_LEVEL, "ESP Command: message accepted\n");
+            Log_Printf(LOG_ESPCMD_LEVEL, "ESP Command: message accepted\n");
             esp_message_accepted();
             break;
         case CMD_PAD:
-            Log_Print(LOG_ESPCMD_LEVEL, "ESP Command: transfer pad\n");
+            Log_Printf(LOG_ESPCMD_LEVEL, "ESP Command: transfer pad\n");
             esp_transfer_pad();
             break;
         case CMD_SATN:
-            Log_Print(LOG_WARN, "ESP Command: set ATN\n");
+            Log_Printf(LOG_WARN, "ESP Command: set ATN\n");
             abort();
             break;
             /* Target */
@@ -537,11 +537,11 @@ void esp_start_command(Uint8 cmd) {
         case CMD_RCOMM:
         case CMD_RDATA:
         case CMD_RCSEQ:
-            Log_Print(LOG_WARN, "ESP Command: Target commands not emulated!\n");
+            Log_Printf(LOG_WARN, "ESP Command: Target commands not emulated!\n");
             abort();
             break;
         case CMD_DIS:
-            Log_Print(LOG_WARN, "ESP Command: DISCONNECT not emulated!\n");
+            Log_Printf(LOG_WARN, "ESP Command: DISCONNECT not emulated!\n");
             abort();
             SCSIbus.phase = PHASE_ST;
             intstatus = INTR_DC;
@@ -549,7 +549,7 @@ void esp_start_command(Uint8 cmd) {
             break;
             
         default:
-            Log_Print(LOG_WARN, "ESP Command: Illegal command!\n");
+            Log_Printf(LOG_WARN, "ESP Command: Illegal command!\n");
             esp_command_clear();
             intstatus |= INTR_ILL;
             CycInt_AddRelativeInterruptUs(ESP_DELAY, 20, INTERRUPT_ESP);
@@ -616,7 +616,7 @@ void esp_lower_irq(void) {
         
         set_interrupt(INT_SCSI, RELEASE_INT);
         
-        Log_Print(LOG_ESPCMD_LEVEL, "[ESP] Lower IRQ\n");
+        Log_Printf(LOG_ESPCMD_LEVEL, "[ESP] Lower IRQ\n");
         
         esp_finish_command();
     }
@@ -626,7 +626,7 @@ void esp_lower_irq(void) {
 
 /* Reset chip */
 void esp_reset_hard(void) {
-    Log_Print(LOG_ESPCMD_LEVEL, "[ESP] Hard reset\n");
+    Log_Printf(LOG_ESPCMD_LEVEL, "[ESP] Hard reset\n");
 
     clockconv = 0x02;
     configuration &= ~0xF8; // clear chip test mode, parity enable, parity test, scsi request/int disable, slow cable mode
@@ -715,7 +715,7 @@ void esp_select(bool atn) {
             SCSIbus.phase = PHASE_MO;
             seqstep = 1;
             identify_msg = esp_fifo_read();
-            Log_Print(LOG_ESPCMD_LEVEL, "[ESP] Select: Reading message from FIFO");
+            Log_Printf(LOG_ESPCMD_LEVEL, "[ESP] Select: Reading message from FIFO");
             Log_Printf(LOG_ESPCMD_LEVEL, "[ESP] Select: Identify Message: $%02X",identify_msg);
         }
         
@@ -776,7 +776,7 @@ void esp_transfer_info(void) {
         esp_io_state=ESP_IO_STATE_TRANSFERING;
         CycInt_AddRelativeInterruptUs(SCSI_Seek_Time() + SCSI_Sector_Time(), 100, INTERRUPT_ESP_IO);
     } else {
-        Log_Print(LOG_ESPCMD_LEVEL, "[ESP] start PIO transfer");
+        Log_Printf(LOG_ESPCMD_LEVEL, "[ESP] start PIO transfer");
         switch (SCSIbus.phase) {
             case PHASE_DI:
                 esp_fifo_write(SCSIdisk_Send_Data());
@@ -787,11 +787,11 @@ void esp_transfer_info(void) {
                 break;
             case PHASE_ST:
                 /* FIXME: What should happen here? */
-                Log_Print(LOG_WARN, "[ESP] Error! Transfer info status phase");
+                Log_Printf(LOG_WARN, "[ESP] Error! Transfer info status phase");
                 CycInt_AddRelativeInterruptCycles(20, INTERRUPT_ESP);
                 break;
             default:
-                Log_Print(LOG_WARN, "[ESP] PIO transfer (unimplemented)");
+                Log_Printf(LOG_WARN, "[ESP] PIO transfer (unimplemented)");
                 abort();
                 break;
         }
@@ -821,7 +821,7 @@ void ESP_IO_Handler(void) {
             }
             break;
         case ESP_IO_STATE_FLUSHING:
-            Log_Print(LOG_ESPCMD_LEVEL, "[ESP] Transfer done: Flushing DMA buffer.");
+            Log_Printf(LOG_ESPCMD_LEVEL, "[ESP] Transfer done: Flushing DMA buffer.");
             dma_esp_write_memory();
             return;
             
@@ -866,7 +866,7 @@ void esp_transfer_pad(void) {
 void esp_initiator_command_complete(void) {
     
     if(mode_dma == 1) {
-        Log_Print(LOG_WARN, "ESP initiator command complete via DMA not implemented!");
+        Log_Printf(LOG_WARN, "ESP initiator command complete via DMA not implemented!");
         abort();
     } else {
         /* Receive status byte */

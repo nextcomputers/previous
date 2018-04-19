@@ -386,7 +386,7 @@ void enet_receive(Uint8 *pkt, int len) {
         enet_rx_buffer.size=enet_rx_buffer.limit=len;
 		enet.tx_status |= TXSTAT_NET_BUSY;
     } else {
-        Log_Print(LOG_WARN, "[EN] Packet is not for me.");
+        Log_Printf(LOG_WARN, "[EN] Packet is not for me.");
     }
 }
 
@@ -492,7 +492,7 @@ static void enet_io(void) {
 				old_size = enet_rx_buffer.size;
 				dma_enet_write_memory(rx_chain);
 				if (enet_rx_buffer.size==old_size) {
-					Log_Print(LOG_WARN, "[EN] Receiving packet: Error! Receiver overflow (DMA disabled)!");
+					Log_Printf(LOG_WARN, "[EN] Receiving packet: Error! Receiver overflow (DMA disabled)!");
 					enet_rx_interrupt(RXSTAT_OVERFLOW);
 					rx_chain = false;
 					enet_rx_buffer.size = 0;
@@ -501,11 +501,11 @@ static void enet_io(void) {
 					break; /* Go back to waiting state */
 				}
 				if (enet_rx_buffer.size>0) {
-					Log_Print(LOG_WARN, "[EN] Receiving packet: Transfer not complete!");
+					Log_Printf(LOG_WARN, "[EN] Receiving packet: Transfer not complete!");
 					rx_chain = true;
 					break; /* Loop in receiving state */
 				} else { /* done */
-					Log_Print(LOG_EN_LEVEL, "[EN] Receiving packet: Transfer complete.");
+					Log_Printf(LOG_EN_LEVEL, "[EN] Receiving packet: Transfer complete.");
 					rx_chain = false;
 					enet_rx_interrupt(RXSTAT_PKT_OK);
 					if (en_state == EN_LOOPBACK) { /* same for thin wire loopback? */
@@ -526,20 +526,20 @@ static void enet_io(void) {
 		if (en_state != EN_DISCONNECTED) {
 			if (enet.tx_status&TXSTAT_NET_BUSY) {
 				/* Wait until network is free */
-				Log_Print(LOG_WARN, "[EN] Network is busy. Transmission delayed.");
+				Log_Printf(LOG_WARN, "[EN] Network is busy. Transmission delayed.");
 			} else {
 				old_size = enet_tx_buffer.size;
 				tx_done=dma_enet_read_memory();
 				if (enet_tx_buffer.size>0) {
 					enet.tx_status &= ~TXSTAT_TX_RECVD;
 					if (enet_tx_buffer.size==old_size && !tx_done) {
-						Log_Print(LOG_WARN, "[EN] Sending packet: Error! Transmitter underflow (no EOP)!");
+						Log_Printf(LOG_WARN, "[EN] Sending packet: Error! Transmitter underflow (no EOP)!");
 						enet_tx_interrupt(TXSTAT_UNDERFLOW);
 						enet_tx_buffer.size=0;
 					} else if (enet_tx_buffer.size>15) {
 						enet_tx_buffer.size-=15;
 					} else if (tx_done) {
-						Log_Print(LOG_WARN, "[EN] Transmitter error: Early EOP!");
+						Log_Printf(LOG_WARN, "[EN] Transmitter error: Early EOP!");
 						enet_tx_buffer.size=0;
 						tx_done = false;
 					}
@@ -552,7 +552,7 @@ static void enet_io(void) {
 					print_buf(enet_tx_buffer.data, enet_tx_buffer.size);
 					if (en_state == EN_LOOPBACK) {
 						/* Loop back */
-						Log_Print(LOG_WARN, "[EN] Loopback packet.");
+						Log_Printf(LOG_WARN, "[EN] Loopback packet.");
 						enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
 					} else {
 						/* Send to real world network */
@@ -646,7 +646,7 @@ static void new_enet_io(void) {
 				old_size = enet_rx_buffer.size;
 				dma_enet_write_memory(rx_chain);
 				if (enet_rx_buffer.size==old_size) {
-					Log_Print(LOG_WARN, "[newEN] Receiving packet: Error! Receiver overflow (DMA disabled)!");
+					Log_Printf(LOG_WARN, "[newEN] Receiving packet: Error! Receiver overflow (DMA disabled)!");
 					enet_rx_interrupt(RXSTAT_OVERFLOW);
 					rx_chain = false;
 					enet_rx_buffer.size = 0;
@@ -655,11 +655,11 @@ static void new_enet_io(void) {
 					break; /* Go back to waiting state */
 				}
 				if (enet_rx_buffer.size>0) {
-					Log_Print(LOG_WARN, "[newEN] Receiving packet: Transfer not complete!");
+					Log_Printf(LOG_WARN, "[newEN] Receiving packet: Transfer not complete!");
 					rx_chain = true;
 					break; /* Loop in receiving state */
 				} else { /* done */
-					Log_Print(LOG_EN_LEVEL, "[newEN] Receiving packet: Transfer complete.");
+					Log_Printf(LOG_EN_LEVEL, "[newEN] Receiving packet: Transfer complete.");
 					rx_chain = false;
 					enet_rx_interrupt(RXSTAT_PKT_OK);
 					if (en_state == EN_LOOPBACK) {
@@ -680,7 +680,7 @@ static void new_enet_io(void) {
 		if (en_state != EN_DISCONNECTED) {
 			if (enet.tx_status&TXSTAT_NET_BUSY) {
 				/* Wait until network is free */
-				Log_Print(LOG_WARN, "[EN] Network is busy. Transmission delayed.");
+				Log_Printf(LOG_WARN, "[EN] Network is busy. Transmission delayed.");
 			} else {
 				dma_enet_read_memory();
 				if (enet_tx_buffer.size>0) {
@@ -692,7 +692,7 @@ static void new_enet_io(void) {
 					enet.tx_status &= ~TXSTAT_TX_RECVD;
 					if (en_state == EN_LOOPBACK) {
 						/* Loop back */
-						Log_Print(LOG_WARN, "[newEN] Loopback packet.");
+						Log_Printf(LOG_WARN, "[newEN] Loopback packet.");
 						enet_receive(enet_tx_buffer.data, enet_tx_buffer.size);
 					} else {
 						/* Send to real world network */
@@ -721,7 +721,7 @@ void ENET_IO_Handler(void) {
 	CycInt_AcknowledgeInterrupt();
 	
 	if (enet.reset&EN_RESET) {
-		Log_Print(LOG_WARN, "Stopping Ethernet Transmitter/Receiver");
+		Log_Printf(LOG_WARN, "Stopping Ethernet Transmitter/Receiver");
 		enet_stopped=true;
 		/* Stop SLIRP/PCAP */
 		if (ConfigureParams.Ethernet.bEthernetConnected) {
@@ -743,7 +743,7 @@ void enet_reset(void) {
     if (enet.reset&EN_RESET) {
         enet.tx_status=ConfigureParams.System.bTurbo?0:TXSTAT_READY;
     } else if (enet_stopped==true) {
-        Log_Print(LOG_WARN, "Starting Ethernet Transmitter/Receiver");
+        Log_Printf(LOG_WARN, "Starting Ethernet Transmitter/Receiver");
         enet_stopped=false;
         CycInt_AddRelativeInterruptUs(ENET_IO_DELAY, 0, INTERRUPT_ENET_IO);
         /* Start SLIRP/PCAP */
