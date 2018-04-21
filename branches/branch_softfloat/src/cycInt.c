@@ -105,7 +105,7 @@ void CycInt_Reset(void) {
 /**
  * Find next interrupt to occur, and store to global variables for decrement
  * in instruction decode loop.
- * (SC) Microseconf interrupts are skipped here and handled in the decode loop.
+ * (SC) Microsecond interrupts are skipped here and handled in the decode loop.
  */
 static void CycInt_SetNewInterrupt(void) {
 	Sint64       LowestCycleCount = INT64_MAX;

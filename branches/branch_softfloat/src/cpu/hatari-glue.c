@@ -15,7 +15,6 @@ const char HatariGlue_fileid[] = "Hatari hatari-glue.c : " __DATE__ " " __TIME__
 #include "main.h"
 #include "configuration.h"
 #include "video.h"
-#include "sysReg.h"
 
 #include "sysdeps.h"
 #include "maccess.h"
@@ -25,20 +24,6 @@ const char HatariGlue_fileid[] = "Hatari hatari-glue.c : " __DATE__ " " __TIME__
 
 
 struct uae_prefs currprefs, changed_prefs;
-
-
-
-/**
- * Return interrupt number (1 - 7), 0 means no interrupt.
- * Note that the interrupt stays pending if it can't be executed yet
- * due to the interrupt level field in the SR.
- */
-int intlev(void) {
-    /* Poll interrupt level from interrupt status and mask registers
-     * --> see sysReg.c
-     */
-    return get_interrupt_level();
-}
 
 /**
  * Initialize 680x0 emulation

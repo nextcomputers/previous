@@ -187,27 +187,6 @@ void set_cpu_caches (bool flush)
 			dcaches030[(regs.caar >> 4) & (CACHELINES030 - 1)].valid[(regs.caar >> 2) & 3] = 0;
 			regs.cacr &= ~0x400;
 		}
-#if 0 // FIXME
-	} else if (currprefs.cpu_model == 68040) {
-        if (ConfigureParams.System.bRealtime) {
-            if (regs.cacr & 0x8000) {
-                flush_icache(0, -1);
-                x_prefetch   = getc_iword_mmu040;
-                x_get_ilong  = getc_ilong_mmu040;
-                x_get_iword  = getc_iword_mmu040;
-                x_get_ibyte  = getc_ibyte_mmu040;
-                x_next_iword = nextc_iword_mmu040;
-                x_next_ilong = nextc_ilong_mmu040;
-            } else {
-                x_prefetch   = get_iword_mmu040;
-                x_get_ilong  = get_ilong_mmu040;
-                x_get_iword  = get_iword_mmu040;
-                x_get_ibyte  = get_ibyte_mmu040;
-                x_next_iword = next_iword_mmu040;
-                x_next_ilong = next_ilong_mmu040;
-            }
-        }
-#endif
 	}
 }
 
@@ -1294,6 +1273,35 @@ static int do_specialties (int cycles)
 
 #else
 
+static int otherMCUcylces = 0;
+// give other MCUs (DSP, i860) some time to run on m68k thread
+static inline void run_other_MCUs() {
+    otherMCUcylces += cpu_cycles;
+    // bundle 100 68k cycles for MCUs
+    if(otherMCUcylces > 100) {
+        DSP_Run(otherMCUcylces);
+        i860_Run(otherMCUcylces);
+        otherMCUcylces = 0;
+    }
+}
+
+/**
+ * Return interrupt number (1 - 7), 0 means no interrupt.
+ * Note that the interrupt stays pending if it can't be executed yet
+ * due to the interrupt level field in the SR.
+ */
+extern Uint32 scrIntStat;
+extern Uint32 scrIntMask;
+extern int scr_get_interrupt_level(Uint32 interrupt);
+
+static inline int intlev(void) {
+ /* Poll interrupt level from interrupt status and mask registers
+ * --> see sysReg.c
+ */
+    Uint32 interrupt = scrIntStat&scrIntMask;
+    return interrupt ? scr_get_interrupt_level(interrupt) : 0;
+}
+
 static int lastRegsS = 0;
 
 // Previous MMU 68030
@@ -1351,8 +1359,7 @@ insretry:
             M68000_AddCycles(cpu_cycles);
             cpu_cycles = nCyclesMainCounter - beforeCycles;
             
-			DSP_Run(cpu_cycles);
-            i860_Run(cpu_cycles);
+            run_other_MCUs();
 
 			/* We can have several interrupts at the same time before the next CPU instruction */
 			/* We must check for pending interrupt and call do_specialties_interrupt() only */
@@ -1420,7 +1427,7 @@ static void m68k_run_mmu040 (void)
 	uaecptr pc;
     int intr = 0;
     int lastintr = 0;
-	
+    
 	for (;;) {
 	TRY (prb) {
 		for (;;) {
@@ -1434,12 +1441,10 @@ static void m68k_run_mmu040 (void)
 			mmu_opcode = opcode = x_prefetch (0);
 			cpu_cycles = (*cpufunctbl[opcode])(opcode);
             M68000_AddCycles(cpu_cycles);
-            
             cpu_cycles = nCyclesMainCounter - beforeCycles;
 
-			DSP_Run(cpu_cycles);
-            i860_Run(cpu_cycles);
-
+            run_other_MCUs();
+            
 			/* We can have several interrupts at the same time before the next CPU instruction */
 			/* We must check for pending interrupt and call do_specialties_interrupt() only */
 			/* if the cpu is not in the STOP state. Else, the int could be acknowledged now */

@@ -191,9 +191,6 @@ extern uae_u32 mmu_tagmask, mmu_pagemask;
 extern struct mmu_atc_line mmu_atc_array[ATC_TYPE][ATC_WAYS][ATC_SLOTS];
 
 extern void mmu_tt_modified(void);
-extern int mmu_do_match_ttr(uae_u32 ttr, uaecptr addr, bool super);
-extern int mmu_match_ttr(uaecptr addr, bool super, bool data);
-extern int mmu_match_ttr_write(uaecptr addr, bool super, bool data, uae_u32 val, int size, bool write);
 extern uaecptr mmu_translate(uaecptr addr, uae_u32 val, bool super, bool data, bool write, int size);
 
 extern uae_u32 REGPARAM3 mmu060_get_rmw_bitfield (uae_u32 src, uae_u32 bdata[2], uae_s32 offset, int width) REGPARAM;
@@ -246,6 +243,70 @@ extern void REGPARAM3 mmu_reset(void) REGPARAM;
 extern void REGPARAM3 mmu_set_funcs(void) REGPARAM;
 extern void REGPARAM3 mmu_set_tc(uae_u16 tc) REGPARAM;
 extern void REGPARAM3 mmu_set_super(bool super) REGPARAM;
+
+static ALWAYS_INLINE int mmu_get_fc(bool super, bool data)
+{
+    return (super ? 4 : 0) | (data ? 1 : 2);
+}
+
+/*
+ * mmu access is a 4 step process:
+ * if mmu is not enabled just read physical
+ * check transparent region, if transparent, read physical
+ * check ATC (address translation cache), read immediatly if HIT
+ * read from mmu with the long path (and allocate ATC entry if needed)
+ */
+
+/* check if an address matches a ttr */
+static ALWAYS_INLINE int mmu_do_match_ttr(uae_u32 ttr, uaecptr addr, bool super)
+{
+    if (ttr & MMU_TTR_BIT_ENABLED)    {    /* TTR enabled */
+        uae_u8 msb, mask;
+        
+        msb = ((addr ^ ttr) & MMU_TTR_LOGICAL_BASE) >> 24;
+        mask = (ttr & MMU_TTR_LOGICAL_MASK) >> 16;
+        
+        if (!(msb & ~mask)) {
+            
+            if ((ttr & MMU_TTR_BIT_SFIELD_ENABLED) == 0) {
+                if (((ttr & MMU_TTR_BIT_SFIELD_SUPER) == 0) != (super == 0)) {
+                    return TTR_NO_MATCH;
+                }
+            }
+            
+            return (ttr & MMU_TTR_BIT_WRITE_PROTECT) ? TTR_NO_WRITE : TTR_OK_MATCH;
+        }
+    }
+    return TTR_NO_MATCH;
+}
+
+static ALWAYS_INLINE int mmu_match_ttr(uaecptr addr, bool super, bool data)
+{
+    int res;
+    
+    if (!mmu_ttr_enabled)
+        return TTR_NO_MATCH;
+    if (data) {
+        res = mmu_do_match_ttr(regs.dtt0, addr, super);
+        if (res == TTR_NO_MATCH)
+            res = mmu_do_match_ttr(regs.dtt1, addr, super);
+    } else {
+        res = mmu_do_match_ttr(regs.itt0, addr, super);
+        if (res == TTR_NO_MATCH)
+            res = mmu_do_match_ttr(regs.itt1, addr, super);
+    }
+    return res;
+}
+
+static ALWAYS_INLINE int mmu_match_ttr_write(uaecptr addr, bool super, bool data, uae_u32 val, int size, bool write)
+{
+    if (!mmu_ttr_enabled)
+        return TTR_NO_MATCH;
+    int res = mmu_match_ttr(addr, super, data);
+    if (res == TTR_NO_WRITE && write)
+        mmu_bus_error(addr, val, mmu_get_fc (super, data), true, size, false);
+    return res;
+}
 
 static ALWAYS_INLINE uaecptr mmu_get_real_address(uaecptr addr, struct mmu_atc_line *cl)
 {

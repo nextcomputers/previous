@@ -320,11 +320,6 @@ void mmu_dump_tables(void)
 }
 /* }}} */
 
-static ALWAYS_INLINE int mmu_get_fc(bool super, bool data)
-{
-    return (super ? 4 : 0) | (data ? 1 : 2);
-}
-
 void mmu_bus_error(uaecptr addr, uae_u32 val, int fc, bool write, int size, bool nonmmu)
 {
     uae_u16 ssw = 0;
@@ -405,66 +400,6 @@ void mmu_bus_error(uaecptr addr, uae_u32 val, int fc, bool write, int size, bool
     regs.mmu_fault_addr = addr;
     
     THROW(2);
-}
-
-
-/*
- * mmu access is a 4 step process:
- * if mmu is not enabled just read physical
- * check transparent region, if transparent, read physical
- * check ATC (address translation cache), read immediatly if HIT
- * read from mmu with the long path (and allocate ATC entry if needed)
- */
-
-/* check if an address matches a ttr */
-ALWAYS_INLINE int mmu_do_match_ttr(uae_u32 ttr, uaecptr addr, bool super)
-{
-    if (ttr & MMU_TTR_BIT_ENABLED)	{	/* TTR enabled */
-        uae_u8 msb, mask;
-        
-        msb = ((addr ^ ttr) & MMU_TTR_LOGICAL_BASE) >> 24;
-        mask = (ttr & MMU_TTR_LOGICAL_MASK) >> 16;
-        
-        if (!(msb & ~mask)) {
-            
-            if ((ttr & MMU_TTR_BIT_SFIELD_ENABLED) == 0) {
-                if (((ttr & MMU_TTR_BIT_SFIELD_SUPER) == 0) != (super == 0)) {
-                    return TTR_NO_MATCH;
-                }
-            }
-            
-            return (ttr & MMU_TTR_BIT_WRITE_PROTECT) ? TTR_NO_WRITE : TTR_OK_MATCH;
-        }
-    }
-    return TTR_NO_MATCH;
-}
-
-ALWAYS_INLINE int mmu_match_ttr(uaecptr addr, bool super, bool data)
-{
-    int res;
-    
-    if (!mmu_ttr_enabled)
-        return TTR_NO_MATCH;
-    if (data) {
-        res = mmu_do_match_ttr(regs.dtt0, addr, super);
-        if (res == TTR_NO_MATCH)
-            res = mmu_do_match_ttr(regs.dtt1, addr, super);
-    } else {
-        res = mmu_do_match_ttr(regs.itt0, addr, super);
-        if (res == TTR_NO_MATCH)
-            res = mmu_do_match_ttr(regs.itt1, addr, super);
-    }
-    return res;
-}
-
-ALWAYS_INLINE int mmu_match_ttr_write(uaecptr addr, bool super, bool data, uae_u32 val, int size, bool write)
-{
-    if (!mmu_ttr_enabled)
-        return TTR_NO_MATCH;
-    int res = mmu_match_ttr(addr, super, data);
-    if (res == TTR_NO_WRITE && write)
-        mmu_bus_error(addr, val, mmu_get_fc (super, data), true, size, false);
-    return res;
 }
 
 /*
@@ -1230,17 +1165,17 @@ uae_u32 uae_mmu_get_lrmw (uaecptr addr, int size, int type)
 
 
 #ifndef __cplusplus
-jmp_buf __exbuf;
+sigjmp_buf __exbuf;
 int     __exvalue;
 #define MAX_TRY_STACK 256
 static int s_try_stack_size=0;
-static jmp_buf s_try_stack[MAX_TRY_STACK];
-jmp_buf* __poptry(void) {
+static sigjmp_buf s_try_stack[MAX_TRY_STACK];
+sigjmp_buf* __poptry(void) {
     if (s_try_stack_size>0) {
         s_try_stack_size--;
         if (s_try_stack_size == 0)
             return NULL;
-        memcpy(&__exbuf,&s_try_stack[s_try_stack_size-1],sizeof(jmp_buf));
+        memcpy(&__exbuf,&s_try_stack[s_try_stack_size-1],sizeof(sigjmp_buf));
         // fprintf(stderr,"pop %d jmpbuf=%08x\n",s_try_stack_size, s_try_stack[s_try_stack_size][0]);
         return &s_try_stack[s_try_stack_size-1];
     }
@@ -1250,10 +1185,10 @@ jmp_buf* __poptry(void) {
         abort();
     }
 }
-void __pushtry(jmp_buf* j) {
+void __pushtry(sigjmp_buf* j) {
     if (s_try_stack_size<MAX_TRY_STACK) {
         // fprintf(stderr,"push %d jmpbuf=%08x\n",s_try_stack_size, (*j)[0]);
-        memcpy(&s_try_stack[s_try_stack_size],j,sizeof(jmp_buf));
+        memcpy(&s_try_stack[s_try_stack_size],j,sizeof(sigjmp_buf));
         s_try_stack_size++;
     } else {
         fprintf(stderr,"try stack overflow...\n");

@@ -21,18 +21,18 @@ struct m68k_exception {
 #else
 /* we are in plain C, just use a stack of long jumps */
 #include <setjmp.h>
-extern jmp_buf __exbuf;
+extern sigjmp_buf __exbuf;
 extern int     __exvalue;
-#define TRY(DUMMY)       __exvalue=setjmp(__exbuf);       \
+#define TRY(DUMMY)       __exvalue=sigsetjmp(__exbuf, 0);       \
                   if (__exvalue==0) { __pushtry(&__exbuf);
 #define CATCH(x)  __poptry(); } else {m68k_exception x=__exvalue; x=x;
 #define ENDTRY    __poptry();}
-#define THROW(x) if (__is_catched()) {longjmp(__exbuf,x);}
-#define THROW_AGAIN(var) if (__is_catched()) longjmp(*__poptry(),__exvalue)
+#define THROW(x) if (__is_catched()) {siglongjmp(__exbuf,x);}
+#define THROW_AGAIN(var) if (__is_catched()) siglongjmp(*__poptry(),__exvalue)
 #define SAVE_EXCEPTION
 #define RESTORE_EXCEPTION
-jmp_buf* __poptry(void);
-void __pushtry(jmp_buf *j);
+sigjmp_buf* __poptry(void);
+void __pushtry(sigjmp_buf *j);
 int __is_catched(void);
 
 typedef  int m68k_exception;
@@ -101,7 +101,7 @@ typedef  int m68k_exception;
 #define MMU030_SSW_FC_MASK      0x0007
 
 
-#define ALWAYS_INLINE __inline
+#define ALWAYS_INLINE inline
 
 // take care of 2 kinds of alignement, bus size and page
 #if 1

@@ -57,7 +57,7 @@ extern "C" {
 #define RELEASE_INT     0
 
 void set_interrupt(Uint32 intr, Uint8 state);
-int get_interrupt_level(void);
+int scr_get_interrupt_level(Uint32 interrupt);
 
 void set_dsp_interrupt(Uint8 state);
 
