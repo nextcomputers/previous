@@ -37,6 +37,7 @@
 #include "log.h"
 #include "debugui.h"
 #include "debugcpu.h"
+#include "sysReg.h"
 
 
 /* Opcode of faulting instruction */
@@ -1273,15 +1274,18 @@ static int do_specialties (int cycles)
 
 #else
 
-static int otherMCUcylces = 0;
-// give other MCUs (DSP, i860) some time to run on m68k thread
-static inline void run_other_MCUs() {
-    otherMCUcylces += cpu_cycles;
-    // bundle 100 68k cycles for MCUs
-    if(otherMCUcylces > 100) {
-        DSP_Run(otherMCUcylces);
-        i860_Run(otherMCUcylces);
-        otherMCUcylces = 0;
+static int ndCycles = 0;
+// give other MPUs (DSP, i860) some time to run on m68k thread
+static inline void run_other_MPUs() {
+    ndCycles += cpu_cycles;
+    // bundle some 68k cycles for MPUs
+    
+    if(dsp_core.running)
+        DSP_Run(cpu_cycles);
+    
+    if(ndCycles > 100) {
+        i860_Run(ndCycles);
+        ndCycles = 0;
     }
 }
 
@@ -1290,10 +1294,6 @@ static inline void run_other_MCUs() {
  * Note that the interrupt stays pending if it can't be executed yet
  * due to the interrupt level field in the SR.
  */
-extern Uint32 scrIntStat;
-extern Uint32 scrIntMask;
-extern int scr_get_interrupt_level(Uint32 interrupt);
-
 static inline int intlev(void) {
  /* Poll interrupt level from interrupt status and mask registers
  * --> see sysReg.c
@@ -1359,7 +1359,7 @@ insretry:
             M68000_AddCycles(cpu_cycles);
             cpu_cycles = nCyclesMainCounter - beforeCycles;
             
-            run_other_MCUs();
+            run_other_MPUs();
 
 			/* We can have several interrupts at the same time before the next CPU instruction */
 			/* We must check for pending interrupt and call do_specialties_interrupt() only */
@@ -1438,12 +1438,12 @@ static void m68k_run_mmu040 (void)
         
             Uint64 beforeCycles = nCyclesMainCounter;
 			mmu_opcode = -1;
-			mmu_opcode = opcode = x_prefetch (0);
+			mmu_opcode = opcode = get_iword_mmu040(0);
 			cpu_cycles = (*cpufunctbl[opcode])(opcode);
             M68000_AddCycles(cpu_cycles);
             cpu_cycles = nCyclesMainCounter - beforeCycles;
 
-            run_other_MCUs();
+            run_other_MPUs();
             
 			/* We can have several interrupts at the same time before the next CPU instruction */
 			/* We must check for pending interrupt and call do_specialties_interrupt() only */

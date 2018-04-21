@@ -155,7 +155,7 @@ void NBIC::init(void) {
 volatile Uint32 NBIC::remInter;
 volatile Uint32 NBIC::remInterMask;
 
-/* Interrupt functions */
+/* Interrupt function, called from ,68k thread */
 void nd_nbic_interrupt(void) {
     if (NBIC::remInter&NBIC::remInterMask) {
         set_interrupt(INT_REMOTE, SET_INT);

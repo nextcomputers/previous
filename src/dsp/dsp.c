@@ -265,13 +265,7 @@ void DSP_Start(Uint8 mode)
 void DSP_Run(int nHostCycles)
 {
 #if ENABLE_DSP_EMU
-	if (dsp_core.running == 0)
-		return;
-	
 	save_cycles += nHostCycles * 2;
-
-	if (save_cycles <= 0)
-		return;
 	
 	while (save_cycles > 0)
 	{

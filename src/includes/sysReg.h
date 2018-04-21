@@ -59,6 +59,9 @@ extern "C" {
 void set_interrupt(Uint32 intr, Uint8 state);
 int scr_get_interrupt_level(Uint32 interrupt);
 
+extern Uint32 scrIntStat;
+extern Uint32 scrIntMask;
+
 void set_dsp_interrupt(Uint8 state);
 
 void SID_Read(void);
