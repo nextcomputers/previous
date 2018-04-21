@@ -29,7 +29,7 @@ static Uint64       perfCounterStart;
 static Sint64       cycleCounterStart;
 static double       cycleSecsStart;
 static bool         isRealtime;
-static bool         oldIsRealtime;
+static bool         currentIsRealtime;
 static double       cycleDivisor;
 static lock_t       timeLock;
 static Uint32       ticksStart;
@@ -39,9 +39,15 @@ static Uint64       hardClockActual;
 static time_t       unixTimeStart;
 static double       unixTimeOffset = 0;
 static double       perfFrequency;
-static double       realTimeOffset;
 static Uint64       pauseTimeStamp;
 static bool         osDarkmatter;
+
+static inline double real_time() {
+    double rt  = (SDL_GetPerformanceCounter() - perfCounterStart);
+    rt        /= perfFrequency;
+    return rt;
+}
+
 
 void host_reset() {
     perfCounterStart  = SDL_GetPerformanceCounter();
@@ -52,11 +58,10 @@ void host_reset() {
     cycleCounterStart = 0;
     cycleSecsStart    = 0;
     isRealtime        = false;
-    oldIsRealtime     = false;
+    currentIsRealtime = false;
     hardClockExpected = 0;
     hardClockActual   = 0;
     enableRealtime    = ConfigureParams.System.bRealtime;
-    realTimeOffset    = 0;
     osDarkmatter      = false;
     
     for(int i = NUM_BLANKS; --i >= 0;) {
@@ -66,7 +71,7 @@ void host_reset() {
     
     cycleDivisor = ConfigureParams.System.nCpuFreq * 1000 * 1000;
     
-    SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);
+    SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);    
 }
 
 void host_blank(int slot, int src, bool state) {
@@ -104,51 +109,47 @@ void host_realtime(bool state) {
 }
 
 double host_time_sec() {
-    double rt;
-    double vt;
-    host_time(&rt, &vt);
-    return vt;
-}
-
-void host_time(double* realTime, double* hostTime) {
+    double hostTime;
+    
     host_lock(&timeLock);
     
-    *realTime  = (SDL_GetPerformanceCounter() - perfCounterStart);
-    *realTime /= perfFrequency;
-    
-    if(oldIsRealtime) {
-        *hostTime = *realTime;
+    if(currentIsRealtime) {
+        hostTime = real_time();
     } else {
-        *hostTime  = nCyclesMainCounter - cycleCounterStart;
-        *hostTime /= cycleDivisor;
-        *hostTime += cycleSecsStart;
+        hostTime  = nCyclesMainCounter - cycleCounterStart;
+        hostTime /= cycleDivisor;
+        hostTime += cycleSecsStart;
     }
     bool state = (isRealtime || osDarkmatter) && enableRealtime;
-    if(oldIsRealtime != state) {
-        if(oldIsRealtime) {
+    if(currentIsRealtime != state) {
+        double realTime  = real_time();
+
+        if(currentIsRealtime) {
             // switching from real-time to cycle-time
-            cycleSecsStart = *realTime;
+            cycleSecsStart    = realTime;
             cycleCounterStart = nCyclesMainCounter;
         } else {
             // switching from cycle-time to real-time
-            realTimeOffset = *hostTime - *realTime;
+            double realTimeOffset = hostTime - realTime;
             if(realTimeOffset > 0) {
                 // if hostTime is in the future, wait until realTime is there as well
                 if(realTimeOffset > 0.01)
                     host_sleep_sec(realTimeOffset);
                 else
-                    while(*realTime < *hostTime) {
-                        *realTime  = (SDL_GetPerformanceCounter() - perfCounterStart);
-                        *realTime /= perfFrequency;
-                    }
+                    while(real_time() < hostTime) {}
             }
         }
-        oldIsRealtime = state;
+        currentIsRealtime = state;
     }
     
-    realTimeOffset = *hostTime - *realTime;
-
     host_unlock(&timeLock);
+    
+    return hostTime;
+}
+
+void host_time(double* realTime, double* hostTime) {
+    *hostTime = host_time_sec();
+    *realTime = real_time();
 }
 
 // Return current time as micro seconds
@@ -170,10 +171,10 @@ void host_set_unix_time(time_t now) {
 }
 
 double host_real_time_offset() {
-    host_lock(&timeLock);
-    double result = realTimeOffset;
-    host_unlock(&timeLock);
-    return result;
+    double rt;
+    double vt;
+    host_time(&rt, &vt);
+    return vt-rt;
 }
 
 void host_pause_time(bool pausing) {
@@ -186,31 +187,30 @@ void host_pause_time(bool pausing) {
 
 /*-----------------------------------------------------------------------*/
 /**
- * Sleep for a given number of micro seconds. We burn cycles by running
- * the event loop.
+ * Sleep for a given number of micro seconds.
  */
 void host_sleep_us(Uint64 us) {
 #if HAVE_NANOSLEEP
     struct timespec	ts;
     int		ret;
-    ts.tv_sec = us / 1000000;
-    ts.tv_nsec = (us % 1000000) * 1000;	/* micro sec -> nano sec */
+    ts.tv_sec = us / 1000000LL;
+    ts.tv_nsec = (us % 1000000LL) * 1000;	/* micro sec -> nano sec */
     /* wait until all the delay is elapsed, including possible interruptions by signals */
     do {
         errno = 0;
         ret = nanosleep(&ts, &ts);
     } while ( ret && ( errno == EINTR ) );		/* keep on sleeping if we were interrupted */
 #else
-    Uint64 timeout = host_time_us() + us;
-    host_sleep_ms(( (Uint32)(ticks_micro / 1000) ) ;	/* micro sec -> milli sec */
-    while(host_time_us() < timeout) {}
+    double timeout = us;
+    timeout /= 1000000.0;
+    timeout += real_time();
+    host_sleep_ms(( (Uint32)(us / 1000LL)) );
+    while(real_time() < timeout) {}
 #endif
 }
 
 void host_sleep_ms(Uint32 ms) {
-    Uint64 sleep = ms;
-    sleep *= 1000;
-    host_sleep_us(sleep);
+    SDL_Delay(ms);
 }
 
 void host_sleep_sec(double sec) {

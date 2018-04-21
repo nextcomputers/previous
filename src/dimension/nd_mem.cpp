@@ -137,40 +137,86 @@ public:
 };
 
 /* NeXTdimension VRAM */
+/* stored as ARGB for faster blitting, assuming aligned access for 32 bit */
 
 class ND_VRAM : public ND_Addrbank {
     Uint8* base;
 public:
-    ND_VRAM(NextDimension* nd) : ND_Addrbank(nd), base(nd->vram) {}
+    ND_VRAM(NextDimension* nd) : ND_Addrbank(nd), base(nd->vram) {
+        // sanity checks for ARGB mem access
+        lput(0, 0x12345678);
+        if(lget(0) != 0x12345678) {fprintf(stderr, "ND_VRAM: 32 bit access check failed\n");  goto error;}
+
+        if(bget(0) != 0x12)       {fprintf(stderr, "ND_VRAM: 8 bit access 0 check failed\n"); goto error;}
+        if(bget(1) != 0x34)       {fprintf(stderr, "ND_VRAM: 8 bit access 1 check failed\n"); goto error;}
+        if(bget(2) != 0x56)       {fprintf(stderr, "ND_VRAM: 8 bit access 2 check failed\n"); goto error;}
+        if(bget(3) != 0x78)       {fprintf(stderr, "ND_VRAM: 8 bit access 3 check failed\n"); goto error;}
+
+        if(wget(0) != 0x1234)     {fprintf(stderr, "ND_VRAM: 16 bit access 0 check failed\n"); goto error;}
+        if(wget(2) != 0x5678)     {fprintf(stderr, "ND_VRAM: 16 bit access 2 check failed\n"); goto error;}
+
+        wput(0, 0x7654);
+        wput(2, 0x3210);
+        if(lget(0) != 0x76543210) {fprintf(stderr, "ND_VRAM: 32 bit access check failed (wput)\n");  goto error;}
+
+        bput(0, 0x12);
+        bput(1, 0x34);
+        bput(2, 0x56);
+        bput(3, 0x78);
+        if(lget(0) != 0x12345678) {fprintf(stderr, "ND_VRAM: 32 bit access check failed (bput)\n");  goto error;}
+
+        return;
+    error:
+        exit(1);
+    }
 
     Uint32 lget(Uint32 addr) {
         addr &= ND_VRAM_MASK;
-        return do_get_mem_long(base + addr);
-    }
-
-    Uint32 wget(Uint32 addr) {
-        addr &= ND_VRAM_MASK;
-        return do_get_mem_word(base + addr);
-    }
-
-    Uint32 bget(Uint32 addr) {
-        addr &= ND_VRAM_MASK;
-        return base[addr];
+        return
+            base[addr+3]         |
+            (base[addr+0] << 8)  |
+            (base[addr+1] << 16) |
+            (base[addr+2] << 24);
     }
 
     void lput(Uint32 addr, Uint32 l) {
         addr &= ND_VRAM_MASK;
-        do_put_mem_long(base + addr, l);
+        base[addr+3] = l;
+        base[addr+0] = l >> 8;
+        base[addr+1] = l >> 16;
+        base[addr+2] = l >> 24;
+    }
+
+    Uint32 wget(Uint32 addr) {
+        addr &= ND_VRAM_MASK;
+        return (bget(addr) << 8) | bget(addr+1);
     }
 
     void wput(Uint32 addr, Uint32 w) {
         addr &= ND_VRAM_MASK;
-        do_put_mem_word(base + addr, w);
+        bput(addr,   w >> 8);
+        bput(addr+1, w);
+    }
+
+    Uint32 bget(Uint32 addr) {
+        addr &= ND_VRAM_MASK;
+        switch(addr&3) {
+            case 0: return base[(addr&~3)+2];
+            case 1: return base[(addr&~3)+1];
+            case 2: return base[(addr&~3)+0];
+            case 3: return base[(addr&~3)+3];
+        }
+        return 0;
     }
 
     void bput(Uint32 addr, Uint32 b) {
         addr &= ND_VRAM_MASK;
-        base[addr] = b;
+        switch(addr&3) {
+            case 0: base[(addr&~3)+2] = b; break;
+            case 1: base[(addr&~3)+1] = b; break;
+            case 2: base[(addr&~3)+0] = b; break;
+            case 3: base[(addr&~3)+3] = b; break;
+        }
     }
 };
 

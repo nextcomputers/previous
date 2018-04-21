@@ -119,59 +119,58 @@ void blitDimension(Uint32* vram, SDL_Texture* tex) {
 #else
     Uint32* src = &vram[16];
 #endif
-    void*   pixels;
     int     d;
     Uint32  format;
     SDL_QueryTexture(tex, &format, &d, &d, &d);
-    SDL_LockTexture(tex, NULL, &pixels, &d);
-    Uint32* dst = (Uint32*)pixels;
     if(SDL_BYTEORDER == SDL_BIG_ENDIAN) {
         /* Add big-endian accelerated blit loops as needed here */
         switch (format) {
             default: {
+                void*   pixels;
+                SDL_LockTexture(tex, NULL, &pixels, &d);
+                Uint32* dst = (Uint32*)pixels;
+
                 /* fallback to SDL_MapRGB */
                 SDL_PixelFormat* pformat = SDL_AllocFormat(format);
                 for(int y = NeXT_SCRN_HEIGHT; --y >= 0;) {
                     for(int x = NeXT_SCRN_WIDTH; --x >= 0;) {
                         Uint32 v = *src++;
-                        *dst++   = SDL_MapRGB(pformat, (v >> 24) & 0xFF, (v>>16) & 0xFF, (v>>8) & 0xFF);
+                        *dst++   = SDL_MapRGB(pformat, (v >> 8) & 0xFF, (v>>16) & 0xFF, (v>>24) & 0xFF);
                     }
                     src += 32;
                 }
                 SDL_FreeFormat(pformat);
+                SDL_UnlockTexture(tex);
                 break;
             }
         }
     } else {
         /* Add little-endian accelerated blit loops as needed here */
         switch (format) {
-            case SDL_PIXELFORMAT_ARGB8888:
-                for(int y = NeXT_SCRN_HEIGHT; --y >= 0;) {
-                    for(int x = NeXT_SCRN_WIDTH; --x >= 0;) {
-                        // Uint32 LE: AABBGGRR
-                        // Target:    AARRGGBB
-                        Uint32 v = *src++;
-                        *dst++   = (v & 0xFF000000) | ((v<<16) &0x00FF0000) | (v &0x0000FF00) | ((v>>16) &0x000000FF);
-                    }
-                    src += 32;
-                }
+            case SDL_PIXELFORMAT_ARGB8888: {
+                SDL_UpdateTexture(tex, NULL, src, (NeXT_SCRN_WIDTH+32)*4);
                 break;
+            }
             default: {
+                void*   pixels;
+                SDL_LockTexture(tex, NULL, &pixels, &d);
+                Uint32* dst = (Uint32*)pixels;
+
                 /* fallback to SDL_MapRGB */
                 SDL_PixelFormat* pformat = SDL_AllocFormat(format);
                 for(int y = NeXT_SCRN_HEIGHT; --y >= 0;) {
                     for(int x = NeXT_SCRN_WIDTH; --x >= 0;) {
-                        Uint32 v = SDL_Swap32(*src++);
-                        *dst++   = SDL_MapRGB(pformat, (v >> 24) & 0xFF, (v>>16) & 0xFF, (v>>8) & 0xFF);
+                        Uint32 v = *src++;
+                        *dst++   = SDL_MapRGB(pformat, (v >> 16) & 0xFF, (v>>8) & 0xFF, (v>>0) & 0xFF);
                     }
                     src += 32;
                 }
                 SDL_FreeFormat(pformat);
+                SDL_UnlockTexture(tex);
                 break;
             }
         }
     }
-    SDL_UnlockTexture(tex);
 }
 
 /*

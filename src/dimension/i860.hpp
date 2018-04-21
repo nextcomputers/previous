@@ -692,6 +692,7 @@ private:
     UINT64 ifetch64(const UINT32 pc, const UINT32 vaddr, int const cidx);
     UINT32 ifetch(const UINT32 pc);
     UINT32 ifetch_notrap(const UINT32 pc);
+    const char* trap_info();
     void   handle_trap(UINT32 savepc);
     void   ret_from_trap();
     void   unrecog_opcode (UINT32 pc, UINT32 insn);
