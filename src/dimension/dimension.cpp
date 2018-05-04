@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include "configuration.h"
 #include "m68000.h"
 #include "dimension.hpp"
@@ -5,8 +7,38 @@
 #include "nd_mem.hpp"
 #include "nd_sdl.hpp"
 
+#define nd_get_mem_bank(addr)    (nd->mem_banks[nd_bankindex(addr|ND_BOARD_BITS)])
+#define nd68k_get_mem_bank(addr) (mem_banks[nd_bankindex(addr)])
+
+#define nd_longget(addr)   (nd_get_mem_bank(addr)->lget(addr))
+#define nd_wordget(addr)   (nd_get_mem_bank(addr)->wget(addr))
+#define nd_byteget(addr)   (nd_get_mem_bank(addr)->bget(addr))
+#define nd_longput(addr,l) (nd_get_mem_bank(addr)->lput(addr, l))
+#define nd_wordput(addr,w) (nd_get_mem_bank(addr)->wput(addr, w))
+#define nd_byteput(addr,b) (nd_get_mem_bank(addr)->bput(addr, b))
+#define nd_cs8get(addr)    (nd_get_mem_bank(addr)->cs8get(addr))
+
+#define nd68k_longget(addr)   (nd68k_get_mem_bank(addr)->lget(addr))
+#define nd68k_wordget(addr)   (nd68k_get_mem_bank(addr)->wget(addr))
+#define nd68k_byteget(addr)   (nd68k_get_mem_bank(addr)->bget(addr))
+#define nd68k_longput(addr,l) (nd68k_get_mem_bank(addr)->lput(addr, l))
+#define nd68k_wordput(addr,w) (nd68k_get_mem_bank(addr)->wput(addr, w))
+#define nd68k_byteput(addr,b) (nd68k_get_mem_bank(addr)->bput(addr, b))
+#define nd68k_cs8get(addr)    (nd68k_get_mem_bank(addr)->cs8geti(addr))
+
+static Uint8* alloc_aligned(size_t size) {
+    Uint8* result;
+    posix_memalign((void**)&result, 0x10000, size);
+    return result;
+}
+
 NextDimension::NextDimension(int slot) :
     NextBusBoard(slot),
+    mem_banks(new ND_Addrbank*[65536]),
+    ram(alloc_aligned(64*1024*1024)),
+    vram(alloc_aligned(4*1024*1024)),
+    rom(alloc_aligned(128*1024)),
+    rom_last_addr(0),
     sdl(slot, (Uint32*)vram),
     i860(this),
     nbic(slot, ND_NBIC_ID),
@@ -15,8 +47,7 @@ NextDimension::NextDimension(int slot) :
     dmcd(this),
     dcsc0(this, 0),
     dcsc1(this, 1),
-    rom_command(0),
-    rom_last_addr(0)
+    rom_command(0)
 {
     i860.uninit();
     nbic.init();
@@ -30,6 +61,12 @@ NextDimension::NextDimension(int slot) :
 NextDimension::~NextDimension() {
     i860.uninit();
     sdl.destroy();
+    
+    delete[] mem_banks;
+    free(ram);
+    free(vram);
+    free(rom);
+
 }
 
 void NextDimension::reset(void) {
@@ -147,125 +184,112 @@ void NextDimension::send_msg(int msg) {
 
 /* NeXTdimension board memory access (i860) */
 
-Uint8  NextDimension::i860_cs8get(NextDimension* nd, Uint32 addr) {
-    addr |= ND_BOARD_BITS;
+Uint8  NextDimension::i860_cs8get(const NextDimension* nd, Uint32 addr) {
     return nd_cs8get(addr);
 }
 
-void   NextDimension::i860_rd8_be(NextDimension* nd, Uint32 addr, Uint32* val) {
-    addr  |= ND_BOARD_BITS;
+void   NextDimension::i860_rd8_be(const NextDimension* nd, Uint32 addr, Uint32* val) {
     *((Uint8*)val) = nd_byteget(addr);
 }
 
-void   NextDimension::i860_rd16_be(NextDimension* nd, Uint32 addr, Uint32* val) {
-    addr |= ND_BOARD_BITS;
+void   NextDimension::i860_rd16_be(const NextDimension* nd, Uint32 addr, Uint32* val) {
     *((Uint16*)val) = nd_wordget(addr);
 }
 
-void   NextDimension::i860_rd32_be(NextDimension* nd, Uint32 addr, Uint32* val) {
-    addr  |= ND_BOARD_BITS;
+void   NextDimension::i860_rd32_be(const NextDimension* nd, Uint32 addr, Uint32* val) {
     val[0] = nd_longget(addr);
 }
 
-void   NextDimension::i860_rd64_be(NextDimension* nd, Uint32 addr, Uint32* val) {
-    addr  |= ND_BOARD_BITS;
-    val[0] = nd_longget(addr+4);
-    val[1] = nd_longget(addr+0);
+void   NextDimension::i860_rd64_be(const NextDimension* nd, Uint32 addr, Uint32* val) {
+    const ND_Addrbank* ab = nd_get_mem_bank(addr);
+    val[0] = ab->lget(addr+4);
+    val[1] = ab->lget(addr+0);
 }
 
-void   NextDimension::i860_rd128_be(NextDimension* nd, Uint32 addr, Uint32* val) {
-    addr   |= ND_BOARD_BITS;
-    val[0]  = nd_longget(addr+4);
-    val[1]  = nd_longget(addr+0);
-    val[2]  = nd_longget(addr+12);
-    val[3]  = nd_longget(addr+8);
+void   NextDimension::i860_rd128_be(const NextDimension* nd, Uint32 addr, Uint32* val) {
+    const ND_Addrbank* ab = nd_get_mem_bank(addr);
+    val[0]  = ab->lget(addr+4);
+    val[1]  = ab->lget(addr+0);
+    val[2]  = ab->lget(addr+12);
+    val[3]  = ab->lget(addr+8);
 }
 
-void   NextDimension::i860_wr8_be(NextDimension* nd, Uint32 addr, const Uint32* val) {
-    addr |= ND_BOARD_BITS;
+void   NextDimension::i860_wr8_be(const NextDimension* nd, Uint32 addr, const Uint32* val) {
     nd_byteput(addr, *((const Uint8*)val));
 }
 
-void   NextDimension::i860_wr16_be(NextDimension* nd, Uint32 addr, const Uint32* val) {
-    addr |= ND_BOARD_BITS;
+void   NextDimension::i860_wr16_be(const NextDimension* nd, Uint32 addr, const Uint32* val) {
     nd_wordput(addr, *((const Uint16*)val));
 }
 
-void   NextDimension::i860_wr32_be(NextDimension* nd, Uint32 addr, const Uint32* val) {
-    addr |= ND_BOARD_BITS;
+void   NextDimension::i860_wr32_be(const NextDimension* nd, Uint32 addr, const Uint32* val) {
     nd_longput(addr, val[0]);
 }
 
-void   NextDimension::i860_wr64_be(NextDimension* nd, Uint32 addr, const Uint32* val) {
-    addr |= ND_BOARD_BITS;
-    nd_longput(addr+4, val[0]);
-    nd_longput(addr+0, val[1]);
+void   NextDimension::i860_wr64_be(const NextDimension* nd, Uint32 addr, const Uint32* val) {
+    const ND_Addrbank* ab = nd_get_mem_bank(addr);
+    ab->lput(addr+4, val[0]);
+    ab->lput(addr+0, val[1]);
 }
 
-void   NextDimension::i860_wr128_be(NextDimension* nd, Uint32 addr, const Uint32* val) {
-    addr |= ND_BOARD_BITS;
-    nd_longput(addr+4,  val[0]);
-    nd_longput(addr+0,  val[1]);
-    nd_longput(addr+12, val[2]);
-    nd_longput(addr+8,  val[3]);
+void   NextDimension::i860_wr128_be(const NextDimension* nd, Uint32 addr, const Uint32* val) {
+    const ND_Addrbank* ab = nd_get_mem_bank(addr);
+    ab->lput(addr+4,  val[0]);
+    ab->lput(addr+0,  val[1]);
+    ab->lput(addr+12, val[2]);
+    ab->lput(addr+8,  val[3]);
 }
 
-void   NextDimension::i860_rd8_le(NextDimension* nd, Uint32 addr, Uint32* val) {
-    addr  |= ND_BOARD_BITS;
+void   NextDimension::i860_rd8_le(const NextDimension* nd, Uint32 addr, Uint32* val) {
     *((Uint8*)val) = nd_byteget(addr^7);
 }
 
-void   NextDimension::i860_rd16_le(NextDimension* nd, Uint32 addr, Uint32* val) {
-    addr |= ND_BOARD_BITS;
+void   NextDimension::i860_rd16_le(const NextDimension* nd, Uint32 addr, Uint32* val) {
     *((Uint16*)val) = nd_wordget(addr^6);
 }
 
-void   NextDimension::i860_rd32_le(NextDimension* nd, Uint32 addr, Uint32* val) {
-    addr  |= ND_BOARD_BITS;
+void   NextDimension::i860_rd32_le(const NextDimension* nd, Uint32 addr, Uint32* val) {
     val[0] = nd_longget(addr^4);
 }
 
-void   NextDimension::i860_rd64_le(NextDimension* nd, Uint32 addr, Uint32* val) {
-    addr  |= ND_BOARD_BITS;
-    val[0] = nd_longget(addr+0);
-    val[1] = nd_longget(addr+4);
+void   NextDimension::i860_rd64_le(const NextDimension* nd, Uint32 addr, Uint32* val) {
+    const ND_Addrbank* ab = nd_get_mem_bank(addr);
+    val[0] = ab->lget(addr+0);
+    val[1] = ab->lget(addr+4);
 }
 
-void   NextDimension::i860_rd128_le(NextDimension* nd, Uint32 addr, Uint32* val) {
-    addr   |= ND_BOARD_BITS;
-    val[0]  = nd_longget(addr+0);
-    val[1]  = nd_longget(addr+4);
-    val[2]  = nd_longget(addr+8);
-    val[3]  = nd_longget(addr+12);
+void   NextDimension::i860_rd128_le(const NextDimension* nd, Uint32 addr, Uint32* val) {
+    const ND_Addrbank* ab = nd_get_mem_bank(addr);
+    val[0]  = ab->lget(addr+0);
+    val[1]  = ab->lget(addr+4);
+    val[2]  = ab->lget(addr+8);
+    val[3]  = ab->lget(addr+12);
 }
 
-void   NextDimension::i860_wr8_le(NextDimension* nd, Uint32 addr, const Uint32* val) {
-    addr |= ND_BOARD_BITS;
+void   NextDimension::i860_wr8_le(const NextDimension* nd, Uint32 addr, const Uint32* val) {
     nd_byteput(addr^7, *((const Uint8*)val));
 }
 
-void   NextDimension::i860_wr16_le(NextDimension* nd, Uint32 addr, const Uint32* val) {
-    addr |= ND_BOARD_BITS;
+void   NextDimension::i860_wr16_le(const NextDimension* nd, Uint32 addr, const Uint32* val) {
     nd_wordput(addr^6, *((const Uint16*)val));
 }
 
-void   NextDimension::i860_wr32_le(NextDimension* nd, Uint32 addr, const Uint32* val) {
-    addr |= ND_BOARD_BITS;
+void   NextDimension::i860_wr32_le(const NextDimension* nd, Uint32 addr, const Uint32* val) {
     nd_longput(addr^4, val[0]);
 }
 
-void   NextDimension::i860_wr64_le(NextDimension* nd, Uint32 addr, const Uint32* val) {
-    addr |= ND_BOARD_BITS;
-    nd_longput(addr+0, val[0]);
-    nd_longput(addr+4, val[1]);
+void   NextDimension::i860_wr64_le(const NextDimension* nd, Uint32 addr, const Uint32* val) {
+    const ND_Addrbank* ab = nd_get_mem_bank(addr);
+    ab->lput(addr+0, val[0]);
+    ab->lput(addr+4, val[1]);
 }
 
-void   NextDimension::i860_wr128_le(NextDimension* nd, Uint32 addr, const Uint32* val) {
-    addr |= ND_BOARD_BITS;
-    nd_longput(addr+0,  val[0]);
-    nd_longput(addr+4,  val[1]);
-    nd_longput(addr+8,  val[2]);
-    nd_longput(addr+12, val[3]);
+void   NextDimension::i860_wr128_le(const NextDimension* nd, Uint32 addr, const Uint32* val) {
+    const ND_Addrbank* ab = nd_get_mem_bank(addr);
+    ab->lput(addr+0,  val[0]);
+    ab->lput(addr+4,  val[1]);
+    ab->lput(addr+8,  val[2]);
+    ab->lput(addr+12, val[3]);
 }
 
 /* Message disaptcher - executed on i860 thread, safe to call i860 methods */

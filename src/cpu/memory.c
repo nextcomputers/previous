@@ -25,7 +25,6 @@ const char Memory_fileid[] = "Previous memory.c : " __DATE__ " " __TIME__;
 #include "tmc.h"
 #include "nbic.h"
 #include "reset.h"
-#include "nextMemory.h"
 #include "m68000.h"
 #include "configuration.h"
 #include "NextBus.hpp"
@@ -166,51 +165,10 @@ uae_u32 NEXT_ram_bank3_mask;
 #define NEXTBUS_BOARD_SIZE		0x10000000
 #define NEXTBUS_BOARD_MASK		0x0FFFFFFF
 
-
-uae_u8 NEXTVideo[256*1024];
-
-uae_u8 NEXTColorVideo[2*1024*1024];
-
-
-#ifdef SAVE_MEMORY_BANKS
-addrbank *mem_banks[65536];
-#else
-addrbank mem_banks[65536];
-#endif
-
-#ifdef NO_INLINE_MEMORY_ACCESS
-__inline__ uae_u32 longget (uaecptr addr)
-{
-	return call_mem_get_func (get_mem_bank (addr).lget, addr);
-}
-__inline__ uae_u32 wordget (uaecptr addr)
-{
-	return call_mem_get_func (get_mem_bank (addr).wget, addr);
-}
-__inline__ uae_u32 byteget (uaecptr addr)
-{
-	return call_mem_get_func (get_mem_bank (addr).bget, addr);
-}
-__inline__ void longput (uaecptr addr, uae_u32 l)
-{
-	call_mem_put_func (get_mem_bank (addr).lput, addr, l);
-}
-__inline__ void wordput (uaecptr addr, uae_u32 w)
-{
-	call_mem_put_func (get_mem_bank (addr).wput, addr, w);
-}
-__inline__ void byteput (uaecptr addr, uae_u32 b)
-{
-	call_mem_put_func (get_mem_bank (addr).bput, addr, b);
-}
-#endif
-
-
-/* Some prototypes: */
-void SDL_Quit(void);
-
-uae_u8 ce_cachable[65536];
-
+uae_u8*    NEXTVideo      = NULL; // shared color/bw buffer
+uae_u8*    NEXTRam        = NULL;
+uae_u8*    NEXTRom        = NULL;
+uae_u8*    NEXTIo         = NULL;
 
 /* **** A dummy bank that only contains zeros **** */
 
@@ -685,10 +643,10 @@ static void mem_ram_mwf_lput(uaecptr addr, uae_u32 l)
 	int function = (addr>>26)&0x3;
 	addr = NEXT_RAM_START|(addr&0x03FFFFFF);
 	
-	uae_u32 old = longget(addr);
+	uae_u32 old = get_long(addr);
 	uae_u32 val = memory_write_func(old, l, function, 4);
 	
-	longput(addr, val);
+	put_long(addr, val);
 }
 
 static void mem_ram_mwf_wput(uaecptr addr, uae_u32 w)
@@ -696,10 +654,10 @@ static void mem_ram_mwf_wput(uaecptr addr, uae_u32 w)
 	int function = (addr>>26)&0x3;
 	addr = NEXT_RAM_START|(addr&0x03FFFFFF);
 	
-	uae_u32 old = wordget(addr);
+	uae_u32 old = get_word(addr);
 	uae_u32 val = memory_write_func(old, w, function, 2);
 	
-	wordput(addr, val);
+	put_word(addr, val);
 }
 
 static void mem_ram_mwf_bput(uaecptr addr, uae_u32 b)
@@ -707,10 +665,10 @@ static void mem_ram_mwf_bput(uaecptr addr, uae_u32 b)
 	int function = (addr>>26)&0x3;
 	addr = NEXT_RAM_START|(addr&0x03FFFFFF);
 	
-	uae_u32 old = byteget(addr);
+	uae_u32 old = get_byte(addr);
 	uae_u32 val = memory_write_func(old, b, function, 1);
 	
-	byteput(addr, val);
+	put_byte(addr, val);
 }
 
 
@@ -743,10 +701,10 @@ static void mem_video_mwf_lput(uaecptr addr, uae_u32 l)
 	int function = (addr>>24)&0x3;
 	addr = NEXT_VRAM_START|(addr&NEXT_VRAM_MASK);
 	
-	uae_u32 old = longget(addr);
+    uae_u32 old = get_long(addr);
 	uae_u32 val = memory_write_func(old, l, function, 4);
 	
-	longput(addr, val);
+	put_long(addr, val);
 }
 
 static void mem_video_mwf_wput(uaecptr addr, uae_u32 w)
@@ -754,10 +712,10 @@ static void mem_video_mwf_wput(uaecptr addr, uae_u32 w)
 	int function = (addr>>24)&0x3;
 	addr = NEXT_VRAM_START|(addr&NEXT_VRAM_MASK);
 	
-	uae_u32 old = wordget(addr);
+	uae_u32 old = get_word(addr);
 	uae_u32 val = memory_write_func(old, w, function, 2);
 	
-	wordput(addr, val);
+	put_word(addr, val);
 }
 
 static void mem_video_mwf_bput(uaecptr addr, uae_u32 b)
@@ -765,10 +723,10 @@ static void mem_video_mwf_bput(uaecptr addr, uae_u32 b)
 	int function = (addr>>24)&0x3;
 	addr = NEXT_VRAM_START|(addr&NEXT_VRAM_MASK);
 	
-	uae_u32 old = byteget(addr);
+	uae_u32 old = get_byte(addr);
 	uae_u32 val = memory_write_func(old, b, function, 1);
 	
-	byteput(addr, val);
+	put_byte(addr, val);
 }
 
 
@@ -777,37 +735,37 @@ static void mem_video_mwf_bput(uaecptr addr, uae_u32 b)
 static uae_u32 mem_color_video_lget(uaecptr addr)
 {
 	addr &= NEXT_VRAM_COLOR_MASK;
-	return do_get_mem_long(NEXTColorVideo + addr);
+	return do_get_mem_long(NEXTVideo + addr);
 }
 
 static uae_u32 mem_color_video_wget(uaecptr addr)
 {
 	addr &= NEXT_VRAM_COLOR_MASK;
-	return do_get_mem_word(NEXTColorVideo + addr);
+	return do_get_mem_word(NEXTVideo + addr);
 }
 
 static uae_u32 mem_color_video_bget(uaecptr addr)
 {
 	addr &= NEXT_VRAM_COLOR_MASK;
-	return NEXTColorVideo[addr];
+	return NEXTVideo[addr];
 }
 
 static void mem_color_video_lput(uaecptr addr, uae_u32 l)
 {
 	addr &= NEXT_VRAM_COLOR_MASK;
-	do_put_mem_long(NEXTColorVideo + addr, l);
+	do_put_mem_long(NEXTVideo + addr, l);
 }
 
 static void mem_color_video_wput(uaecptr addr, uae_u32 w)
 {
 	addr &= NEXT_VRAM_COLOR_MASK;
-	do_put_mem_word(NEXTColorVideo + addr, w);
+	do_put_mem_word(NEXTVideo + addr, w);
 }
 
 static void mem_color_video_bput(uaecptr addr, uae_u32 b)
 {
 	addr &= NEXT_VRAM_COLOR_MASK;
-	NEXTColorVideo[addr] = b;
+	NEXTVideo[addr] = b;
 }
 
 
@@ -895,28 +853,24 @@ static addrbank dummy_bank =
 {
 	dummy_lget, dummy_wget, dummy_bget,
 	dummy_lput, dummy_wput, dummy_bput,
-	dummy_lget, dummy_wget, ABFLAG_NONE
 };
 
 static addrbank BusErrMem_bank =
 {
 	BusErrMem_lget, BusErrMem_wget, BusErrMem_bget,
 	BusErrMem_lput, BusErrMem_wput, BusErrMem_bput,
-	BusErrMem_lget, BusErrMem_wget, ABFLAG_NONE
 };
 
 static addrbank ROM_bank =
 {
 	mem_rom_lget, mem_rom_wget, mem_rom_bget,
 	mem_rom_lput, mem_rom_wput, mem_rom_bput,
-	mem_rom_lget, mem_rom_wget, ABFLAG_ROM
 };
 
 static addrbank RAM_bank0 =
 {
 	mem_ram_bank0_lget, mem_ram_bank0_wget, mem_ram_bank0_bget,
 	mem_ram_bank0_lput, mem_ram_bank0_wput, mem_ram_bank0_bput,
-	mem_ram_bank0_lget, mem_ram_bank0_wget, ABFLAG_RAM
 	
 };
 
@@ -924,7 +878,6 @@ static addrbank RAM_bank1 =
 {
 	mem_ram_bank1_lget, mem_ram_bank1_wget, mem_ram_bank1_bget,
 	mem_ram_bank1_lput, mem_ram_bank1_wput, mem_ram_bank1_bput,
-	mem_ram_bank1_lget, mem_ram_bank1_wget, ABFLAG_RAM
 	
 };
 
@@ -932,15 +885,12 @@ static addrbank RAM_bank2 =
 {
 	mem_ram_bank2_lget, mem_ram_bank2_wget, mem_ram_bank2_bget,
 	mem_ram_bank2_lput, mem_ram_bank2_wput, mem_ram_bank2_bput,
-	mem_ram_bank2_lget, mem_ram_bank2_wget, ABFLAG_RAM
-	
 };
 
 static addrbank RAM_bank3 =
 {
 	mem_ram_bank3_lget, mem_ram_bank3_wget, mem_ram_bank3_bget,
 	mem_ram_bank3_lput, mem_ram_bank3_wput, mem_ram_bank3_bput,
-	mem_ram_bank3_lget, mem_ram_bank3_wget, ABFLAG_RAM
 	
 };
 
@@ -948,77 +898,66 @@ static addrbank RAM_empty_bank =
 {
 	mem_ram_empty_lget, mem_ram_empty_wget, mem_ram_empty_bget,
 	mem_ram_empty_lput, mem_ram_empty_wput, mem_ram_empty_bput,
-	mem_ram_empty_lget, mem_ram_empty_wget, ABFLAG_RAM
 };
 
 static addrbank RAM_mwf_bank =
 {
 	mem_ram_mwf_lget, mem_ram_mwf_wget, mem_ram_mwf_bget,
 	mem_ram_mwf_lput, mem_ram_mwf_wput, mem_ram_mwf_bput,
-	mem_ram_mwf_lget, mem_ram_mwf_wget, ABFLAG_RAM
 };
 
 static addrbank VRAM_bank =
 {
 	mem_video_lget, mem_video_wget, mem_video_bget,
 	mem_video_lput, mem_video_wput, mem_video_bput,
-	mem_video_lget, mem_video_wget, ABFLAG_RAM
 };
 
 static addrbank VRAM_mwf_bank =
 {
 	mem_video_mwf_lget, mem_video_mwf_wget, mem_video_mwf_bget,
 	mem_video_mwf_lput, mem_video_mwf_wput, mem_video_mwf_bput,
-	mem_video_mwf_lget, mem_video_mwf_wget, ABFLAG_RAM
 };
 
 static addrbank VRAM_color_bank =
 {
 	mem_color_video_lget, mem_color_video_wget, mem_color_video_bget,
 	mem_color_video_lput, mem_color_video_wput, mem_color_video_bput,
-	mem_color_video_lget, mem_color_video_wget, ABFLAG_RAM
 };
 
 static addrbank IO_bank =
 {
 	IoMem_lget, IoMem_wget, IoMem_bget,
 	IoMem_lput, IoMem_wput, IoMem_bput,
-	IoMem_lget, IoMem_wget, ABFLAG_IO
 };
 
 static addrbank BMAP_bank =
 {
 	mem_bmap_lget, mem_bmap_wget, mem_bmap_bget,
 	mem_bmap_lput, mem_bmap_wput, mem_bmap_bput,
-	mem_bmap_lget, mem_bmap_wget, ABFLAG_IO
 };
 
 static addrbank TMC_bank =
 {
 	tmc_lget, tmc_wget, tmc_bget,
 	tmc_lput, tmc_wput, tmc_bput,
-	tmc_lget, tmc_wget, ABFLAG_IO
 };
 
 static addrbank NBIC_bank =
 {
 	nbic_reg_lget, nbic_reg_wget, nbic_reg_bget,
 	nbic_reg_lput, nbic_reg_wput, nbic_reg_bput,
-	nbic_reg_lget, nbic_reg_wget, ABFLAG_IO
 };
 
 static addrbank NEXTBUS_slot_bank =
 {
 	nextbus_slot_lget, nextbus_slot_wget, nextbus_slot_bget,
 	nextbus_slot_lput, nextbus_slot_wput, nextbus_slot_bput,
-	nextbus_slot_lget, nextbus_slot_wget, ABFLAG_IO
 };
 
 static addrbank NEXTBUS_board_bank =
 {
 	nextbus_board_lget, nextbus_board_wget, nextbus_board_bget,
 	nextbus_board_lput, nextbus_board_wput, nextbus_board_bput,
-	nextbus_board_lget, nextbus_board_wget, ABFLAG_IO
 };
 
 
@@ -1026,16 +965,40 @@ static addrbank NEXTBUS_board_bank =
 static void init_mem_banks (void)
 {
 	int i;
-	for (i = 0; i < 65536; i++)
-		put_mem_bank (i<<16, &BusErrMem_bank);
+    for (i = 0; i < 65536; i++) {
+		put_mem_bank (bank_lget, i<<16, BusErrMem_bank.lget);
+        put_mem_bank (bank_wget, i<<16, BusErrMem_bank.wget);
+        put_mem_bank (bank_bget, i<<16, BusErrMem_bank.bget);
+        put_mem_bank (bank_lput, i<<16, BusErrMem_bank.lput);
+        put_mem_bank (bank_wput, i<<16, BusErrMem_bank.wput);
+        put_mem_bank (bank_bput, i<<16, BusErrMem_bank.bput);
+    }
 }
 
+// Arrays are ordered by access probability from profiling data
+// keep them in these order for cache locality
+
+mem_get_func bank_wget[65536];
+mem_get_func bank_lget[65536];
+
+mem_put_func bank_wput[65536];
+mem_put_func bank_lput[65536];
+
+mem_get_func bank_bget[65536];
+mem_put_func bank_bput[65536];
 
 /*
  * Initialize the memory banks
  */
 const char* memory_init(int *nNewNEXTMemSize)
 {
+    if(!(NEXTRam)) {
+        posix_memalign((void*)&NEXTRam,   0x10000, 128*1024*1024);
+        posix_memalign((void*)&NEXTVideo, 0x10000, 2*1024*1024);
+        posix_memalign((void*)&NEXTIo,    0x10000, 0x20000);
+        posix_memalign((void*)&NEXTRom,   0x10000, NEXT_EPROM_SIZE);
+    }
+
 	int i;
 	uae_u32 bankstart[4];
 	
@@ -1211,7 +1174,7 @@ const char* memory_init(int *nNewNEXTMemSize)
 			return "Cannot open ROM file";
 		}
 		
-		ret=fread(ROMmemory,1,0x20000,fin);
+		ret=fread(ROMmemory,1,NEXT_EPROM_SIZE,fin);
 		
 		write_log("Read ROM %d\n",ret);
 		fclose(fin);
@@ -1238,12 +1201,17 @@ void memory_uninit (void)
 }
 
 
-void map_banks (addrbank *bank, int start, int size)
-{
+void map_banks (addrbank *bank, int start, int size) {
 	int bnr;
 	
-	for (bnr = start; bnr < start + size; bnr++)
-		put_mem_bank (bnr << 16, bank);
+    for (bnr = start; bnr < start + size; bnr++) {
+		put_mem_bank (bank_lget, bnr << 16, bank->lget);
+        put_mem_bank (bank_wget, bnr << 16, bank->wget);
+        put_mem_bank (bank_bget, bnr << 16, bank->bget);
+        put_mem_bank (bank_lput, bnr << 16, bank->lput);
+        put_mem_bank (bank_wput, bnr << 16, bank->wput);
+        put_mem_bank (bank_bput, bnr << 16, bank->bput);
+    }
 	return;
 }
 

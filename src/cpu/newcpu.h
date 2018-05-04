@@ -179,15 +179,11 @@ struct regstruct
 	uae_u32 pc;
 	uae_u8 *pc_p;
 	uae_u8 *pc_oldp;
-	uae_u16 opcode;
 	uae_u32 instruction_pc;
-
+    uae_u16 opcode;
 	uae_u16 irc, ir, db;
 	uae_u32 spcflags;
 	uae_u32 last_prefetch;
-	uae_u32 chipset_latch_rw;
-	uae_u32 chipset_latch_read;
-	uae_u32 chipset_latch_write;
 
 	uaecptr usp, isp, msp;
 	uae_u16 sr;

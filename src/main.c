@@ -26,7 +26,6 @@ const char Main_fileid[] = "Hatari main.c : " __DATE__ " " __TIME__;
 #include "shortcut.h"
 #include "snd.h"
 #include "statusbar.h"
-#include "nextMemory.h"
 #include "str.h"
 #include "video.h"
 #include "audio.h"

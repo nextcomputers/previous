@@ -48,7 +48,6 @@ static inline double real_time() {
     return rt;
 }
 
-
 void host_reset() {
     perfCounterStart  = SDL_GetPerformanceCounter();
     pauseTimeStamp    = perfCounterStart;
@@ -71,8 +70,10 @@ void host_reset() {
     
     cycleDivisor = ConfigureParams.System.nCpuFreq * 1000 * 1000;
     
-    SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);    
+    SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);
 }
+
+extern Uint8* NEXTRam;
 
 void host_blank(int slot, int src, bool state) {
     int bit = 1 << slot;
@@ -86,6 +87,13 @@ void host_blank(int slot, int src, bool state) {
         case ND_DISPLAY:   nd_display_blank(slot); break;
         case ND_VIDEO:     nd_video_blank(slot);   break;
     }
+    
+    // check for darkmatter magic
+    osDarkmatter =
+    NEXTRam[0x246] == 'd' &&
+    NEXTRam[0x247] == 'a' &&
+    NEXTRam[0x248] == 'r' &&
+    NEXTRam[0x249] == 'k';
 }
 
 bool host_blank_state(int slot, int src) {
@@ -103,10 +111,11 @@ void host_hardclock(int expected, int actual) {
 }
 
 extern Sint64 nCyclesMainCounter;
-
 void host_realtime(bool state) {
     isRealtime = state;
 }
+
+double lastHostTime;
 
 double host_time_sec() {
     double hostTime;
@@ -114,34 +123,28 @@ double host_time_sec() {
     host_lock(&timeLock);
     
     if(currentIsRealtime) {
-        hostTime = real_time();
+        double rt = real_time();
+        // last host time is in the future (compared to real time)
+        // hold time until real time catches up
+        // this will allow CPU to still run cycles and do some useful work until it
+        // waits for some time dependent event
+        hostTime = lastHostTime >= rt ? lastHostTime+(1.0/cycleDivisor) : rt;
     } else {
         hostTime  = nCyclesMainCounter - cycleCounterStart;
         hostTime /= cycleDivisor;
         hostTime += cycleSecsStart;
     }
-    bool state = (isRealtime || osDarkmatter) && enableRealtime;
+    bool state = (osDarkmatter || isRealtime) && enableRealtime;
     if(currentIsRealtime != state) {
-        double realTime  = real_time();
-
         if(currentIsRealtime) {
             // switching from real-time to cycle-time
-            cycleSecsStart    = realTime;
+            cycleSecsStart    = real_time();;
             cycleCounterStart = nCyclesMainCounter;
-        } else {
-            // switching from cycle-time to real-time
-            double realTimeOffset = hostTime - realTime;
-            if(realTimeOffset > 0) {
-                // if hostTime is in the future, wait until realTime is there as well
-                if(realTimeOffset > 0.01)
-                    host_sleep_sec(realTimeOffset);
-                else
-                    while(real_time() < hostTime) {}
-            }
         }
         currentIsRealtime = state;
     }
     
+    lastHostTime = hostTime;
     host_unlock(&timeLock);
     
     return hostTime;
@@ -243,11 +246,7 @@ int host_thread_wait(thread_t* thread) {
 int host_num_cpus() {
   return  SDL_GetCPUCount();
 }
- 
-void host_darkmatter(bool state) {
-    osDarkmatter = state;
-}
-                  
+
 static double lastVT;
 static char   report[512];
 
