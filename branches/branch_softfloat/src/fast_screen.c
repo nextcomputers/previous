@@ -102,7 +102,7 @@ static void blitColor(SDL_Texture* tex) {
     SDL_LockTexture(tex, NULL, &pixels, &d);
     Uint32* dst = (Uint32*)pixels;
     for(int y = 0; y < NeXT_SCRN_HEIGHT; y++) {
-        Uint16* src = (Uint16*)NEXTColorVideo + (y*pitch);
+        Uint16* src = (Uint16*)NEXTVideo + (y*pitch);
         for(int x = 0; x < NeXT_SCRN_WIDTH; x++) {
             *dst++ = COL2RGB[*src++];
         }
@@ -179,14 +179,15 @@ void blitDimension(Uint32* vram, SDL_Texture* tex) {
 static void blitScreen(SDL_Texture* tex) {
     if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
         Uint32* vram = nd_vram_for_slot(ND_SLOT(ConfigureParams.Screen.nMonitorNum));
-        if(vram)
-            blitDimension(vram, tex);
+        if(vram) blitDimension(vram, tex);
         return;
     }
-    if(ConfigureParams.System.bColor) {
-        blitColor(tex);
-    } else {
-        blitBW(tex);
+    if(NEXTVideo) {
+        if(ConfigureParams.System.bColor) {
+            blitColor(tex);
+        } else {
+            blitBW(tex);
+        }
     }
 }
 
@@ -289,7 +290,7 @@ static int repainter(void* unused) {
         SDL_AtomicUnlock(&uiBufferLock);
         
         if(updateUI) {
-            SDL_UpdateTexture(uiTexture, NULL,       uiBufferTmp, sdlscrn->pitch);
+            SDL_UpdateTexture(uiTexture, NULL, uiBufferTmp, sdlscrn->pitch);
         }
         
         // Update and render UI texture

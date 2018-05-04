@@ -27,25 +27,7 @@ typedef uae_u32 (*nd_mem_get_func)(int, uaecptr) REGPARAM;
 typedef void (*nd_mem_put_func)(int, uaecptr, uae_u32) REGPARAM;
 
 #define nd_bankindex(addr) (((uaecptr)(addr)) >> 16)
-#define nd_get_mem_bank(addr)    (nd->mem_banks[nd_bankindex(addr)])
-#define nd68k_get_mem_bank(addr) (mem_banks[nd_bankindex(addr)])
 #define nd_put_mem_bank(addr, b) (mem_banks[nd_bankindex(addr)] = (b))
-
-#define nd_longget(addr)   (nd_get_mem_bank(addr)->lget(addr))
-#define nd_wordget(addr)   (nd_get_mem_bank(addr)->wget(addr))
-#define nd_byteget(addr)   (nd_get_mem_bank(addr)->bget(addr))
-#define nd_longput(addr,l) (nd_get_mem_bank(addr)->lput(addr, l))
-#define nd_wordput(addr,w) (nd_get_mem_bank(addr)->wput(addr, w))
-#define nd_byteput(addr,b) (nd_get_mem_bank(addr)->bput(addr, b))
-#define nd_cs8get(addr)    (nd_get_mem_bank(addr)->cs8get(addr))
-
-#define nd68k_longget(addr)   (nd68k_get_mem_bank(addr)->lget(addr))
-#define nd68k_wordget(addr)   (nd68k_get_mem_bank(addr)->wget(addr))
-#define nd68k_byteget(addr)   (nd68k_get_mem_bank(addr)->bget(addr))
-#define nd68k_longput(addr,l) (nd68k_get_mem_bank(addr)->lput(addr, l))
-#define nd68k_wordput(addr,w) (nd68k_get_mem_bank(addr)->wput(addr, w))
-#define nd68k_byteput(addr,b) (nd68k_get_mem_bank(addr)->bput(addr, b))
-#define nd68k_cs8get(addr)    (nd68k_get_mem_bank(addr)->cs8geti(addr))
 
 #ifdef __cplusplus
 }
@@ -56,14 +38,14 @@ protected:
 public:
     int flags;
     
-    virtual Uint32 lget(Uint32 addr);
-    virtual Uint32 wget(Uint32 addr);
-    virtual Uint32 bget(Uint32 addr);
-    virtual Uint32 cs8get(Uint32 addr);
+    virtual Uint32 lget(Uint32 addr) const;
+    virtual Uint32 wget(Uint32 addr) const;
+    virtual Uint32 bget(Uint32 addr) const;
+    virtual Uint32 cs8get(Uint32 addr) const;
     
-    virtual void lput(Uint32 addr, Uint32 val);
-    virtual void wput(Uint32 addr, Uint32 val);
-    virtual void bput(Uint32 addr, Uint32 val);
+    virtual void lput(Uint32 addr, Uint32 val) const;
+    virtual void wput(Uint32 addr, Uint32 val) const;
+    virtual void bput(Uint32 addr, Uint32 val) const;
     
     ND_Addrbank(NextDimension* nd);
 };

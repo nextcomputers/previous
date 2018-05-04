@@ -57,7 +57,6 @@ uae_u16 mmu_opcode;
 bool mmu_restart;
 static bool locked_rmw_cycle;
 static bool ismoves;
-bool mmu_ttr_enabled;
 int mmu_atc_ways[2];
 int way_random;
 
@@ -109,7 +108,7 @@ void mmu_make_transparent_region(uaecptr baseaddr, uae_u32 size, int datamode)
 
 void mmu_tt_modified (void)
 {
-    mmu_ttr_enabled = ((regs.dtt0 | regs.dtt1 | regs.itt0 | regs.itt1) & MMU_TTR_BIT_ENABLED) != 0;
+    // mmu_ttr_enabled = ((regs.dtt0 | regs.dtt1 | regs.itt0 | regs.itt1) & MMU_TTR_BIT_ENABLED) != 0;
 }
 
 #if 0
@@ -523,17 +522,18 @@ fail:
     return status;
 }
 
-uaecptr mmu_translate(uaecptr addr, uae_u32 val, bool super, bool data, bool write, int size)
+uaecptr xmmu_translate(uaecptr addr, uae_u32 val, Uint32 flags)
 {
+    int data = flags & TRANS_DATA;
     int way, i, index, way_invalid;
-    uae_u32 tag = ((super ? 0x80000000 : 0x00000000) | (addr >> 1)) &
-    mmu_tagmask;
+    uae_u32 tag = ((flags & TRANS_SUPER) | (addr >> 1)) & mmu_tagmask;
     struct mmu_atc_line *l;
     
     if (mmu_pagesize_8k)
         index=(addr & 0x0001E000)>>13;
     else
         index=(addr & 0x0000F000)>>12;
+    
     way_invalid = ATC_WAYS;
     way_random++;
     way = mmu_atc_ways[data];
@@ -546,15 +546,15 @@ uaecptr mmu_translate(uaecptr addr, uae_u32 val, bool super, bool data, bool wri
 atc_retry:
                 // check if we need to cause a page fault
                 if (((l->status&(MMU_MMUSR_W|MMU_MMUSR_S|MMU_MMUSR_R))!=MMU_MMUSR_R)) {
-                    if (((l->status&MMU_MMUSR_W) && write) ||
-                        ((l->status&MMU_MMUSR_S) && !super) ||
+                    if (((l->status&MMU_MMUSR_W) && (flags & TRANS_WRITE)) ||
+                        ((l->status&MMU_MMUSR_S) && !(flags & TRANS_SUPER)) ||
                         !(l->status&MMU_MMUSR_R)) {
-                        mmu_bus_error(addr, val, mmu_get_fc(super, data), write, size, false);
+                        mmu_bus_error(addr, val, mmu_get_fc(flags & TRANS_SUPER, flags & TRANS_DATA), flags & TRANS_WRITE, (flags & TRANS_SIZE)>>1, false);
                         return 0; // never reach, bus error longjumps out of the function
                     }
                 }
                 // if first write to this page initiate table search to set M bit (but modify this slot)
-                if (!(l->status&MMU_MMUSR_M) && write) {
+                if (!(l->status&MMU_MMUSR_M) && (flags & TRANS_WRITE)) {
                     way_invalid = way;
                     break;
                 }
@@ -576,7 +576,7 @@ atc_retry:
 
     // then initiate table search and create a new entry
     l = &mmu_atc_array[data][way][index];
-    mmu_fill_atc(addr, super, tag, write, l);
+    mmu_fill_atc(addr, flags & TRANS_SUPER, tag, flags & TRANS_WRITE, l);
     
     // and retry the ATC search
     way_random++;

@@ -16,7 +16,6 @@ const char Video_fileid[] = "Previous video.c : " __DATE__ " " __TIME__;
 #include "m68000.h"
 #include "screen.h"
 #include "shortcut.h"
-#include "nextMemory.h"
 #include "video.h"
 #include "dma.h"
 #include "sysReg.h"
@@ -30,18 +29,13 @@ const char Video_fileid[] = "Previous video.c : " __DATE__ " " __TIME__;
 
 /*-----------------------------------------------------------------------*/
 /**
- * Reset video chip
+ * Reset video chip and start VBL interrupt
+
  */
-void Video_Reset(void) {
-	Video_StartInterrupts(0);
-}
 
 #define NEXT_VBL_FREQ 68
 
-/**
- * Start VBL interrupt
- */
-void Video_StartInterrupts ( int PendingCyclesOver ) {
+void Video_Reset(void) {
     CycInt_AddRelativeInterruptUs((1000*1000)/NEXT_VBL_FREQ, 0, INTERRUPT_VIDEO_VBL);
 }
 

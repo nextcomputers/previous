@@ -67,71 +67,65 @@ static uaecptr nd_rom_addr_fix(uaecptr addr)
 
 /* NeXTdimension RAM */
 
-class ND_RAM : public ND_Addrbank {
+class ND_RAM final : public ND_Addrbank {
     Uint8* base;
     Uint32 mask;
 public:
     ND_RAM(NextDimension* nd, int bank) : ND_Addrbank(nd), base(nd->ram), mask(nd->bankmask[bank]) {}
     
-    Uint32 lget(Uint32 addr) {
-        addr &= mask;
-        return do_get_mem_long(base + addr);
+    Uint32 lget(Uint32 addr) const {
+        return do_get_mem_long(base + (addr & mask));
     }
 
-    Uint32 wget(Uint32 addr) {
-        addr &= mask;
-        return do_get_mem_word(base + addr);
+    Uint32 wget(Uint32 addr) const {
+        return do_get_mem_word(base + (addr & mask));
     }
 
-    Uint32 bget(Uint32 addr) {
-        addr &= mask;
-        return base[addr];
+    Uint32 bget(Uint32 addr) const {
+        return base[addr & mask];
     }
 
-     void lput(Uint32 addr, Uint32 l) {
-        addr &= mask;
-        do_put_mem_long(base + addr, l);
+     void lput(Uint32 addr, Uint32 l) const {
+        do_put_mem_long(base + (addr & mask), l);
     }
 
-     void wput(Uint32 addr, Uint32 w) {
-        addr &= mask;
-        do_put_mem_word(base + addr, w);
+     void wput(Uint32 addr, Uint32 w) const {
+        do_put_mem_word(base + (addr & mask), w);
     }
 
-     void bput(Uint32 addr, Uint32 b) {
-        addr &= mask;
-        base[addr] = b;
+     void bput(Uint32 addr, Uint32 b) const {
+        base[addr & mask] = b;
     }
 };
 
-class ND_Empty : public ND_Addrbank {
+class ND_Empty final : public ND_Addrbank {
 public:
     ND_Empty(NextDimension* nd) : ND_Addrbank(nd) {}
     
-    Uint32 lget(Uint32 addr) {
+    Uint32 lget(Uint32 addr) const {
         Log_Printf(LOG_ND_MEM, "[ND] Slot %i: empty memory bank lget at %08X\n", nd->slot,addr);
         return 0;
     }
 
-     Uint32 wget(Uint32 addr) {
+     Uint32 wget(Uint32 addr) const {
         Log_Printf(LOG_ND_MEM, "[ND] Slot %i: empty memory bank wget at %08X\n", nd->slot,addr);
         return 0;
     }
 
-     Uint32 bget(Uint32 addr) {
+     Uint32 bget(Uint32 addr) const {
         Log_Printf(LOG_ND_MEM, "[ND] Slot %i: empty memory bank bget at %08X\n", nd->slot,addr);
         return 0;
     }
 
-     void lput(Uint32 addr, Uint32 l) {
+     void lput(Uint32 addr, Uint32 l) const {
         Log_Printf(LOG_ND_MEM, "[ND] Slot %i: empty memory bank lput at %08X\n", nd->slot,addr);
     }
 
-     void wput(Uint32 addr, Uint32 w) {
+     void wput(Uint32 addr, Uint32 w) const {
         Log_Printf(LOG_ND_MEM, "[ND] Slot %i: empty memory bank wput at %08X\n", nd->slot,addr);
     }
 
-     void bput(Uint32 addr, Uint32 b) {
+     void bput(Uint32 addr, Uint32 b) const {
         Log_Printf(LOG_ND_MEM, "[ND] Slot %i: empty memory bank bput at %08X\n",nd->slot,addr);
     }
 };
@@ -139,7 +133,7 @@ public:
 /* NeXTdimension VRAM */
 /* stored as ARGB for faster blitting, assuming aligned access for 32 bit */
 
-class ND_VRAM : public ND_Addrbank {
+class ND_VRAM final : public ND_Addrbank {
     Uint8* base;
 public:
     ND_VRAM(NextDimension* nd) : ND_Addrbank(nd), base(nd->vram) {
@@ -170,7 +164,7 @@ public:
         exit(1);
     }
 
-    Uint32 lget(Uint32 addr) {
+    Uint32 lget(Uint32 addr) const {
         addr &= ND_VRAM_MASK;
         return
             base[addr+3]         |
@@ -179,7 +173,7 @@ public:
             (base[addr+2] << 24);
     }
 
-    void lput(Uint32 addr, Uint32 l) {
+    void lput(Uint32 addr, Uint32 l) const {
         addr &= ND_VRAM_MASK;
         base[addr+3] = l;
         base[addr+0] = l >> 8;
@@ -187,18 +181,18 @@ public:
         base[addr+2] = l >> 24;
     }
 
-    Uint32 wget(Uint32 addr) {
+    Uint32 wget(Uint32 addr) const {
         addr &= ND_VRAM_MASK;
         return (bget(addr) << 8) | bget(addr+1);
     }
 
-    void wput(Uint32 addr, Uint32 w) {
+    void wput(Uint32 addr, Uint32 w) const {
         addr &= ND_VRAM_MASK;
         bput(addr,   w >> 8);
         bput(addr+1, w);
     }
 
-    Uint32 bget(Uint32 addr) {
+    Uint32 bget(Uint32 addr) const {
         addr &= ND_VRAM_MASK;
         switch(addr&3) {
             case 0: return base[(addr&~3)+2];
@@ -209,7 +203,7 @@ public:
         return 0;
     }
 
-    void bput(Uint32 addr, Uint32 b) {
+    void bput(Uint32 addr, Uint32 b) const {
         addr &= ND_VRAM_MASK;
         switch(addr&3) {
             case 0: base[(addr&~3)+2] = b; break;
@@ -222,41 +216,41 @@ public:
 
 /* NeXTdimension ROM */
 
-class ND_ROM : public ND_Addrbank {
+class ND_ROM final : public ND_Addrbank {
 public:
     ND_ROM(NextDimension* nd) : ND_Addrbank(nd) {}
 
-    Uint32 lget(Uint32 addr) {
+    Uint32 lget(Uint32 addr) const {
         addr = nd_rom_addr_fix(addr);
         return (nd->rom_read(addr) << 24); /* byte lane at msb */
     }
 
-    Uint32 wget(Uint32 addr) {
+    Uint32 wget(Uint32 addr) const {
         addr = nd_rom_addr_fix(addr);
         return (nd->rom_read(addr) << 8); /* byte lane at msb */
     }
 
-    Uint32 bget(Uint32 addr) {
+    Uint32 bget(Uint32 addr) const {
         addr = nd_rom_addr_fix(addr);
         return nd->rom_read(addr);
     }
 
-    Uint32 cs8get(Uint32 addr) {
+    Uint32 cs8get(Uint32 addr) const {
         addr &= ND_EEPROM_MASK;
         return nd->rom[addr];
     }
 
-    void lput(Uint32 addr, Uint32 l) {
+    void lput(Uint32 addr, Uint32 l) const {
         addr = nd_rom_addr_fix(addr);
         nd->rom_write(addr, l >> 24);
     }
 
-    void wput(Uint32 addr, Uint32 w) {
+    void wput(Uint32 addr, Uint32 w) const {
         addr = nd_rom_addr_fix(addr);
         nd->rom_write(addr, w >> 8);
     }
 
-    void bput(Uint32 addr, Uint32 b) {
+    void bput(Uint32 addr, Uint32 b) const {
         addr = nd_rom_addr_fix(addr);
         nd->rom_write(addr, b);
     }
@@ -265,34 +259,34 @@ public:
 /* Unknown register access functions (memory controller step 1) */
 #if ND_STEP
 
-class ND_CSR : public ND_Addrbank {
+class ND_CSR final : public ND_Addrbank {
 public:
     ND_CSR(NextDimension* nd) : ND_Addrbank(nd) {}
 
-     Uint32 lget(Uint32 addr) {
+     Uint32 lget(Uint32 addr) const {
         Log_Printf(LOG_ND_MEM, "[ND] Slot %i: Board CSR lget at %08X\n", nd->slot,addr);
         return 0;
     }
 
-     Uint32 wget(Uint32 addr) {
+     Uint32 wget(Uint32 addr) const {
         Log_Printf(LOG_ND_MEM, "[ND] Slot %i: Board CSR wget at %08X\n",nd->slot,addr);
         return 0;
     }
 
-     Uint32 bget(Uint32 addr) {
+     Uint32 bget(Uint32 addr) const {
         Log_Printf(LOG_ND_MEM, "[ND] Slot %i: Board CSR bget at %08X\n",nd->slot,addr);
         return 0;
     }
 
-     void lput(Uint32 addr, Uint32 l) {
+     void lput(Uint32 addr, Uint32 l) const {
         Log_Printf(LOG_ND_MEM, "[ND] Slot %i: Board CSR lput at %08X: %08X\n",nd->slot,addr,l);
     }
 
-     void wput(Uint32 addr, Uint32 w) {
+     void wput(Uint32 addr, Uint32 w) const {
         Log_Printf(LOG_ND_MEM, "[ND] Slot %i: Board CSR wput at %08X: %04X\n",nd->slot,addr,w);
     }
 
-     void bput(Uint32 addr, Uint32 b) {
+     void bput(Uint32 addr, Uint32 b) const {
         Log_Printf(LOG_ND_MEM, "[ND] Slot %i: Board CSR bput at %08X: %02X\n",nd->slot,addr,b);
     }
 };
@@ -300,26 +294,26 @@ public:
 
 /* NeXTdimension dither memory & datapath */
 
-class ND_DMEM : public ND_Addrbank {
+class ND_DMEM final : public ND_Addrbank {
 public:
     ND_DMEM(NextDimension* nd) : ND_Addrbank(nd) {}
 
-     Uint32 lget(Uint32 addr) {
+     Uint32 lget(Uint32 addr) const {
         addr &= ND_DP_MASK;
         return addr < ND_DMEM_SIZE ? do_get_mem_long(nd->dmem + addr) : nd->dp.lget(addr);
     }
 
-     Uint32 wget(Uint32 addr) {
+     Uint32 wget(Uint32 addr) const {
         addr &= ND_DP_MASK;
         return addr < ND_DMEM_SIZE ? do_get_mem_word(nd->dmem + addr) : nd->dp.lget(addr);
     }
 
-     Uint32 bget(Uint32 addr) {
+     Uint32 bget(Uint32 addr) const {
         addr &= ND_DP_MASK;
         return addr < ND_DMEM_SIZE ? do_get_mem_byte(nd->dmem + addr) : nd->dp.lget(addr);
     }
 
-     void lput(Uint32 addr, Uint32 l) {
+     void lput(Uint32 addr, Uint32 l) const {
         addr &= ND_DP_MASK;
         if(addr < ND_DMEM_SIZE)
             do_put_mem_long(nd->dmem + addr, l);
@@ -327,7 +321,7 @@ public:
             nd->dp.lput(addr, l);
     }
 
-     void wput(Uint32 addr, Uint32 w) {
+     void wput(Uint32 addr, Uint32 w) const {
         addr &= ND_DP_MASK;
         if(addr < ND_DMEM_SIZE)
             do_put_mem_word(nd->dmem + addr, w);
@@ -335,7 +329,7 @@ public:
             nd->dp.lput(addr, w);
     }
 
-     void bput(Uint32 addr, Uint32 b) {
+     void bput(Uint32 addr, Uint32 b) const {
         addr &= ND_DP_MASK;
         if(addr < ND_DMEM_SIZE)
             do_put_mem_byte(nd->dmem + addr, b);
@@ -348,87 +342,87 @@ public:
 
 ND_Addrbank::ND_Addrbank(NextDimension* nd) : nd(nd) {}
 
-Uint32 ND_Addrbank::lget(Uint32 addr) {
+Uint32 ND_Addrbank::lget(Uint32 addr) const {
     Log_Printf(LOG_ND_MEM, "[ND] Slot %i: Illegal lget at %08X\n",nd->slot,addr);
     return 0;
 }
 
-Uint32 ND_Addrbank::wget(Uint32 addr) {
+Uint32 ND_Addrbank::wget(Uint32 addr) const {
     Log_Printf(LOG_ND_MEM, "[ND] Slot %i: Illegal wget at %08X\n",nd->slot,addr);
     return 0;
 }
 
-Uint32 ND_Addrbank::bget(Uint32 addr) {
+Uint32 ND_Addrbank::bget(Uint32 addr) const {
     Log_Printf(LOG_ND_MEM, "[ND] Slot %i: Illegal bget at %08X\n",nd->slot,addr);
     return 0;
 }
 
-Uint32 ND_Addrbank::cs8get(Uint32 addr) {
+Uint32 ND_Addrbank::cs8get(Uint32 addr) const {
     Log_Printf(LOG_ND_MEM, "[ND] Slot %i: Illegal cs8get at %08X\n",nd->slot,addr);
     return 0;
 }
 
-void ND_Addrbank::lput(Uint32 addr, Uint32 l) {
+void ND_Addrbank::lput(Uint32 addr, Uint32 l) const {
     Log_Printf(LOG_ND_MEM, "[ND] Slot %i: Illegal lput at %08X\n",nd->slot,addr);
 }
 
-void ND_Addrbank::wput(Uint32 addr, Uint32 w) {
+void ND_Addrbank::wput(Uint32 addr, Uint32 w) const {
     Log_Printf(LOG_ND_MEM, "[ND] Slot %i: Illegal wput at %08X\n",nd->slot,addr);
 }
 
-void ND_Addrbank::bput(Uint32 addr, Uint32 b) {
+void ND_Addrbank::bput(Uint32 addr, Uint32 b) const {
     Log_Printf(LOG_ND_MEM, "[ND] Slot %i: Illegal bput at %08X\n",nd->slot,addr);
 }
 
 /* NeXTdimension device space */
 
-class ND_IO : public ND_Addrbank {
+class ND_IO final : public ND_Addrbank {
 public:
     ND_IO(NextDimension* nd) : ND_Addrbank(nd) {}
     
-    Uint32 lget(Uint32 addr) {
+    Uint32 lget(Uint32 addr) const {
         return nd->mc.read(addr);
     }
     
-    Uint32 wget(Uint32 addr) {return 0;}
+    Uint32 wget(Uint32 addr) const {return 0;}
     
-    Uint32 bget(Uint32 addr) {return 0;}
+    Uint32 bget(Uint32 addr) const {return 0;}
     
-    void lput(Uint32 addr, Uint32 l) {
+    void lput(Uint32 addr, Uint32 l) const {
         nd->mc.write(addr, l);
     }
     
-    void wput(Uint32 addr, Uint32 w) {}
-    void bput(Uint32 addr, Uint32 b) {}
+    void wput(Uint32 addr, Uint32 w) const {}
+    void bput(Uint32 addr, Uint32 b) const {}
 };
 
 /* NeXTdimension RAMDAC */
 
-class ND_RAMDAC : public ND_Addrbank {
+class ND_RAMDAC final : public ND_Addrbank {
 public:
     ND_RAMDAC(NextDimension* nd) : ND_Addrbank(nd) {}
     
-    Uint32 lget(Uint32 addr) {
+    Uint32 lget(Uint32 addr) const {
         return bt463_bget(&nd->ramdac, addr) << 24;
     }
     
-    Uint32 wget(Uint32 addr) {
+    Uint32 wget(Uint32 addr) const {
         return bt463_bget(&nd->ramdac, addr) << 8;
     }
     
-    Uint32 bget(Uint32 addr) {
+    Uint32 bget(Uint32 addr) const {
         return bt463_bget(&nd->ramdac, addr);
     }
     
-    void lput(Uint32 addr, Uint32 l) {
+    void lput(Uint32 addr, Uint32 l) const {
         bt463_bput(&nd->ramdac, addr, l >> 24);
     }
     
-    void wput(Uint32 addr, Uint32 w) {
+    void wput(Uint32 addr, Uint32 w) const {
         bt463_bput(&nd->ramdac, addr, w >> 8);
     }
     
-    void bput(Uint32 addr, Uint32 b) {
+    void bput(Uint32 addr, Uint32 b) const {
         bt463_bput(&nd->ramdac, addr, b);
     }
 };

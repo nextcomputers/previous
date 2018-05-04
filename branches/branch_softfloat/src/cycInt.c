@@ -77,8 +77,6 @@ static int              ActiveInterrupt=0;
 
 static void CycInt_SetNewInterrupt(void);
 
-extern Uint8 NEXTRom[0x20000];
-
 /*-----------------------------------------------------------------------*/
 /**
  * Reset interrupts, handlers
@@ -222,7 +220,7 @@ void CycInt_AddRelativeInterruptUs(Sint64 us, Sint64 usreal, interrupt_id Handle
 /*-----------------------------------------------------------------------*/
 /**
  * Add interrupt to occur microseconds from now. Convert to cycles.
- * Use UsTimeFast if we are in realtime mode.
+ * Use usreal if we are in realtime mode.
  */
 void CycInt_AddRelativeInterruptUsCycles(Sint64 us, Sint64 usreal, interrupt_id Handler) {
     

@@ -113,42 +113,42 @@ extern "C" {
     /* Board memory */
 
     Uint32 nextbus_board_lget(Uint32 addr) {
-        int board = (addr & 0xF0000000)>>28;
+        int board = addr>>28;
         Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Board %i: lget at %08X",board,addr);
         
         return nextbus[board]->board_lget(addr);
     }
     
     Uint32 nextbus_board_wget(Uint32 addr) {
-        int board = (addr & 0xF0000000)>>28;
+        int board = addr>>28;
         Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Board %i: wget at %08X",board,addr);
         
         return nextbus[board]->board_wget(addr);
     }
     
     Uint32 nextbus_board_bget(Uint32 addr) {
-        int board = (addr & 0xF0000000)>>28;
+        int board = addr>>28;
         Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Board %i: bget at %08X",board,addr);
         
         return nextbus[board]->board_bget(addr);
     }
     
     void nextbus_board_lput(Uint32 addr, Uint32 val) {
-        int board = (addr & 0xF0000000)>>28;
+        int board = addr>>28;
         Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Board %i: lput at %08X, val %08X",board,addr,val);
         
         nextbus[board]->board_lput(addr, val);
     }
     
     void nextbus_board_wput(Uint32 addr, Uint32 val) {
-        int board = (addr & 0xF0000000)>>28;
+        int board = addr>>28;
         Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Board %i: wput at %08X, val %04X",board,addr,val);
         
         nextbus[board]->board_wput(addr, val);
     }
     
     void nextbus_board_bput(Uint32 addr, Uint32 val) {
-        int board = (addr & 0xF0000000)>>28;
+        int board = addr>>28;
         Log_Printf(LOG_NEXTBUS_LEVEL, "[NextBus] Board %i: bput at %08X, val %02X",board,addr,val);
         
         nextbus[board]->board_bput(addr, val);

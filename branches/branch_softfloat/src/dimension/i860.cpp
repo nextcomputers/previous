@@ -297,7 +297,7 @@ done:
 }
 
 int i860_cpu_device::memtest(bool be) {
-    const UINT32 P_TEST_ADDR = 0x28000000; // assume ND in slot 2
+    const UINT32 P_TEST_ADDR = 0x8000000;
     
     m_cregs[CR_DIRBASE] = 0; // turn VM off
 
@@ -552,7 +552,7 @@ void i860_cpu_device::run() {
             continue;
         }
         
-        if (i860cycles > 0) {
+        if (ConfigureParams.System.bRealtime || i860cycles > 0) {
             /* Run some i860 cycles before re-checking messages */
             for(int i = 16; --i >= 0;)
                 run_cycle();

@@ -53,7 +53,6 @@ extern "C" {
     double      host_real_time_offset(void);
     void        host_pause_time(bool pausing);
     const char* host_report(double realTime, double hostTime);
-    void        host_darkmatter(bool state);
     
     void        host_lock(lock_t* lock);
     void        host_unlock(lock_t* lock);

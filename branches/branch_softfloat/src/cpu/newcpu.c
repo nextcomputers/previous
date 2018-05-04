@@ -2285,7 +2285,7 @@ void m68k_dumpstate_2 (uaecptr pc, uaecptr *nextpc)
         for (lookup1 = lookuptab; lookup1->mnemo != dp->mnemo; lookup1++);
         dp = table68k + regs.ir;
         for (lookup2 = lookuptab; lookup2->mnemo != dp->mnemo; lookup2++);
-        printf (_T("Prefetch %04x (%s) %04x (%s) Chip latch %08X\n"), regs.irc, lookup1->name, regs.ir, lookup2->name, regs.chipset_latch_rw);
+        printf (_T("Prefetch %04x (%s) %04x (%s)\n"), regs.irc, lookup1->name, regs.ir, lookup2->name);
     }
     
     if (pc != 0xffffffff) {

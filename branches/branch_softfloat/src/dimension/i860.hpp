@@ -50,8 +50,8 @@ extern "C" {
     
     void   nd_nbic_interrupt(void);
     void   Statusbar_SetNdLed(int state);
-    typedef void (*mem_rd_func)(NextDimension*, UINT32, UINT32*);
-    typedef void (*mem_wr_func)(NextDimension*, UINT32, const UINT32*);
+    typedef void (*mem_rd_func)(const NextDimension*, UINT32, UINT32*);
+    typedef void (*mem_wr_func)(const NextDimension*, UINT32, const UINT32*);
 }
 
 #if WITH_SOFTFLOAT_I860

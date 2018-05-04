@@ -120,11 +120,19 @@ public:
     void write(Uint32 step, Uint8 data);
 };
 
-class NextDimension : public NextBusBoard {
+class NextDimension final : public NextBusBoard {
     /* Message port for host->dimension communication */
     volatile int    m_port;
     lock_t          m_port_lock;
 public:
+    ND_Addrbank**   mem_banks;
+    Uint8*          ram;
+    Uint8*          vram;
+    Uint8*          rom;
+    
+    Uint32          rom_last_addr;;
+    Uint32          bankmask[4];
+    
     NDSDL           sdl;
     i860_cpu_device i860;
     NBIC            nbic;
@@ -134,15 +142,9 @@ public:
     DCSC            dcsc0;
     DCSC            dcsc1;
     bt463           ramdac;
-
-    ND_Addrbank*    mem_banks[65536];
-    Uint8           ram[64*1024*1024];
-    Uint8           vram[4*1024*1024];
-    Uint8           rom[128*1024];
-    Uint8           rom_command;
-    Uint32          rom_last_addr;;
+    
     Uint8           dmem[512];
-    Uint32          bankmask[4];
+    Uint8           rom_command;
 
     NextDimension(int slot);
     void mem_init(void);
@@ -166,27 +168,27 @@ public:
     virtual void   reset(void);
     virtual void   pause(bool pause);
 
-    static Uint8  i860_cs8get  (NextDimension* nd, Uint32 addr);
-    static void   i860_rd8_be  (NextDimension* nd, Uint32 addr, Uint32* val);
-    static void   i860_rd16_be (NextDimension* nd, Uint32 addr, Uint32* val);
-    static void   i860_rd32_be (NextDimension* nd, Uint32 addr, Uint32* val);
-    static void   i860_rd64_be (NextDimension* nd, Uint32 addr, Uint32* val);
-    static void   i860_rd128_be(NextDimension* nd, Uint32 addr, Uint32* val);
-    static void   i860_wr8_be  (NextDimension* nd, Uint32 addr, const Uint32* val);
-    static void   i860_wr16_be (NextDimension* nd, Uint32 addr, const Uint32* val);
-    static void   i860_wr32_be (NextDimension* nd, Uint32 addr, const Uint32* val);
-    static void   i860_wr64_be (NextDimension* nd, Uint32 addr, const Uint32* val);
-    static void   i860_wr128_be(NextDimension* nd, Uint32 addr, const Uint32* val);
-    static void   i860_rd8_le  (NextDimension* nd, Uint32 addr, Uint32* val);
-    static void   i860_rd16_le (NextDimension* nd, Uint32 addr, Uint32* val);
-    static void   i860_rd32_le (NextDimension* nd, Uint32 addr, Uint32* val);
-    static void   i860_rd64_le (NextDimension* nd, Uint32 addr, Uint32* val);
-    static void   i860_rd128_le(NextDimension* nd, Uint32 addr, Uint32* val);
-    static void   i860_wr8_le  (NextDimension* nd, Uint32 addr, const Uint32* val);
-    static void   i860_wr16_le (NextDimension* nd, Uint32 addr, const Uint32* val);
-    static void   i860_wr32_le (NextDimension* nd, Uint32 addr, const Uint32* val);
-    static void   i860_wr64_le (NextDimension* nd, Uint32 addr, const Uint32* val);
-    static void   i860_wr128_le(NextDimension* nd, Uint32 addr, const Uint32* val);
+    static Uint8  i860_cs8get  (const NextDimension* nd, Uint32 addr);
+    static void   i860_rd8_be  (const NextDimension* nd, Uint32 addr, Uint32* val);
+    static void   i860_rd16_be (const NextDimension* nd, Uint32 addr, Uint32* val);
+    static void   i860_rd32_be (const NextDimension* nd, Uint32 addr, Uint32* val);
+    static void   i860_rd64_be (const NextDimension* nd, Uint32 addr, Uint32* val);
+    static void   i860_rd128_be(const NextDimension* nd, Uint32 addr, Uint32* val);
+    static void   i860_wr8_be  (const NextDimension* nd, Uint32 addr, const Uint32* val);
+    static void   i860_wr16_be (const NextDimension* nd, Uint32 addr, const Uint32* val);
+    static void   i860_wr32_be (const NextDimension* nd, Uint32 addr, const Uint32* val);
+    static void   i860_wr64_be (const NextDimension* nd, Uint32 addr, const Uint32* val);
+    static void   i860_wr128_be(const NextDimension* nd, Uint32 addr, const Uint32* val);
+    static void   i860_rd8_le  (const NextDimension* nd, Uint32 addr, Uint32* val);
+    static void   i860_rd16_le (const NextDimension* nd, Uint32 addr, Uint32* val);
+    static void   i860_rd32_le (const NextDimension* nd, Uint32 addr, Uint32* val);
+    static void   i860_rd64_le (const NextDimension* nd, Uint32 addr, Uint32* val);
+    static void   i860_rd128_le(const NextDimension* nd, Uint32 addr, Uint32* val);
+    static void   i860_wr8_le  (const NextDimension* nd, Uint32 addr, const Uint32* val);
+    static void   i860_wr16_le (const NextDimension* nd, Uint32 addr, const Uint32* val);
+    static void   i860_wr32_le (const NextDimension* nd, Uint32 addr, const Uint32* val);
+    static void   i860_wr64_le (const NextDimension* nd, Uint32 addr, const Uint32* val);
+    static void   i860_wr128_le(const NextDimension* nd, Uint32 addr, const Uint32* val);
 
     Uint8  rom_read(Uint32 addr);
     void   rom_write(Uint32 addr, Uint8 val);
