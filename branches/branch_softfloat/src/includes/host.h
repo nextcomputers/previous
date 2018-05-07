@@ -59,7 +59,7 @@ extern "C" {
     int         host_trylock(lock_t* lock);
     thread_t*   host_thread_create(thread_func_t, void* data);
     int         host_thread_wait(thread_t* thread);
-
+    Uint8*      host_malloc_aligned(size_t size);
 #ifdef __cplusplus
 }
 #endif

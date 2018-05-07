@@ -26,18 +26,12 @@
 #define nd68k_byteput(addr,b) (nd68k_get_mem_bank(addr)->bput(addr, b))
 #define nd68k_cs8get(addr)    (nd68k_get_mem_bank(addr)->cs8geti(addr))
 
-static Uint8* alloc_aligned(size_t size) {
-    Uint8* result;
-    posix_memalign((void**)&result, 0x10000, size);
-    return result;
-}
-
 NextDimension::NextDimension(int slot) :
     NextBusBoard(slot),
     mem_banks(new ND_Addrbank*[65536]),
-    ram(alloc_aligned(64*1024*1024)),
-    vram(alloc_aligned(4*1024*1024)),
-    rom(alloc_aligned(128*1024)),
+    ram(host_malloc_aligned(64*1024*1024)),
+    vram(host_malloc_aligned(4*1024*1024)),
+    rom(host_malloc_aligned(128*1024)),
     rom_last_addr(0),
     sdl(slot, (Uint32*)vram),
     i860(this),

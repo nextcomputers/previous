@@ -264,7 +264,7 @@ static ALWAYS_INLINE int mmu_get_fc(bool super, bool data)
  * read from mmu with the long path (and allocate ATC entry if needed)
  */
 
-#define MATCH_TTR(ttr, addr) (!(((((addr) ^ (ttr)) /* & MMU_TTR_LOGICAL_BASE */) >> 24) & ~(((ttr) /* & MMU_TTR_LOGICAL_MASK */) >> 16)))
+#define MATCH_TTR(ttr, addr) (!(((((addr) ^ (ttr)) & MMU_TTR_LOGICAL_BASE) >> 24) & ~(((ttr) & MMU_TTR_LOGICAL_MASK) >> 16)))
 
 /* check if an address matches a ttr */
 static ALWAYS_INLINE int mmu_do_match_ttr(uae_u32 ttr, uaecptr addr, bool super)
