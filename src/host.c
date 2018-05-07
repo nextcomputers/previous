@@ -268,3 +268,9 @@ const char* host_report(double realTime, double hostTime) {
 
     return report;
 }
+
+Uint8* host_malloc_aligned(size_t size) {
+    void* result = NULL;
+    posix_memalign(&result, 0x10000, size);
+    return (Uint8*)result;
+}
