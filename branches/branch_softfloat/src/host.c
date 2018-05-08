@@ -242,8 +242,8 @@ bool host_atomic_cas(atomic_int* a, int oldValue, int newValue) {
     return SDL_AtomicCAS(a, oldValue, newValue);
 }
 
-thread_t* host_thread_create(thread_func_t func, void* data) {
-  return SDL_CreateThread(func, "Thread", data);
+thread_t* host_thread_create(thread_func_t func, const char* name, void* data) {
+  return SDL_CreateThread(func, name, data);
 }
 
 int host_thread_wait(thread_t* thread) {
