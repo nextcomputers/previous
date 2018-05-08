@@ -43,6 +43,7 @@ NextDimension::NextDimension(int slot) :
     dcsc1(this, 1),
     rom_command(0)
 {
+    host_atomic_set(&m_port, 0);
     i860.uninit();
     nbic.init();
     mc.init();
