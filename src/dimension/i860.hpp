@@ -425,6 +425,7 @@ public:
 class NextDimension;
 
 class i860_cpu_device {
+    char m_thread_name[32];
 public:
     NextDimension* nd;
     

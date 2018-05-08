@@ -59,6 +59,8 @@ i860_cpu_device::i860_cpu_device(NextDimension* nd) : nd(nd) {
     m_thread = NULL;
     m_halt   = true;
     
+    sprintf(m_thread_name, "[ND] Slot %d: i860", nd->slot);
+    
     for(int i = 0; i < 8192; i++) {
         int upper6 = i >> 7;
         switch (upper6) {
@@ -426,6 +428,7 @@ void i860_cpu_device::init(void) {
     m_break_on_next_msg = false;
     m_dim               = DIM_NONE;
     m_traceback_idx     = 0;
+    memset(m_fregs, 0, sizeof(m_fregs));
     
     set_mem_access(false);
 
@@ -512,7 +515,7 @@ error:
     nd->send_msg(MSG_I860_RESET);
     if(ConfigureParams.Dimension.bI860Thread) {
         i860_Run = i860_run_thread;
-        m_thread = host_thread_create(i860_cpu_device::thread, this);
+        m_thread = host_thread_create(i860_cpu_device::thread, m_thread_name, this);
     } else {
         i860_Run = i860_run_no_thread;
     }

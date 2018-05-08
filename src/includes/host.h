@@ -60,7 +60,7 @@ extern "C" {
     int         host_atomic_set(atomic_int* a, int newValue);
     int         host_atomic_get(atomic_int* a);
     bool        host_atomic_cas(atomic_int* a, int oldValue, int newValue);
-    thread_t*   host_thread_create(thread_func_t, void* data);
+    thread_t*   host_thread_create(thread_func_t, const char* name, void* data);
     int         host_thread_wait(thread_t* thread);
     Uint8*      host_malloc_aligned(size_t size);
 #ifdef __cplusplus
