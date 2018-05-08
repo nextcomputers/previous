@@ -526,7 +526,6 @@ void i860_cpu_device::uninit() {
         host_thread_wait(m_thread);
         m_thread = NULL;
     }
-    nd->send_msg(MSG_NONE);
 }
 
 /* Message disaptcher - executed on i860 thread, safe to call i860 methods */
