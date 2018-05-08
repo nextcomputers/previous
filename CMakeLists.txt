@@ -115,6 +115,9 @@ check_function_exists(nanosleep HAVE_NANOSLEEP)
 check_function_exists(alphasort HAVE_ALPHASORT)
 check_function_exists(scandir HAVE_SCANDIR)
 check_function_exists(strdup HAVE_STRDUP)
+check_function_exists(posix_memalign HAVE_POSIX_MEMALIGN)
+check_function_exists(aligned_alloc HAVE_ALIGNED_ALLOC)
+check_function_exists(_aligned_alloc HAVE__ALIGNED_ALLOC)
 
 
 # #############

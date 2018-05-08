@@ -13,6 +13,8 @@
 #include "configuration.h"
 #include "main.h"
 #include "log.h"
+#include "memory.h"
+#include "newcpu.h"
 
 /* NeXTdimension blank handling, see nd_sdl.c */
 void nd_display_blank(int num);
@@ -28,7 +30,6 @@ static Uint32       vblCounter[NUM_BLANKS];
 static Uint64       perfCounterStart;
 static Sint64       cycleCounterStart;
 static double       cycleSecsStart;
-static bool         isRealtime;
 static bool         currentIsRealtime;
 static double       cycleDivisor;
 static lock_t       timeLock;
@@ -56,7 +57,6 @@ void host_reset() {
     unixTimeStart     = time(NULL);
     cycleCounterStart = 0;
     cycleSecsStart    = 0;
-    isRealtime        = false;
     currentIsRealtime = false;
     hardClockExpected = 0;
     hardClockActual   = 0;
@@ -73,7 +73,7 @@ void host_reset() {
     SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);
 }
 
-extern Uint8* NEXTRam;
+const char DARKMATTER[] = "darkmatter";
 
 void host_blank(int slot, int src, bool state) {
     int bit = 1 << slot;
@@ -88,12 +88,8 @@ void host_blank(int slot, int src, bool state) {
         case ND_VIDEO:     nd_video_blank(slot);   break;
     }
     
-    // check for darkmatter magic
-    osDarkmatter =
-    NEXTRam[0x246] == 'd' &&
-    NEXTRam[0x247] == 'a' &&
-    NEXTRam[0x248] == 'r' &&
-    NEXTRam[0x249] == 'k';
+    // check first 4 bytes of version string in darkmatter/daydream kernel
+    osDarkmatter = get_long(0x04000246) == do_get_mem_long(DARKMATTER);
 }
 
 bool host_blank_state(int slot, int src) {
@@ -110,12 +106,9 @@ void host_hardclock(int expected, int actual) {
     }
 }
 
-extern Sint64 nCyclesMainCounter;
-void host_realtime(bool state) {
-    isRealtime = state;
-}
-
-double lastHostTime;
+extern Sint64           nCyclesMainCounter;
+static double           lastHostTime;
+extern struct regstruct regs;
 
 double host_time_sec() {
     double hostTime;
@@ -126,7 +119,7 @@ double host_time_sec() {
         double rt = real_time();
         // last host time is in the future (compared to real time)
         // hold time until real time catches up
-        // this will allow CPU to still run cycles and do some useful work until it
+        // this will allow m68k CPU to still run cycles and do some useful work until it
         // waits for some time dependent event
         hostTime = lastHostTime >= rt ? lastHostTime+(1.0/cycleDivisor) : rt;
     } else {
@@ -134,7 +127,11 @@ double host_time_sec() {
         hostTime /= cycleDivisor;
         hostTime += cycleSecsStart;
     }
-    bool state = (osDarkmatter || isRealtime) && enableRealtime;
+    
+    // switch to realtime if...
+    // 1) ...realtime mode is enabled and...
+    // 2) ...either we are running darkmatter or the m68k CPU is in user mode
+    bool state = (osDarkmatter || !(regs.s)) && enableRealtime;
     if(currentIsRealtime != state) {
         if(currentIsRealtime) {
             // switching from real-time to cycle-time
@@ -233,6 +230,18 @@ void host_unlock(lock_t* lock) {
   SDL_AtomicUnlock(lock);
 }
 
+int host_atomic_set(atomic_int* a, int newValue) {
+    return SDL_AtomicSet(a, newValue);
+}
+
+int host_atomic_get(atomic_int* a) {
+    return SDL_AtomicGet(a);
+}
+
+bool host_atomic_cas(atomic_int* a, int oldValue, int newValue) {
+    return SDL_AtomicCAS(a, oldValue, newValue);
+}
+
 thread_t* host_thread_create(thread_func_t func, void* data) {
   return SDL_CreateThread(func, "Thread", data);
 }
@@ -270,7 +279,15 @@ const char* host_report(double realTime, double hostTime) {
 }
 
 Uint8* host_malloc_aligned(size_t size) {
+#if defined(HAVE_POSIX_MEMALIGN)
     void* result = NULL;
     posix_memalign(&result, 0x10000, size);
     return (Uint8*)result;
+#elif defined(HAVE_ALIGNED_ALLOC)
+    return (Uint8*)aligned_alloc(0x10000, size);
+#elif defined(HAVE__ALIGNED_ALLOC)
+    return (Uint8*)_aligned_alloc(0x10000, size);
+#else
+    return (Uint8*)malloc(size);
+#endif
 }
