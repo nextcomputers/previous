@@ -1302,8 +1302,6 @@ static inline int intlev(void) {
     return interrupt ? scr_get_interrupt_level(interrupt) : 0;
 }
 
-static int lastRegsS = 0;
-
 // Previous MMU 68030
 static void m68k_run_mmu030 (void)
 {
@@ -1379,11 +1377,6 @@ insretry:
                 do_interrupt (intr, false);
             lastintr = intr;
             
-            if(lastRegsS != regs.s) {
-                host_realtime(!(regs.s));
-                lastRegsS = regs.s;
-            }
-
             if (regs.spcflags & ~SPCFLAG_INT) {
 				if (do_specialties (cpu_cycles))
 					return;
@@ -1462,12 +1455,7 @@ static void m68k_run_mmu040 (void)
             if (intr>regs.intmask || (intr==7 && intr>lastintr))
                 do_interrupt (intr, false);
             lastintr = intr;
-            
-            if(lastRegsS != regs.s) {
-                host_realtime(!(regs.s));
-                lastRegsS = regs.s;
-            }
-            
+                        
 			if (regs.spcflags & ~SPCFLAG_INT) {
 				if (do_specialties (cpu_cycles))
 					return;

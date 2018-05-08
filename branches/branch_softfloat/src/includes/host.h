@@ -31,12 +31,12 @@ extern "C" {
         ND_VIDEO,
     };
     
+    typedef SDL_atomic_t       atomic_int;
     typedef SDL_SpinLock       lock_t;
     typedef SDL_Thread         thread_t;
     typedef SDL_ThreadFunction thread_func_t;
 
     void        host_reset(void);
-    void        host_realtime(bool state);
     void        host_blank(int slot, int src, bool state);
     bool        host_blank_state(int slot, int src);
     Uint64      host_time_us(void);
@@ -57,6 +57,9 @@ extern "C" {
     void        host_lock(lock_t* lock);
     void        host_unlock(lock_t* lock);
     int         host_trylock(lock_t* lock);
+    int         host_atomic_set(atomic_int* a, int newValue);
+    int         host_atomic_get(atomic_int* a);
+    bool        host_atomic_cas(atomic_int* a, int oldValue, int newValue);
     thread_t*   host_thread_create(thread_func_t, void* data);
     int         host_thread_wait(thread_t* thread);
     Uint8*      host_malloc_aligned(size_t size);

@@ -171,9 +171,10 @@ void NextDimension::slot_bput(Uint32 addr, Uint8 b) {
 }
 
 void NextDimension::send_msg(int msg) {
-    host_lock(&m_port_lock);
-    m_port |= msg;
-    host_unlock(&m_port_lock);
+    int value;
+    do {
+        value = m_port.value;
+    } while (!host_atomic_cas(&m_port, value, (value | msg)));
 }
 
 /* NeXTdimension board memory access (i860) */
@@ -288,10 +289,7 @@ void   NextDimension::i860_wr128_le(const NextDimension* nd, Uint32 addr, const 
 
 /* Message disaptcher - executed on i860 thread, safe to call i860 methods */
 bool NextDimension::handle_msgs(void) {
-    host_lock(&m_port_lock);
-    int msg = m_port;
-    m_port = 0;
-    host_unlock(&m_port_lock);
+    int msg = host_atomic_set(&m_port, 0);
     
     if(msg & MSG_DISPLAY_BLANK)
         set_blank_state(ND_DISPLAY, host_blank_state(slot, ND_DISPLAY));

@@ -122,8 +122,7 @@ public:
 
 class NextDimension final : public NextBusBoard {
     /* Message port for host->dimension communication */
-    volatile int    m_port;
-    lock_t          m_port_lock;
+    atomic_int      m_port;
 public:
     ND_Addrbank**   mem_banks;
     Uint8*          ram;
