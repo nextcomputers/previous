@@ -265,6 +265,7 @@ void Main_EventHandler(void) {
             if(msg[0]) fprintf(stderr, " %s:%s", reports[i].label, msg);
         }
         fprintf(stderr, "\n");
+        fflush(stderr);
 #else
         Main_Speed(rt, vt);
 #endif

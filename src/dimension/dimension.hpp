@@ -19,7 +19,7 @@ extern "C" {
     typedef void (*i860_run_func)(int);
     extern i860_run_func i860_Run;
     void nd_start_debugger(void);
-    const char* nd_reports(int num, double realTime, double hostTime);
+    const char* nd_reports(double realTime, double hostTime);
     Uint32* nd_vram_for_slot(int slot);
     
 #define ND_LOG_IO_RD LOG_NONE
@@ -120,7 +120,7 @@ public:
     void write(Uint32 step, Uint8 data);
 };
 
-class NextDimension final : public NextBusBoard {
+class NextDimension : public NextBusBoard {
     /* Message port for host->dimension communication */
     atomic_int      m_port;
 public:
