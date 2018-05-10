@@ -67,7 +67,7 @@ static uaecptr nd_rom_addr_fix(uaecptr addr)
 
 /* NeXTdimension RAM */
 
-class ND_RAM final : public ND_Addrbank {
+class ND_RAM : public ND_Addrbank {
     Uint8* base;
     Uint32 mask;
 public:
@@ -98,7 +98,7 @@ public:
     }
 };
 
-class ND_Empty final : public ND_Addrbank {
+class ND_Empty : public ND_Addrbank {
 public:
     ND_Empty(NextDimension* nd) : ND_Addrbank(nd) {}
     
@@ -133,7 +133,7 @@ public:
 /* NeXTdimension VRAM */
 /* stored as ARGB for faster blitting, assuming aligned access for 32 bit */
 
-class ND_VRAM final : public ND_Addrbank {
+class ND_VRAM : public ND_Addrbank {
     Uint8* base;
 public:
     ND_VRAM(NextDimension* nd) : ND_Addrbank(nd), base(nd->vram) {
@@ -216,7 +216,7 @@ public:
 
 /* NeXTdimension ROM */
 
-class ND_ROM final : public ND_Addrbank {
+class ND_ROM : public ND_Addrbank {
 public:
     ND_ROM(NextDimension* nd) : ND_Addrbank(nd) {}
 
@@ -259,7 +259,7 @@ public:
 /* Unknown register access functions (memory controller step 1) */
 #if ND_STEP
 
-class ND_CSR final : public ND_Addrbank {
+class ND_CSR : public ND_Addrbank {
 public:
     ND_CSR(NextDimension* nd) : ND_Addrbank(nd) {}
 
@@ -294,7 +294,7 @@ public:
 
 /* NeXTdimension dither memory & datapath */
 
-class ND_DMEM final : public ND_Addrbank {
+class ND_DMEM : public ND_Addrbank {
 public:
     ND_DMEM(NextDimension* nd) : ND_Addrbank(nd) {}
 
@@ -376,7 +376,7 @@ void ND_Addrbank::bput(Uint32 addr, Uint32 b) const {
 
 /* NeXTdimension device space */
 
-class ND_IO final : public ND_Addrbank {
+class ND_IO : public ND_Addrbank {
 public:
     ND_IO(NextDimension* nd) : ND_Addrbank(nd) {}
     
@@ -398,7 +398,7 @@ public:
 
 /* NeXTdimension RAMDAC */
 
-class ND_RAMDAC final : public ND_Addrbank {
+class ND_RAMDAC : public ND_Addrbank {
 public:
     ND_RAMDAC(NextDimension* nd) : ND_Addrbank(nd) {}
     

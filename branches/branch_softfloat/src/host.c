@@ -107,7 +107,6 @@ void host_hardclock(int expected, int actual) {
 }
 
 extern Sint64           nCyclesMainCounter;
-static double           lastHostTime;
 extern struct regstruct regs;
 
 double host_time_sec() {
@@ -116,12 +115,7 @@ double host_time_sec() {
     host_lock(&timeLock);
     
     if(currentIsRealtime) {
-        double rt = real_time();
-        // last host time is in the future (compared to real time)
-        // hold time until real time catches up
-        // this will allow m68k CPU to still run cycles and do some useful work until it
-        // waits for some time dependent event
-        hostTime = lastHostTime >= rt ? lastHostTime+(1.0/cycleDivisor) : rt;
+        hostTime = real_time();
     } else {
         hostTime  = nCyclesMainCounter - cycleCounterStart;
         hostTime /= cycleDivisor;
@@ -130,18 +124,30 @@ double host_time_sec() {
     
     // switch to realtime if...
     // 1) ...realtime mode is enabled and...
-    // 2) ...either we are running darkmatter or the m68k CPU is in user mode
-    bool state = (osDarkmatter || !(regs.s)) && enableRealtime;
+    // 2) ...either we are running darkmatter or the m68k CPU did
+    // switch for the first time from supervisor to user mode
+    bool state = ((currentIsRealtime || !(regs.s)) || osDarkmatter) && enableRealtime;
     if(currentIsRealtime != state) {
+        double realTime  = real_time();
+        
         if(currentIsRealtime) {
             // switching from real-time to cycle-time
-            cycleSecsStart    = real_time();;
+            cycleSecsStart    = realTime;
             cycleCounterStart = nCyclesMainCounter;
+        } else {
+            // switching from cycle-time to real-time
+            double realTimeOffset = hostTime - realTime;
+            if(realTimeOffset > 0) {
+                // if hostTime is in the future, wait until realTime is there as well
+                if(realTimeOffset > 0.01)
+                    host_sleep_sec(realTimeOffset);
+                else
+                    while(real_time() < hostTime) {}
+            }
         }
         currentIsRealtime = state;
     }
     
-    lastHostTime = hostTime;
     host_unlock(&timeLock);
     
     return hostTime;
@@ -266,7 +272,7 @@ const char* host_report(double realTime, double hostTime) {
     hardClock /= hardClockActual == 0 ? 1 : hardClockActual;
     
     char* r = report;
-    r += sprintf(r, "[%s] hostTime:%.1f hardClock:%.3fMHz", enableRealtime ? "Max.speed" : "CycleTime", hostTime, hardClock);
+    r += sprintf(r, "[%s] hostTime:%.1f hardClock:%.3fMHz", enableRealtime ? "Variable" : "CycleTime", hostTime, hardClock);
 
     for(int i = NUM_BLANKS; --i >= 0;) {
         r += sprintf(r, " %s:%.1fHz", BLANKS[i], (double)vblCounter[i]/dVT);

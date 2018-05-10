@@ -317,8 +317,13 @@ extern "C" {
         ((NextDimension*)nextbus[slot])->send_msg(MSG_VIDEO_BLANK);
     }
 
-    const char* nd_reports(int slot, double realTime, double hostTime) {
-        return ((NextDimension*)nextbus[slot])->i860.reports(realTime, hostTime);
+    const char* nd_reports(double realTime, double hostTime) {
+        FOR_EACH_SLOT(slot) {
+            IF_NEXT_DIMENSION(slot, nd) {
+                return nd->i860.reports(realTime, hostTime);
+            }
+        }
+        return "";
     }
     
     Uint32* nd_vram_for_slot(int slot) {
