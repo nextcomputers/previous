@@ -1331,7 +1331,7 @@ floatx80 floatx80_lognp1(floatx80 a, float_ctrl* c)
     if (aSign && aExp >= one_exp) {
         if (aExp == one_exp && aSig == one_sig) {
             float_raise(float_flag_divbyzero, c);
-            packFloatx80(aSign, 0x7FFF, floatx80_default_infinity_low);
+            return packFloatx80(aSign, 0x7FFF, floatx80_default_infinity_low);
         }
         float_raise(float_flag_invalid, c);
         a.low = floatx80_default_nan_low;
