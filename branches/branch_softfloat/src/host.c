@@ -124,9 +124,8 @@ double host_time_sec() {
     
     // switch to realtime if...
     // 1) ...realtime mode is enabled and...
-    // 2) ...either we are running darkmatter or the m68k CPU did
-    // switch for the first time from supervisor to user mode
-    bool state = ((currentIsRealtime || !(regs.s)) || osDarkmatter) && enableRealtime;
+    // 2) ...either we are running darkmatter or the m68k CPU is in user mode
+    bool state = (osDarkmatter || !(regs.s)) && enableRealtime;
     if(currentIsRealtime != state) {
         double realTime  = real_time();
         
