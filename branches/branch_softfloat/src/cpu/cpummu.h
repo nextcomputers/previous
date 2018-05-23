@@ -197,8 +197,8 @@ extern void mmu_tt_modified(void);
 #define TRANS_DATA  0x00000001
 #define TRANS_WRITE 0x20000000
 #define TRANS_SIZE  0x0000000E
-#define mmu_translate(addr, val, super, data, write, size) xmmu_translate(addr, val, ((super) ? TRANS_SUPER : 0) | ((data) ? TRANS_DATA : 0) | ((write) ? TRANS_WRITE : 0) | ((size)<<1))
-extern uaecptr xmmu_translate(uaecptr addr, uae_u32 val, Uint32 flags);
+
+extern uaecptr mmu_translate(uaecptr addr, uae_u32 val, Uint32 flags);
 
 extern uae_u32 REGPARAM3 mmu060_get_rmw_bitfield (uae_u32 src, uae_u32 bdata[2], uae_s32 offset, int width) REGPARAM;
 extern void REGPARAM3 mmu060_put_rmw_bitfield (uae_u32 dst, uae_u32 bdata[2], uae_u32 val, uae_s32 offset, int width) REGPARAM;
@@ -327,7 +327,7 @@ static ALWAYS_INLINE void mmu_get_move16(uaecptr addr, uae_u32 *v, int size)
     addr &= ~15;
     
     if (mmu_match_ttr(addr,super,true) == TTR_NO_MATCH && regs.mmu_enabled) {
-        addr = mmu_translate(addr, 0, super, true, false, size);
+        addr = mmu_translate(addr, 0, ((super) ? TRANS_SUPER : 0) | TRANS_DATA | ((size)<<1));
     }
     
     for (i = 0; i < 4; i++) {
@@ -342,7 +342,7 @@ static ALWAYS_INLINE void mmu_put_move16(uaecptr addr, uae_u32 *v, int size)
     addr &= ~15;
     
     if (mmu_match_ttr_write(addr,super,true,v[0],size,false) == TTR_NO_MATCH && regs.mmu_enabled) {
-        addr = mmu_translate(addr, v[0], super, true, true, size);
+        addr = mmu_translate(addr, v[0], ((super) ? TRANS_SUPER : 0) | TRANS_DATA | TRANS_WRITE | ((size)<<1));
     }
     
     for (i = 0; i < 4; i++) {
@@ -353,7 +353,7 @@ static ALWAYS_INLINE void mmu_put_move16(uaecptr addr, uae_u32 *v, int size)
 static ALWAYS_INLINE uae_u32 mmu_get_ilong(uaecptr addr, int size)
 {
     if (likely(mmu_match_ttr(addr,regs.s!=0,false) == TTR_NO_MATCH && regs.mmu_enabled)) {
-        addr = mmu_translate(addr, 0, regs.s!=0, false, false, size);
+        addr = mmu_translate(addr, 0, ((regs.s!=0) ? TRANS_SUPER : 0) | ((size)<<1));
     }
     return phys_get_long(addr);
 }
@@ -361,7 +361,7 @@ static ALWAYS_INLINE uae_u32 mmu_get_ilong(uaecptr addr, int size)
 static ALWAYS_INLINE uae_u16 mmu_get_iword(uaecptr addr, int size)
 {
     if (likely(mmu_match_ttr(addr,regs.s!=0,false) == TTR_NO_MATCH && regs.mmu_enabled)) {
-        addr = mmu_translate(addr, 0, regs.s!=0, false, false, size);
+        addr = mmu_translate(addr, 0, ((regs.s!=0) ? TRANS_SUPER : 0) | ((size)<<1));
     }
     return phys_get_word(addr);
 }
@@ -369,7 +369,7 @@ static ALWAYS_INLINE uae_u16 mmu_get_iword(uaecptr addr, int size)
 static ALWAYS_INLINE uae_u8 mmu_get_ibyte(uaecptr addr, int size)
 {
     if (likely(mmu_match_ttr(addr,regs.s!=0,false) == TTR_NO_MATCH && regs.mmu_enabled)) {
-        addr = mmu_translate(addr, 0, regs.s!=0, false, false, size);
+        addr = mmu_translate(addr, 0, ((regs.s!=0) ? TRANS_SUPER : 0) | ((size)<<1));
     }
     return phys_get_byte(addr);
 }
@@ -377,7 +377,7 @@ static ALWAYS_INLINE uae_u8 mmu_get_ibyte(uaecptr addr, int size)
 static ALWAYS_INLINE uae_u32 mmu_get_long(uaecptr addr, int size)
 {
     if (likely(mmu_match_ttr(addr,regs.s!=0,true) == TTR_NO_MATCH && regs.mmu_enabled)) {
-        addr = mmu_translate(addr, 0, regs.s!=0, true, false, size);
+        addr = mmu_translate(addr, 0, ((regs.s!=0) ? TRANS_SUPER : 0) | TRANS_DATA | ((size)<<1));
     }
     return phys_get_long(addr);
 }
@@ -385,7 +385,7 @@ static ALWAYS_INLINE uae_u32 mmu_get_long(uaecptr addr, int size)
 static ALWAYS_INLINE uae_u16 mmu_get_word(uaecptr addr, int size)
 {
     if (likely(mmu_match_ttr(addr,regs.s!=0,true) == TTR_NO_MATCH && regs.mmu_enabled)) {
-        addr = mmu_translate(addr, 0, regs.s!=0, true, false, size);
+        addr = mmu_translate(addr, 0, ((regs.s!=0) ? TRANS_SUPER : 0) | TRANS_DATA | ((size)<<1));
     }
     return phys_get_word(addr);
 }
@@ -393,7 +393,7 @@ static ALWAYS_INLINE uae_u16 mmu_get_word(uaecptr addr, int size)
 static ALWAYS_INLINE uae_u8 mmu_get_byte(uaecptr addr, int size)
 {
     if (likely(mmu_match_ttr(addr,regs.s!=0,true) == TTR_NO_MATCH && regs.mmu_enabled)) {
-        addr = mmu_translate(addr, 0, regs.s!=0, true, false, size);
+        addr = mmu_translate(addr, 0, ((regs.s!=0) ? TRANS_SUPER : 0) | TRANS_DATA | ((size)<<1));
     }
     return phys_get_byte(addr);
 }
@@ -401,7 +401,7 @@ static ALWAYS_INLINE uae_u8 mmu_get_byte(uaecptr addr, int size)
 static ALWAYS_INLINE void mmu_put_long(uaecptr addr, uae_u32 val, int size)
 {
     if (likely(mmu_match_ttr_write(addr,regs.s!=0,true,val,size,true) == TTR_NO_MATCH && regs.mmu_enabled)) {
-        addr = mmu_translate(addr, val, regs.s!=0, true, true, size);
+        addr = mmu_translate(addr, val, ((regs.s!=0) ? TRANS_SUPER : 0) | TRANS_DATA | TRANS_WRITE | ((size)<<1));
     }
     phys_put_long(addr, val);
 }
@@ -409,7 +409,7 @@ static ALWAYS_INLINE void mmu_put_long(uaecptr addr, uae_u32 val, int size)
 static ALWAYS_INLINE void mmu_put_word(uaecptr addr, uae_u16 val, int size)
 {
     if (likely(mmu_match_ttr_write(addr,regs.s!=0,true,val,size,true) == TTR_NO_MATCH && regs.mmu_enabled)) {
-        addr = mmu_translate(addr, val, regs.s!=0, true, true, size);
+        addr = mmu_translate(addr, val, ((regs.s!=0) ? TRANS_SUPER : 0) | TRANS_DATA | TRANS_WRITE | ((size)<<1));
     }
     phys_put_word(addr, val);
 }
@@ -417,7 +417,7 @@ static ALWAYS_INLINE void mmu_put_word(uaecptr addr, uae_u16 val, int size)
 static ALWAYS_INLINE void mmu_put_byte(uaecptr addr, uae_u8 val, int size)
 {
     if (likely(mmu_match_ttr_write(addr,regs.s!=0,true,val,size,true) == TTR_NO_MATCH && regs.mmu_enabled)) {
-        addr = mmu_translate(addr, val, regs.s!=0, true, true, size);
+        addr = mmu_translate(addr, val, ((regs.s!=0) ? TRANS_SUPER : 0) | TRANS_DATA | TRANS_WRITE | ((size)<<1));
     }
     phys_put_byte(addr, val);
 }
@@ -425,7 +425,7 @@ static ALWAYS_INLINE void mmu_put_byte(uaecptr addr, uae_u8 val, int size)
 static ALWAYS_INLINE uae_u32 mmu_get_user_long(uaecptr addr, bool super, bool write, int size)
 {
     if (likely(mmu_match_ttr_write(addr,super,true,0,size,write) == TTR_NO_MATCH && regs.mmu_enabled)) {
-        addr = mmu_translate(addr, 0, super, true, write, size);
+        addr = mmu_translate(addr, 0, ((super) ? TRANS_SUPER : 0) | TRANS_DATA | ((write) ? TRANS_WRITE : 0) | ((size)<<1));
     }
     return phys_get_long(addr);
 }
@@ -433,7 +433,7 @@ static ALWAYS_INLINE uae_u32 mmu_get_user_long(uaecptr addr, bool super, bool wr
 static ALWAYS_INLINE uae_u16 mmu_get_user_word(uaecptr addr, bool super, bool write, int size)
 {
     if (likely(mmu_match_ttr_write(addr,super,true,0,size,write) == TTR_NO_MATCH && regs.mmu_enabled)) {
-        addr = mmu_translate(addr, 0, super, true, write, size);
+        addr = mmu_translate(addr, 0, ((super) ? TRANS_SUPER : 0) | TRANS_DATA | ((write) ? TRANS_WRITE : 0) | ((size)<<1));
     }
     return phys_get_word(addr);
 }
@@ -441,7 +441,7 @@ static ALWAYS_INLINE uae_u16 mmu_get_user_word(uaecptr addr, bool super, bool wr
 static ALWAYS_INLINE uae_u8 mmu_get_user_byte(uaecptr addr, bool super, bool write, int size)
 {
     if (likely(mmu_match_ttr_write(addr,super,true,0,size,write) == TTR_NO_MATCH && regs.mmu_enabled)) {
-        addr = mmu_translate(addr, 0, super, true, write, size);
+        addr = mmu_translate(addr, 0, ((super) ? TRANS_SUPER : 0) | TRANS_DATA | ((write) ? TRANS_WRITE : 0) | ((size)<<1));
     }
     return phys_get_byte(addr);
 }
@@ -449,7 +449,7 @@ static ALWAYS_INLINE uae_u8 mmu_get_user_byte(uaecptr addr, bool super, bool wri
 static ALWAYS_INLINE void mmu_put_user_long(uaecptr addr, uae_u32 val, bool super, int size)
 {
     if (likely(mmu_match_ttr_write(addr,super,true,val,size,true) == TTR_NO_MATCH && regs.mmu_enabled)) {
-        addr = mmu_translate(addr, val, super, true, true, size);
+        addr = mmu_translate(addr, val, ((super) ? TRANS_SUPER : 0) | TRANS_DATA | TRANS_WRITE | ((size)<<1));
     }
     phys_put_long(addr, val);
 }
@@ -457,7 +457,7 @@ static ALWAYS_INLINE void mmu_put_user_long(uaecptr addr, uae_u32 val, bool supe
 static ALWAYS_INLINE void mmu_put_user_word(uaecptr addr, uae_u16 val, bool super, int size)
 {
     if (likely(mmu_match_ttr_write(addr,super,true,val,size,true) == TTR_NO_MATCH && regs.mmu_enabled)) {
-        addr = mmu_translate(addr, val, super, true, true, size);
+        addr = mmu_translate(addr, val, ((super) ? TRANS_SUPER : 0) | TRANS_DATA | TRANS_WRITE | ((size)<<1));
     }
     phys_put_word(addr, val);
 }
@@ -465,7 +465,7 @@ static ALWAYS_INLINE void mmu_put_user_word(uaecptr addr, uae_u16 val, bool supe
 static ALWAYS_INLINE void mmu_put_user_byte(uaecptr addr, uae_u8 val, bool super, int size)
 {    
     if (likely(mmu_match_ttr_write(addr,super,true,val,size,true) == TTR_NO_MATCH && regs.mmu_enabled)) {
-        addr = mmu_translate(addr, val, super, true, true, size);
+        addr = mmu_translate(addr, val, ((super) ? TRANS_SUPER : 0) | TRANS_DATA | TRANS_WRITE | ((size)<<1));
     }
     phys_put_byte(addr, val);
 }
