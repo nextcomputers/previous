@@ -522,7 +522,7 @@ fail:
     return status;
 }
 
-uaecptr xmmu_translate(uaecptr addr, uae_u32 val, Uint32 flags)
+uaecptr mmu_translate(uaecptr addr, uae_u32 val, Uint32 flags)
 {
     int data = flags & TRANS_DATA;
     int way, i, index, way_invalid;

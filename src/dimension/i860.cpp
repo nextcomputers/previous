@@ -554,7 +554,7 @@ void i860_cpu_device::run() {
             continue;
         }
         
-        if (/* ConfigureParams.System.bRealtime ||*/ i860cycles > 0) {
+        if (i860cycles > 0) {
             /* Run some i860 cycles before re-checking messages */
             for(int i = 16; --i >= 0;)
                 run_cycle();

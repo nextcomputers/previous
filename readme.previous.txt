@@ -237,6 +237,7 @@ Previous v2.0:
 
 Previous v2.1 (unreleased):
   > Improves emulation efficiency.
+  > Fixes bug that caused FLOGNP1 to give wrong results in rare cases.
 
 
  7) Running Previous
