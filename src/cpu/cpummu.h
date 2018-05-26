@@ -54,11 +54,6 @@ extern uae_u32 mmu040_move16[4];
 extern bool mmu_pagesize_8k;
 extern uae_u16 mmu_opcode;
 extern bool mmu_restart;
-//extern bool mmu_ttr_enabled;
-
-//typedef uae_u8 flagtype;
-
-//static m68k_exception except;
 
 struct xttrx {
     uae_u32 log_addr_base : 8;
@@ -190,15 +185,13 @@ extern uae_u32 mmu_is_super;
 extern uae_u32 mmu_tagmask, mmu_pagemask;
 extern struct mmu_atc_line mmu_atc_array[ATC_TYPE][ATC_WAYS][ATC_SLOTS];
 
-extern void mmu_tt_modified(void);
-
 // these flags and masks are carefully selected to make mmu_translate simpler - don't change
 #define TRANS_SUPER 0x80000000
 #define TRANS_DATA  0x00000001
 #define TRANS_WRITE 0x20000000
 #define TRANS_SIZE  0x0000000E
 
-extern uaecptr mmu_translate(uaecptr addr, uae_u32 val, Uint32 flags);
+extern uaecptr mmu_translate(uaecptr addr, uae_u32 val, uae_u32 flags);
 
 extern uae_u32 REGPARAM3 mmu060_get_rmw_bitfield (uae_u32 src, uae_u32 bdata[2], uae_s32 offset, int width) REGPARAM;
 extern void REGPARAM3 mmu060_put_rmw_bitfield (uae_u32 dst, uae_u32 bdata[2], uae_u32 val, uae_s32 offset, int width) REGPARAM;

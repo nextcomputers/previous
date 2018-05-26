@@ -138,10 +138,10 @@ int m68k_move2c (int regno, uae_u32 *regp)
 			break;
 
 			/* no differences between 68040 and 68060 */
-		case 4: regs.itt0 = *regp & 0xffffe364; mmu_tt_modified (); break;
-		case 5: regs.itt1 = *regp & 0xffffe364; mmu_tt_modified (); break;
-		case 6: regs.dtt0 = *regp & 0xffffe364; mmu_tt_modified (); break;
-		case 7: regs.dtt1 = *regp & 0xffffe364; mmu_tt_modified (); break;
+		case 4: regs.itt0 = *regp & 0xffffe364; break;
+		case 5: regs.itt1 = *regp & 0xffffe364; break;
+		case 6: regs.dtt0 = *regp & 0xffffe364; break;
+		case 7: regs.dtt1 = *regp & 0xffffe364; break;
 			/* 68060 only */
 		case 8: regs.buscr = *regp & 0xf0000000; break;
 
