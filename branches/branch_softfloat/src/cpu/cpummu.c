@@ -106,11 +106,6 @@ void mmu_make_transparent_region(uaecptr baseaddr, uae_u32 size, int datamode)
 #endif
 }
 
-void mmu_tt_modified (void)
-{
-    // mmu_ttr_enabled = ((regs.dtt0 | regs.dtt1 | regs.itt0 | regs.itt1) & MMU_TTR_BIT_ENABLED) != 0;
-}
-
 #if 0
 #if MMUDUMP
 
@@ -522,10 +517,10 @@ fail:
     return status;
 }
 
-uaecptr mmu_translate(uaecptr addr, uae_u32 val, Uint32 flags)
+uaecptr mmu_translate(uaecptr addr, uae_u32 val, uae_u32 flags)
 {
-    int data = flags & TRANS_DATA;
     int way, i, index, way_invalid;
+    uae_u32 data = flags & TRANS_DATA;
     uae_u32 tag = ((flags & TRANS_SUPER) | (addr >> 1)) & mmu_tagmask;
     struct mmu_atc_line *l;
     

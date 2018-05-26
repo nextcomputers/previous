@@ -1289,19 +1289,6 @@ static inline void run_other_MPUs() {
     }
 }
 
-/**
- * Return interrupt number (1 - 7), 0 means no interrupt.
- * Note that the interrupt stays pending if it can't be executed yet
- * due to the interrupt level field in the SR.
- */
-static inline int intlev(void) {
- /* Poll interrupt level from interrupt status and mask registers
- * --> see sysReg.c
- */
-    Uint32 interrupt = scrIntStat&scrIntMask;
-    return interrupt ? scr_get_interrupt_level(interrupt) : 0;
-}
-
 // Previous MMU 68030
 static void m68k_run_mmu030 (void)
 {
