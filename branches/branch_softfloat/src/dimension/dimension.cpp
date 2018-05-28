@@ -78,7 +78,13 @@ void NextDimension::pause(bool pause) {
 
  Uint32 NextDimension::board_lget(Uint32 addr) {
     addr |= ND_BOARD_BITS;
-    Uint32 result = nd68k_longget(addr);
+    Uint32 result;
+    if(addr & 3) { // handle unaligned transfers
+        result  = nd68k_wordget(addr+0); result <<= 16;
+        result |= nd68k_wordget(addr+2);
+    } else {
+        result = nd68k_longget(addr);
+    }
     // (SC) delay m68k read on csr0 while in ROM (CS8=1)to give ND some time to start up.
     if(addr == 0xFF800000 && (result & 0x02))
         M68000_AddCycles(ConfigureParams.System.nCpuFreq * 100);
@@ -96,8 +102,13 @@ void NextDimension::pause(bool pause) {
 }
 
  void NextDimension::board_lput(Uint32 addr, Uint32 l) {
-    addr |= ND_BOARD_BITS;
-    nd68k_longput(addr, l);
+     addr |= ND_BOARD_BITS;
+     if(addr & 3) { // handle unaligned transfers
+         nd68k_wordput(addr+0, l >> 16);
+         nd68k_wordput(addr+2, l);
+     } else {
+         nd68k_longput(addr, l);
+     }
 }
 
  void NextDimension::board_wput(Uint32 addr, Uint16 w) {
