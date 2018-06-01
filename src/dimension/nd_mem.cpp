@@ -166,39 +166,53 @@ public:
 
     Uint32 lget(Uint32 addr) const {
         addr &= ND_VRAM_MASK;
-        return
-            base[addr+3]         |
-            (base[addr+0] << 8)  |
-            (base[addr+1] << 16) |
-            (base[addr+2] << 24);
+        switch (addr&3) {
+            case 0: return (base[addr+2] << 24) | (base[addr+1] << 16) | (base[addr+0] << 8) | base[addr+3];
+            case 1: return (base[addr+0] << 24) | (base[addr-1] << 16) | (base[addr+2] << 8) | base[addr+5];
+            case 2: return (base[addr-2] << 24) | (base[addr+1] << 16) | (base[addr+4] << 8) | base[addr+3];
+            case 3: return (base[addr+0] << 24) | (base[addr+3] << 16) | (base[addr+2] << 8) | base[addr+1];
+        }
+        return 0;
     }
 
     void lput(Uint32 addr, Uint32 l) const {
         addr &= ND_VRAM_MASK;
-        base[addr+3] = l;
-        base[addr+0] = l >> 8;
-        base[addr+1] = l >> 16;
-        base[addr+2] = l >> 24;
+        switch (addr&3) {
+            case 0: base[addr+2] = l >> 24; base[addr+1] = l >> 16; base[addr+0] = l >> 8; base[addr+3] = l; break;
+            case 1: base[addr+0] = l >> 24; base[addr-1] = l >> 16; base[addr+2] = l >> 8; base[addr+5] = l; break;
+            case 2: base[addr-2] = l >> 24; base[addr+1] = l >> 16; base[addr+4] = l >> 8; base[addr+3] = l; break;
+            case 3: base[addr+0] = l >> 24; base[addr+3] = l >> 16; base[addr+2] = l >> 8; base[addr+1] = l; break;
+        }
     }
 
     Uint32 wget(Uint32 addr) const {
         addr &= ND_VRAM_MASK;
-        return (bget(addr) << 8) | bget(addr+1);
+        switch (addr&3) {
+            case 0: return (base[addr+2] << 8) | base[addr+1];
+            case 1: return (base[addr+0] << 8) | base[addr-1];
+            case 2: return (base[addr-2] << 8) | base[addr+1];
+            case 3: return (base[addr+0] << 8) | base[addr+3];
+        }
+        return 0;
     }
 
     void wput(Uint32 addr, Uint32 w) const {
         addr &= ND_VRAM_MASK;
-        bput(addr,   w >> 8);
-        bput(addr+1, w);
+        switch (addr&3) {
+            case 0: base[addr+2] = w >> 8; base[addr+1] = w; break;
+            case 1: base[addr+0] = w >> 8; base[addr-1] = w; break;
+            case 2: base[addr-2] = w >> 8; base[addr+1] = w; break;
+            case 3: base[addr+0] = w >> 8; base[addr+3] = w; break;
+        }
     }
 
     Uint32 bget(Uint32 addr) const {
         addr &= ND_VRAM_MASK;
         switch(addr&3) {
-            case 0: return base[(addr&~3)+2];
-            case 1: return base[(addr&~3)+1];
-            case 2: return base[(addr&~3)+0];
-            case 3: return base[(addr&~3)+3];
+            case 0: return base[addr+2];
+            case 1: return base[addr+0];
+            case 2: return base[addr-2];
+            case 3: return base[addr+0];
         }
         return 0;
     }
@@ -206,10 +220,10 @@ public:
     void bput(Uint32 addr, Uint32 b) const {
         addr &= ND_VRAM_MASK;
         switch(addr&3) {
-            case 0: base[(addr&~3)+2] = b; break;
-            case 1: base[(addr&~3)+1] = b; break;
-            case 2: base[(addr&~3)+0] = b; break;
-            case 3: base[(addr&~3)+3] = b; break;
+            case 0: base[addr+2] = b; break;
+            case 1: base[addr+0] = b; break;
+            case 2: base[addr-2] = b; break;
+            case 3: base[addr+0] = b; break;
         }
     }
 };
