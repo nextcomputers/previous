@@ -531,12 +531,17 @@ void fpsr_get_quotient(uae_u64 *quot, uae_s8 *sign)
 
 uae_u32 fpp_get_fpsr (void)
 {
-    return regs.fpsr;
+    return regs.fpsr & 0x0ffffff8;
 }
 
 void fpp_set_fpsr (uae_u32 val)
 {
     regs.fpsr = val;
+}
+
+uae_u32 fpp_get_fpcr (void)
+{
+    return regs.fpcr & (currprefs.fpu_model == 68040 ? 0xffff : 0xfff0);
 }
 
 void fpp_set_fpcr (uae_u32 val)
@@ -2171,7 +2176,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                     return;
                 if (extra & 0x2000) {
                     if (extra & 0x1000)
-                        m68k_dreg (regs, opcode & 7) = regs.fpcr & 0xffff;
+                        m68k_dreg (regs, opcode & 7) = fpp_get_fpcr ();
                     if (extra & 0x0800)
                         m68k_dreg (regs, opcode & 7) = fpp_get_fpsr ();
                     if (extra & 0x0400)
@@ -2189,7 +2194,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                     return;
                 if (extra & 0x2000) {
                     if (extra & 0x1000)
-                        m68k_areg (regs, opcode & 7) = regs.fpcr & 0xffff;
+                        m68k_areg (regs, opcode & 7) = fpp_get_fpcr ();
                     if (extra & 0x0800)
                         m68k_areg (regs, opcode & 7) = fpp_get_fpsr ();
                     if (extra & 0x0400)
@@ -2254,7 +2259,7 @@ static void fpuop_arithmetic2 (uae_u32 opcode, uae_u16 extra)
                 }
                 ad -= incr;
                 if (extra & 0x1000) {
-                    x_cp_put_long (ad, regs.fpcr & 0xffff);
+                    x_cp_put_long (ad, fpp_get_fpcr ());
                     ad += 4;
                 }
                 if (extra & 0x0800) {
@@ -2888,102 +2893,3 @@ void fpu_reset (void)
     fpp_set_fpcr (0);
     fpp_set_fpsr (0);
 }
-
-#if 0
-uae_u8 *restore_fpu (uae_u8 *src)
-{
-    uae_u32 w1, w2, w3;
-    int i;
-    uae_u32 flags;
-    
-    fpu_reset();
-    changed_prefs.fpu_model = currprefs.fpu_model = restore_u32 ();
-    flags = restore_u32 ();
-    for (i = 0; i < 8; i++) {
-        w1 = restore_u16 () << 16;
-        w2 = restore_u32 ();
-        w3 = restore_u32 ();
-        to_exten (&regs.fp[i], w1, w2, w3);
-    }
-    regs.fpcr = restore_u32 ();
-    native_set_fpucw (regs.fpcr);
-    regs.fpsr = restore_u32 ();
-    regs.fpiar = restore_u32 ();
-    if (flags & 0x80000000) {
-        restore_u32 ();
-        restore_u32 ();
-    }
-    if (flags & 0x40000000) {
-        w1 = restore_u16() << 16;
-        w2 = restore_u32();
-        w3 = restore_u32();
-        to_exten(&regs.exp_src1, w1, w2, w3);
-        w1 = restore_u16() << 16;
-        w2 = restore_u32();
-        w3 = restore_u32();
-        to_exten(&regs.exp_src2, w1, w2, w3);
-        regs.exp_pack[0] = restore_u32();
-        regs.exp_pack[1] = restore_u32();
-        regs.exp_pack[2] = restore_u32();
-        regs.exp_opcode = restore_u16();
-        regs.exp_extra = restore_u16();
-        regs.exp_type = restore_u16();
-    }
-    regs.fpu_state = (flags & 1) ? 0 : 1;
-    regs.fpu_exp_state = (flags & 2) ? 1 : 0;
-    if (flags & 4)
-        regs.fpu_exp_state = 2;
-    write_log(_T("FPU: %d\n"), currprefs.fpu_model);
-    return src;
-}
-
-uae_u8 *save_fpu (int *len, uae_u8 *dstptr)
-{
-    uae_u32 w1, w2, w3;
-    uae_u8 *dstbak, *dst;
-    int i;
-    
-    *len = 0;
-#ifndef WINUAE_FOR_HATARI
-    /* Under Hatari, we save all FPU variables, even if fpu_model==0 */
-    if (currprefs.fpu_model == 0)
-        return 0;
-#endif
-    if (dstptr)
-        dstbak = dst = dstptr;
-    else
-        dstbak = dst = xmalloc (uae_u8, 4+4+8*10+4+4+4+4+4+2*10+3*(4+2));
-    save_u32 (currprefs.fpu_model);
-    save_u32 (0x80000000 | 0x40000000 | (regs.fpu_state == 0 ? 1 : 0) | (regs.fpu_exp_state ? 2 : 0) | (regs.fpu_exp_state > 1 ? 4 : 0));
-    for (i = 0; i < 8; i++) {
-        from_exten (&regs.fp[i], &w1, &w2, &w3);
-        save_u16 (w1 >> 16);
-        save_u32 (w2);
-        save_u32 (w3);
-    }
-    save_u32 (regs.fpcr);
-    save_u32 (regs.fpsr);
-    save_u32 (regs.fpiar);
-    
-    save_u32 (-1);
-    save_u32 (0);
-    
-    from_exten(&regs.exp_src1, &w1, &w2, &w3);
-    save_u16(w1 >> 16);
-    save_u32(w2);
-    save_u32(w3);
-    from_exten(&regs.exp_src2, &w1, &w2, &w3);
-    save_u16(w1 >> 16);
-    save_u32(w2);
-    save_u32(w3);
-    save_u32(regs.exp_pack[0]);
-    save_u32(regs.exp_pack[1]);
-    save_u32(regs.exp_pack[2]);
-    save_u16(regs.exp_opcode);
-    save_u16(regs.exp_extra);
-    save_u16(regs.exp_type);
-    
-    *len = dst - dstbak;
-    return dstbak;
-}
-#endif
