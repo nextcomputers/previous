@@ -35,7 +35,7 @@ void Dialog_SoundDlg(void);
 void Dialog_SystemDlg(void);
 void Dialog_AdvancedDlg(void);
 void Dialog_GraphicsDlg(void);
-bool Dialog_DimensionDlg(int board);
+void Dialog_DimensionDlg(int board);
 void DlgRom_Main(void);
 void DlgBoot_Main(void);
 void DlgMissing_Rom(const char* type, char *imgname, const char *defname, bool *enabled);
