@@ -241,6 +241,7 @@ Previous v2.1 (unreleased):
   > Improves emulation efficiency.
   > Removes NeXTdimension startup timing hack.
   > Fixes bug that caused FLOGNP1 to give wrong results in rare cases.
+  > Fixes bug that caused FABS and FNEG to incorrectly handle infinity.
 
 
  7) Running Previous
