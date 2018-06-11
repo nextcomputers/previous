@@ -5800,8 +5800,9 @@ floatx80 floatx80_abs( floatx80 a, float_ctrl* c )
     aSig = extractFloatx80Frac(a);
     aExp = extractFloatx80Exp(a);
     
-    if ( aExp == 0x7FFF && (bits64) ( aSig<<1 ) ) {
-        return propagateFloatx80NaNOneArg( a, c );
+    if ( aExp == 0x7FFF ) {
+        if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaNOneArg( a, c );
+        return packFloatx80( 0, 0x7FFF, floatx80_default_infinity_low );
     }
     
     if ( aExp == 0 ) {
@@ -5830,8 +5831,9 @@ floatx80 floatx80_neg( floatx80 a, float_ctrl* c )
     aExp = extractFloatx80Exp(a);
     aSign = extractFloatx80Sign(a);
     
-    if ( aExp == 0x7FFF && (bits64) ( aSig<<1 ) ) {
-        return propagateFloatx80NaNOneArg( a, c );
+    if ( aExp == 0x7FFF ) {
+        if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaNOneArg( a, c );
+        return packFloatx80( !aSign, 0x7FFF, floatx80_default_infinity_low );
     }
     
     aSign = !aSign;
