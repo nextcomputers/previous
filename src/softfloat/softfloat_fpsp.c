@@ -640,7 +640,7 @@ floatx80 floatx80_cosh(floatx80 a, float_ctrl* c)
     
     if (aExp == 0x7FFF) {
         if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
-        return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+        return packFloatx80(0, aExp, aSig);
     }
     
     if (aExp == 0 && aSig == 0) {
@@ -716,7 +716,7 @@ floatx80 floatx80_etox(floatx80 a, float_ctrl* c)
     if (aExp == 0x7FFF) {
         if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         if (aSign) return packFloatx80(0, 0, 0);
-        return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+        return a;
     }
     
     if (aExp == 0 && aSig == 0) {
@@ -859,7 +859,7 @@ floatx80 floatx80_etoxm1(floatx80 a, float_ctrl* c)
     if (aExp == 0x7FFF) {
         if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         if (aSign) return packFloatx80(aSign, one_exp, one_sig);
-        return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+        return a;
     }
     
     if (aExp == 0 && aSig == 0) {
@@ -1051,9 +1051,9 @@ floatx80 floatx80_log10(floatx80 a, float_ctrl* c)
     aSign = extractFloatx80Sign(a);
     
     if (aExp == 0x7FFF) {
-        if ((bits64) (aSig<<1)) propagateFloatx80NaNOneArg(a, c);
+        if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         if (aSign == 0)
-            return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+            return a;
     }
     
     if (aExp == 0 && aSig == 0) {
@@ -1105,9 +1105,9 @@ floatx80 floatx80_log2(floatx80 a, float_ctrl* c)
     aSign = extractFloatx80Sign(a);
     
     if (aExp == 0x7FFF) {
-        if ((bits64) (aSig<<1)) propagateFloatx80NaNOneArg(a, c);
+        if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         if (aSign == 0)
-            return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+            return a;
     }
     
     if (aExp == 0) {
@@ -1170,9 +1170,9 @@ floatx80 floatx80_logn(floatx80 a, float_ctrl* c)
     aSign = extractFloatx80Sign(a);
     
     if (aExp == 0x7FFF) {
-        if ((bits64) (aSig<<1)) propagateFloatx80NaNOneArg(a, c);
+        if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         if (aSign == 0)
-            return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+            return a;
     }
     
     adjk = 0;
@@ -1314,14 +1314,14 @@ floatx80 floatx80_lognp1(floatx80 a, float_ctrl* c)
     aSign = extractFloatx80Sign(a);
     
     if (aExp == 0x7FFF) {
-        if ((bits64) (aSig<<1)) propagateFloatx80NaNOneArg(a, c);
+        if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         if (aSign) {
             float_raise(float_flag_invalid, c);
             a.low = floatx80_default_nan_low;
             a.high = floatx80_default_nan_high;
             return a;
         }
-        return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+        return a;
     }
     
     if (aExp == 0 && aSig == 0) {
@@ -1699,7 +1699,7 @@ floatx80 floatx80_sinh(floatx80 a, float_ctrl* c)
     
     if (aExp == 0x7FFF) {
         if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
-        return packFloatx80(aSign, 0x7FFF, floatx80_default_infinity_low);
+        return a;
     }
     
     if (aExp == 0 && aSig == 0) {
@@ -2074,7 +2074,7 @@ floatx80 floatx80_tentox(floatx80 a, float_ctrl* c)
     if (aExp == 0x7FFF) {
         if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         if (aSign) return packFloatx80(0, 0, 0);
-        return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+        return a;
     }
     
     if (aExp == 0 && aSig == 0) {
@@ -2199,7 +2199,7 @@ floatx80 floatx80_twotox(floatx80 a, float_ctrl* c)
     if (aExp == 0x7FFF) {
         if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         if (aSign) return packFloatx80(0, 0, 0);
-        return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+        return a;
     }
     
     if (aExp == 0 && aSig == 0) {

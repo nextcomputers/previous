@@ -242,6 +242,7 @@ Previous v2.1 (unreleased):
   > Removes NeXTdimension startup timing hack.
   > Fixes bug that caused FLOGNP1 to give wrong results in rare cases.
   > Fixes bug that caused FABS and FNEG to incorrectly handle infinity.
+  > Fixes bug that caused logarithmic functions to fail on NaN input.
 
 
  7) Running Previous
