@@ -39,7 +39,7 @@ extern void fpsr_set_exception(uae_u32 exception);
 static int fp_rnd_prec = 80;
 
 /* Functions for setting host/library modes and getting status */
-STATIC_INLINE void init_fp_mode(void) {
+STATIC_INLINE void init_fp_mode(int fpu_model) {
     
 }
 STATIC_INLINE void set_fp_mode(uae_u32 mode_control)

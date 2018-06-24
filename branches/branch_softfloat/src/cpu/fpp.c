@@ -2910,7 +2910,7 @@ void fpuop_restore (uae_u32 opcode)
 
 void fpu_reset (void)
 {
-    init_fp_mode();
+    init_fp_mode(currprefs.fpu_model);
     
     regs.fpiar = 0;
     regs.fpu_exp_state = 0;

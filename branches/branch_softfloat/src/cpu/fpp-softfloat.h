@@ -31,9 +31,17 @@ extern uae_u32 fpp_get_fpsr (void);
 
 
 /* Functions for setting host/library modes and getting status */
-STATIC_INLINE void init_fp_mode(void)
+STATIC_INLINE void init_fp_mode(int fpu_model)
 {
     float_init(&fp_ctrl);
+    
+    if (fpu_model == 68040) {
+        set_special_flags(cmp_signed_nan, &fp_ctrl);
+    } else if (fpu_model == 68060) {
+        set_special_flags(infinity_clear_intbit, &fp_ctrl);
+    } else {
+        set_special_flags(addsub_swap_inf, &fp_ctrl);
+    }
 }
 STATIC_INLINE void set_fp_mode(uae_u32 mode_control)
 {

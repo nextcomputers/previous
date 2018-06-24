@@ -123,6 +123,12 @@ extern int8 floatx80_internal_precision;
 extern int8 floatx80_internal_mode;
 #endif
 
+/*----------------------------------------------------------------------------
+ | Special flags for indicating some unique behavior is required.
+ *----------------------------------------------------------------------------*/
+enum {
+    cmp_signed_nan = 0x01, addsub_swap_inf = 0x02, infinity_clear_intbit = 0x04
+};
 
 typedef struct {
     int8 float_detect_tininess;
@@ -130,6 +136,7 @@ typedef struct {
     int8 float_rounding_mode;
 #ifdef FLOATX80
     int8 floatx80_rounding_precision;
+    flag floatx80_special_flags;
     flag floatx80_internal_sign;
     int32 floatx80_internal_exp;
     bits64 floatx80_internal_sig0;
@@ -148,6 +155,11 @@ int8 get_float_exception_flags( float_ctrl* c );
 void set_float_exception_flags( int8 flags, float_ctrl* c );
 int8 get_float_detect_tininess( float_ctrl* c );
 void set_float_detect_tininess( int8 mode, float_ctrl* c );
+
+void set_special_flags( int8 flags, float_ctrl* c);
+int8 fcmp_signed_nan( float_ctrl* c);
+int8 faddsub_swap_inf( float_ctrl* c);
+int8 inf_copy_intbit( float_ctrl* c);
 
 /*----------------------------------------------------------------------------
  | Function for getting sign, exponent and significand of extended
