@@ -5761,7 +5761,7 @@ floatx80 floatx80_scale( floatx80 a, floatx80 b, float_ctrl* c )
     }
     if ( aExp == 0x7FFF ) {
         if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaN( a, b, c );
-        return packFloatx80( aSign, 0x7FFF, floatx80_default_infinity_low );
+        return a;
     }
     if ( aExp == 0 ) {
         if ( aSig == 0 ) return packFloatx80( aSign, 0, 0);
