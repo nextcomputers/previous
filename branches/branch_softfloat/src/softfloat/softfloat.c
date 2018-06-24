@@ -5922,7 +5922,7 @@ floatx80 floatx80_move( floatx80 a, float_ctrl* c )
     }
     if ( aExp == 0 ) {
         if ( aSig == 0 ) return a;
-        normalizeRoundAndPackFloatx80( get_float_rounding_precision(c), aSign, aExp, aSig, 0, c );
+        return normalizeRoundAndPackFloatx80( get_float_rounding_precision(c), aSign, aExp, aSig, 0, c );
     }
     return roundAndPackFloatx80( get_float_rounding_precision(c), aSign, aExp, aSig, 0, c );
     
