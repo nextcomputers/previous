@@ -578,6 +578,14 @@ void check_t0_trace(void)
     }
 }
 
+// make sure interrupt is checked immediately after current instruction
+static void doint_imm(void)
+{
+    doint();
+    if (!currprefs.cachesize && !(regs.spcflags & SPCFLAG_INT) && (regs.spcflags & SPCFLAG_DOINT))
+        set_special(SPCFLAG_INT);
+}
+
 void REGPARAM2 MakeSR (void)
 {
 	regs.sr = ((regs.t1 << 15) | (regs.t0 << 14)
@@ -646,7 +654,7 @@ static void MakeFromSR_x(int t0trace)
 	if (currprefs.mmu_model)
 		mmu_set_super (regs.s != 0);
 
-	doint ();
+	doint_imm();
 	if (regs.t1 || regs.t0) {
 		set_special (SPCFLAG_TRACE);
 	} else {
