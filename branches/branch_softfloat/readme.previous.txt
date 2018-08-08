@@ -1,6 +1,6 @@
 
 
-                                 Previous 2.0
+                                 Previous 2.1
 
 
 
@@ -237,12 +237,13 @@ Previous v2.0:
   > Adds support for multiple NeXTdimension boards.
   > Improves i860 timings to be closer to real hardware.
 
-Previous v2.1 (unreleased):
+Previous v2.1:
   > Improves emulation efficiency.
   > Removes NeXTdimension startup timing hack.
   > Fixes bug that caused FLOGNP1 to give wrong results in rare cases.
   > Fixes bug that caused FABS and FNEG to incorrectly handle infinity.
   > Fixes bug that caused logarithmic functions to fail on NaN input.
+  > Fixes bug that caused incorrect results from DSP ROL and ROR.
 
 
  7) Running Previous
