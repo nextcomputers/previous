@@ -1305,7 +1305,7 @@ floatx80 packFloatx80( flag zSign, int32 zExp, bits64 zSig )
 				) {
 				return packFloatx80( zSign, 0x7FFE, ~ roundMask );
 			}
-			return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
+			return packFloatx80( zSign, floatx80_default_infinity_high, floatx80_default_infinity_low );
 		}
 #ifdef SOFTFLOAT_68K
 		if ( zExp < 0 ) {
@@ -1421,7 +1421,7 @@ floatx80 roundAndPackFloatx80( int8 roundingPrecision, flag zSign, int32 zExp, b
             ) {
             return packFloatx80( zSign, 0x7FFE - expOffset, ~ roundMask );
         }
-        return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
+        return packFloatx80( zSign, floatx80_default_infinity_high, floatx80_default_infinity_low );
     }
     if ( zExp < ( expOffset + 1 ) ) {
         float_raise( float_flag_underflow, c );
@@ -1481,7 +1481,7 @@ precision80:
                 ) {
                 return packFloatx80( zSign, 0x7FFE, ~ roundMask );
             }
-            return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
+            return packFloatx80( zSign, floatx80_default_infinity_high, floatx80_default_infinity_low );
         }
         if ( zExp < 0 ) {
             float_raise( float_flag_underflow, c );
@@ -1574,7 +1574,7 @@ static floatx80 roundSigAndPackFloatx80( int8 roundingPrecision, flag zSign, int
                 ) {
                 return packFloatx80( zSign, 0x7FFE, LIT64( 0xFFFFFFFFFFFFFFFF ) );
             }
-            return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
+            return packFloatx80( zSign, floatx80_default_infinity_high, floatx80_default_infinity_low );
         }
         
         if ( zExp < 0 ) {
@@ -2333,7 +2333,7 @@ floatx80 float32_to_floatx80( float32 a, float_ctrl* c )
 	aSign = extractFloat32Sign( a );
 	if ( aExp == 0xFF ) {
 		if ( aSig ) return commonNaNToFloatx80( float32ToCommonNaN( a, c ) );
-		return packFloatx80( aSign, 0x7FFF, floatx80_default_infinity_low );
+		return packFloatx80( aSign, floatx80_default_infinity_high, floatx80_default_infinity_low );
 	}
 	if ( aExp == 0 ) {
 		if ( aSig == 0 ) return packFloatx80( aSign, 0, 0 );
@@ -3404,7 +3404,7 @@ floatx80 float64_to_floatx80( float64 a, float_ctrl* c )
 	aSign = extractFloat64Sign( a );
 	if ( aExp == 0x7FF ) {
 		if ( aSig ) return commonNaNToFloatx80( float64ToCommonNaN( a, c ) );
-		return packFloatx80( aSign, 0x7FFF, floatx80_default_infinity_low );
+		return packFloatx80( aSign, floatx80_default_infinity_high, floatx80_default_infinity_low );
 	}
 	if ( aExp == 0 ) {
 		if ( aSig == 0 ) return packFloatx80( aSign, 0, 0 );
@@ -4946,7 +4946,6 @@ static floatx80 subFloatx80Sigs( floatx80 a, floatx80 b, flag zSign, float_ctrl*
 	int32 aExp, bExp, zExp;
 	bits64 aSig, bSig, zSig0, zSig1;
 	int32 expDiff;
-	floatx80 z;
 
 	aSig = extractFloatx80Frac( a );
 	aExp = extractFloatx80Exp( a );
@@ -4960,9 +4959,7 @@ static floatx80 subFloatx80Sigs( floatx80 a, floatx80 b, flag zSign, float_ctrl*
 			return propagateFloatx80NaN( a, b, c );
 		}
 		float_raise( float_flag_invalid, c );
-		z.low = floatx80_default_nan_low;
-		z.high = floatx80_default_nan_high;
-		return z;
+		return packFloatx80( 0, floatx80_default_nan_high, floatx80_default_nan_low );
 	}
 #ifndef SOFTFLOAT_68K
 	if ( aExp == 0 ) {
@@ -5061,7 +5058,6 @@ floatx80 floatx80_mul( floatx80 a, floatx80 b, float_ctrl* c )
 	flag aSign, bSign, zSign;
 	int32 aExp, bExp, zExp;
 	bits64 aSig, bSig, zSig0, zSig1;
-	floatx80 z;
 
 	aSig = extractFloatx80Frac( a );
 	aExp = extractFloatx80Exp( a );
@@ -5084,9 +5080,7 @@ floatx80 floatx80_mul( floatx80 a, floatx80 b, float_ctrl* c )
 		if ( ( aExp | aSig ) == 0 ) {
 	invalid:
 			float_raise( float_flag_invalid, c );
-			z.low = floatx80_default_nan_low;
-			z.high = floatx80_default_nan_high;
-			return z;
+			return packFloatx80( 0, floatx80_default_nan_high, floatx80_default_nan_low );
 		}
         if ( inf_clear_intbit( c ) ) bSig = 0;
 		return packFloatx80( zSign, bExp, bSig );
@@ -5117,7 +5111,6 @@ floatx80 floatx80_sglmul( floatx80 a, floatx80 b, float_ctrl* c )
 	flag aSign, bSign, zSign;
 	int32 aExp, bExp, zExp;
 	bits64 aSig, bSig, zSig0, zSig1;
-	floatx80 z;
 	
 	aSig = extractFloatx80Frac( a );
 	aExp = extractFloatx80Exp( a );
@@ -5140,9 +5133,7 @@ floatx80 floatx80_sglmul( floatx80 a, floatx80 b, float_ctrl* c )
 		if ( ( aExp | aSig ) == 0 ) {
 		invalid:
 			float_raise( float_flag_invalid, c );
-			z.low = floatx80_default_nan_low;
-			z.high = floatx80_default_nan_high;
-			return z;
+			return packFloatx80( 0, floatx80_default_nan_high, floatx80_default_nan_low );
 		}
         if ( inf_clear_intbit( c ) ) bSig = 0;
 		return packFloatx80( zSign, bExp, bSig );
@@ -5180,7 +5171,6 @@ floatx80 floatx80_div( floatx80 a, floatx80 b, float_ctrl* c )
 	int32 aExp, bExp, zExp;
 	bits64 aSig, bSig, zSig0, zSig1;
 	bits64 rem0, rem1, rem2, term0, term1, term2;
-	floatx80 z;
 
 	aSig = extractFloatx80Frac( a );
 	aExp = extractFloatx80Exp( a );
@@ -5207,12 +5197,10 @@ floatx80 floatx80_div( floatx80 a, floatx80 b, float_ctrl* c )
 			if ( ( aExp | aSig ) == 0 ) {
 	invalid:
 				float_raise( float_flag_invalid, c );
-				z.low = floatx80_default_nan_low;
-				z.high = floatx80_default_nan_high;
-				return z;
+				return packFloatx80( 0, floatx80_default_nan_high, floatx80_default_nan_low );
 			}
 			float_raise( float_flag_divbyzero, c );
-			return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
+			return packFloatx80( zSign, floatx80_default_infinity_high, floatx80_default_infinity_low );
 		}
 		normalizeFloatx80Subnormal( bSig, &bExp, &bSig );
 	}
@@ -5256,7 +5244,6 @@ floatx80 floatx80_sgldiv( floatx80 a, floatx80 b, float_ctrl* c )
 	int32 aExp, bExp, zExp;
 	bits64 aSig, bSig, zSig0, zSig1;
 	bits64 rem0, rem1, rem2, term0, term1, term2;
-	floatx80 z;
 	
 	aSig = extractFloatx80Frac( a );
 	aExp = extractFloatx80Exp( a );
@@ -5283,12 +5270,10 @@ floatx80 floatx80_sgldiv( floatx80 a, floatx80 b, float_ctrl* c )
 			if ( ( aExp | aSig ) == 0 ) {
 			invalid:
 				float_raise( float_flag_invalid, c );
-				z.low = floatx80_default_nan_low;
-				z.high = floatx80_default_nan_high;
-		        return z;
+		        return packFloatx80( 0, floatx80_default_nan_high, floatx80_default_nan_low );
 			}
 			float_raise( float_flag_divbyzero, c );
-			return packFloatx80( zSign, 0x7FFF, floatx80_default_infinity_low );
+			return packFloatx80( zSign, floatx80_default_infinity_high, floatx80_default_infinity_low );
 		}
 		normalizeFloatx80Subnormal( bSig, &bExp, &bSig );
 	}
@@ -5359,9 +5344,7 @@ floatx80 floatx80_rem( floatx80 a, floatx80 b )
 		if ( bSig == 0 ) {
 	invalid:
 			float_raise( float_flag_invalid );
-			z.low = floatx80_default_nan_low;
-			z.high = floatx80_default_nan_high;
-			return z;
+			return packFloatx80( 0, floatx80_default_nan_high, floatx80_default_nan_low );
 		}
 		normalizeFloatx80Subnormal( bSig, &bExp, &bSig );
 	}
@@ -5427,7 +5410,6 @@ floatx80 floatx80_rem( floatx80 a, floatx80 b, bits64 *q, flag *s, float_ctrl* c
     int32 aExp, bExp, expDiff;
     bits64 aSig0, aSig1, bSig;
     bits64 qTemp, term0, term1, alternateASig0, alternateASig1;
-    floatx80 z;
     
     aSig0 = extractFloatx80Frac( a );
     aExp = extractFloatx80Exp( a );
@@ -5453,9 +5435,7 @@ floatx80 floatx80_rem( floatx80 a, floatx80 b, bits64 *q, flag *s, float_ctrl* c
         if ( bSig == 0 ) {
         invalid:
             float_raise( float_flag_invalid, c );
-            z.low = floatx80_default_nan_low;
-            z.high = floatx80_default_nan_high;
-            return z;
+            return packFloatx80( 0, floatx80_default_nan_high, floatx80_default_nan_low );
         }
         normalizeFloatx80Subnormal( bSig, &bExp, &bSig );
     }
@@ -5541,7 +5521,6 @@ floatx80 floatx80_mod( floatx80 a, floatx80 b, bits64 *q, flag *s, float_ctrl* c
     int32 aExp, bExp, expDiff;
     bits64 aSig0, aSig1, bSig;
     bits64 qTemp, term0, term1;
-    floatx80 z;
     
     aSig0 = extractFloatx80Frac( a );
     aExp = extractFloatx80Exp( a );
@@ -5567,9 +5546,7 @@ floatx80 floatx80_mod( floatx80 a, floatx80 b, bits64 *q, flag *s, float_ctrl* c
         if ( bSig == 0 ) {
         invalid:
             float_raise( float_flag_invalid, c );
-            z.low = floatx80_default_nan_low;
-            z.high = floatx80_default_nan_high;
-            return z;
+            return packFloatx80( 0, floatx80_default_nan_high, floatx80_default_nan_low );
         }
         normalizeFloatx80Subnormal( bSig, &bExp, &bSig );
     }
@@ -5637,7 +5614,6 @@ floatx80 floatx80_sqrt( floatx80 a, float_ctrl* c )
 	int32 aExp, zExp;
 	bits64 aSig0, aSig1, zSig0, zSig1, doubleZSig0;
 	bits64 rem0, rem1, rem2, rem3, term0, term1, term2, term3;
-	floatx80 z;
 
 	aSig0 = extractFloatx80Frac( a );
 	aExp = extractFloatx80Exp( a );
@@ -5651,9 +5627,7 @@ floatx80 floatx80_sqrt( floatx80 a, float_ctrl* c )
 		if ( ( aExp | aSig0 ) == 0 ) return a;
 	invalid:
 		float_raise( float_flag_invalid, c );
-		z.low = floatx80_default_nan_low;
-		z.high = floatx80_default_nan_high;
-		return z;
+		return packFloatx80( 0, floatx80_default_nan_high, floatx80_default_nan_low );
 	}
 	if ( aExp == 0 ) {
 		if ( aSig0 == 0 ) return packFloatx80( 0, 0, 0 );
@@ -5714,9 +5688,7 @@ floatx80 floatx80_getman( floatx80 a, float_ctrl* c )
     if ( aExp == 0x7FFF ) {
         if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaNOneArg( a, c );
         float_raise( float_flag_invalid, c );
-        a.low = floatx80_default_nan_low;
-        a.high = floatx80_default_nan_high;
-        return a;
+        return packFloatx80( 0, floatx80_default_nan_high, floatx80_default_nan_low );
     }
     
     if ( aExp == 0 ) {
@@ -5745,9 +5717,7 @@ floatx80 floatx80_getexp( floatx80 a, float_ctrl* c )
     if ( aExp == 0x7FFF ) {
         if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaNOneArg( a, c );
         float_raise( float_flag_invalid, c );
-        a.low = floatx80_default_nan_low;
-        a.high = floatx80_default_nan_high;
-        return a;
+        return packFloatx80( 0, floatx80_default_nan_high, floatx80_default_nan_low );
     }
     
     if ( aExp == 0 ) {
@@ -5785,9 +5755,7 @@ floatx80 floatx80_scale( floatx80 a, floatx80 b, float_ctrl* c )
             return propagateFloatx80NaN( a, b, c );
         }
         float_raise( float_flag_invalid, c );
-        a.low = floatx80_default_nan_low;
-        a.high = floatx80_default_nan_high;
-        return a;
+        return packFloatx80( 0, floatx80_default_nan_high, floatx80_default_nan_low );
     }
     if ( aExp == 0x7FFF ) {
         if ( (bits64) ( aSig<<1 ) ) return propagateFloatx80NaN( a, b, c );
@@ -6433,7 +6401,7 @@ floatx80 float128_to_floatx80( float128 a, float_ctrl* c )
 		if ( aSig0 | aSig1 ) {
 			return commonNaNToFloatx80( float128ToCommonNaN( a, c ) );
 		}
-		return packFloatx80( aSign, 0x7FFF, floatx80_default_infinity_low );
+		return packFloatx80( aSign, floatx80_default_infinity_high, floatx80_default_infinity_low );
 	}
 	if ( aExp == 0 ) {
 		if ( ( aSig0 | aSig1 ) == 0 ) return packFloatx80( aSign, 0, 0 );
