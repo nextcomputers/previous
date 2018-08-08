@@ -157,9 +157,6 @@ int8 get_float_detect_tininess( float_ctrl* c );
 void set_float_detect_tininess( int8 mode, float_ctrl* c );
 
 void set_special_flags( int8 flags, float_ctrl* c);
-int8 fcmp_signed_nan( float_ctrl* c);
-int8 faddsub_swap_inf( float_ctrl* c);
-int8 inf_copy_intbit( float_ctrl* c);
 
 /*----------------------------------------------------------------------------
  | Function for getting sign, exponent and significand of extended
@@ -215,6 +212,7 @@ void float_raise2( int8 );
 /*----------------------------------------------------------------------------
  | The pattern for a default generated extended double-precision infinity.
  *----------------------------------------------------------------------------*/
+#define floatx80_default_infinity_high 0x7FFF
 #define floatx80_default_infinity_low  LIT64( 0x0000000000000000 )
 #endif
 
