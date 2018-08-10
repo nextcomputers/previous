@@ -245,6 +245,9 @@ Previous v2.1:
   > Fixes bug that caused logarithmic functions to fail on NaN input.
   > Fixes bug that caused incorrect results from DSP ROL and ROR.
 
+Previous v2.2 (unreleased):
+  > Adds support for using custom MAC address.
+
 
  7) Running Previous
  -------------------
@@ -265,7 +268,8 @@ Previous was written by Andreas Grabher, Simon Schubiger and Gilles Fetis.
 Many thanks go to the members of the NeXT International Forums for their
 help. Special thanks go to Gavin Thomas Nicol, Piotr Twarecki, Toni Wilen,
 Michael Bosshard, Thomas Huth, Olivier Galibert, Jason Eckhardt, Jason 
-Stevens, Daniel L'Hommedieu, Vaughan Kaufman and Peter Leonard!
+Stevens, Daniel L'Hommedieu, Tomaz Slivnik, Vaughan Kaufman and Peter 
+Leonard!
 This emulator would not exist without their help.
 
 
