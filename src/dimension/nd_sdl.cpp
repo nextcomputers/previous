@@ -12,8 +12,10 @@ const int DISPLAY_VBL_MS = 1000 / 68; // main display at 68Hz, actually this is 
 const int VIDEO_VBL_MS   = 1000 / 60; // NTSC display at 60Hz, actually this is 62.5 Hz because (int)1000/(int)60Hz=16ms
 const int BLANK_MS       = 2;         // Give some blank time for both
 
-NDSDL::NDSDL(int slot, Uint32* vram) : slot(slot), doRepaint(true), repaintThread(NULL), ndWindow(NULL), ndRenderer(NULL), vram(vram) {}
+volatile bool NDSDL::ndVBLtoggle;
+volatile bool NDSDL::ndVideoVBLtoggle;
 
+NDSDL::NDSDL(int slot, Uint32* vram) : slot(slot), doRepaint(true), repaintThread(NULL), ndWindow(NULL), ndRenderer(NULL), vram(vram) {}
 
 int NDSDL::repainter(void *_this) {
     return ((NDSDL*)_this)->repainter();
@@ -89,29 +91,33 @@ void NDSDL::start_interrupts() {
     CycInt_AddRelativeInterruptUs(1000, 0, INTERRUPT_ND_VIDEO_VBL);
 }
 
+// called from m68k thread
 void nd_vbl_handler(void)       {
     CycInt_AcknowledgeInterrupt();
 
     FOR_EACH_SLOT(slot) {
         IF_NEXT_DIMENSION(slot, nd) {
-            host_blank(nd->slot, ND_DISPLAY, nd->sdl.ndVBLtoggle);
-            nd->sdl.ndVBLtoggle = !nd->sdl.ndVBLtoggle;
+            host_blank(nd->slot, ND_DISPLAY, NDSDL::ndVBLtoggle);
             nd->i860.i860cycles = (1000*1000*33)/136;
         }
     }
+    NDSDL::ndVBLtoggle = !NDSDL::ndVBLtoggle;
+
     // 136Hz with toggle gives 68Hz, blank time is 1/2 frame time
     CycInt_AddRelativeInterruptUs((1000*1000)/136, 0, INTERRUPT_ND_VBL);
 }
+
+// called from m68k thread
 void nd_video_vbl_handler(void) {
     CycInt_AcknowledgeInterrupt();
 
     FOR_EACH_SLOT(slot) {
         IF_NEXT_DIMENSION(slot, nd) {
-            host_blank(slot, ND_VIDEO, nd->sdl.ndVideoVBLtoggle);
-            nd->sdl.ndVideoVBLtoggle = !nd->sdl.ndVideoVBLtoggle;
+            host_blank(slot, ND_VIDEO, NDSDL::ndVideoVBLtoggle);
         }
     }
-    
+    NDSDL::ndVideoVBLtoggle = !NDSDL::ndVideoVBLtoggle;
+
     // 120Hz with toggle gives 60Hz NTSC, blank time is 1/2 frame time
     CycInt_AddRelativeInterruptUs((1000*1000)/120, 0, INTERRUPT_ND_VIDEO_VBL);
 }

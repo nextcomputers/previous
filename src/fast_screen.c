@@ -102,7 +102,7 @@ static void blitColor(SDL_Texture* tex) {
     SDL_LockTexture(tex, NULL, &pixels, &d);
     Uint32* dst = (Uint32*)pixels;
     for(int y = 0; y < NeXT_SCRN_HEIGHT; y++) {
-        Uint16* src = (Uint16*)NEXTColorVideo + (y*pitch);
+        Uint16* src = (Uint16*)NEXTVideo + (y*pitch);
         for(int x = 0; x < NeXT_SCRN_WIDTH; x++) {
             *dst++ = COL2RGB[*src++];
         }
@@ -119,59 +119,58 @@ void blitDimension(Uint32* vram, SDL_Texture* tex) {
 #else
     Uint32* src = &vram[16];
 #endif
-    void*   pixels;
     int     d;
     Uint32  format;
     SDL_QueryTexture(tex, &format, &d, &d, &d);
-    SDL_LockTexture(tex, NULL, &pixels, &d);
-    Uint32* dst = (Uint32*)pixels;
     if(SDL_BYTEORDER == SDL_BIG_ENDIAN) {
         /* Add big-endian accelerated blit loops as needed here */
         switch (format) {
             default: {
+                void*   pixels;
+                SDL_LockTexture(tex, NULL, &pixels, &d);
+                Uint32* dst = (Uint32*)pixels;
+
                 /* fallback to SDL_MapRGB */
                 SDL_PixelFormat* pformat = SDL_AllocFormat(format);
                 for(int y = NeXT_SCRN_HEIGHT; --y >= 0;) {
                     for(int x = NeXT_SCRN_WIDTH; --x >= 0;) {
                         Uint32 v = *src++;
-                        *dst++   = SDL_MapRGB(pformat, (v >> 24) & 0xFF, (v>>16) & 0xFF, (v>>8) & 0xFF);
+                        *dst++   = SDL_MapRGB(pformat, (v >> 8) & 0xFF, (v>>16) & 0xFF, (v>>24) & 0xFF);
                     }
                     src += 32;
                 }
                 SDL_FreeFormat(pformat);
+                SDL_UnlockTexture(tex);
                 break;
             }
         }
     } else {
         /* Add little-endian accelerated blit loops as needed here */
         switch (format) {
-            case SDL_PIXELFORMAT_ARGB8888:
-                for(int y = NeXT_SCRN_HEIGHT; --y >= 0;) {
-                    for(int x = NeXT_SCRN_WIDTH; --x >= 0;) {
-                        // Uint32 LE: AABBGGRR
-                        // Target:    AARRGGBB
-                        Uint32 v = *src++;
-                        *dst++   = (v & 0xFF000000) | ((v<<16) &0x00FF0000) | (v &0x0000FF00) | ((v>>16) &0x000000FF);
-                    }
-                    src += 32;
-                }
+            case SDL_PIXELFORMAT_ARGB8888: {
+                SDL_UpdateTexture(tex, NULL, src, (NeXT_SCRN_WIDTH+32)*4);
                 break;
+            }
             default: {
+                void*   pixels;
+                SDL_LockTexture(tex, NULL, &pixels, &d);
+                Uint32* dst = (Uint32*)pixels;
+
                 /* fallback to SDL_MapRGB */
                 SDL_PixelFormat* pformat = SDL_AllocFormat(format);
                 for(int y = NeXT_SCRN_HEIGHT; --y >= 0;) {
                     for(int x = NeXT_SCRN_WIDTH; --x >= 0;) {
-                        Uint32 v = SDL_Swap32(*src++);
-                        *dst++   = SDL_MapRGB(pformat, (v >> 24) & 0xFF, (v>>16) & 0xFF, (v>>8) & 0xFF);
+                        Uint32 v = *src++;
+                        *dst++   = SDL_MapRGB(pformat, (v >> 16) & 0xFF, (v>>8) & 0xFF, (v>>0) & 0xFF);
                     }
                     src += 32;
                 }
                 SDL_FreeFormat(pformat);
+                SDL_UnlockTexture(tex);
                 break;
             }
         }
     }
-    SDL_UnlockTexture(tex);
 }
 
 /*
@@ -180,14 +179,15 @@ void blitDimension(Uint32* vram, SDL_Texture* tex) {
 static void blitScreen(SDL_Texture* tex) {
     if (ConfigureParams.Screen.nMonitorType==MONITOR_TYPE_DIMENSION) {
         Uint32* vram = nd_vram_for_slot(ND_SLOT(ConfigureParams.Screen.nMonitorNum));
-        if(vram)
-            blitDimension(vram, tex);
+        if(vram) blitDimension(vram, tex);
         return;
     }
-    if(ConfigureParams.System.bColor) {
-        blitColor(tex);
-    } else {
-        blitBW(tex);
+    if(NEXTVideo) {
+        if(ConfigureParams.System.bColor) {
+            blitColor(tex);
+        } else {
+            blitBW(tex);
+        }
     }
 }
 
@@ -290,7 +290,7 @@ static int repainter(void* unused) {
         SDL_AtomicUnlock(&uiBufferLock);
         
         if(updateUI) {
-            SDL_UpdateTexture(uiTexture, NULL,       uiBufferTmp, sdlscrn->pitch);
+            SDL_UpdateTexture(uiTexture, NULL, uiBufferTmp, sdlscrn->pitch);
         }
         
         // Update and render UI texture

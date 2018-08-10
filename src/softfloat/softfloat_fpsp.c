@@ -79,9 +79,7 @@ floatx80 floatx80_acos(floatx80 a, float_ctrl* c)
             }
         } else { // |X| > 1
             float_raise(float_flag_invalid, c);
-            a.low = floatx80_default_nan_low;
-            a.high = floatx80_default_nan_high;
-            return a;
+            return packFloatx80(0, floatx80_default_nan_high, floatx80_default_nan_low);
         }
     } // |X| < 1
     
@@ -145,9 +143,7 @@ floatx80 floatx80_asin(floatx80 a, float_ctrl* c)
             return floatx80_move(a, c);
         } else { // |X| > 1
             float_raise(float_flag_invalid, c);
-            a.low = floatx80_default_nan_low;
-            a.high = floatx80_default_nan_high;
-            return a;
+            return packFloatx80(0, floatx80_default_nan_high, floatx80_default_nan_low);
         }
 
     } // |X| < 1
@@ -375,12 +371,10 @@ floatx80 floatx80_atanh(floatx80 a, float_ctrl* c)
     if (compact >= 0x3FFF8000) { // |X| >= 1
         if (aExp == one_exp && aSig == one_sig) { // |X| == 1
             float_raise(float_flag_divbyzero, c);
-            return packFloatx80(aSign, 0x7FFF, floatx80_default_infinity_low);
+            return packFloatx80(aSign, floatx80_default_infinity_high, floatx80_default_infinity_low);
         } else { // |X| > 1
             float_raise(float_flag_invalid, c);
-            a.low = floatx80_default_nan_low;
-            a.high = floatx80_default_nan_high;
-            return a;
+            return packFloatx80(0, floatx80_default_nan_high, floatx80_default_nan_low);
         }
     } // |X| < 1
     
@@ -432,9 +426,7 @@ floatx80 floatx80_cos(floatx80 a, float_ctrl* c)
     if (aExp == 0x7FFF) {
         if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         float_raise(float_flag_invalid, c);
-        a.low = floatx80_default_nan_low;
-        a.high = floatx80_default_nan_high;
-        return a;
+        return packFloatx80(0, floatx80_default_nan_high, floatx80_default_nan_low);
     }
     
     if (aExp == 0 && aSig == 0) {
@@ -640,7 +632,7 @@ floatx80 floatx80_cosh(floatx80 a, float_ctrl* c)
     
     if (aExp == 0x7FFF) {
         if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
-        return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+        return packFloatx80(0, aExp, aSig);
     }
     
     if (aExp == 0 && aSig == 0) {
@@ -716,7 +708,7 @@ floatx80 floatx80_etox(floatx80 a, float_ctrl* c)
     if (aExp == 0x7FFF) {
         if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         if (aSign) return packFloatx80(0, 0, 0);
-        return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+        return a;
     }
     
     if (aExp == 0 && aSig == 0) {
@@ -859,7 +851,7 @@ floatx80 floatx80_etoxm1(floatx80 a, float_ctrl* c)
     if (aExp == 0x7FFF) {
         if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         if (aSign) return packFloatx80(aSign, one_exp, one_sig);
-        return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+        return a;
     }
     
     if (aExp == 0 && aSig == 0) {
@@ -1051,21 +1043,19 @@ floatx80 floatx80_log10(floatx80 a, float_ctrl* c)
     aSign = extractFloatx80Sign(a);
     
     if (aExp == 0x7FFF) {
-        if ((bits64) (aSig<<1)) propagateFloatx80NaNOneArg(a, c);
+        if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         if (aSign == 0)
-            return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+            return a;
     }
     
     if (aExp == 0 && aSig == 0) {
         float_raise(float_flag_divbyzero, c);
-        return packFloatx80(1, 0x7FFF, floatx80_default_infinity_low);
+        return packFloatx80(1, floatx80_default_infinity_high, floatx80_default_infinity_low);
     }
     
     if (aSign) {
         float_raise(float_flag_invalid, c);
-        a.low = floatx80_default_nan_low;
-        a.high = floatx80_default_nan_high;
-        return a;
+        return packFloatx80(0, floatx80_default_nan_high, floatx80_default_nan_low);
     }
     
     user_rnd_mode = get_float_rounding_mode(c);
@@ -1105,24 +1095,22 @@ floatx80 floatx80_log2(floatx80 a, float_ctrl* c)
     aSign = extractFloatx80Sign(a);
     
     if (aExp == 0x7FFF) {
-        if ((bits64) (aSig<<1)) propagateFloatx80NaNOneArg(a, c);
+        if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         if (aSign == 0)
-            return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+            return a;
     }
     
     if (aExp == 0) {
         if (aSig == 0) {
             float_raise(float_flag_divbyzero, c);
-            return packFloatx80(1, 0x7FFF, floatx80_default_infinity_low);
+            return packFloatx80(1, floatx80_default_infinity_high, floatx80_default_infinity_low);
         }
         normalizeFloatx80Subnormal(aSig, &aExp, &aSig);
     }
     
     if (aSign) {
         float_raise(float_flag_invalid, c);
-        a.low = floatx80_default_nan_low;
-        a.high = floatx80_default_nan_high;
-        return a;
+        return packFloatx80(0, floatx80_default_nan_high, floatx80_default_nan_low);
     }
     
     user_rnd_mode = get_float_rounding_mode(c);
@@ -1170,9 +1158,9 @@ floatx80 floatx80_logn(floatx80 a, float_ctrl* c)
     aSign = extractFloatx80Sign(a);
     
     if (aExp == 0x7FFF) {
-        if ((bits64) (aSig<<1)) propagateFloatx80NaNOneArg(a, c);
+        if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         if (aSign == 0)
-            return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+            return a;
     }
     
     adjk = 0;
@@ -1180,7 +1168,7 @@ floatx80 floatx80_logn(floatx80 a, float_ctrl* c)
     if (aExp == 0) {
         if (aSig == 0) { // zero
             float_raise(float_flag_divbyzero, c);
-            return packFloatx80(1, 0x7FFF, floatx80_default_infinity_low);
+            return packFloatx80(1, floatx80_default_infinity_high, floatx80_default_infinity_low);
         }
 #if 1
         if ((aSig & one_sig) == 0) { // denormal
@@ -1196,9 +1184,7 @@ floatx80 floatx80_logn(floatx80 a, float_ctrl* c)
     
     if (aSign) {
         float_raise(float_flag_invalid, c);
-        a.low = floatx80_default_nan_low;
-        a.high = floatx80_default_nan_high;
-        return a;
+        return packFloatx80(0, floatx80_default_nan_high, floatx80_default_nan_low);
     }
     
     user_rnd_mode = get_float_rounding_mode(c);
@@ -1314,14 +1300,12 @@ floatx80 floatx80_lognp1(floatx80 a, float_ctrl* c)
     aSign = extractFloatx80Sign(a);
     
     if (aExp == 0x7FFF) {
-        if ((bits64) (aSig<<1)) propagateFloatx80NaNOneArg(a, c);
+        if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         if (aSign) {
             float_raise(float_flag_invalid, c);
-            a.low = floatx80_default_nan_low;
-            a.high = floatx80_default_nan_high;
-            return a;
+            return packFloatx80(0, floatx80_default_nan_high, floatx80_default_nan_low);
         }
-        return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+        return a;
     }
     
     if (aExp == 0 && aSig == 0) {
@@ -1331,12 +1315,10 @@ floatx80 floatx80_lognp1(floatx80 a, float_ctrl* c)
     if (aSign && aExp >= one_exp) {
         if (aExp == one_exp && aSig == one_sig) {
             float_raise(float_flag_divbyzero, c);
-            return packFloatx80(aSign, 0x7FFF, floatx80_default_infinity_low);
+            return packFloatx80(aSign, floatx80_default_infinity_high, floatx80_default_infinity_low);
         }
         float_raise(float_flag_invalid, c);
-        a.low = floatx80_default_nan_low;
-        a.high = floatx80_default_nan_high;
-        return a;
+        return packFloatx80(0, floatx80_default_nan_high, floatx80_default_nan_low);
     }
     
     if (aExp < 0x3f99 || (aExp == 0x3f99 && aSig == one_sig)) { // <= min threshold
@@ -1488,9 +1470,7 @@ floatx80 floatx80_sin(floatx80 a, float_ctrl* c)
     if (aExp == 0x7FFF) {
         if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         float_raise(float_flag_invalid, c);
-        a.low = floatx80_default_nan_low;
-        a.high = floatx80_default_nan_high;
-        return a;
+        return packFloatx80(0, floatx80_default_nan_high, floatx80_default_nan_low);
     }
     
     if (aExp == 0 && aSig == 0) {
@@ -1699,7 +1679,7 @@ floatx80 floatx80_sinh(floatx80 a, float_ctrl* c)
     
     if (aExp == 0x7FFF) {
         if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
-        return packFloatx80(aSign, 0x7FFF, floatx80_default_infinity_low);
+        return a;
     }
     
     if (aExp == 0 && aSig == 0) {
@@ -1782,9 +1762,7 @@ floatx80 floatx80_tan(floatx80 a, float_ctrl* c)
     if (aExp == 0x7FFF) {
         if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         float_raise(float_flag_invalid, c);
-        a.low = floatx80_default_nan_low;
-        a.high = floatx80_default_nan_high;
-        return a;
+        return packFloatx80(0, floatx80_default_nan_high, floatx80_default_nan_low);
     }
     
     if (aExp == 0 && aSig == 0) {
@@ -2074,7 +2052,7 @@ floatx80 floatx80_tentox(floatx80 a, float_ctrl* c)
     if (aExp == 0x7FFF) {
         if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         if (aSign) return packFloatx80(0, 0, 0);
-        return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+        return a;
     }
     
     if (aExp == 0 && aSig == 0) {
@@ -2199,7 +2177,7 @@ floatx80 floatx80_twotox(floatx80 a, float_ctrl* c)
     if (aExp == 0x7FFF) {
         if ((bits64) (aSig<<1)) return propagateFloatx80NaNOneArg(a, c);
         if (aSign) return packFloatx80(0, 0, 0);
-        return packFloatx80(0, 0x7FFF, floatx80_default_infinity_low);
+        return a;
     }
     
     if (aExp == 0 && aSig == 0) {

@@ -14,7 +14,6 @@ const char Reset_fileid[] = "Hatari reset.c : " __DATE__ " " __TIME__;
 #include "m68000.h"
 #include "reset.h"
 #include "screen.h"
-#include "nextMemory.h"
 #include "tmc.h"
 #include "video.h"
 #include "debugcpu.h"
@@ -47,6 +46,7 @@ static const char* Reset_NeXT(bool bCold)
     
     host_reset();                 /* Reset host related timing vars */
     
+    M68000_Reset(bCold);          /* Reset CPU */
 	CycInt_Reset();               /* Reset interrupts */
     Main_SpeedReset();            /* Reset speed reporting system */
 	Video_Reset();                /* Reset video */
@@ -63,7 +63,6 @@ static const char* Reset_NeXT(bool bCold)
 	Printer_Reset();              /* Reset Printer */
 	DSP_Reset();                  /* Reset DSP */
     NextBus_Reset();              /* Reset NextBus */
-	M68000_Reset(bCold);          /* Reset CPU */
 	DebugCpu_SetDebugging();      /* Re-set debugging flag if needed */
     
 	return NULL;

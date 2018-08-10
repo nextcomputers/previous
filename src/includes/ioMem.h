@@ -9,10 +9,9 @@
 #define HATARI_IOMEM_H
 
 #include "config.h"
+#include "memory.h"
 
-# include "nextMemory.h"
-# define IoMem NEXTIo
-
+#define IoMem NEXTIo
 
 extern Uint32 IoAccessBaseAddress;
 extern Uint32 IoAccessCurrentAddress;

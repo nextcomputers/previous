@@ -26,7 +26,6 @@ const char Main_fileid[] = "Hatari main.c : " __DATE__ " " __TIME__;
 #include "shortcut.h"
 #include "snd.h"
 #include "statusbar.h"
-#include "nextMemory.h"
 #include "str.h"
 #include "video.h"
 #include "audio.h"
@@ -266,6 +265,7 @@ void Main_EventHandler(void) {
             if(msg[0]) fprintf(stderr, " %s:%s", reports[i].label, msg);
         }
         fprintf(stderr, "\n");
+        fflush(stderr);
 #else
         Main_Speed(rt, vt);
 #endif

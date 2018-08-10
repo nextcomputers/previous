@@ -138,10 +138,10 @@ int m68k_move2c (int regno, uae_u32 *regp)
 			break;
 
 			/* no differences between 68040 and 68060 */
-		case 4: regs.itt0 = *regp & 0xffffe364; mmu_tt_modified (); break;
-		case 5: regs.itt1 = *regp & 0xffffe364; mmu_tt_modified (); break;
-		case 6: regs.dtt0 = *regp & 0xffffe364; mmu_tt_modified (); break;
-		case 7: regs.dtt1 = *regp & 0xffffe364; mmu_tt_modified (); break;
+		case 4: regs.itt0 = *regp & 0xffffe364; break;
+		case 5: regs.itt1 = *regp & 0xffffe364; break;
+		case 6: regs.dtt0 = *regp & 0xffffe364; break;
+		case 7: regs.dtt1 = *regp & 0xffffe364; break;
 			/* 68060 only */
 		case 8: regs.buscr = *regp & 0xf0000000; break;
 
@@ -154,10 +154,7 @@ int m68k_move2c (int regno, uae_u32 *regp)
 		case 0x805: regs.mmusr = *regp; break;
 			/* 68040 stores all bits, 68060 zeroes low 9 bits */
 		case 0x806: regs.urp = *regp & (currprefs.cpu_model == 68060 ? 0xfffffe00 : 0xffffffff); break;
-		case 0x807:
-                regs.srp = *regp & (currprefs.cpu_model == 68060 ? 0xfffffe00 : 0xffffffff);
-                host_darkmatter(regs.srp == regs.urp);
-                break;
+		case 0x807: regs.srp = *regp & (currprefs.cpu_model == 68060 ? 0xfffffe00 : 0xffffffff); break;
 			/* 68060 only */
 		case 0x808:
 			{

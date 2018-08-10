@@ -21,8 +21,8 @@ class NDSDL {
     static int    repainter(void *_this);
     int           repainter(void);
 public:
-    bool          ndVBLtoggle;
-    bool          ndVideoVBLtoggle;
+    static volatile bool ndVBLtoggle;
+    static volatile bool ndVideoVBLtoggle;
 
     NDSDL(int slot, Uint32* vram);
     void    init(void);

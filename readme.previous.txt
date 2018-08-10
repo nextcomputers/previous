@@ -1,6 +1,6 @@
 
 
-                                 Previous 2.0
+                                 Previous 2.1
 
 
 
@@ -144,6 +144,8 @@ input devices.
 
 - Un-emulated hardware may cause problems when attempted to being used.
 - NeXTdimension emulation does not work on hosts with big endian byte order.
+- ROM Monitor, boot log and boot animations won't show on NeXTdimension monitor,
+  if NeXTdimension main memory exceeds 32 MB. This is a bug in the NeXT ROM.
 - The MO drive causes slow downs and hangs when both drives are connected, but 
   only one disk is inserted. This is no emulation issue but a bug in NeXTstep.
 - DSP sound has timing related issues. playscore under NeXTstep 0.9 sometimes 
@@ -234,6 +236,14 @@ Previous v1.9:
 Previous v2.0:
   > Adds support for multiple NeXTdimension boards.
   > Improves i860 timings to be closer to real hardware.
+
+Previous v2.1:
+  > Improves emulation efficiency.
+  > Removes NeXTdimension startup timing hack.
+  > Fixes bug that caused FLOGNP1 to give wrong results in rare cases.
+  > Fixes bug that caused FABS and FNEG to incorrectly handle infinity.
+  > Fixes bug that caused logarithmic functions to fail on NaN input.
+  > Fixes bug that caused incorrect results from DSP ROL and ROR.
 
 
  7) Running Previous

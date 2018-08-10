@@ -15,17 +15,17 @@
 
 ***************************************************************************/
 
-#include "i860.hpp"
 #include <stdlib.h>
-
 #if defined _WIN32
 #undef mkdir
 #endif
 #include <unistd.h>
 
-extern "C" {
-    #include "dimension.hpp"
+#include "i860.hpp"
+#include "dimension.hpp"
+#include "log.h"
 
+extern "C" {
     static void i860_run_nop(int nHostCycles) {}
 
     i860_run_func i860_Run = i860_run_nop;
@@ -58,6 +58,8 @@ extern "C" {
 i860_cpu_device::i860_cpu_device(NextDimension* nd) : nd(nd) {
     m_thread = NULL;
     m_halt   = true;
+    
+    sprintf(m_thread_name, "[ND] Slot %d: i860", nd->slot);
     
     for(int i = 0; i < 8192; i++) {
         int upper6 = i >> 7;
@@ -144,7 +146,7 @@ inline void i860_cpu_device::SET_PSR_CC(int val) {
         m_cregs[CR_PSR] = (m_cregs[CR_PSR] & ~(1 << 2)) | ((val & 1) << 2);
 }
 
-void i860_cpu_device::handle_trap(UINT32 savepc) {
+const char* i860_cpu_device::trap_info() {
     static char buffer[256];
     buffer[0] = 0;
     strcat(buffer, "TRAP");
@@ -161,11 +163,15 @@ void i860_cpu_device::handle_trap(UINT32 savepc) {
         if(GET_PSR_IN())  strcat(buffer, " >Interrupt<");
     }
     
+    return buffer;
+}
+
+void i860_cpu_device::handle_trap(UINT32 savepc) {
     if(!(m_single_stepping) && !((GET_PSR_IAT() || GET_PSR_DAT() || GET_PSR_IN())))
-        debugger('d', buffer);
+        debugger('d', trap_info());
     
     if(m_dim)
-        Log_Printf(LOG_WARN, "[i860] Trap while DIM %s pc=%08X m_flow=%08X", buffer, savepc, m_flow);
+        Log_Printf(LOG_WARN, "[i860] Trap while DIM %s pc=%08X m_flow=%08X", trap_info(), savepc, m_flow);
 
     /* If we need to trap, change PC to trap address.
      Also set supervisor mode, copy U and IM to their
@@ -293,7 +299,7 @@ done:
 }
 
 int i860_cpu_device::memtest(bool be) {
-    const UINT32 P_TEST_ADDR = 0x28000000; // assume ND in slot 2
+    const UINT32 P_TEST_ADDR = 0x8000000;
     
     m_cregs[CR_DIRBASE] = 0; // turn VM off
 
@@ -422,6 +428,7 @@ void i860_cpu_device::init(void) {
     m_break_on_next_msg = false;
     m_dim               = DIM_NONE;
     m_traceback_idx     = 0;
+    memset(m_fregs, 0, sizeof(m_fregs));
     
     set_mem_access(false);
 
@@ -508,7 +515,7 @@ error:
     nd->send_msg(MSG_I860_RESET);
     if(ConfigureParams.Dimension.bI860Thread) {
         i860_Run = i860_run_thread;
-        m_thread = host_thread_create(i860_cpu_device::thread, this);
+        m_thread = host_thread_create(i860_cpu_device::thread, m_thread_name, this);
     } else {
         i860_Run = i860_run_no_thread;
     }
@@ -522,7 +529,6 @@ void i860_cpu_device::uninit() {
         host_thread_wait(m_thread);
         m_thread = NULL;
     }
-    nd->send_msg(MSG_NONE);
 }
 
 /* Message disaptcher - executed on i860 thread, safe to call i860 methods */
@@ -548,7 +554,7 @@ void i860_cpu_device::run() {
             continue;
         }
         
-        if (i860cycles > 0 || ConfigureParams.System.bRealtime) {
+        if (i860cycles > 0) {
             /* Run some i860 cycles before re-checking messages */
             for(int i = 16; --i >= 0;)
                 run_cycle();

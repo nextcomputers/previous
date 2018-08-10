@@ -13,7 +13,6 @@
 
 int Init680x0(void);
 void Exit680x0(void);
-int intlev (void);
 
 #define write_log printf
 

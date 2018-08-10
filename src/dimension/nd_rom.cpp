@@ -5,6 +5,7 @@
 #include "file.h"
 #include "dimension.hpp"
 #include "nd_mem.hpp"
+#include "log.h"
 
 /* --------- NEXTDIMENSION EEPROM --------- *
  *                                          *
