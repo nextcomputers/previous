@@ -318,7 +318,7 @@ typedef struct
   bool bMMU;                      /* TRUE if MMU is enabled */
 } CNF_SYSTEM;
 
-/* Floppy disk drives configuration */
+/* NeXT Dimension configuration */
 #define ND_MAX_BOARDS   3
 typedef struct
 {

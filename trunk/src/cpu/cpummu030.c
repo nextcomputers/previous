@@ -264,7 +264,6 @@ bool mmu_op30_pmove (uaecptr pc, uae_u32 opcode, uae_u16 next, uaecptr extra)
             } else {
                 srp_030 = (uae_u64)x_get_long (extra) << 32;
                 srp_030 |= x_get_long (extra + 4);
-                host_darkmatter(srp_030 == crp_030);
                 if (mmu030_decode_rp(srp_030))
 					return true;
             }

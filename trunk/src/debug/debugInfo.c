@@ -21,7 +21,6 @@ const char DebugInfo_fileid[] = "Hatari debuginfo.c : " __DATE__ " " __TIME__;
 #include "file.h"
 #include "ioMem.h"
 #include "m68000.h"
-#include "nextMemory.h"
 #include "screen.h"
 #include "video.h"
 

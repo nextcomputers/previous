@@ -50,8 +50,8 @@ extern "C" {
     
     void   nd_nbic_interrupt(void);
     void   Statusbar_SetNdLed(int state);
-    typedef void (*mem_rd_func)(NextDimension*, UINT32, UINT32*);
-    typedef void (*mem_wr_func)(NextDimension*, UINT32, const UINT32*);
+    typedef void (*mem_rd_func)(const NextDimension*, UINT32, UINT32*);
+    typedef void (*mem_wr_func)(const NextDimension*, UINT32, const UINT32*);
 }
 
 #if WITH_SOFTFLOAT_I860
@@ -425,6 +425,7 @@ public:
 class NextDimension;
 
 class i860_cpu_device {
+    char m_thread_name[32];
 public:
     NextDimension* nd;
     
@@ -692,6 +693,7 @@ private:
     UINT64 ifetch64(const UINT32 pc, const UINT32 vaddr, int const cidx);
     UINT32 ifetch(const UINT32 pc);
     UINT32 ifetch_notrap(const UINT32 pc);
+    const char* trap_info();
     void   handle_trap(UINT32 savepc);
     void   ret_from_trap();
     void   unrecog_opcode (UINT32 pc, UINT32 insn);

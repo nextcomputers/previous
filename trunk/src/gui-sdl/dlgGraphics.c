@@ -129,6 +129,24 @@ void Dialog_SlotSelect(int *slot)
 /**
   * Show and process the "Graphics" dialog.
   */
+
+#define GDLG_SIZE_NOTE "NOTE: Console on NeXTdimension may not show up if NeXTdimension has more than 32 MB of memory."
+
+void Dialog_GraphicsCheckConsole(int board)
+{
+    int *membank = ConfigureParams.Dimension.board[board].nMemoryBankSize;
+    
+    if (ConfigureParams.Dimension.bMainDisplay) {
+        if (ConfigureParams.Dimension.nMainDisplay == board) {
+            if (ConfigureParams.Dimension.board[board].bEnabled) {
+                if (Configuration_CheckDimensionMemory(membank) > 32) {
+                    DlgAlert_Notice(GDLG_SIZE_NOTE);
+                }
+            }
+        }
+    }
+}
+
 void Dialog_GraphicsDlg(void)
 {
     int but;
@@ -139,24 +157,6 @@ void Dialog_GraphicsDlg(void)
  
  	/* Set up dialog from actual values: */
     
-    if (ConfigureParams.Dimension.board[0].bEnabled) {
-        graphicsdlg[GDLG_BOARD0].txt = "Remove";
-    } else {
-        graphicsdlg[GDLG_BOARD0].txt = "Add";
-    }
-
-    if (ConfigureParams.Dimension.board[1].bEnabled) {
-        graphicsdlg[GDLG_BOARD1].txt = "Remove";
-    } else {
-        graphicsdlg[GDLG_BOARD1].txt = "Add";
-    }
-
-    if (ConfigureParams.Dimension.board[2].bEnabled) {
-        graphicsdlg[GDLG_BOARD2].txt = "Remove";
-    } else {
-        graphicsdlg[GDLG_BOARD2].txt = "Add";
-    }
-
     if (ConfigureParams.Dimension.bMainDisplay) {
         graphicsdlg[GDLG_DISPLAY].state |= SG_SELECTED;
     } else {
@@ -185,6 +185,23 @@ void Dialog_GraphicsDlg(void)
  	/* Draw and process the dialog: */
 
     do {
+        if (ConfigureParams.Dimension.board[0].bEnabled) {
+            graphicsdlg[GDLG_BOARD0].txt = "Remove";
+        } else {
+            graphicsdlg[GDLG_BOARD0].txt = "Add";
+        }
+        
+        if (ConfigureParams.Dimension.board[1].bEnabled) {
+            graphicsdlg[GDLG_BOARD1].txt = "Remove";
+        } else {
+            graphicsdlg[GDLG_BOARD1].txt = "Add";
+        }
+        
+        if (ConfigureParams.Dimension.board[2].bEnabled) {
+            graphicsdlg[GDLG_BOARD2].txt = "Remove";
+        } else {
+            graphicsdlg[GDLG_BOARD2].txt = "Add";
+        }
         
         if (ConfigureParams.Dimension.bMainDisplay) {
             sprintf(maindisplay, "Console on NeXTdimension (Slot %i)", ConfigureParams.Dimension.nMainDisplay*2+2);
@@ -205,27 +222,18 @@ void Dialog_GraphicsDlg(void)
         
         switch (but) {
             case GDLG_BOARD0:
-                if (Dialog_DimensionDlg(0)) {
-                    graphicsdlg[GDLG_BOARD0].txt = "Remove";
-                } else {
-                    graphicsdlg[GDLG_BOARD0].txt = "Add";
-                }
+                Dialog_DimensionDlg(0);
+                Dialog_GraphicsCheckConsole(0);
                 break;
                 
             case GDLG_BOARD1:
-                if (Dialog_DimensionDlg(1)) {
-                    graphicsdlg[GDLG_BOARD1].txt = "Remove";
-                } else {
-                    graphicsdlg[GDLG_BOARD1].txt = "Add";
-                }
+                Dialog_DimensionDlg(1);
+                Dialog_GraphicsCheckConsole(1);
                 break;
                 
             case GDLG_BOARD2:
-                if (Dialog_DimensionDlg(2)) {
-                    graphicsdlg[GDLG_BOARD2].txt = "Remove";
-                } else {
-                    graphicsdlg[GDLG_BOARD2].txt = "Add";
-                }
+                Dialog_DimensionDlg(2);
+                Dialog_GraphicsCheckConsole(2);
                 break;
                 
             case GDLG_ALL:
@@ -247,6 +255,7 @@ void Dialog_GraphicsDlg(void)
                 } else {
                     ConfigureParams.Dimension.bMainDisplay = true;
                     Dialog_SlotSelect(&ConfigureParams.Dimension.nMainDisplay);
+                    Dialog_GraphicsCheckConsole(ConfigureParams.Dimension.nMainDisplay);
                 }
                 break;
 

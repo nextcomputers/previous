@@ -1,4 +1,4 @@
-/* CMake config.h for Hatari */
+/* CMake config.h for Previous */
 
 /* Define if you have a PNG compatible library */
 #cmakedefine HAVE_LIBPNG 1
@@ -42,3 +42,12 @@
 
 /* Define to 1 to enable trace logs - undefine to slightly increase speed */
 #cmakedefine ENABLE_TRACING 1
+
+/* Define to 1 if you have the 'posix_memalign' function */
+#cmakedefine HAVE_POSIX_MEMALIGN 1
+
+/* Define to 1 if you have the 'aligned_alloc' function */
+#cmakedefine HAVE_ALIGNED_ALLOC 1
+
+/* Define to 1 if you have the '_aligned_alloc' function */
+#cmakedefine HAVE__ALIGNED_ALLOC 1

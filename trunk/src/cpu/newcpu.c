@@ -37,6 +37,7 @@
 #include "log.h"
 #include "debugui.h"
 #include "debugcpu.h"
+#include "sysReg.h"
 
 
 /* Opcode of faulting instruction */
@@ -187,27 +188,6 @@ void set_cpu_caches (bool flush)
 			dcaches030[(regs.caar >> 4) & (CACHELINES030 - 1)].valid[(regs.caar >> 2) & 3] = 0;
 			regs.cacr &= ~0x400;
 		}
-#if 0 // FIXME
-	} else if (currprefs.cpu_model == 68040) {
-        if (ConfigureParams.System.bRealtime) {
-            if (regs.cacr & 0x8000) {
-                flush_icache(0, -1);
-                x_prefetch   = getc_iword_mmu040;
-                x_get_ilong  = getc_ilong_mmu040;
-                x_get_iword  = getc_iword_mmu040;
-                x_get_ibyte  = getc_ibyte_mmu040;
-                x_next_iword = nextc_iword_mmu040;
-                x_next_ilong = nextc_ilong_mmu040;
-            } else {
-                x_prefetch   = get_iword_mmu040;
-                x_get_ilong  = get_ilong_mmu040;
-                x_get_iword  = get_iword_mmu040;
-                x_get_ibyte  = get_ibyte_mmu040;
-                x_next_iword = next_iword_mmu040;
-                x_next_ilong = next_ilong_mmu040;
-            }
-        }
-#endif
 	}
 }
 
@@ -598,6 +578,14 @@ void check_t0_trace(void)
     }
 }
 
+// make sure interrupt is checked immediately after current instruction
+static void doint_imm(void)
+{
+    doint();
+    if (!currprefs.cachesize && !(regs.spcflags & SPCFLAG_INT) && (regs.spcflags & SPCFLAG_DOINT))
+        set_special(SPCFLAG_INT);
+}
+
 void REGPARAM2 MakeSR (void)
 {
 	regs.sr = ((regs.t1 << 15) | (regs.t0 << 14)
@@ -666,7 +654,7 @@ static void MakeFromSR_x(int t0trace)
 	if (currprefs.mmu_model)
 		mmu_set_super (regs.s != 0);
 
-	doint ();
+	doint_imm();
 	if (regs.t1 || regs.t0) {
 		set_special (SPCFLAG_TRACE);
 	} else {
@@ -1294,7 +1282,20 @@ static int do_specialties (int cycles)
 
 #else
 
-static int lastRegsS = 0;
+static int ndCycles = 0;
+// give other MPUs (DSP, i860) some time to run on m68k thread
+static inline void run_other_MPUs() {
+    ndCycles += cpu_cycles;
+    // bundle some 68k cycles for MPUs
+    
+    if(dsp_core.running)
+        DSP_Run(cpu_cycles);
+    
+    if(ndCycles > 100) {
+        i860_Run(ndCycles);
+        ndCycles = 0;
+    }
+}
 
 // Previous MMU 68030
 static void m68k_run_mmu030 (void)
@@ -1351,8 +1352,7 @@ insretry:
             M68000_AddCycles(cpu_cycles);
             cpu_cycles = nCyclesMainCounter - beforeCycles;
             
-			DSP_Run(cpu_cycles);
-            i860_Run(cpu_cycles);
+            run_other_MPUs();
 
 			/* We can have several interrupts at the same time before the next CPU instruction */
 			/* We must check for pending interrupt and call do_specialties_interrupt() only */
@@ -1372,11 +1372,6 @@ insretry:
                 do_interrupt (intr, false);
             lastintr = intr;
             
-            if(lastRegsS != regs.s) {
-                host_realtime(!(regs.s));
-                lastRegsS = regs.s;
-            }
-
             if (regs.spcflags & ~SPCFLAG_INT) {
 				if (do_specialties (cpu_cycles))
 					return;
@@ -1420,7 +1415,7 @@ static void m68k_run_mmu040 (void)
 	uaecptr pc;
     int intr = 0;
     int lastintr = 0;
-	
+    
 	for (;;) {
 	TRY (prb) {
 		for (;;) {
@@ -1431,15 +1426,13 @@ static void m68k_run_mmu040 (void)
         
             Uint64 beforeCycles = nCyclesMainCounter;
 			mmu_opcode = -1;
-			mmu_opcode = opcode = x_prefetch (0);
+			mmu_opcode = opcode = get_iword_mmu040(0);
 			cpu_cycles = (*cpufunctbl[opcode])(opcode);
             M68000_AddCycles(cpu_cycles);
-            
             cpu_cycles = nCyclesMainCounter - beforeCycles;
 
-			DSP_Run(cpu_cycles);
-            i860_Run(cpu_cycles);
-
+            run_other_MPUs();
+            
 			/* We can have several interrupts at the same time before the next CPU instruction */
 			/* We must check for pending interrupt and call do_specialties_interrupt() only */
 			/* if the cpu is not in the STOP state. Else, the int could be acknowledged now */
@@ -1457,12 +1450,7 @@ static void m68k_run_mmu040 (void)
             if (intr>regs.intmask || (intr==7 && intr>lastintr))
                 do_interrupt (intr, false);
             lastintr = intr;
-            
-            if(lastRegsS != regs.s) {
-                host_realtime(!(regs.s));
-                lastRegsS = regs.s;
-            }
-            
+                        
 			if (regs.spcflags & ~SPCFLAG_INT) {
 				if (do_specialties (cpu_cycles))
 					return;
@@ -2280,7 +2268,7 @@ void m68k_dumpstate_2 (uaecptr pc, uaecptr *nextpc)
         for (lookup1 = lookuptab; lookup1->mnemo != dp->mnemo; lookup1++);
         dp = table68k + regs.ir;
         for (lookup2 = lookuptab; lookup2->mnemo != dp->mnemo; lookup2++);
-        printf (_T("Prefetch %04x (%s) %04x (%s) Chip latch %08X\n"), regs.irc, lookup1->name, regs.ir, lookup2->name, regs.chipset_latch_rw);
+        printf (_T("Prefetch %04x (%s) %04x (%s)\n"), regs.irc, lookup1->name, regs.ir, lookup2->name);
     }
     
     if (pc != 0xffffffff) {

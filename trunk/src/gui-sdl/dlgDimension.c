@@ -81,14 +81,14 @@ void get_nd_default_values(int n) {
 /**
   * Show and process the "System" dialog (specific to winUAE cpu).
   */
-bool Dialog_DimensionDlg(int n)
+void Dialog_DimensionDlg(int n)
 {
     int but;
     char dlgname_ndrom[64];
     
     if (ConfigureParams.Dimension.board[n].bEnabled) {
         ConfigureParams.Dimension.board[n].bEnabled = false;
-        return false;
+        return;
     }
  
  	SDLGui_CenterDlg(dimensiondlg);
@@ -131,8 +131,6 @@ bool Dialog_DimensionDlg(int n)
     
     ConfigureParams.Dimension.board[n].bEnabled = true;
     ConfigureParams.System.bNBIC = true;
-    
-    return true;
 }
 
 
