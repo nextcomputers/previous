@@ -247,6 +247,7 @@ Previous v2.1:
 
 Previous v2.2 (unreleased):
   > Adds support for using custom MAC address.
+  > Fixes bug that prevented reset warning after changing preferences.
 
 
  7) Running Previous

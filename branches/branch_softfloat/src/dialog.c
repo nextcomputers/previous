@@ -54,8 +54,7 @@ bool Dialog_DoProperty(void)
 
 	/* Check if reset is required and ask user if he really wants to continue then */
 	if (bOKDialog && !bForceReset
-	    && Change_DoNeedReset(&current, &ConfigureParams)
-	    && ConfigureParams.Log.nAlertDlgLogLevel > LOG_FATAL) {
+	    && Change_DoNeedReset(&current, &ConfigureParams)) {
 		bOKDialog = DlgAlert_Query("The emulated system must be "
 		                           "reset to apply these changes. "
 		                           "Apply changes now and reset "
