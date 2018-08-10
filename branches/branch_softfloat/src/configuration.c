@@ -248,6 +248,15 @@ static const struct Config_Tag configs_Rom[] =
     { "szRom030FileName", String_Tag, ConfigureParams.Rom.szRom030FileName },
     { "szRom040FileName", String_Tag, ConfigureParams.Rom.szRom040FileName },
     { "szRomTurboFileName", String_Tag, ConfigureParams.Rom.szRomTurboFileName },
+    
+    { "bUseCustomMac", Bool_Tag, &ConfigureParams.Rom.bUseCustomMac },
+    { "nRomCustomMac0", Int_Tag, &ConfigureParams.Rom.nRomCustomMac[0] },
+    { "nRomCustomMac1", Int_Tag, &ConfigureParams.Rom.nRomCustomMac[1] },
+    { "nRomCustomMac2", Int_Tag, &ConfigureParams.Rom.nRomCustomMac[2] },
+    { "nRomCustomMac3", Int_Tag, &ConfigureParams.Rom.nRomCustomMac[3] },
+    { "nRomCustomMac4", Int_Tag, &ConfigureParams.Rom.nRomCustomMac[4] },
+    { "nRomCustomMac5", Int_Tag, &ConfigureParams.Rom.nRomCustomMac[5] },
+
 	{ NULL , Error_Tag, NULL }
 };
 
@@ -446,7 +455,11 @@ void Configuration_SetDefault(void)
             Paths_GetWorkingDir(), PATHSEP);
     sprintf(ConfigureParams.Rom.szRomTurboFileName, "%s%cRev_3.3_v74.BIN",
             Paths_GetWorkingDir(), PATHSEP);
-
+    
+    ConfigureParams.Rom.bUseCustomMac = false;
+    memset(ConfigureParams.Rom.nRomCustomMac, 0,
+           sizeof(ConfigureParams.Rom.nRomCustomMac));
+    ConfigureParams.Rom.nRomCustomMac[2] = 0x0f;
 
 	/* Set defaults for System */
     ConfigureParams.System.nMachineType = NEXT_CUBE030;
