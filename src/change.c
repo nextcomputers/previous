@@ -62,6 +62,20 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
         }
     }
     
+    /* Did we change MAC address? */
+    if (current->Rom.bUseCustomMac != changed->Rom.bUseCustomMac) {
+        printf("mac reset\n");
+        return true;
+    }
+    if (current->Rom.bUseCustomMac) {
+        for (i = 0; i < 6; i++) {
+            if (current->Rom.nRomCustomMac[i] != changed->Rom.nRomCustomMac[i]) {
+                printf("mac reset\n");
+                return true;
+            }
+        }
+    }
+    
     /* Did we change machine type? */
     if (current->System.nMachineType != changed->System.nMachineType) {
         printf("machine type reset\n");
@@ -349,8 +363,7 @@ static bool Change_Options(int argc, const char *argv[])
 	ConfigureParams.Screen.bFullScreen = bInFullScreen;
 
 	/* Check if reset is required and ask user if he really wants to continue */
-	if (Change_DoNeedReset(&current, &ConfigureParams)
-	    && current.Log.nAlertDlgLogLevel > LOG_FATAL) {
+	if (Change_DoNeedReset(&current, &ConfigureParams)) {
 		bOK = DlgAlert_Query("The emulated system must be "
 				     "reset to apply these changes. "
 				     "Apply changes now and reset "
