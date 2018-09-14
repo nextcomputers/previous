@@ -1,6 +1,6 @@
 
 
-                                 Previous 2.1
+                                 Previous 2.2
 
 
 
@@ -245,8 +245,9 @@ Previous v2.1:
   > Fixes bug that caused logarithmic functions to fail on NaN input.
   > Fixes bug that caused incorrect results from DSP ROL and ROR.
 
-Previous v2.2 (unreleased):
+Previous v2.2:
   > Adds support for using custom MAC address.
+  > Improves accuracy of tables programmed to DSP data ROM.
   > Fixes bug that prevented reset warning after changing preferences.
 
 
