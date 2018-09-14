@@ -1179,6 +1179,26 @@ const char* memory_init(int *nNewNEXTMemSize)
 		write_log("Read ROM %d\n",ret);
 		fclose(fin);
 	}
+    
+    if (ConfigureParams.Rom.bUseCustomMac) {
+        int i, n;
+        uae_u32 crc, k, r, x;
+        
+        for (i = 3; i < 6; i++) {
+            ROMmemory[8+i] = ConfigureParams.Rom.nRomCustomMac[i];
+        }
+        
+        n = 22;
+        i = 0;
+        
+        for (k=r=~0; (++k)&7 || ((n--) && (r^=x=ROMmemory[i++])); r = (r&1)*0xEDB88320^(r>>1));
+        crc = ~r;
+        
+        ROMmemory[22] = (crc >> 24) & 0xFF;
+        ROMmemory[23] = (crc >> 16) & 0xFF;
+        ROMmemory[24] = (crc >> 8) & 0xFF;
+        ROMmemory[25] = crc & 0xFF;
+    }
 	
 	{
 		int i;

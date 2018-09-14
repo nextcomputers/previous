@@ -24,7 +24,7 @@ const char DlgEthernetAdvanced_fileid[] = "Previous dlgEthernetAdvanced.c : " __
 
 char pcap_list[PCAP_LIST_LEN] = "";
 
-/* The Boot options dialog: */
+/* The PCAP Ethernet options dialog: */
 static SGOBJ enetpcapdlg[] =
 {
 	{ SGBOX, 0, 0, 0,0, 36,8, NULL },
@@ -44,7 +44,7 @@ static SGOBJ enetpcapdlg[] =
 /**
  * Show and process the PCAP Ethernet options dialog.
  */
-bool DlgEthernetAdvanced(void)
+bool DlgEthernetAdvancedPCAP(void)
 {
 	int but;
     pcap_if_t *alldevs;
@@ -113,3 +113,110 @@ bool DlgEthernetAdvanced(void)
     return !bNone;
 }
 #endif
+
+
+#define DLGENETMAC_CUSTOM   9
+#define DLGENETMAC_DEFAULT  10
+
+char mac_input[6][4];
+
+/* The MAC Ethernet options dialog: */
+static SGOBJ enetmacdlg[] =
+{
+    { SGBOX, 0, 0, 0,0, 57,8, NULL },
+    { SGTEXT, 0, 0, 2,1, 53,1, "Set custom MAC address or use ROM programmed default:" },
+    
+    { SGTEXT, 0, 0, 14,3, 29,1, "    :    :    :    :    :    " },
+    
+    { SGTEXT, 0, 0, 15,3, 2,1, mac_input[0] },
+    { SGTEXT, 0, 0, 20,3, 2,1, mac_input[1] },
+    { SGTEXT, 0, 0, 25,3, 2,1, mac_input[2] },
+    { SGEDITFIELD, 0, 0, 30,3, 2,1, mac_input[3] },
+    { SGEDITFIELD, 0, 0, 35,3, 2,1, mac_input[4] },
+    { SGEDITFIELD, 0, 0, 40,3, 2,1, mac_input[5] },
+    
+    { SGBUTTON, 0, 0, 15,6, 11,1, "Customize" },
+    { SGBUTTON, SG_DEFAULT, 0, 31,6, 11,1, "Default" },
+    
+    { -1, 0, 0, 0,0, 0,0, NULL }
+};
+
+bool DlgEthernetAdvanced_GetRomMac(Uint8 *mac)
+{
+    FILE* rom;
+    
+    /* Loading ROM depending on emulated system */
+    if (ConfigureParams.System.nMachineType == NEXT_CUBE030) {
+        rom = File_Open(ConfigureParams.Rom.szRom030FileName,"rb");
+    } else if (ConfigureParams.System.bTurbo == true) {
+        rom = File_Open(ConfigureParams.Rom.szRomTurboFileName,"rb");
+    } else {
+        rom = File_Open(ConfigureParams.Rom.szRom040FileName,"rb");
+    }
+    if (rom == NULL) {
+        return false;
+    }
+    
+    if (!File_Read(mac, 6, 8, rom)) {
+        fclose(rom);
+        return false;
+    }
+    
+    fclose(rom);
+    
+    return true;
+}
+
+void DlgEthernetAdvancedGetMAC(Uint8 *mac)
+{
+    int i;
+    
+    if (ConfigureParams.Rom.bUseCustomMac) {
+        for (i = 0; i < 6; i++) {
+            mac[i] = ConfigureParams.Rom.nRomCustomMac[i];
+        }
+    } else if (!DlgEthernetAdvanced_GetRomMac(mac)) {
+        for (i = 0; i < 6; i++) {
+            mac[i] = 0;
+        }
+    }
+}
+
+/*-----------------------------------------------------------------------*/
+/**
+ * Show and process the MAC Ethernet options dialog.
+ */
+void DlgEthernetAdvancedMAC(Uint8 *mac)
+{
+    int i, but;
+    
+    SDLGui_CenterDlg(enetmacdlg);
+    
+    /* Set values from ROM or preferences */
+    for (i = 0; i < 6; i++) {
+        sprintf(mac_input[i], "%02x", mac[i]);
+    }
+    
+    do
+    {
+        but = SDLGui_DoDialog(enetmacdlg, NULL);
+        
+        switch (but) {
+                
+            default:
+                break;
+        }
+    }
+    while (but != DLGENETMAC_CUSTOM && but != DLGENETMAC_DEFAULT &&
+           but != SDLGUI_QUIT && but != SDLGUI_ERROR && !bQuitProgram);
+    
+    /* Read values from dialog */
+    if (but == DLGENETMAC_CUSTOM) {
+        for (i = 0; i < 6; i++) {
+            ConfigureParams.Rom.nRomCustomMac[i] = (int)strtol(mac_input[i], NULL, 16);
+        }
+        ConfigureParams.Rom.bUseCustomMac = true;
+    } else {
+        ConfigureParams.Rom.bUseCustomMac = false;
+    }
+}

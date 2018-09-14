@@ -51,6 +51,8 @@ typedef struct
     char szRom030FileName[FILENAME_MAX];
     char szRom040FileName[FILENAME_MAX];
     char szRomTurboFileName[FILENAME_MAX];
+    bool bUseCustomMac;
+    int nRomCustomMac[6];
 } CNF_ROM;
 
 
