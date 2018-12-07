@@ -106,17 +106,14 @@ typedef  int m68k_exception;
 #define ALWAYS_INLINE inline
 
 // take care of 2 kinds of alignement, bus size and page
-#if 1
-static ALWAYS_INLINE bool is_unaligned(uaecptr addr, int size)
+static ALWAYS_INLINE bool is_unaligned_page(uaecptr addr, int size)
 {
     return unlikely((addr & (size - 1)) && (addr ^ (addr + size - 1)) & regs.mmu_page_size);
 }
-#else
-static ALWAYS_INLINE bool is_unaligned(uaecptr addr, int size)
+static ALWAYS_INLINE bool is_unaligned_bus(uaecptr addr, int size)
 {
     return (addr & (size - 1));
 }
-#endif
 
 static ALWAYS_INLINE void phys_put_long(uaecptr addr, uae_u32 l)
 {

@@ -764,7 +764,7 @@ uae_u32 REGPARAM2 sfc_get_long(uaecptr addr)
     uae_u32 res;
     
     ismoves = true;
-    if (likely(!is_unaligned(addr, 4))) {
+    if (likely(!is_unaligned_page(addr, 4))) {
         res = mmu_get_user_long(addr, super, false, sz_long);
     } else {
         if (likely(!(addr & 1))) {
@@ -806,7 +806,7 @@ uae_u16 REGPARAM2 sfc_get_word(uaecptr addr)
     uae_u16 res;
     
     ismoves = true;
-    if (likely(!is_unaligned(addr, 2))) {
+    if (likely(!is_unaligned_page(addr, 2))) {
         res = mmu_get_user_word(addr, super, false, sz_word);
     } else {
         res = (uae_u16)mmu_get_user_byte(addr, super, false, sz_word) << 8;
@@ -843,7 +843,7 @@ void REGPARAM2 dfc_put_long(uaecptr addr, uae_u32 val)
     ismoves = true;
     SAVE_EXCEPTION;
     TRY(prb) {
-        if (likely(!is_unaligned(addr, 4))) {
+        if (likely(!is_unaligned_page(addr, 4))) {
             mmu_put_user_long(addr, val, super, sz_long);
         } else if (likely(!(addr & 1))) {
             mmu_put_user_word(addr, val >> 16, super, sz_long);
@@ -872,7 +872,7 @@ void REGPARAM2 dfc_put_word(uaecptr addr, uae_u16 val)
     ismoves = true;
     SAVE_EXCEPTION;
     TRY(prb) {
-        if (likely(!is_unaligned(addr, 2))) {
+        if (likely(!is_unaligned_page(addr, 2))) {
             mmu_put_user_word(addr, val, super, sz_word);
         } else {
             mmu_put_user_byte(addr, val >> 8, super, sz_word);
@@ -1123,13 +1123,13 @@ void uae_mmu_put_lrmw (uaecptr addr, uae_u32 v, int size, int type)
     if (size == sz_byte) {
         mmu_put_byte(addr, v, sz_byte);
     } else if (size == sz_word) {
-        if (unlikely(is_unaligned(addr, 2))) {
+        if (unlikely(is_unaligned_page(addr, 2))) {
             mmu_put_word_unaligned(addr, v);
         } else {
             mmu_put_word(addr, v, sz_word);
         }
     } else {
-        if (unlikely(is_unaligned(addr, 4)))
+        if (unlikely(is_unaligned_page(addr, 4)))
             mmu_put_long_unaligned(addr, v);
         else
             mmu_put_long(addr, v, sz_long);
@@ -1143,13 +1143,13 @@ uae_u32 uae_mmu_get_lrmw (uaecptr addr, int size, int type)
     if (size == sz_byte) {
         v = mmu_get_user_byte(addr, regs.s != 0, true, sz_byte);
     } else if (size == sz_word) {
-        if (unlikely(is_unaligned(addr, 2))) {
+        if (unlikely(is_unaligned_page(addr, 2))) {
             v = mmu_get_lrmw_word_unaligned(addr);
         } else {
             v = mmu_get_user_word(addr, regs.s != 0, true, sz_word);
         }
     } else {
-        if (unlikely(is_unaligned(addr, 4)))
+        if (unlikely(is_unaligned_page(addr, 4)))
             v = mmu_get_lrmw_long_unaligned(addr);
         else
             v = mmu_get_user_long(addr, regs.s != 0, true, sz_long);

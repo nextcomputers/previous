@@ -1,13 +1,15 @@
 #ifndef UAE_CPUMMU030_H
 #define UAE_CPUMMU030_H
 
+#define MMU030_DEBUG 0
+
 #include "mmu_common.h"
 
 extern uae_u64 srp_030, crp_030;
 extern uae_u32 tt0_030, tt1_030, tc_030;
 extern uae_u16 mmusr_030;
 
-#define MAX_MMU030_ACCESS 10
+#define MAX_MMU030_ACCESS 9
 extern uae_u32 mm030_stageb_address;
 extern int mmu030_idx;
 extern bool mmu030_retry;
@@ -15,7 +17,7 @@ extern int mmu030_opcode, mmu030_opcode_stageb;
 extern int mmu030_fake_prefetch;
 extern uaecptr mmu030_fake_prefetch_addr;
 extern uae_u16 mmu030_state[3];
-extern uae_u32 mmu030_data_buffer;
+extern uae_u32 mmu030_data_buffer_out;
 extern uae_u32 mmu030_disp_store[2];
 extern uae_u32 mmu030_fmovem_store[2];
 
@@ -25,12 +27,20 @@ extern uae_u32 mmu030_fmovem_store[2];
 #define MMU030_STATEFLAG1_DISP0 0x0001
 #define MMU030_STATEFLAG1_DISP1 0x0002
 
+#define MMU030_STATEFLAG1_SUBACCESS0 0x0004
+#define MMU030_STATEFLAG1_SUBACCESS1 0x0008
+#define MMU030_STATEFLAG1_SUBACCESS2 0x0010
+#define MMU030_STATEFLAG1_SUBACCESS3 0x0020
+#define MMU030_STATEFLAG1_SUBACCESSX 0x0040
+#define MMU030_STATEFLAG1_SUBACCESSL 0x0080
+#define MMU030_STATEFLAG1_SUBACCESS_SHIFT 2
+
 struct mmu030_access
 {
 	bool done;
 	uae_u32 val;
 };
-extern struct mmu030_access mmu030_ad[MAX_MMU030_ACCESS];
+extern struct mmu030_access mmu030_ad[MAX_MMU030_ACCESS+1];
 
 uae_u32 REGPARAM3 get_disp_ea_020_mmu030 (uae_u32 base, int idx) REGPARAM;
 void mmu030_page_fault(uaecptr addr, bool read, int flags, uae_u32 fc);
@@ -87,10 +97,12 @@ uae_u32 mmu030_get_ilong(uaecptr addr, uae_u32 fc);
 uae_u16 mmu030_get_iword(uaecptr addr, uae_u32 fc);
 
 uae_u32 uae_mmu030_get_lrmw(uaecptr addr, int size);
+uae_u32 uae_mmu030_get_lrmw_fcx(uaecptr addr, int size, int fc);
 void uae_mmu030_put_lrmw(uaecptr addr, uae_u32 val, int size);
+void uae_mmu030_put_lrmw_fcx(uaecptr addr, uae_u32 val, int size, int fc);
 
-void mmu030_put_generic(uaecptr addr, uae_u32 val, uae_u32 fc, int size, int accesssize, int flags);
-uae_u32 mmu030_get_generic(uaecptr addr, uae_u32 fc, int size, int accesssize, int flags);
+void mmu030_put_generic(uaecptr addr, uae_u32 val, uae_u32 fc, int size, int flags);
+uae_u32 mmu030_get_generic(uaecptr addr, uae_u32 fc, int size, int flags);
 
 extern uae_u16 REGPARAM3 mmu030_get_word_unaligned(uaecptr addr, uae_u32 fc, int flags) REGPARAM;
 extern uae_u32 REGPARAM3 mmu030_get_long_unaligned(uaecptr addr, uae_u32 fc, int flags) REGPARAM;
@@ -104,7 +116,7 @@ static ALWAYS_INLINE uae_u32 uae_mmu030_get_ilong(uaecptr addr)
 {
     uae_u32 fc = (regs.s ? 4 : 0) | 2;
 
-	if (unlikely(is_unaligned(addr, 4)))
+	if (unlikely(is_unaligned_bus(addr, 4)))
 		return mmu030_get_ilong_unaligned(addr, fc, 0);
 	return mmu030_get_ilong(addr, fc);
 }
@@ -123,7 +135,7 @@ static ALWAYS_INLINE uae_u32 uae_mmu030_get_long(uaecptr addr)
 {
     uae_u32 fc = (regs.s ? 4 : 0) | 1;
 
-	if (unlikely(is_unaligned(addr, 4)))
+	if (unlikely(is_unaligned_bus(addr, 4)))
 		return mmu030_get_long_unaligned(addr, fc, 0);
 	return mmu030_get_long(addr, fc);
 }
@@ -131,7 +143,7 @@ static ALWAYS_INLINE uae_u16 uae_mmu030_get_word(uaecptr addr)
 {
     uae_u32 fc = (regs.s ? 4 : 0) | 1;
 
-	if (unlikely(is_unaligned(addr, 2)))
+	if (unlikely(is_unaligned_bus(addr, 2)))
 		return mmu030_get_word_unaligned(addr, fc, 0);
 	return mmu030_get_word(addr, fc);
 }
@@ -145,7 +157,7 @@ static ALWAYS_INLINE void uae_mmu030_put_long(uaecptr addr, uae_u32 val)
 {
     uae_u32 fc = (regs.s ? 4 : 0) | 1;
     
-	if (unlikely(is_unaligned(addr, 4)))
+	if (unlikely(is_unaligned_bus(addr, 4)))
 		mmu030_put_long_unaligned(addr, val, fc, 0);
 	else
 		mmu030_put_long(addr, val, fc);
@@ -154,7 +166,7 @@ static ALWAYS_INLINE void uae_mmu030_put_word(uaecptr addr, uae_u16 val)
 {
     uae_u32 fc = (regs.s ? 4 : 0) | 1;
 
-	if (unlikely(is_unaligned(addr, 2)))
+	if (unlikely(is_unaligned_bus(addr, 2)))
 		mmu030_put_word_unaligned(addr, val, fc, 0);
 	else
 		mmu030_put_word(addr, val, fc);
@@ -172,7 +184,7 @@ static ALWAYS_INLINE uae_u32 sfc030_get_long(uaecptr addr)
 #if MMUDEBUG > 2
 	write_log(_T("sfc030_get_long: FC = %i\n"),fc);
 #endif
-	if (unlikely(is_unaligned(addr, 4)))
+	if (unlikely(is_unaligned_bus(addr, 4)))
 		return mmu030_get_long_unaligned(addr, fc, 0);
 	return mmu030_get_long(addr, fc);
 }
@@ -183,7 +195,7 @@ static ALWAYS_INLINE uae_u16 sfc030_get_word(uaecptr addr)
 #if MMUDEBUG > 2
 	write_log(_T("sfc030_get_word: FC = %i\n"),fc);
 #endif
-    if (unlikely(is_unaligned(addr, 2)))
+    if (unlikely(is_unaligned_bus(addr, 2)))
 		return mmu030_get_word_unaligned(addr, fc, 0);
 	return mmu030_get_word(addr, fc);
 }
@@ -203,7 +215,7 @@ static ALWAYS_INLINE void dfc030_put_long(uaecptr addr, uae_u32 val)
 #if MMUDEBUG > 2
 	write_log(_T("dfc030_put_long: %08X = %08X FC = %i\n"), addr, val, fc);
 #endif
-    if (unlikely(is_unaligned(addr, 4)))
+    if (unlikely(is_unaligned_bus(addr, 4)))
 		mmu030_put_long_unaligned(addr, val, fc, 0);
 	else
 		mmu030_put_long(addr, val, fc);
@@ -215,7 +227,7 @@ static ALWAYS_INLINE void dfc030_put_word(uaecptr addr, uae_u16 val)
 #if MMUDEBUG > 2
 	write_log(_T("dfc030_put_word: %08X = %04X FC = %i\n"), addr, val, fc);
 #endif
-	if (unlikely(is_unaligned(addr, 2)))
+	if (unlikely(is_unaligned_bus(addr, 2)))
 		mmu030_put_word_unaligned(addr, val, fc, 0);
 	else
 		mmu030_put_word(addr, val, fc);
@@ -230,10 +242,46 @@ static ALWAYS_INLINE void dfc030_put_byte(uaecptr addr, uae_u8 val)
 	mmu030_put_byte(addr, val, fc);
 }
 
+static ALWAYS_INLINE uae_u32 uae_mmu030_get_long_fcx(uaecptr addr, int fc)
+{
+    if (unlikely(is_unaligned_bus(addr, 4)))
+        return mmu030_get_long_unaligned(addr, fc, 0);
+    return mmu030_get_long(addr, fc);
+}
+static ALWAYS_INLINE uae_u32 uae_mmu030_get_word_fcx(uaecptr addr, int fc)
+{
+    if (unlikely(is_unaligned_bus(addr, 2)))
+        return mmu030_get_word_unaligned(addr, fc, 0);
+    return mmu030_get_word(addr, fc);
+}
+static ALWAYS_INLINE uae_u32 uae_mmu030_get_byte_fcx(uaecptr addr, int fc)
+{
+    return mmu030_get_byte(addr, fc);
+}
+static ALWAYS_INLINE void uae_mmu030_put_long_fcx(uaecptr addr, uae_u32 val, int fc)
+{
+    if (unlikely(is_unaligned_bus(addr, 4)))
+        mmu030_put_long_unaligned(addr, val, fc, 0);
+    else
+        mmu030_put_long(addr, val, fc);
+}
+static ALWAYS_INLINE void uae_mmu030_put_word_fcx(uaecptr addr, uae_u32 val, int fc)
+{
+    if (unlikely(is_unaligned_bus(addr, 2)))
+        mmu030_put_word_unaligned(addr, val, fc, 0);
+    else
+        mmu030_put_word(addr, val, fc);
+}
+static ALWAYS_INLINE void uae_mmu030_put_byte_fcx(uaecptr addr, uae_u32 val, int fc)
+{
+    mmu030_put_byte(addr, val, fc);
+}
+
+
 #define ACCESS_CHECK_PUT \
 	if (!mmu030_ad[mmu030_idx].done) { \
-		mmu030_ad[mmu030_idx].val = v; \
-	} else if (mmu030_ad[mmu030_idx].done) { \
+		mmu030_data_buffer_out = v; \
+	} else { \
 		mmu030_idx++; \
 		return; \
 	}
@@ -254,6 +302,7 @@ static ALWAYS_INLINE void dfc030_put_byte(uaecptr addr, uae_u8 val)
 	}
 
 #define ACCESS_EXIT_PUT \
+	mmu030_ad[mmu030_idx].val = mmu030_data_buffer_out; \
 	mmu030_ad[mmu030_idx].done = true; \
 	mmu030_idx++; \
 	mmu030_ad[mmu030_idx].done = false;
@@ -399,6 +448,51 @@ STATIC_INLINE uae_u32 next_ilong_mmu030_state (void)
 	return v;
 }
 
+STATIC_INLINE uae_u32 sfc030_get_long_state(uaecptr addr)
+{
+    uae_u32 v;
+    ACCESS_CHECK_GET
+    v = sfc030_get_long(addr);
+    ACCESS_EXIT_GET
+    return v;
+}
+STATIC_INLINE uae_u32 sfc030_get_word_state(uaecptr addr)
+{
+    uae_u32 v;
+    ACCESS_CHECK_GET
+    v = sfc030_get_word(addr);
+    ACCESS_EXIT_GET
+    return v;
+}
+STATIC_INLINE uae_u32 sfc030_get_byte_state(uaecptr addr)
+{
+    uae_u32 v;
+    ACCESS_CHECK_GET
+    v = sfc030_get_byte(addr);
+    ACCESS_EXIT_GET
+    return v;
+}
+
+STATIC_INLINE void dfc030_put_long_state(uaecptr addr, uae_u32 v)
+{
+    ACCESS_CHECK_PUT
+    dfc030_put_long(addr, v);
+    ACCESS_EXIT_PUT
+}
+STATIC_INLINE void dfc030_put_word_state(uaecptr addr, uae_u32 v)
+{
+    ACCESS_CHECK_PUT
+    dfc030_put_word(addr, v);
+    ACCESS_EXIT_PUT
+}
+STATIC_INLINE void dfc030_put_byte_state(uaecptr addr, uae_u32 v)
+{
+    ACCESS_CHECK_PUT
+    dfc030_put_byte(addr, v);
+    ACCESS_EXIT_PUT
+}
+
+
 STATIC_INLINE uae_u32 get_byte_mmu030 (uaecptr addr)
 {
 	return uae_mmu030_get_byte (addr);
@@ -455,6 +549,20 @@ STATIC_INLINE uae_u32 next_ilong_mmu030 (void)
     v = uae_mmu030_get_ilong (pc);
     m68k_incpci (4);
 	return v;
+}
+
+STATIC_INLINE uae_u32 state_store_mmu030(uae_u32 v)
+{
+    if (mmu030_ad[mmu030_idx].done) {
+        v = mmu030_ad[mmu030_idx].val;
+        mmu030_idx++;
+    } else {
+        mmu030_ad[mmu030_idx].val = v;
+        mmu030_ad[mmu030_idx].done = true;
+        mmu030_idx++;
+        mmu030_ad[mmu030_idx].done = false;
+    }
+    return v;
 }
 
 extern void m68k_do_rts_mmu030 (void);
