@@ -74,6 +74,10 @@ uae_u32 mmu030_disp_store[2];
 uae_u32 mmu030_fmovem_store[2];
 struct mmu030_access mmu030_ad[MAX_MMU030_ACCESS];
 
+static void mmu030_ptest_atc_search(uaecptr logical_addr, uae_u32 fc, bool write);
+static uae_u32 mmu030_table_search(uaecptr addr, uae_u32 fc, bool write, int level);
+static TT_info mmu030_decode_tt(uae_u32 TT);
+
 /* for debugging messages */
 char table_letter[4] = {'A','B','C','D'};
 
@@ -180,6 +184,24 @@ static struct {
 #define MMUSR_NUM_LEVELS_MASK   0x0007
 
 
+/* -- Helper function for MMU instructions -- */
+static uae_u32 mmu_op30_helper_get_fc(uae_u16 next) {
+    switch (next&0x0018) {
+        case 0x0010:
+            return (next&0x7);
+        case 0x0008:
+            return (m68k_dreg(regs, next&0x7)&0x7);
+        case 0x0000:
+            if (next&1) {
+                return (regs.dfc);
+            } else {
+                return (regs.sfc);
+            }
+        default:
+            write_log(_T("MMU_OP30 ERROR: bad fc source! (%04X)\n"),next&0x0018);
+            return 0;
+    }
+}
 
 /* -- MMU instructions -- */
 
@@ -189,7 +211,7 @@ static bool mmu_op30_invea(uae_u32 opcode)
     int rreg = opcode & 7;
     
     // Dn, An, (An)+, -(An), immediate and PC-relative not allowed
-    if (eamode == 0 || eamode == 1 || eamode == 3 || eamode == 4 || eamode == 6 || (eamode == 7 && rreg > 1))
+    if (eamode == 0 || eamode == 1 || eamode == 3 || eamode == 4 || (eamode == 7 && rreg > 1))
         return true;
     return false;
 }
@@ -352,7 +374,7 @@ bool mmu_op30_ptest (uaecptr pc, uae_u32 opcode, uae_u16 next, uaecptr extra)
     if (!level) {
         mmu030_ptest_atc_search(extra, fc, write);
     } else {
-        ret = mmu030_ptest_table_search(extra, fc, write, level);
+        ret = mmu030_table_search(extra, fc, write, level);
         if (a) {
             m68k_areg (regs, areg) = ret;
         }
@@ -437,26 +459,6 @@ bool mmu_op30_pflush (uaecptr pc, uae_u32 opcode, uae_u16 next, uaecptr extra)
     }
 	return false;
 }
-
-/* -- Helper function for MMU instructions -- */
-uae_u32 mmu_op30_helper_get_fc(uae_u16 next) {
-    switch (next&0x0018) {
-        case 0x0010:
-            return (next&0x7);
-        case 0x0008:
-            return (m68k_dreg(regs, next&0x7)&0x7);
-        case 0x0000:
-            if (next&1) {
-                return (regs.dfc);
-            } else {
-                return (regs.sfc);
-            }
-        default:
-            write_log(_T("MMU_OP30 ERROR: bad fc source! (%04X)\n"),next&0x0018);
-            return 0;
-    }
-}
-
 
 /* -- ATC flushing functions -- */
 
@@ -1119,7 +1121,7 @@ bool mmu030_decode_rp(uae_u64 RP) {
 /* This functions searches through the translation tables. It can be used 
  * for PTEST (levels 1 to 7). Using level 0 creates an ATC entry. */
 
-uae_u32 mmu030_table_search(uaecptr addr, uae_u32 fc, bool write, int level) {
+static uae_u32 mmu030_table_search(uaecptr addr, uae_u32 fc, bool write, int level) {
         /* During table walk up to 7 different descriptors are used:
          * root pointer, descriptors fetched from function code lookup table,
          * tables A, B, C and D and one indirect descriptor */
@@ -1551,7 +1553,7 @@ uae_u32 mmu030_table_search(uaecptr addr, uae_u32 fc, bool write, int level) {
 }
 
 /* This function is used for PTEST level 0. */
-void mmu030_ptest_atc_search(uaecptr logical_addr, uae_u32 fc, bool write) {
+static void mmu030_ptest_atc_search(uaecptr logical_addr, uae_u32 fc, bool write) {
     int i;
     mmu030.status = 0;
         
@@ -1577,15 +1579,6 @@ void mmu030_ptest_atc_search(uaecptr logical_addr, uae_u32 fc, bool write) {
     /* Note: write protect and modified bits are undefined if the invalid bit is set */
     mmu030.status |= mmu030.atc[i].physical.write_protect ? MMUSR_WRITE_PROTECTED : 0;
     mmu030.status |= mmu030.atc[i].physical.modified ? MMUSR_MODIFIED : 0;
-}
-
-/* This function is used for PTEST level 1 - 7. */
-uae_u32 mmu030_ptest_table_search(uaecptr logical_addr, uae_u32 fc, bool write, int level) {
-    if (mmu030_match_ttr(logical_addr, fc, write)&TT_OK_MATCH) {
-        return 0;
-    } else {
-        return mmu030_table_search(logical_addr, fc, write, level);
-    }
 }
 
 
