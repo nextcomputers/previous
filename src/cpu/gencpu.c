@@ -49,7 +49,7 @@ static int cpu_level, cpu_generic;
 static int count_read, count_write, count_cycles, count_ncycles;
 static int count_cycles_ce020;
 static int count_read_ea, count_write_ea, count_cycles_ea;
-static const char *mmu_postfix;
+static const char *mmu_postfix, *xfc_postfix;
 static int memory_cycle_cnt;
 static int did_prefetch;
 static int ipl_fetched;
@@ -1664,9 +1664,9 @@ static void genamode2x (amodes mode, const char *reg, wordsizes size, const char
 		if (using_mmu) {
             if (flags & GF_FC) {
                 switch (size) {
-                    case sz_byte: insn_n_cycles += 4; printf ("\tuae_s8 %s = sfc%s_get_byte (%sa);\n", name, mmu_postfix, name); break;
-                    case sz_word: insn_n_cycles += 4; printf ("\tuae_s16 %s = sfc%s_get_word (%sa);\n", name, mmu_postfix, name); break;
-                    case sz_long: insn_n_cycles += 8; printf ("\tuae_s32 %s = sfc%s_get_long (%sa);\n", name, mmu_postfix, name); break;
+                    case sz_byte: insn_n_cycles += 4; printf ("\tuae_s8 %s = sfc%s_get_byte%s (%sa);\n", name, mmu_postfix, xfc_postfix, name); break;
+                    case sz_word: insn_n_cycles += 4; printf ("\tuae_s16 %s = sfc%s_get_word%s (%sa);\n", name, mmu_postfix, xfc_postfix, name); break;
+                    case sz_long: insn_n_cycles += 8; printf ("\tuae_s32 %s = sfc%s_get_long%s (%sa);\n", name, mmu_postfix, xfc_postfix, name); break;
                     default: term ();
                 }
             } else {
@@ -1881,7 +1881,7 @@ static void genastore_2 (const char *from, amodes mode, const char *reg, wordsiz
 			case sz_byte:
 				insn_n_cycles += 4;
 				if (flags & GF_FC)
-					printf ("\tdfc%s_put_byte (%sa, %s);\n", mmu_postfix, to, from);
+					printf ("\tdfc%s_put_byte%s (%sa, %s);\n", mmu_postfix, xfc_postfix, to, from);
 				else
 					printf ("\t%s (%sa, %s);\n", (flags & GF_LRMW) ? dstblrmw : (candormw ? dstbrmw : dstb), to, from);
 				break;
@@ -1890,7 +1890,7 @@ static void genastore_2 (const char *from, amodes mode, const char *reg, wordsiz
 				if (cpu_level < 2 && (mode == PC16 || mode == PC8r))
 					term ();
 				if (flags & GF_FC)
-					printf ("\tdfc%s_put_word (%sa, %s);\n", mmu_postfix, to, from);
+					printf ("\tdfc%s_put_word%s (%sa, %s);\n", mmu_postfix, xfc_postfix, to, from);
 				else
 					printf ("\t%s (%sa, %s);\n", (flags & GF_LRMW) ? dstwlrmw : (candormw ? dstwrmw : dstw), to, from);
 				break;
@@ -1899,7 +1899,7 @@ static void genastore_2 (const char *from, amodes mode, const char *reg, wordsiz
 				if (cpu_level < 2 && (mode == PC16 || mode == PC8r))
 					term ();
 				if (flags & GF_FC)
-					printf ("\tdfc%s_put_long (%sa, %s);\n", mmu_postfix, to, from);
+					printf ("\tdfc%s_put_long%s (%sa, %s);\n", mmu_postfix, xfc_postfix, to, from);
 				else
 					printf ("\t%s (%sa, %s);\n", (flags & GF_LRMW) ? dstllrmw : (candormw ? dstlrmw : dstl), to, from);
 				break;
@@ -2175,10 +2175,8 @@ static void movem_mmu030 (const char *code, int size, bool put, bool aipi, bool 
     printf ("\tint movem_cnt = 0;\n");
     if (!put) {
         printf ("\tuae_u32 val;\n");
-        printf ("\tif (mmu030_state[1] & MMU030_STATEFLAG1_MOVEM2)\n");
-        printf ("\t\tsrca = mmu030_ad[mmu030_idx].val;\n");
-        printf ("\telse\n");
-        printf ("\t\tmmu030_ad[mmu030_idx].val = srca;\n");
+        // Store original EA because MOVEM from memory may modify same register
+        printf ("\tsrca = state_store_mmu030(srca);\n");
     }
     for (i = 0; i < 2; i++) {
         char reg;
@@ -2193,10 +2191,10 @@ static void movem_mmu030 (const char *code, int size, bool put, bool aipi, bool 
         printf ("\t\t\tif (mmu030_state[1] & MMU030_STATEFLAG1_MOVEM2) {\n");
         printf ("\t\t\t\tmmu030_state[1] &= ~MMU030_STATEFLAG1_MOVEM2;\n");
         if (!put)
-            printf ("\t\t\t\tval = %smmu030_data_buffer;\n", size == 2 ? "(uae_s32)(uae_s16)" : "");
+            printf ("\t\t\t\tval = %smmu030_data_buffer_out;\n", size == 2 ? "(uae_s32)(uae_s16)" : "");
         printf ("\t\t\t} else {\n");
         if (put)
-            printf ("\t\t\t\t%s, (mmu030_data_buffer = m68k_%creg (regs, %s[%cmask])));\n", code, reg, index, reg);
+            printf ("\t\t\t\t%s, (mmu030_data_buffer_out = m68k_%creg (regs, %s[%cmask])));\n", code, reg, index, reg);
         else
             printf ("\t\t\t\tval = %s;\n", code);
         printf ("\t\t\t}\n");
@@ -3976,7 +3974,7 @@ static void gen_opcode (unsigned int opcode)
 					    printf ("\t\telse if (frame == 0xb) { m68k_do_rte_mmu030c (a); goto %s; }\n", endlabelstr);
 					} else {
                         printf ("\t\telse if (frame == 0xa) { m68k_do_rte_mmu030 (a); break; }\n");
-                        printf ("\t\telse if (frame == 0xb) { m68k_do_rte_mmu030 (a); break; }\n");
+                        printf ("\t\telse if (frame == 0xb) { m68k_do_rte_mmu030 (a); goto %s; }\n", endlabelstr);
 					}
                     } else {
                         printf ("\t\telse if (frame == 0xa) { m68k_areg (regs, 7) += offset + 24; break; }\n");
@@ -5273,7 +5271,8 @@ static void gen_opcode (unsigned int opcode)
                 printf ("\tm68k_areg (regs, srcreg) -= areg_byteinc[srcreg];\n");
                 printf ("\tval = (uae_u16)(%s (m68k_areg (regs, srcreg)) & 0xff);\n", srcb);
                 printf ("\tm68k_areg (regs, srcreg) -= areg_byteinc[srcreg];\n");
-                printf ("\tval = (val | ((uae_u16)(%s (m68k_areg (regs, srcreg)) & 0xff) << 8)) + %s;\n", srcb, gen_nextiword (0));
+                printf ("\tval = val | ((uae_u16)(%s (m68k_areg (regs, srcreg)) & 0xff) << 8);\n", srcb);
+                printf ("\tval += %s;\n", gen_nextiword(0));
                 addmmufixup ("dstreg");
                 printf ("\tm68k_areg (regs, dstreg) -= areg_byteinc[dstreg];\n");
                 gen_set_fault_pc ();
@@ -5283,7 +5282,8 @@ static void gen_opcode (unsigned int opcode)
         case i_UNPK:
             if (curi->smode == Dreg) {
                 printf ("\tuae_u16 val = m68k_dreg (regs, srcreg);\n");
-                printf ("\tval = (((val << 4) & 0xf00) | (val & 0xf)) + %s;\n", gen_nextiword (0));
+                printf ("\tval = ((val << 4) & 0xf00) | (val & 0xf);\n");
+                printf ("\tval += %s;\n", gen_nextiword(0));
                 printf ("\tm68k_dreg (regs, dstreg) = (m68k_dreg (regs, dstreg) & 0xffff0000) | (val & 0xffff);\n");
             } else {
                 printf ("\tuae_u16 val;\n");
@@ -5946,6 +5946,7 @@ static void generate_cpu (int id, int mode)
     using_waitstates = 0;
     memory_cycle_cnt = 4;
     mmu_postfix = "";
+    xfc_postfix = "";
     using_simple_cycles = 0;
     using_indirect = 0;
     cpu_generic = false;
@@ -6021,6 +6022,7 @@ static void generate_cpu (int id, int mode)
             opcode_next_clev[rp] = cpu_level;
     } else if (id == 32) { // 32 = 68030 MMU
         mmu_postfix = "030";
+        xfc_postfix = "_state";
         cpu_level = 3;
         using_mmu = 68030;
         read_counts ();
@@ -6035,6 +6037,7 @@ static void generate_cpu (int id, int mode)
             opcode_next_clev[rp] = cpu_level;
 	} else if (id == 34) { // 34 = 68030 MMU + caches
 		mmu_postfix = "030c";
+        xfc_postfix = "_state";
 		cpu_level = 3;
 		using_prefetch_020 = 2;
 		using_mmu = 68030;
