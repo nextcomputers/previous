@@ -790,18 +790,31 @@ static void Exception_build_stack_frame (uae_u32 oldpc, uae_u32 currpc, uae_u32 
 			// our PC always points at start of instruction but A frame assumes
 			// it is + 2 and handling this properly is not easy.
 			// Store state information to internal register space
+#if MMU030_DEBUG
+            if (mmu030_idx >= MAX_MMU030_ACCESS) {
+                write_log(_T("mmu030_idx out of bounds! %d >= %d\n"), mmu030_idx, MAX_MMU030_ACCESS);
+            }
+#endif
+            if (!(ssw & MMU030_SSW_RW)) {
+                mmu030_ad[mmu030_idx].val = regs.wb3_data;
+            }
 			for (i = 0; i < mmu030_idx + 1; i++) {
 				m68k_areg (regs, 7) -= 4;
 				x_put_long (m68k_areg (regs, 7), mmu030_ad[i].val);
 			}
-			while (i < 9) {
+			while (i < MAX_MMU030_ACCESS) {
                 uae_u32 v = 0;
 				m68k_areg (regs, 7) -= 4;
                 // mmu030_idx is always small enough if instruction is FMOVEM.
                 if (mmu030_state[1] & MMU030_STATEFLAG1_FMOVEM) {
-                    if (i == 7)
+#if MMU030_DEBUG
+                    if (mmu030_idx >= MAX_MMU030_ACCESS - 2) {
+                        write_log(_T("mmu030_idx (FMOVEM) out of bounds! %d >= %d\n"), mmu030_idx, MAX_MMU030_ACCESS - 2);
+                    }
+#endif
+                    if (i == MAX_MMU030_ACCESS - 2)
                         v = mmu030_fmovem_store[0];
-                    else if (i == 8)
+                    else if (i == MAX_MMU030_ACCESS - 1)
                         v = mmu030_fmovem_store[1];
                 }
                 x_put_long (m68k_areg (regs, 7), v);
@@ -814,18 +827,25 @@ static void Exception_build_stack_frame (uae_u32 oldpc, uae_u32 currpc, uae_u32 
 			m68k_areg (regs, 7) -= 2;
 			x_put_word (m68k_areg (regs, 7), mmu030_state[2]);
 			m68k_areg (regs, 7) -= 2;
-			x_put_word (m68k_areg (regs, 7), mmu030_state[1]);
+			x_put_word (m68k_areg (regs, 7), regs.wb2_address); // = mmu030_state[1]
 			m68k_areg (regs, 7) -= 2;
 			x_put_word (m68k_areg (regs, 7), mmu030_state[0]);
 			// data input buffer = fault address
 			m68k_areg (regs, 7) -= 4;
 			x_put_long (m68k_areg (regs, 7), regs.mmu_fault_addr);
 			// 2xinternal
-			m68k_areg (regs, 7) -= 2;
-			x_put_word (m68k_areg (regs, 7), 0);
-			m68k_areg (regs, 7) -= 2;
-			x_put_word (m68k_areg (regs, 7), 0);
-			// stage b address
+        {
+            uae_u32 ps = 0;
+            ps |= ((regs.pipeline_r8[0] & 7) << 8);
+            ps |= ((regs.pipeline_r8[1] & 7) << 11);
+            ps |= ((regs.pipeline_pos & 15) << 16);
+            ps |= ((regs.pipeline_stop & 15) << 20);
+            if (mmu030_opcode == -1)
+                ps |= 1 << 31;
+            m68k_areg (regs, 7) -= 4;
+            x_put_long (m68k_areg (regs, 7), ps);
+        }
+            // stage b address
 			m68k_areg (regs, 7) -= 4;
 			x_put_long (m68k_areg (regs, 7), mm030_stageb_address);
 			// 2xinternal
@@ -837,7 +857,7 @@ static void Exception_build_stack_frame (uae_u32 oldpc, uae_u32 currpc, uae_u32 
 			x_put_long (m68k_areg (regs, 7), mmu030_disp_store[0]);
 			m68k_areg (regs, 7) -= 4;
 			 // Data output buffer = value that was going to be written
-			x_put_long (m68k_areg (regs, 7), (mmu030_state[1] & MMU030_STATEFLAG1_MOVEM1) ? mmu030_data_buffer : mmu030_ad[mmu030_idx].val);
+			x_put_long (m68k_areg (regs, 7), regs.wb3_data);
 			m68k_areg (regs, 7) -= 4;
 			x_put_long (m68k_areg (regs, 7), mmu030_opcode);  // Internal register (opcode storage)
 			m68k_areg (regs, 7) -= 4;
@@ -906,7 +926,7 @@ static void Exception_mmu030 (int nr, uaecptr oldpc)
     } else if (nr == 3) {
 		regs.mmu_fault_addr = last_fault_for_exception_3;
 		mmu030_state[0] = mmu030_state[1] = 0;
-		mmu030_data_buffer = 0;
+		mmu030_data_buffer_out = 0;
         Exception_build_stack_frame (last_fault_for_exception_3, currpc, MMU030_SSW_RW | MMU030_SSW_SIZE_W | (regs.s ? 6 : 2), nr,  0xA);
     } else if (nr >= 48 && nr < 55) {
         if (regs.fpu_exp_pre) {

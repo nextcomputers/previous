@@ -17,7 +17,6 @@ extern Uint32 IoAccessBaseAddress;
 extern Uint32 IoAccessCurrentAddress;
 extern int nIoMemAccessSize;
 
-
 /**
  * Read 32-bit word from IO memory space without interception.
  * NOTE - value will be converted to PC endian.
