@@ -2552,7 +2552,7 @@ void m68k_do_rte_mmu030 (uaecptr a7)
     // Data buffer
     uae_u32 mmu030_data_buffer_in_v = get_long_mmu030(a7 + 0x2c);
     
-    uae_u32 mmu030_opcode_v = (ps & 0x80000000) ? -1 : (oc & 0xffff);
+    uae_u32 mmu030_opcode_v = (ps & 0x80000000) ? -1U : (oc & 0xffff);
 	// Misc state data
     uae_u32 mmu030_state_0 = get_word_mmu030(a7 + 0x30);
     uae_u32 mmu030_state_1 = get_word_mmu030(a7 + 0x32);
@@ -2599,7 +2599,7 @@ void m68k_do_rte_mmu030 (uaecptr a7)
 		// did we have ins fault and RB bit cleared?
 		if ((ssw & MMU030_SSW_FB) && !(ssw & MMU030_SSW_RB)) {
 			uae_u16 stageb = get_word_mmu030 (a7 + 0x0e);
-			if (mmu030_opcode_v == -1) {
+			if (mmu030_opcode_v == -1U) {
 				mmu030_opcode_stageb = stageb;
 				write_log (_T("Software fixed stage B! opcode = %04x\n"), stageb);
 			} else {
