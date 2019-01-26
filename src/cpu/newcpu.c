@@ -1399,20 +1399,26 @@ insretry:
 		}
 	} CATCH (prb) {
 
-		regflags.cznv = f.cznv;
-		regflags.x    = f.x;
-
-		m68k_setpci (regs.instruction_pc);
-
-		if (mmufixup[0].reg >= 0) {
-			m68k_areg (regs, mmufixup[0].reg) = mmufixup[0].value;
-			mmufixup[0].reg = -1;
-		}
-		if (mmufixup[1].reg >= 0) {
-			m68k_areg (regs, mmufixup[1].reg) = mmufixup[1].value;
-			mmufixup[1].reg = -1;
-		}
-
+        if (mmu030_opcode == -1 && currprefs.cpu_compatible) {
+            // full prefetch fill access fault
+            // TODO: this should create shorter A-frame
+            mmufixup[0].reg = -1;
+            mmufixup[1].reg = -1;
+        } else if (!(mmu030_state[1] & MMU030_STATEFLAG1_LASTWRITE)) {
+            regflags.cznv = f.cznv;
+            regflags.x = f.x;
+            
+            if (mmufixup[0].reg >= 0) {
+                m68k_areg(regs, mmufixup[0].reg) = mmufixup[0].value;
+                mmufixup[0].reg = -1;
+            }
+            if (mmufixup[1].reg >= 0) {
+                m68k_areg(regs, mmufixup[1].reg) = mmufixup[1].value;
+                mmufixup[1].reg = -1;
+            }
+        }
+        
+        m68k_setpci (regs.instruction_pc);
 		TRY (prb2) {
 			Exception (prb);
 		} CATCH (prb2) {
