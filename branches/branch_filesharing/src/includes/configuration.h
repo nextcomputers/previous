@@ -12,6 +12,7 @@
 
 
 #include <stdio.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -229,6 +230,7 @@ typedef struct {
     bool bTwistedPair;
     ENET_INTERFACE nHostInterface;
     char szInterfaceName[FILENAME_MAX];
+    char szNFSroot[FILENAME_MAX];
 } CNF_ENET;
 
 typedef enum

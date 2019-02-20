@@ -22,12 +22,13 @@
  * THE SOFTWARE.
  */
 #include <slirp.h>
+#include <unistd.h>
 
 /* XXX: only DHCP is supported */
 
 #define NB_ADDR 16
 
-#define START_ADDR 15
+#define START_ADDR 0x0A00000F
 
 #define LEASE_TIME (24 * 3600)
 
@@ -40,9 +41,12 @@ BOOTPClient bootp_clients[NB_ADDR];
 
 static const uint8_t rfc1533_cookie[] = { RFC1533_COOKIE };
 #if BOOTP_VEND_NEXT
-static const uint8_t magic_next[] = {'N','e','X','T'};
+static const uint8_t magic_next[]  = {'N','e','X','T'};
+static const char    kernel_next[] = "mach";
+static const char    tftp_root[]   = "/tftpboot/";
 #endif
 
+static char hostname[_SC_HOST_NAME_MAX];
 
 static BOOTPClient *get_new_addr(struct in_addr *paddr)
 {
@@ -131,6 +135,8 @@ static void bootp_reply(struct bootp_t *bp)
     int dhcp_msg_type;
     uint8_t *q;
 
+    gethostname(hostname, _SC_HOST_NAME_MAX);
+
     /* extract exact DHCP msg type */
     dhcp_decode(bp->bp_vend, DHCP_OPT_LEN, &dhcp_msg_type);
     
@@ -178,15 +184,22 @@ static void bootp_reply(struct bootp_t *bp)
 
     rbp->bp_yiaddr = daddr.sin_addr; /* Client IP address */
     rbp->bp_siaddr = saddr.sin_addr; /* Server IP address */
-
+    
     q = rbp->bp_vend;
 #if BOOTP_VEND_NEXT
+    char path[TFTP_FILENAME_MAX];
+    if(bp->bp_file[0])
+        sprintf(path, "%s%s", tftp_root, bp->bp_file);
+    else
+        sprintf(path, "%s", kernel_next);
+    memcpy(rbp->bp_file, path, strlen(path)+1);
     memcpy(q, magic_next, 4);
     q += 4;
     *q++ = 1;
     *q++ = 0;
     *q++ = 0;
     memset(q, 0, 56);
+    strncpy((char*)q, hostname, 55);
     q += 56;
     *q++ = 0;
 #else
@@ -233,13 +246,11 @@ static void bootp_reply(struct bootp_t *bp)
         memcpy(q, &val, 4);
         q += 4;
 
-        if (*slirp_hostname) {
-            val = strlen(slirp_hostname);
-            *q++ = RFC1533_HOSTNAME;
-            *q++ = val;
-            memcpy(q, slirp_hostname, val);
-            q += val;
-        }
+        val = strlen(hostname);
+        *q++ = RFC1533_HOSTNAME;
+        *q++ = val;
+        memcpy(q, hostname, val);
+        q += val;
     }
     *q++ = RFC1533_END;
 #endif

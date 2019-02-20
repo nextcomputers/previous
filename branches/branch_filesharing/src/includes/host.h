@@ -35,7 +35,8 @@ extern "C" {
     typedef SDL_SpinLock       lock_t;
     typedef SDL_Thread         thread_t;
     typedef SDL_ThreadFunction thread_func_t;
-
+    typedef SDL_mutex          mutex_t;
+    
     void        host_reset(void);
     void        host_blank(int slot, int src, bool state);
     bool        host_blank_state(int slot, int src);
@@ -60,10 +61,14 @@ extern "C" {
     int         host_atomic_set(atomic_int* a, int newValue);
     int         host_atomic_get(atomic_int* a);
     bool        host_atomic_cas(atomic_int* a, int oldValue, int newValue);
+    mutex_t*    host_mutex_create(void);
+    void        host_mutex_lock(mutex_t* mutex);
+    void        host_mutex_unlock(mutex_t* mutex);
+    void        host_mutex_destroy(mutex_t* mutex);
     thread_t*   host_thread_create(thread_func_t, const char* name, void* data);
     int         host_thread_wait(thread_t* thread);
     Uint8*      host_malloc_aligned(size_t size);
-#ifdef __cplusplus
+    #ifdef __cplusplus
 }
 #endif
 
