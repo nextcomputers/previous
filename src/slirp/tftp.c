@@ -23,6 +23,7 @@
  */
 
 #include <slirp.h>
+#include "configuration.h"
 
 struct tftp_session {
     int in_use;
@@ -36,7 +37,7 @@ struct tftp_session {
 
 struct tftp_session tftp_sessions[TFTP_SESSIONS_MAX];
 
-const char *tftp_prefix;
+const char *tftp_prefix = "/";
 
 static void tftp_session_update(struct tftp_session *spt)
 {
@@ -102,8 +103,9 @@ static int tftp_read_data(struct tftp_session *spt, u_int16_t block_nr,
 {
   int fd;
   int bytes_read = 0;
-
-  fd = open(spt->filename, O_RDONLY | O_BINARY);
+  char path[1024];
+  sprintf(path, "%s%s", ConfigureParams.Ethernet.szNFSroot, spt->filename);
+  fd = open(path, O_RDONLY | O_BINARY);
 
   if (fd < 0) {
     return -1;

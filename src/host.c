@@ -256,7 +256,23 @@ int host_thread_wait(thread_t* thread) {
   SDL_WaitThread(thread, &status);
   return status;
 }
-                
+
+mutex_t* host_mutex_create(void) {
+    return SDL_CreateMutex();
+}
+
+void host_mutex_lock(mutex_t* mutex) {
+    SDL_LockMutex(mutex);
+}
+
+void host_mutex_unlock(mutex_t* mutex) {
+    SDL_UnlockMutex(mutex);
+}
+
+void host_mutex_destroy(mutex_t* mutex) {
+    SDL_DestroyMutex(mutex);
+}
+
 int host_num_cpus() {
   return  SDL_GetCPUCount();
 }

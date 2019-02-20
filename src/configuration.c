@@ -238,6 +238,7 @@ static const struct Config_Tag configs_Ethernet[] =
 
     { "nHostInterface", Int_Tag, &ConfigureParams.Ethernet.nHostInterface },
     { "szInterfaceName", String_Tag, ConfigureParams.Ethernet.szInterfaceName },
+    { "szNFSroot", String_Tag, ConfigureParams.Ethernet.szNFSroot },
 
     { NULL , Error_Tag, NULL }
 };
@@ -395,7 +396,8 @@ void Configuration_SetDefault(void)
     ConfigureParams.Ethernet.bTwistedPair = false;
     ConfigureParams.Ethernet.nHostInterface = ENET_SLIRP;
     strcpy(ConfigureParams.Ethernet.szInterfaceName, "");
-    
+    strcpy(ConfigureParams.Ethernet.szNFSroot, "⁨");
+
 	/* Set defaults for Keyboard */
     ConfigureParams.Keyboard.bSwapCmdAlt = false;
 	ConfigureParams.Keyboard.nKeymapType = KEYMAP_SCANCODE;

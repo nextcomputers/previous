@@ -41,6 +41,7 @@
 #include <stdlib.h>
 #include <slirp.h>
 #include "ip_icmp.h"
+#include "nfs/nfsd.h"
 
 struct udpstat udpstat;
 
@@ -111,7 +112,7 @@ udp_input(m, iphlen)
 	if (ip->ip_len != len) {
 		if (len > ip->ip_len) {
 			udpstat.udps_badlen++;
-			goto bad;
+			goto done;
 		}
 		m_adj(m, len - ip->ip_len);
 		ip->ip_len = len;
@@ -137,25 +138,41 @@ udp_input(m, iphlen)
 	   */
 	  if(cksum(m, len + sizeof(struct ip))) {
 	    udpstat.udps_badsum++;
-	    goto bad;
+	    goto done;
 	  }
 	}
-
-        /*
-         *  handle DHCP/BOOTP
-         */
-        if (ntohs(uh->uh_dport) == BOOTP_SERVER) {
+    
+    int dport = ntohs(uh->uh_dport);
+    switch(dport) {
+        case BOOTP_SERVER:
             bootp_input(m);
-            goto bad;
-        }
-
-        /*
-         *  handle TFTP
-         */
-        if (ntohs(uh->uh_dport) == TFTP_SERVER) {
+            goto done;
+            break;
+        case TFTP_SERVER:
             tftp_input(m);
-            goto bad;
-        }
+            goto done;
+            break;
+        case PORTMAP_PORT:
+            if(nfsd_match_addr(ntohl(save_ip.ip_dst.s_addr))) {
+                // map port & address for NFS
+                uh->uh_dport = htons(mapped_udp_portmap_port);
+                ip->ip_dst   = loopback_addr;
+            }
+            break;
+        case NFS_PORT:
+            if(nfsd_match_addr(ntohl(save_ip.ip_dst.s_addr))) {
+                // map port & address for NFS
+                uh->uh_dport = htons(mapped_udp_nfs_port);
+                ip->ip_dst   = loopback_addr;
+            }
+            break;
+        default:
+            if(nfsd_match_addr(ntohl(save_ip.ip_dst.s_addr))) {
+                if(dport == udp_mount_port)
+                    ip->ip_dst   = loopback_addr;
+            }
+            break;
+    }
 
 	/*
 	 * Locate pcb for datagram.
@@ -187,12 +204,12 @@ udp_input(m, iphlen)
 	   * If there's no socket for this packet,
 	   * create one
 	   */
-	  if ((so = socreate()) == NULL) goto bad;
+	  if ((so = socreate()) == NULL) goto done;
 	  if(udp_attach(so) == -1) {
 	    DEBUG_MISC((dfd," udp_attach errno = %d-%s\n", 
 			errno,strerror(errno)));
 	    sofree(so);
-	    goto bad;
+	    goto done;
 	  }
 	  
 	  /*
@@ -241,7 +258,9 @@ udp_input(m, iphlen)
 	so->so_m=m;         /* ICMP backup */
 
 	return;
-bad:
+    
+    
+done:
 	m_freem(m);
 	/* if (opts) m_freem(opts); */
 	return;

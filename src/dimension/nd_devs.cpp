@@ -199,8 +199,8 @@ static const char* decodeBits(const char** bits, uae_u32 val) {
     return buffer;
 }
 
-static const char* MC_RD_FORMAT   = "[ND] Memory controller %s read %08X at %08X";
-static const char* MC_RD_FORMAT_S = "[ND] Memory controller %s read (%s) at %08X";
+// static const char* MC_RD_FORMAT   = "[ND] Memory controller %s read %08X at %08X";
+// static const char* MC_RD_FORMAT_S = "[ND] Memory controller %s read (%s) at %08X";
 
 Uint32 MC::read(Uint32 addr) {
 	switch (addr&0x3FFF) {
@@ -277,8 +277,8 @@ Uint32 MC::read(Uint32 addr) {
 	return 0;
 }
 
-static const char* MC_WR_FORMAT   = "[ND] Memory controller %s write %08X at %08X";
-static const char* MC_WR_FORMAT_S = "[ND] Memory controller %s write (%s) at %08X";
+// static const char* MC_WR_FORMAT   = "[ND] Memory controller %s write %08X at %08X";
+// static const char* MC_WR_FORMAT_S = "[ND] Memory controller %s write (%s) at %08X";
 
 void MC::write(Uint32 addr, Uint32 val) {
     switch (addr&0x3FFF) {

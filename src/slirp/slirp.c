@@ -1,4 +1,6 @@
+#include "configuration.h"
 #include "slirp.h"
+#include "nfs/nfsd.h"
 
 /* host address */
 struct in_addr our_addr;
@@ -26,8 +28,6 @@ struct ex_list *exec_list;
 
 /* XXX: suppress those select globals */
 fd_set *global_readfds, *global_writefds, *global_xfds;
-
-char slirp_hostname[33];
 
 #ifdef _WIN32
 
@@ -124,18 +124,19 @@ static int get_dns_addr(struct in_addr *pdns_addr)
 static void slirp_cleanup(void)
 {
     WSACleanup();
+    nfsd_cleanup();
 }
 #endif
 
 int slirp_init(void)
 {
-    //    debug_init("/tmp/slirp.log", DEBUG_DEFAULT);
+    // debug_init("/tmp/slirp.log", DEBUG_DEFAULT);
     
 #ifdef _WIN32
     {
         WSADATA Data;
         WSAStartup(MAKEWORD(2,0), &Data);
-	atexit(slirp_cleanup);
+        atexit(slirp_cleanup);
     }
 #endif
 
@@ -150,12 +151,16 @@ int slirp_init(void)
     /* set default addresses */
     inet_aton("127.0.0.1", &loopback_addr);
 
+    /* start local nfs deamon */
+    nfsd_start();
+
     if (get_dns_addr(&dns_addr) < 0)
         return -1;
 
-    inet_aton(CTL_SPECIAL, &special_addr);
+    special_addr.s_addr = htonl(CTL_BASE);
 	alias_addr.s_addr = special_addr.s_addr | htonl(CTL_ALIAS);
 	getouraddr();
+    
     return 0;
 }
 
@@ -570,7 +575,7 @@ static void arp_input(const uint8_t *pkt, int pkt_len)
     switch(ar_op) {
     case ARPOP_REQUEST:
         if (!memcmp(ah->ar_tip, &special_addr, 3)) {
-            if (ah->ar_tip[3] == CTL_DNS || ah->ar_tip[3] == CTL_ALIAS) 
+            if (ah->ar_tip[3] == CTL_DNS || ah->ar_tip[3] == CTL_ALIAS || ah->ar_tip[3] == CTL_NFSD) 
                 goto arp_ok;
             for (ex_ptr = exec_list; ex_ptr; ex_ptr = ex_ptr->ex_next) {
                 if (ex_ptr->ex_addr == ah->ar_tip[3])
