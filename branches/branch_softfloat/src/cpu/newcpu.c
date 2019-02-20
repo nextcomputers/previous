@@ -922,7 +922,12 @@ static void Exception_mmu030 (int nr, uaecptr oldpc)
     } else if (nr ==5 || nr == 6 || nr == 7 || nr == 9 || nr == 56) {
         Exception_build_stack_frame (oldpc, currpc, regs.mmu_ssw, nr, 0x2);
     } else if (nr == 2) {
-        Exception_build_stack_frame (oldpc, currpc, regs.mmu_ssw, nr,  0xB);
+        if (0) {
+            // not that simple
+            Exception_build_stack_frame(oldpc, currpc, regs.mmu_ssw, nr, 0xA);
+        } else {
+            Exception_build_stack_frame(oldpc, currpc, regs.mmu_ssw, nr, 0xB);
+        }
     } else if (nr == 3) {
 		regs.mmu_fault_addr = last_fault_for_exception_3;
 		mmu030_state[0] = mmu030_state[1] = 0;
@@ -1399,7 +1404,7 @@ insretry:
 		}
 	} CATCH (prb) {
 
-        if (mmu030_opcode == -1 && currprefs.cpu_compatible) {
+        if (mmu030_opcode == -1) {
             // full prefetch fill access fault
             // TODO: this should create shorter A-frame
             mmufixup[0].reg = -1;
