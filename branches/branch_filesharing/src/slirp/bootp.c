@@ -23,12 +23,13 @@
  */
 #include <slirp.h>
 #include <unistd.h>
+#include "ctl.h"
 
 /* XXX: only DHCP is supported */
 
 #define NB_ADDR 16
 
-#define START_ADDR 0x0A00000F
+#define START_ADDR 15
 
 #define LEASE_TIME (24 * 3600)
 
@@ -173,7 +174,6 @@ static void bootp_reply(struct bootp_t *bp)
 
     saddr.sin_addr.s_addr = htonl(ntohl(special_addr.s_addr) | CTL_ALIAS);
     saddr.sin_port = htons(BOOTP_SERVER);
-
     daddr.sin_port = htons(BOOTP_CLIENT);
 
     rbp->bp_op = BOOTP_REPLY;
@@ -199,7 +199,6 @@ static void bootp_reply(struct bootp_t *bp)
     *q++ = 0;
     *q++ = 0;
     memset(q, 0, 56);
-    strncpy((char*)q, hostname, 55);
     q += 56;
     *q++ = 0;
 #else
@@ -224,14 +223,14 @@ static void bootp_reply(struct bootp_t *bp)
 
         *q++ = RFC1533_NETMASK;
         *q++ = 4;
-        *q++ = 0xff;
-        *q++ = 0xff;
-        *q++ = 0xff;
-        *q++ = 0x00;
-        
+        val = htonl(CTL_NET_MASK);
+        memcpy(q, &val, 4);
+        q += 4;
+
         *q++ = RFC1533_GATEWAY;
         *q++ = 4;
-        memcpy(q, &saddr.sin_addr, 4);
+        val = htonl(ntohl(special_addr.s_addr) | CTL_GATEWAY);
+        memcpy(q, &val, 4);
         q += 4;
         
         *q++ = RFC1533_DNS;

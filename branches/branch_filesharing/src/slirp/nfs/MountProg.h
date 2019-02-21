@@ -21,7 +21,6 @@ public:
     void        Export(std::string exportPath, std::string pathAlias);
 	const char* GetClientAddr(int nIndex) const;
 	int         GetMountNumber(void) const;
-	int         Process(void);
 
 protected:
 	int                                m_nMountNum;

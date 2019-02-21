@@ -152,14 +152,14 @@ udp_input(m, iphlen)
             tftp_input(m);
             goto done;
             break;
-        case PORTMAP_PORT:
+        case PORT_PORTMAP:
             if(nfsd_match_addr(ntohl(save_ip.ip_dst.s_addr))) {
                 // map port & address for NFS
                 uh->uh_dport = htons(mapped_udp_portmap_port);
                 ip->ip_dst   = loopback_addr;
             }
             break;
-        case NFS_PORT:
+        case PORT_NFS:
             if(nfsd_match_addr(ntohl(save_ip.ip_dst.s_addr))) {
                 // map port & address for NFS
                 uh->uh_dport = htons(mapped_udp_nfs_port);

@@ -10,6 +10,9 @@
 /* The maximum number of bytes in a file name argument. */
 #define MAXNAMELEN 255
 
+/* The maximum number of remote procedures per program. */
+#define MAX_NUM_PROCS 32
+
 /* The size in bytes of the opaque file handle. */
 #define FHSIZE      32
 #define FHSIZE_NFS3 64
@@ -33,6 +36,10 @@ typedef struct
 
 #include "XDRStream.h"
 
+class CRPCProg;
+
+typedef int (CRPCProg::*PPROC)(void);
+
 class CRPCProg
 {
 public:
@@ -41,17 +48,20 @@ public:
     
     void         Init(uint16_t portTCP, uint16_t portUDP);
     void         Setup(XDRInput* xin, XDROutput* xout, ProcessParam* param);
-	virtual int  Process(void) = 0;
+	virtual int  Process(void);
 	virtual void SetLogOn(bool bLogOn);
     int          GetProgNum(void) const;
     int          GetVersion(void) const;
     const char*  GetName(void)    const;
     uint16_t     GetPortTCP(void) const;
     uint16_t     GetPortUDP(void) const;
-    int          Null(void);
-    int          Notimp(void);
+    
+    int          ProcedureNULL(void);
+    int          ProcedureNOTIMPL(void);
     
 protected:
+    PPROC          m_procs[MAX_NUM_PROCS];
+    const char*    m_procNames[MAX_NUM_PROCS];
 	bool           m_bLogOn;
     int            m_progNum;
     int            m_version;
@@ -62,10 +72,12 @@ protected:
     XDRInput*      m_in;
     XDROutput*     m_out;
 
+    void           _SetProc(int procNum, const char* name, PPROC proc);
 	size_t         Log(const char *format, ...) const;
 };
 
-typedef int (CRPCProg::*PPROC)(void);
+#define SetProc(num, proc) _SetProc(num, #proc, (PPROC)&RPC_PROG_CLASS::Procedure##proc)
+
 #endif
 
 #endif

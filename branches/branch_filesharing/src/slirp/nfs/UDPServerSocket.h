@@ -16,11 +16,11 @@ public:
 	void Run(void);
 
 private:
-	int m_nPort;
-	int m_Socket;
-	CSocket *m_pSocket;
-	bool m_bClosed;
-	ISocketListener *m_pListener;
+	int              m_nPort;
+	int              m_Socket;
+	CSocket*         m_pSocket;
+	bool             m_bClosed;
+	ISocketListener* m_pListener;
 };
 
 #endif

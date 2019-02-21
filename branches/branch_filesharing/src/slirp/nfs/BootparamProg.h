@@ -14,12 +14,11 @@
 class CBootparamProg : public CRPCProg
 {
     int Null(void);
-    int Whoami(void);
-    int Getfile(void);
+    int ProcedureWHOAMI(void);
+    int ProcedureGETFILE(void);
 public:
     CBootparamProg();
     virtual ~CBootparamProg();
-    int      Process();
 };
 
 #endif /* BootparamProg_h */

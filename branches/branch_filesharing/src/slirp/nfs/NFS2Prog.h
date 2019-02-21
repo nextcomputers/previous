@@ -11,7 +11,6 @@ public:
 	CNFS2Prog();
 	~CNFS2Prog();
 	void SetUserID(unsigned int nUID, unsigned int nGID);
-	int  Process(void);
 
 protected:
 	unsigned int m_nUID, m_nGID;

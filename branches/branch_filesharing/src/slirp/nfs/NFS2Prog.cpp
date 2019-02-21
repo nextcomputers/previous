@@ -3,7 +3,7 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 
-#include "NFSProg.h"
+#include "NFS2Prog.h"
 #include "FileTable.h"
 #include "nfsd.h"
 
@@ -39,48 +39,28 @@ enum
 	NFLNK = 5,
 };
 
-CNFS2Prog::CNFS2Prog() : CRPCProg(PROG_NFS, 2, "nfsd")
-{
-	m_nUID = m_nGID = 0;
+CNFS2Prog::CNFS2Prog() : CRPCProg(PROG_NFS, 2, "nfsd"), m_nUID(0), m_nGID(0) {
+    #define RPC_PROG_CLASS CNFS2Prog
+    SetProc(1,  GETATTR);
+    SetProc(2,  SETATTR);
+    SetProc(4,  LOOKUP);
+    SetProc(6,  READ);
+    SetProc(8,  WRITE);
+    SetProc(9,  CREATE);
+    SetProc(10, REMOVE);
+    SetProc(11, RENAME);
+    SetProc(14, MKDIR);
+    SetProc(15, RMDIR);
+    SetProc(16, READDIR);
+    SetProc(17, STATFS);
 }
 
-CNFS2Prog::~CNFS2Prog()
-{
-}
+CNFS2Prog::~CNFS2Prog() { }
 
 void CNFS2Prog::SetUserID(unsigned int nUID, unsigned int nGID)
 {
 	m_nUID = nUID;
 	m_nGID = nGID;
-}
-
-int CNFS2Prog::Process(void)
-{
-	static PPROC pf[] = {
-        &CRPCProg::Null,
-        (PPROC)&CNFS2Prog::ProcedureGETATTR,
-        (PPROC)&CNFS2Prog::ProcedureSETATTR,
-        &CRPCProg::Notimp,
-        (PPROC)&CNFS2Prog::ProcedureLOOKUP,
-        &CRPCProg::Notimp,
-        (PPROC)&CNFS2Prog::ProcedureREAD,
-        &CRPCProg::Notimp,
-        (PPROC)&CNFS2Prog::ProcedureWRITE,
-        (PPROC)&CNFS2Prog::ProcedureCREATE,
-        (PPROC)&CNFS2Prog::ProcedureREMOVE,
-        (PPROC)&CNFS2Prog::ProcedureRENAME,
-        &CRPCProg::Notimp,
-        &CRPCProg::Notimp,
-        (PPROC)&CNFS2Prog::ProcedureMKDIR,
-        (PPROC)&CNFS2Prog::ProcedureRMDIR,
-        (PPROC)&CNFS2Prog::ProcedureREADDIR,
-        (PPROC)&CNFS2Prog::ProcedureSTATFS
-        
-    };
-
-	if (m_param->proc >= sizeof(pf) / sizeof(PPROC)) return PRC_NOTIMP;
-
-    return (this->*pf[m_param->proc])();
 }
 
 int CNFS2Prog::ProcedureGETATTR(void) {
