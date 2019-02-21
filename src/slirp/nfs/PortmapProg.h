@@ -12,7 +12,6 @@ public:
     CPortmapProg();
     virtual ~CPortmapProg();
     void Add(CRPCProg* prog);
-    int  Process();
     
 protected:
     

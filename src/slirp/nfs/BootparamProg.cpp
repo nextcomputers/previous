@@ -7,27 +7,18 @@
 
 #include <string.h>
 #include <sys/syslimits.h>
+#include <netinet/in.h>
 
 #include "nfsd.h"
 #include "BootparamProg.h"
 
-CBootparamProg::CBootparamProg() : CRPCProg(PROG_BOOTPARAM, 1, "bootparamd") {}
+CBootparamProg::CBootparamProg() : CRPCProg(PROG_BOOTPARAM, 1, "bootparamd") {
+    #define RPC_PROG_CLASS CBootparamProg
+    SetProc(1, WHOAMI);
+    SetProc(2, GETFILE);
+}
 
 CBootparamProg::~CBootparamProg() {}
-
-int CBootparamProg::Process(void) {
-    static PPROC pf[] = {
-        &CRPCProg::Null,
-        (PPROC)&CBootparamProg::Whoami,
-        (PPROC)&CBootparamProg::Getfile
-    };
-    
-    if (m_param->proc >= sizeof(pf) / sizeof(PPROC))
-        return PRC_NOTIMP;
-    
-    int result = (this->*pf[m_param->proc])();
-    return result;
-}
 
 const int IP_ADDR_TYPE    = 1;
 
@@ -39,7 +30,9 @@ static void WriteInAddr(XDROutput* out, uint32_t inAddr) {
     out->Write(0xFF&(inAddr));
 }
 
-int CBootparamProg::Whoami(void) {
+extern "C" struct in_addr special_addr;
+
+int CBootparamProg::ProcedureWHOAMI(void) {
     uint32_t address_type;
     uint8_t  net;
     uint8_t  host;
@@ -70,11 +63,11 @@ int CBootparamProg::Whoami(void) {
     }
     m_out->Write(_SC_HOST_NAME_MAX, client);
     m_out->Write(_SC_HOST_NAME_MAX, domain);
-    WriteInAddr(m_out, INADDR_GATEWAY);
+    WriteInAddr(m_out, ntohl(special_addr.s_addr) | CTL_GATEWAY);
     return PRC_OK;
 }
 
-int CBootparamProg::Getfile(void) {
+int CBootparamProg::ProcedureGETFILE(void) {
     XDRString client;
     XDRString key;
     m_in->Read(client);
@@ -91,7 +84,7 @@ int CBootparamProg::Getfile(void) {
     }
     if(path) {
         m_out->Write(_SC_HOST_NAME_MAX, nfsd_hostname);
-        WriteInAddr(m_out, INADDR_NFSD);
+        WriteInAddr(m_out, ntohl(special_addr.s_addr) | CTL_NFSD);
         m_out->Write(PATH_MAX, path);
         if(deletePath) delete[] path;
         return PRC_OK;

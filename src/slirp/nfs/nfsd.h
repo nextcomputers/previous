@@ -7,9 +7,6 @@
 
 #include "RPCProg.h"
 
-static const uint32_t INADDR_NFSD    = CTL_BASE | CTL_NFSD;    // 10.0.2.254
-static const uint32_t INADDR_GATEWAY = CTL_BASE | CTL_GATEWAY; // 10.0.2.1
-
 extern int  mapped_udp_portmap_port;
 extern int  udp_mount_port;
 extern int  mapped_udp_nfs_port;
@@ -20,8 +17,8 @@ extern int  mapped_tcp_nfs_port;
 
 extern char nfsd_export_path[MAXPATHLEN];
 
-#define PORTMAP_PORT 111
-#define NFS_PORT     2049
+#define PORT_PORTMAP  111
+#define PORT_NFS      2049
 
 enum {
     PROG_PORTMAP   = 100000,

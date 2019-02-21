@@ -29,8 +29,7 @@ int CNFSProg::Process(void) {
     }
 }
 
-void CNFSProg::SetLogOn(bool bLogOn)
-{
+void CNFSProg::SetLogOn(bool bLogOn) {
     CRPCProg::SetLogOn(bLogOn);
 
     m_NFS2Prog.SetLogOn(bLogOn);

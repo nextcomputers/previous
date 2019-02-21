@@ -189,7 +189,7 @@ public:
     CNFS3Prog();
     ~CNFS3Prog();
     void SetUserID(unsigned int nUID, unsigned int nGID);
-    int  Process();
+    virtual int  Process();
 
 protected:
     uint32_t m_nUID, m_nGID;

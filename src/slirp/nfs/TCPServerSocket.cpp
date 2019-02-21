@@ -80,9 +80,9 @@ void TCPServerSocket::Close(void)
 
 	close(m_ServerSocket);
 
-    if      (m_nPort == PORTMAP_PORT)   mapped_tcp_portmap_port = 0;
+    if      (m_nPort == PORT_PORTMAP)   mapped_tcp_portmap_port = 0;
     else if (m_nPort == udp_mount_port) tcp_mount_port          = 0;
-    else if (m_nPort == NFS_PORT)       mapped_tcp_nfs_port     = 0;
+    else if (m_nPort == PORT_NFS)       mapped_tcp_nfs_port     = 0;
     
 	if (m_hThread != NULL)
 	{
@@ -98,27 +98,22 @@ void TCPServerSocket::Close(void)
 	}
 }
 
-int TCPServerSocket::GetPort(void)
-{
+int TCPServerSocket::GetPort(void) {
 	return m_nPort;
 }
 
-void TCPServerSocket::Run(void)
-{
+void TCPServerSocket::Run(void) {
     int i;
     socklen_t nSize;
 	struct sockaddr_in remoteAddr;
 	int socket;
 
 	nSize = sizeof(remoteAddr);
-	while (!m_bClosed)
-	{
+	while (!m_bClosed) {
         socket = accept(m_ServerSocket, (struct sockaddr *)&remoteAddr, &nSize);  //accept connection
-		if (socket != INVALID_SOCKET)
-		{
+		if (socket != INVALID_SOCKET) {
 			for (i = 0; i < BACKLOG; i++)
-				if (!m_pSockets[i]->Active())  //find an inactive CSocket
-				{
+				if (!m_pSockets[i]->Active()) {   //find an inactive CSocket
 					m_pSockets[i]->Open(socket, m_pListener, &remoteAddr);  //receive input data
 					break;
 				}

@@ -6,40 +6,19 @@
 #include "XDRStream.h"
 
 #define MIN_PROG_NUM 100000
-enum
-{
-	MAPPROC_NULL = 0,
-	MAPPROC_SET = 1,
-	MAPPROC_UNSET = 2,
-	MAPPROC_GETPORT = 3,
-	MAPPROC_DUMP = 4,
-	MAPPROC_CALLIT = 5
-};
 
 CPortmapProg::CPortmapProg() : CRPCProg(PROG_PORTMAP, 2, "portmapd") {
     memset(m_nProgTable, 0, PORT_NUM * sizeof(CRPCProg*));
+    #define RPC_PROG_CLASS CPortmapProg
+    SetProc(3, GETPORT);
+    SetProc(4, DUMP);
+    SetProc(5, CALLIT);
 }
 
 CPortmapProg::~CPortmapProg() {}
 
 void CPortmapProg::Add(CRPCProg* prog) {
     m_nProgTable[prog->GetProgNum() - MIN_PROG_NUM] = prog;
-}
-
-int CPortmapProg::Process(void)
-{
-    static PPROC pf[] = {
-        &CRPCProg::Null,
-        &CRPCProg::Notimp, // SET
-        &CRPCProg::Notimp, // UNSET
-        (PPROC)&CPortmapProg::ProcedureGETPORT,
-        (PPROC)&CPortmapProg::ProcedureDUMP,
-        (PPROC)&CPortmapProg::ProcedureCALLIT
-    };
-        
-    if (m_param->proc >= sizeof(pf) / sizeof(PPROC)) return PRC_NOTIMP;
-    
-    return (this->*pf[m_param->proc])();
 }
 
 const CRPCProg* CPortmapProg::GetProg(int prog) {
@@ -108,8 +87,6 @@ int CPortmapProg::ProcedureCALLIT(void)
     param.proc       = proc;
     param.version    = vers;
     param.remoteAddr = m_param->remoteAddr;
-
-    Log("CALLIT %s %d:%d:%d(...)", cprog->GetName(), cprog->GetProgNum(), cprog->GetVersion(), proc);
 
     XDRInput  din(in);
     XDROutput dout;

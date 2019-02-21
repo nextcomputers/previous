@@ -154,12 +154,10 @@ int slirp_init(void)
     /* start local nfs deamon */
     nfsd_start();
 
-    if (get_dns_addr(&dns_addr) < 0)
-        return -1;
-
-    special_addr.s_addr = htonl(CTL_BASE);
-	alias_addr.s_addr = special_addr.s_addr | htonl(CTL_ALIAS);
+    special_addr.s_addr = htonl(CTL_NET);
+	alias_addr.s_addr   = special_addr.s_addr | htonl(CTL_ALIAS);
 	getouraddr();
+    get_dns_addr(&dns_addr);
     
     return 0;
 }

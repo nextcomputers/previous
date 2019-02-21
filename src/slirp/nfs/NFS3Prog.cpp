@@ -8,7 +8,7 @@
 #include <string>
 #include <algorithm>
 
-#include "NFSProg.h"
+#include "NFS3Prog.h"
 #include "FileTable.h"
 #include "nfsd.h"
 #include "compat.h"
@@ -98,12 +98,34 @@ enum
     EXCLUSIVE = 2
 };
 
-CNFS3Prog::CNFS3Prog() : CRPCProg(PROG_NFS, 3, "nfds"), m_nUID(0), m_nGID(0) {}
+CNFS3Prog::CNFS3Prog() : CRPCProg(PROG_NFS, 3, "nfds"), m_nUID(0), m_nGID(0) {
+    #define RPC_PROG_CLASS CNFS3Prog
+    SetProc(1,  GETATTR);
+    SetProc(2,  SETATTR);
+    SetProc(3,  LOOKUP);
+    SetProc(4,  ACCESS);
+    SetProc(5,  READLINK);
+    SetProc(6,  READ);
+    SetProc(7,  WRITE);
+    SetProc(8,  CREATE);
+    SetProc(9,  MKDIR);
+    SetProc(10, SYMLINK);
+    SetProc(11, MKNOD);
+    SetProc(12, REMOVE);
+    SetProc(13, RMDIR);
+    SetProc(14, RENAME);
+    SetProc(15, LINK);
+    SetProc(16, READDIR);
+    SetProc(17, READDIRPLUS);
+    SetProc(18, FSSTAT);
+    SetProc(19, FSINFO);
+    SetProc(20, PATHCONF);
+    SetProc(21, COMMIT);
+}
 
 CNFS3Prog::~CNFS3Prog() {}
 
-void CNFS3Prog::SetUserID(unsigned int nUID, unsigned int nGID)
-{
+void CNFS3Prog::SetUserID(unsigned int nUID, unsigned int nGID) {
     m_nUID = nUID;
     m_nGID = nGID;
 }
@@ -147,28 +169,6 @@ int CNFS3Prog::Process(void) {
     int result = PRC_OK;
     
     static PPROC pf[] = { 
-        &CRPCProg::Null,
-        (PPROC)&CNFS3Prog::ProcedureGETATTR,
-        (PPROC)&CNFS3Prog::ProcedureSETATTR,
-        (PPROC)&CNFS3Prog::ProcedureLOOKUP,
-        (PPROC)&CNFS3Prog::ProcedureACCESS,
-        (PPROC)&CNFS3Prog::ProcedureREADLINK,
-        (PPROC)&CNFS3Prog::ProcedureREAD,
-        (PPROC)&CNFS3Prog::ProcedureWRITE,
-        (PPROC)&CNFS3Prog::ProcedureCREATE,
-        (PPROC)&CNFS3Prog::ProcedureMKDIR,
-        (PPROC)&CNFS3Prog::ProcedureSYMLINK,
-        (PPROC)&CNFS3Prog::ProcedureMKNOD,
-        (PPROC)&CNFS3Prog::ProcedureREMOVE,
-        (PPROC)&CNFS3Prog::ProcedureRMDIR,
-        (PPROC)&CNFS3Prog::ProcedureRENAME,
-        (PPROC)&CNFS3Prog::ProcedureLINK,
-        (PPROC)&CNFS3Prog::ProcedureREADDIR,
-        (PPROC)&CNFS3Prog::ProcedureREADDIRPLUS,
-        (PPROC)&CNFS3Prog::ProcedureFSSTAT,
-        (PPROC)&CNFS3Prog::ProcedureFSINFO,
-        (PPROC)&CNFS3Prog::ProcedurePATHCONF,
-        (PPROC)&CNFS3Prog::ProcedureCOMMIT
     };
 
     nfsstat3 stat = NFS3_OK;

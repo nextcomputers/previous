@@ -77,8 +77,8 @@ extern "C" void nfsd_start(void) {
 	MountProg.Export(nfsd_export_path, nfsd_export_path);
 	g_RPCServer.SetLogOn(g_bLogOn);
 
-    add_program(&g_PortmapProg, PORTMAP_PORT);
-    add_program(&NFSProg,       NFS_PORT);
+    add_program(&g_PortmapProg, PORT_PORTMAP);
+    add_program(&NFSProg,       PORT_NFS);
     add_program(&MountProg);
     add_program(&BootparamProg);
 }
@@ -93,7 +93,7 @@ extern "C" void nfsd_cleanup(void) {
 }
 
 extern "C" int nfsd_match_addr(uint32_t addr) {
-    return addr == INADDR_NFSD || (addr & CTL_NET_MASK) == (INADDR_NFSD & CTL_NET_MASK);
+    return (addr == (ntohl(special_addr.s_addr) | CTL_NFSD)) || (addr == (ntohl(special_addr.s_addr) | 0x00FFFFFF)); // NS kernel seems to braodcast on 10.255.255.255
 }
 
 extern "C" void nfsd_not_implemented(const char* file, int line) {

@@ -101,9 +101,9 @@ void CSocket::Run(void)
 	for (;;)
 	{
 		if (m_nType == SOCK_STREAM)
-			nBytes = recv(m_Socket, (char *)m_Input.GetBuffer(), m_Input.GetCapacity(), 0);
+			nBytes = recv(m_Socket, m_Input.GetBuffer(), 1024 /*m_Input.GetCapacity()*/, 0);
 		else if (m_nType == SOCK_DGRAM)
-			nBytes = recvfrom(m_Socket, (char *)m_Input.GetBuffer(), m_Input.GetCapacity(), 0, (struct sockaddr *)&m_RemoteAddr, &nSize);
+			nBytes = recvfrom(m_Socket, m_Input.GetBuffer(), m_Input.GetCapacity(), 0, (struct sockaddr *)&m_RemoteAddr, &nSize);
 		if (nBytes > 0)
 		{
 			m_Input.SetSize(nBytes);  //bytes received
@@ -136,9 +136,9 @@ void CSocket::map_port(int type, int progNum, uint16_t port) {
 }
 
 uint16_t CSocket::map_and_htons(int sockType, uint16_t port) {
-    if     (sockType == SOCK_DGRAM  && port == PORTMAP_PORT) return htons(mapped_udp_portmap_port);
-    else if(sockType == SOCK_STREAM && port == PORTMAP_PORT) return htons(mapped_tcp_portmap_port);
-    if     (sockType == SOCK_DGRAM  && port == NFS_PORT)     return htons(mapped_udp_nfs_port);
-    else if(sockType == SOCK_STREAM && port == NFS_PORT)     return htons(mapped_tcp_nfs_port);
+    if     (sockType == SOCK_DGRAM  && port == PORT_PORTMAP) return htons(mapped_udp_portmap_port);
+    else if(sockType == SOCK_STREAM && port == PORT_PORTMAP) return htons(mapped_tcp_portmap_port);
+    if     (sockType == SOCK_DGRAM  && port == PORT_NFS)     return htons(mapped_udp_nfs_port);
+    else if(sockType == SOCK_STREAM && port == PORT_NFS)     return htons(mapped_tcp_nfs_port);
     else                                                     return htons(port);
 }

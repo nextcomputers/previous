@@ -20,6 +20,10 @@ enum
 CMountProg::CMountProg() : CRPCProg(PROG_MOUNT, 3, "mountd"), m_nMountNum(0) {
 	m_exportPath[0] = '\0';
 	memset(m_clientAddr, 0, sizeof(m_clientAddr));
+    #define RPC_PROG_CLASS CMountProg
+    SetProc(1, MNT);
+    SetProc(3, UMNT);
+    SetProc(5, EXPORT);
 }
 
 CMountProg::~CMountProg() {
@@ -58,21 +62,6 @@ const char* CMountProg::GetClientAddr(int nIndex) const {
         }
 	}
 	return NULL;
-}
-
-int CMountProg::Process(void) {
-	static PPROC pf[] = {
-        &CRPCProg::Null,
-        (PPROC)&CMountProg::ProcedureMNT,
-        &CRPCProg::Notimp,
-        (PPROC)&CMountProg::ProcedureUMNT,
-        &CRPCProg::Notimp, // UMNTALL
-        (PPROC)&CMountProg::ProcedureEXPORT,
-    };
-
-	if (m_param->proc >= sizeof(pf) / sizeof(PPROC)) return PRC_NOTIMP;
-
-	return (this->*pf[m_param->proc])();
 }
 
 int CMountProg::ProcedureMNT(void) {

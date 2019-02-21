@@ -11,7 +11,7 @@ class CNFSProg : public CRPCProg
     CNFSProg();
     ~CNFSProg();
     void SetUserID(unsigned int nUID, unsigned int nGID);
-    int  Process(void);
+    virtual int  Process(void);
     void SetLogOn(bool bLogOn);
 
     private:
