@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include "unicode.h"
 
 #define MBFUNCTIONS
