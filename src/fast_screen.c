@@ -353,7 +353,7 @@ void Screen_Init(void) {
             if(r.x >= 0 && SDL_GetNumVideoDisplays() == 1) x = r.x + 8;
         }
     }
-    sdlWindow  = SDL_CreateWindow(PROG_NAME, x, SDL_WINDOWPOS_UNDEFINED, width, height, 0);
+    sdlWindow  = SDL_CreateWindow(PROG_NAME, x, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_ALLOW_HIGHDPI);
     if (!sdlWindow) {
         fprintf(stderr,"Failed to create window: %s!\n", SDL_GetError());
         exit(-1);
