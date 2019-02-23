@@ -876,11 +876,6 @@ static void clearmmufixup (int cnt)
     }
 }
 
-static bool is_gen_set_fault_pc(void)
-{
-    return using_mmu == 68040 || using_mmu == 68030;
-}
-
 static void gen_set_fault_pc (bool multi)
 {
     int m68k_pc_total_old = m68k_pc_total;
@@ -5153,6 +5148,7 @@ static void gen_opcode (unsigned int opcode)
             printf ("\tif (extra & 0x800)\n");
             {
                 int old_m68k_pc_offset = m68k_pc_offset;
+                int old_m68k_pc_total = m68k_pc_total;
                 old_brace_level = n_braces;
                 start_brace ();
                 printf ("\tuae_u32 src = regs.regs[(extra >> 12) & 15];\n");
@@ -5164,6 +5160,7 @@ static void gen_opcode (unsigned int opcode)
                 sync_m68k_pc();
                 pop_braces(old_brace_level);
                 m68k_pc_offset = old_m68k_pc_offset;
+                m68k_pc_total = old_m68k_pc_total;
             }
             printf ("else");
             {
