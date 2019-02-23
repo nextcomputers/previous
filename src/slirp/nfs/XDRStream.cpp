@@ -25,12 +25,20 @@ void XDROpaque::Set(const XDROpaque& src) {
     Set(src.m_data, src.m_size);
 }
 
+void XDROpaque::SetSize(size_t size) {
+    Set(m_data, size);
+}
+
 void XDROpaque::Set(const void* data, size_t size) {
-    if(m_deleteData) delete [] m_data;
-    m_deleteData = true;
-    m_size       = size;
-    m_data       = new uint8_t[size];
-    if(data) memcpy(m_data, data, size);
+    if(data == m_data) {
+        m_size = size;
+    } else {
+        if(m_deleteData) delete [] m_data;
+        m_deleteData = true;
+        m_size       = size;
+        m_data       = new uint8_t[size];
+        if(data) memcpy(m_data, data, size);
+    }
 }
 
 XDRString::XDRString(const char* stringWillBeCopied) : XDROpaque(strlen(stringWillBeCopied)), m_str(NULL) {

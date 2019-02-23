@@ -12,8 +12,8 @@ void CNFSProg::SetUserID(unsigned int nUID, unsigned int nGID) {
     m_nUID = nUID;
     m_nGID = nGID;
     
-    m_NFS3Prog.SetUserID(m_nUID, m_nGID);
     m_NFS2Prog.SetUserID(m_nUID, m_nGID);
+    m_NFS3Prog.SetUserID(m_nUID, m_nGID);
 }
 
 int CNFSProg::Process(void) {

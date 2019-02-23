@@ -25,7 +25,6 @@ public:
 protected:
 	int                                m_nMountNum;
     std::map<std::string, std::string> m_PathMap;
-    char*                              m_pPathFile;
     
     char  m_exportPath[MAXPATHLEN];
 	char* m_clientAddr[MOUNT_NUM_MAX];
@@ -35,10 +34,7 @@ protected:
     int   ProcedureUMNTALL(void);
     int   ProcedureEXPORT(void);
     
-    bool  GetPath(char** returnPath);
-    bool  ReadPathsFromFile(const char* sFileName);
     char* FormatPath(const char *pPath, pathFormats format);
-    bool  Refresh(void);
 };
 
 #endif
