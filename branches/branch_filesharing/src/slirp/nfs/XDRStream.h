@@ -16,6 +16,7 @@ public:
     virtual ~XDROpaque();
     
     void Set(const XDROpaque& src);
+    void SetSize(size_t size);
     void Alloc(size_t size);
     virtual void Set(const void* dataWillBeCopied, size_t size);
 };

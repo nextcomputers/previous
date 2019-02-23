@@ -13,7 +13,7 @@ public:
 	void SetUserID(unsigned int nUID, unsigned int nGID);
 
 protected:
-	unsigned int m_nUID, m_nGID;
+	unsigned int m_defUID, m_defGID;
 
 	int ProcedureGETATTR(void);
 	int ProcedureSETATTR(void);
@@ -31,8 +31,8 @@ protected:
 private:
     bool GetPath(std::string& result);
     bool GetFullPath(std::string& result);
-	bool CheckFile(std::string path);
-    bool WriteFileAttributes(std::string path);
+	bool CheckFile(const std::string& path);
+    bool WriteFileAttributes(const std::string& path);
 };
 
 #endif

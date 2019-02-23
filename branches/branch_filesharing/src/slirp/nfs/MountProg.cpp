@@ -65,7 +65,6 @@ const char* CMountProg::GetClientAddr(int nIndex) const {
 }
 
 int CMountProg::ProcedureMNT(void) {
-    Refresh();
     XDRString path;
     int i;
 
@@ -75,7 +74,7 @@ int CMountProg::ProcedureMNT(void) {
     if (path.Get()) {
         m_out->Write(MNT_OK); //OK
         
-        FILE_HANDLE* handle = GetFileHandle(path.Get());
+        FileHandle* handle = nfsd_ft.GetFileHandle(path.Get());
         if(handle) {
             if (m_param->version == 1) {
                 m_out->Write(handle, FHSIZE);
@@ -107,13 +106,11 @@ int CMountProg::ProcedureMNT(void) {
 }
 
 int CMountProg::ProcedureUMNT(void) {
-    char *path = new char[MAXPATHLEN + 1];
-    int i;
+    XDRString path;
+    m_in->Read(path);
+    Log("UNMT from %s for '%s'", m_param->remoteAddr, path.Get());
     
-    GetPath(&path);
-    Log("UNMT from %s for '%s'", m_param->remoteAddr, path);
-    
-    for (i = 0; i < MOUNT_NUM_MAX; i++) {
+    for (int i = 0; i < MOUNT_NUM_MAX; i++) {
         if (m_clientAddr[i] != NULL) {
             if (strcmp(m_param->remoteAddr, m_clientAddr[i]) == 0) { //address match
                 delete[] m_clientAddr[i];  //remove this address
@@ -148,147 +145,6 @@ int CMountProg::ProcedureEXPORT(void) {
     return PRC_OK;
 }
 
-bool CMountProg::GetPath(char **returnPath) {
-    size_t i, nSize;
-    static char path[MAXPATHLEN + 1];
-    static char finalPath[MAXPATHLEN + 1];
-    bool foundPath = false;
-    
-    m_in->Read((uint32_t*)&nSize);
-    
-    if (nSize > MAXPATHLEN) {
-        nSize = MAXPATHLEN;
-    }
-    
-    typedef std::map<std::string, std::string>::iterator it_type;
-    m_in->Read(path, nSize);
-    path[nSize] = '\0';
-    
-    // TODO: this whole method is quite ugly and ripe for refactoring
-    // strip slashes
-    std::string pathTemp(path);
-    pathTemp.erase(pathTemp.find_last_not_of("/" PATH_SEPS) + 1);
-    std::copy(pathTemp.begin(), pathTemp.end(), path);
-    path[pathTemp.size()] = '\0';
-    
-    for (it_type iterator = m_PathMap.begin(); iterator != m_PathMap.end(); iterator++) {
-        
-        // strip slashes
-        std::string pathAliasTemp(iterator->first.c_str());
-        pathAliasTemp.erase(pathAliasTemp.find_last_not_of("/" PATH_SEPS) + 1);
-        char* pathAlias = const_cast<char*>(pathAliasTemp.c_str());
-        
-        // strip slashes
-        std::string windowsPathTemp(iterator->second.c_str());
-        // if it is a drive letter, e.g. D:\ keep the slash
-        if (windowsPathTemp.substr(windowsPathTemp.size() - 2) != ":" PATH_SEPS) {
-            windowsPathTemp.erase(windowsPathTemp.find_last_not_of("/" PATH_SEPS) + 1);
-        }
-        char* windowsPath = const_cast<char*>(windowsPathTemp.c_str());
-        
-        size_t aliasPathSize = strlen(pathAlias);
-        size_t windowsPathSize = strlen(windowsPath);
-        size_t requestedPathSize = pathTemp.size();
-        
-        if ((requestedPathSize > aliasPathSize) && (strncmp(path, pathAlias, aliasPathSize) == 0)) {
-            foundPath = true;
-            //The requested path starts with the alias. Let's replace the alias with the real path
-            strncpy_s(finalPath, MAXPATHLEN, windowsPath, windowsPathSize);
-            strncpy_s(finalPath + windowsPathSize, MAXPATHLEN - windowsPathSize, (path + aliasPathSize), requestedPathSize - aliasPathSize);
-            finalPath[windowsPathSize + requestedPathSize - aliasPathSize] = '\0';
-            
-            for (i = 0; i < requestedPathSize - aliasPathSize; i++) {
-                //transform path to os format
-                if (finalPath[windowsPathSize + i] == '/') {
-                    finalPath[windowsPathSize + i] = PATH_SEP;
-                }
-            }
-        } else if ((requestedPathSize == aliasPathSize) && (strncmp(path, pathAlias, aliasPathSize) == 0)) {
-            foundPath = true;
-            //The requested path IS the alias
-            strncpy_s(finalPath, MAXPATHLEN, windowsPath, windowsPathSize);
-            finalPath[windowsPathSize] = '\0';
-        }
-        
-        if (foundPath == true) {
-            break;
-        }
-    }
-    
-    if (foundPath != true) {
-        //The requested path does not start with the alias, let's treat it normally.
-        strncpy_s(finalPath, MAXPATHLEN, path, nSize);
-        //transform mount path to os format. /d/work => d:\work
-        finalPath[0] = finalPath[1];
-        finalPath[1] = ':';
-        
-        for (i = 2; i < nSize; i++) {
-            if (finalPath[i] == '/') {
-                finalPath[i] = PATH_SEP;
-            }
-        }
-        
-        finalPath[nSize] = '\0';
-    }
-    
-    Log("Final local requested path: %s\n", finalPath);
-    
-    if ((nSize & 3) != 0) {
-        m_in->Read(&i, 4 - (nSize & 3));  //skip opaque bytes
-    }
-    
-    *returnPath = finalPath;
-    return foundPath;
-}
-
-
-bool CMountProg::ReadPathsFromFile(const char* sFileName) {
-    std::ifstream pathFile(sFileName);
-    
-    if (pathFile.is_open()) {
-        std::string line, path;
-        std::vector<std::string> paths;
-        std::istringstream ss;
-        
-        while (std::getline(pathFile, line)) {
-            ss.clear();
-            paths.clear();
-            ss.str(line);
-            
-            // split path and alias separated by '>'
-            while (std::getline(ss, path, '>')) {
-                paths.push_back(path);
-            }
-            if (paths.size() < 1) {
-                continue;
-            }
-            if (paths.size() < 2) {
-                paths.push_back(paths[0]);
-            }
-            
-            // clean path, trim spaces and slashes (except drive letter)
-            paths[0].erase(paths[0].find_last_not_of(" ") + 1);
-            if (paths[0].substr(paths[0].size() - 2) != ":" PATH_SEPS) {
-                paths[0].erase(paths[0].find_last_not_of("/"PATH_SEPS) + 1);
-            }
-            
-            char *pCurPath = (char*)malloc(paths[0].size() + 1);
-            pCurPath = (char*)paths[0].c_str();
-            
-            if (pCurPath != NULL) {
-                char *pCurPathAlias = (char*)malloc(paths[1].size() + 1);
-                pCurPathAlias = (char*)paths[1].c_str();
-                Export(pCurPath, pCurPathAlias);
-            }
-        }
-    } else {
-        Log("Can't open file %s.\n", sFileName);
-        return false;
-    }
-    
-    return true;
-}
-
 char *CMountProg::FormatPath(const char *pPath, pathFormats format)
 {
     size_t len = strlen(pPath);
@@ -305,7 +161,7 @@ char *CMountProg::FormatPath(const char *pPath, pathFormats format)
     }
     
     //Remove windows tail slashes (except when its only a drive letter)
-    while (len > 0 && *(pPath + len - 2) != ':' && *(pPath + len - 1) == PATH_SEP) {
+    while (len > 0 && *(pPath + len - 2) != ':' && *(pPath + len - 1) == '\\') {
         len--;
     }
     
@@ -347,7 +203,7 @@ char *CMountProg::FormatPath(const char *pPath, pathFormats format)
                 len = strlen(path1);
                 result = (char *)realloc(result, len + 1);
                 strcpy_s(result, len + 1, path1);
-            } else if (result[1] == PATH_SEP) {
+            } else if (result[1] == '/') {
                 strcat_s(path1, result + 1);
                 len = strlen(path1);
                 result = (char *)realloc(result, len + 1);
@@ -371,8 +227,8 @@ char *CMountProg::FormatPath(const char *pPath, pathFormats format)
         }
         
         for (size_t i = 0; i < len; i++)
-            if (result[i] == '/')
-                result[i] = PATH_SEP;
+            if (result[i] == '\\')
+                result[i] = '/';
     } else if (format == FORMAT_PATHALIAS) {
         if (pPath[1] == ':' && ((pPath[0] >= 'A' && pPath[0] <= 'Z') || (pPath[0] >= 'a' && pPath[0] <= 'z'))) {
             strncpy_s(result, len + 1, pPath, len);
@@ -380,7 +236,7 @@ char *CMountProg::FormatPath(const char *pPath, pathFormats format)
             result[1] = result[0];
             result[0] = '/';
             for (size_t i = 2; i < strlen(result); i++) {
-                if (result[i] == PATH_SEP) {
+                if (result[i] == '\\') {
                     result[i] = '/';
                 }
             }
@@ -393,14 +249,4 @@ char *CMountProg::FormatPath(const char *pPath, pathFormats format)
     }
     
     return result;
-}
-
-bool CMountProg::Refresh()
-{
-    if (m_pPathFile != NULL) {
-        ReadPathsFromFile(m_pPathFile);
-        return true;
-    }
-    
-    return false;
 }

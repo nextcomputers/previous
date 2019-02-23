@@ -192,7 +192,7 @@ public:
     virtual int  Process();
 
 protected:
-    uint32_t m_nUID, m_nGID;
+    uint32_t m_defUID, m_defGID;
 
     nfsstat3 ProcedureNULL(void);
     nfsstat3 ProcedureGETATTR(void);

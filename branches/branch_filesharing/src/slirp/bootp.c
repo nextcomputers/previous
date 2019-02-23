@@ -202,6 +202,7 @@ static void bootp_reply(struct bootp_t *bp)
     q += 56;
     *q++ = 0;
 #else
+    uint32_t val;
     memcpy(q, rfc1533_cookie, 4);
     q += 4;
     if (dhcp_msg_type == DHCPDISCOVER) {

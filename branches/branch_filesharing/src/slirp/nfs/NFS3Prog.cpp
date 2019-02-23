@@ -99,7 +99,7 @@ enum
     EXCLUSIVE = 2
 };
 
-CNFS3Prog::CNFS3Prog() : CRPCProg(PROG_NFS, 3, "nfds"), m_nUID(0), m_nGID(0) {
+CNFS3Prog::CNFS3Prog() : CRPCProg(PROG_NFS, 3, "nfds"), m_defUID(0), m_defGID(0) {
     #define RPC_PROG_CLASS CNFS3Prog
     SetProc(1,  GETATTR);
     SetProc(2,  SETATTR);
@@ -127,8 +127,8 @@ CNFS3Prog::CNFS3Prog() : CRPCProg(PROG_NFS, 3, "nfds"), m_nUID(0), m_nGID(0) {
 CNFS3Prog::~CNFS3Prog() {}
 
 void CNFS3Prog::SetUserID(unsigned int nUID, unsigned int nGID) {
-    m_nUID = nUID;
-    m_nGID = nGID;
+    m_defUID = nUID;
+    m_defGID = nGID;
 }
 
 const char* nfsstat3str(nfsstat3 stat) {
@@ -1044,6 +1044,9 @@ nfsstat3 CNFS3Prog::ProcedureLINK(void) {
 }
 
 nfsstat3 CNFS3Prog::ProcedureREADDIR(void) {
+    NFSD_NOTIMPL
+    return NFS3ERR_NOTSUPP;
+#if 0
     std::string path;
     cookie3 cookie;
     cookieverf3 cookieverf;
@@ -1060,11 +1063,10 @@ nfsstat3 CNFS3Prog::ProcedureREADDIR(void) {
     
     Log("READDIR");
     bool validHandle = GetPath(path);
-    const char* cStr = validHandle ? path.c_str() : NULL;
     Read(&cookie);
     Read(&cookieverf);
     Read(&count);
-    stat = CheckFile(cStr);
+    stat = CheckFile(path.c_str());
 
     if (stat == NFS3_OK) {
         dir_attributes.attributes_follow = GetFileAttributesForNFS(cStr, &dir_attributes.attributes);
@@ -1079,7 +1081,6 @@ nfsstat3 CNFS3Prog::ProcedureREADDIR(void) {
 
     if (stat == NFS3_OK) {
         Write(&cookieverf);
-        sprintf(filePath, "%s"PATH_SEPS"*", cStr);
         eof = true;
         handle = opendir(cStr);
         bFollows = true;
@@ -1095,13 +1096,14 @@ nfsstat3 CNFS3Prog::ProcedureREADDIR(void) {
 
                 for(fileinfo = readdir(handle); fileinfo; fileinfo = readdir(handle)) {
                     Write(&bFollows); //value follows
-                    sprintf(filePath, "%s"PATH_SEPS"%s", cStr, fileinfo->d_name);
-                    fileid = GetFileID(filePath);
+                    std::string fpath = path;
+                    fpath += "/";
+                    fpath += fileinfo->d_name;
+                    fileid = nfsd_ft.GetFileID(fpath);
                     Write(&fileid); //file id
                     name.Set(fileinfo->d_name);
                     Write(&name); //name
-                    ++cookie;
-                    Write(&cookie); //cookie
+                    Write(nfsd_ft.cookie); //cookie
                     if (--j == 0) {
                         eof = false;
                         break;
@@ -1118,11 +1120,15 @@ nfsstat3 CNFS3Prog::ProcedureREADDIR(void) {
     }
 
     return stat;
+#endif
 }
 
 nfsstat3 CNFS3Prog::ProcedureREADDIRPLUS(void)
 {
-    std::string path;
+    NFSD_NOTIMPL
+    return NFS3ERR_NOTSUPP;
+#if 0
+   std::string path;
     cookie3 cookie;
     cookieverf3 cookieverf;
     count3 dircount, maxcount;
@@ -1173,7 +1179,7 @@ nfsstat3 CNFS3Prog::ProcedureREADDIRPLUS(void)
 
                 for(fileinfo =  readdir(handle); fileinfo; fileinfo = readdir(handle)) {
                     Write(&bFollows); //value follows
-                    sprintf(filePath, "%s"PATH_SEPS"%s", cStr, fileinfo->d_name);
+                    sprintf(filePath, "%s/%s", cStr, fileinfo->d_name);
                     fileid = GetFileID(filePath);
                     Write(&fileid); //file id
                     name.Set(fileinfo->d_name);
@@ -1201,6 +1207,7 @@ nfsstat3 CNFS3Prog::ProcedureREADDIRPLUS(void)
     }
 
     return stat;
+#endif
 }
 
 nfsstat3 CNFS3Prog::ProcedureFSSTAT(void) {
@@ -1350,6 +1357,10 @@ nfsstat3 CNFS3Prog::ProcedurePATHCONF(void)
 
 nfsstat3 CNFS3Prog::ProcedureCOMMIT(void)
 {
+    NFSD_NOTIMPL
+    return NFS3ERR_NOTSUPP;
+#if 0
+
     std::string path;
     int handleId;
     offset3 offset;
@@ -1400,6 +1411,7 @@ nfsstat3 CNFS3Prog::ProcedureCOMMIT(void)
     Write(&verf);
 
     return stat;
+#endif
 }
 
 void CNFS3Prog::Read(bool *pBool)
@@ -1599,8 +1611,11 @@ void CNFS3Prog::Write(wcc_attr *pAttr)
     Write(&pAttr->ctime);
 }
 
-bool CNFS3Prog::GetPath(std::string &path)
-{
+bool CNFS3Prog::GetPath(std::string &path) {
+    NFSD_NOTIMPL
+    return NFS3ERR_NOTSUPP;
+#if 0
+
     nfs_fh3 object;
 
     Read(&object);
@@ -1612,10 +1627,14 @@ bool CNFS3Prog::GetPath(std::string &path)
     }
 
     return valid;
+#endif
 }
 
-bool CNFS3Prog::ReadDirectory(std::string &dirName, std::string &fileName)
-{
+bool CNFS3Prog::ReadDirectory(std::string &dirName, std::string &fileName) {
+    NFSD_NOTIMPL
+    return NFS3ERR_NOTSUPP;
+#if 0
+
     diropargs3 fileRequest;
     Read(&fileRequest);
 
@@ -1627,6 +1646,7 @@ bool CNFS3Prog::ReadDirectory(std::string &dirName, std::string &fileName)
     }
 
     //Log(" %s | %s ", dirName.c_str(), fileName.c_str());
+#endif
 }
 
 char *CNFS3Prog::GetFullPath(std::string &dirName, std::string &fileName)
@@ -1638,7 +1658,7 @@ char *CNFS3Prog::GetFullPath(std::string &dirName, std::string &fileName)
         return NULL;
     }
 
-    sprintf(fullPath, "%s"PATH_SEPS"%s", dirName.c_str(), fileName.c_str()); //concate path and filename
+    sprintf(fullPath, "%s/%s", dirName.c_str(), fileName.c_str()); //concate path and filename
     Log(" %s ", fullPath);
 
     return fullPath;
@@ -1647,7 +1667,7 @@ char *CNFS3Prog::GetFullPath(std::string &dirName, std::string &fileName)
 nfsstat3 CNFS3Prog::CheckFile(const char *fullPath) {
     if (fullPath == NULL)
         return NFS3ERR_STALE;
-	else if (access(fullPath, 0) != 0)
+	else if (access(fullPath, 0))
         return NFS3ERR_NOENT;
     else
         return NFS3_OK;
@@ -1672,7 +1692,7 @@ nfsstat3 CNFS3Prog::CheckFile(const char *directory, const char *fullPath) {
 }
 
 bool CNFS3Prog::GetFileHandle(const char *path, nfs_fh3* pObject) {
-    FILE_HANDLE* handle = ::GetFileHandle(path);
+    FileHandle* handle = nfsd_ft.GetFileHandle(path);
 	if (!(handle)) {
 		Log("no filehandle(path %s)", path);
 		return false;

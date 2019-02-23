@@ -8,6 +8,8 @@
 #include "FileTable.h"
 #include "nfsd.h"
 
+using namespace std;
+
 enum
 {
 	NFS_OK = 0,
@@ -40,7 +42,7 @@ enum
 	NFLNK = 5,
 };
 
-CNFS2Prog::CNFS2Prog() : CRPCProg(PROG_NFS, 2, "nfsd"), m_nUID(0), m_nGID(0) {
+CNFS2Prog::CNFS2Prog() : CRPCProg(PROG_NFS, 2, "nfsd"), m_defUID(0), m_defGID(0) {
     #define RPC_PROG_CLASS CNFS2Prog
     SetProc(1,  GETATTR);
     SetProc(2,  SETATTR);
@@ -58,150 +60,185 @@ CNFS2Prog::CNFS2Prog() : CRPCProg(PROG_NFS, 2, "nfsd"), m_nUID(0), m_nGID(0) {
 
 CNFS2Prog::~CNFS2Prog() { }
 
-void CNFS2Prog::SetUserID(unsigned int nUID, unsigned int nGID)
-{
-	m_nUID = nUID;
-	m_nGID = nGID;
+void CNFS2Prog::SetUserID(unsigned int nUID, unsigned int nGID) {
+	m_defUID = nUID;
+	m_defGID = nGID;
 }
 
 int CNFS2Prog::ProcedureGETATTR(void) {
-    std::string path;
+    string path;
 
 	GetPath(path);
     Log("GETATTR %s", path.c_str());
-	if (!(CheckFile(path.c_str())))
+	if (!(CheckFile(path)))
 		return PRC_OK;
 
 	m_out->Write(NFS_OK);
-	WriteFileAttributes(path.c_str());
+	WriteFileAttributes(path);
     return PRC_OK;
 }
 
+static void set_attrs(const string& path, uint32_t mode, uint32_t uid, uint32_t gid) {
+    if(mode != ~0) chmod(path.c_str(), mode | S_IWUSR);
+    nfsd_ft.SetMode(path, mode);
+    nfsd_ft.SetUID(path, uid);
+    nfsd_ft.SetGID(path, gid);
+    nfsd_ft.Sync();
+}
+
 int CNFS2Prog::ProcedureSETATTR(void) {
-    std::string path;
-	uint32_t nMode, nAttr;
+    string   path;
 
 	Log("SETATTR");
 	GetPath(path);
-	if (!(CheckFile(path.c_str())))
+	if (!(CheckFile(path)))
 		return PRC_OK;
 
-	m_in->Read(&nMode);
-	nAttr = 0;
-	if ((nMode & 0x100) != 0)
-		nAttr |= S_IREAD;
-	if ((nMode & 0x80) != 0)
-		nAttr |= S_IWRITE;
-	chmod(path.c_str(), nAttr);
-	m_out->Write(NFS_OK);
-	WriteFileAttributes(path.c_str());
+    uint32_t mode;
+    uint32_t uid;
+    uint32_t gid;
+    uint32_t size;
+    uint64_t atime;
+    uint64_t mtime;
+
+	m_in->Read(&mode);
+    m_in->Read(&uid);
+    m_in->Read(&gid);
+    m_in->Read(&size);
+    m_in->Read(&atime);
+    m_in->Read(&mtime);
+    
+    set_attrs(path, mode, uid, gid);
+    
+    m_out->Write(NFS_OK);
+	WriteFileAttributes(path);
     return PRC_OK;
 }
 
 int CNFS2Prog::ProcedureLOOKUP(void) {
-    std::string path;
+    string path;
 
-	Log("LOOKUP");
 	GetFullPath(path);
-	if (!(CheckFile(path.c_str())))
+	if (!(CheckFile(path)))
 		return PRC_OK;
 
 	m_out->Write(NFS_OK);
-    m_out->Write(GetFileHandle(path.c_str()), FHSIZE);
+    m_out->Write(nfsd_ft.GetFileHandle(path), FHSIZE);
 	WriteFileAttributes(path.c_str());
     return PRC_OK;
 }
 
+int nfs_err(int error) {
+    switch (error) {
+        case EACCES: return NFSERR_ACCES;
+        default:     return NFSERR_IO;
+    }
+}
+
 int CNFS2Prog::ProcedureREAD(void) {
-    std::string path;
+    string path;
     
 	uint32_t nOffset, nCount, nTotalCount;
-	FILE *file;
-	char *pBuffer;
-	unsigned char opaque[3] = {0, 0, 0};
 
-	Log("READ");
 	GetPath(path);
-	if (!(CheckFile(path.c_str())))
+    Log("READ %s", path.c_str());
+	if (!(CheckFile(path)))
 		return PRC_OK;
 
 	m_in->Read(&nOffset);
 	m_in->Read(&nCount);
 	m_in->Read(&nTotalCount);
-	file = fopen(path.c_str(), "rb");
-	fseek(file, nOffset, SEEK_SET);
-	pBuffer = new char[nCount];
-	nCount = fread(pBuffer, sizeof(char), nCount, file);
-	fclose(file);
-
-	m_out->Write(NFS_OK);
+    
+    XDROpaque buffer(nCount);
+    FILE* file = fopen(path.c_str(), "rb");
+    if(file) {
+        fseek(file, nOffset, SEEK_SET);
+        nCount = fread(buffer.m_data, sizeof(uint8_t), buffer.m_size, file);
+        fclose(file);
+        buffer.SetSize(nCount);
+        m_out->Write(NFS_OK);
+    } else {
+        buffer.SetSize(0);
+        m_out->Write(nfs_err(errno));
+    }
 	WriteFileAttributes(path);
-	m_out->Write(nCount);  //length
-	m_out->Write(pBuffer, nCount);  //contents
-	nCount &= 3;
-	if (nCount != 0)
-		m_out->Write(opaque, 4 - nCount);  //opaque bytes
-	delete[] pBuffer;
+    m_out->Write(buffer);
 
     return PRC_OK;
 }
 
 int CNFS2Prog::ProcedureWRITE(void) {
-    std::string path;
-	uint32_t nBeginOffset, nOffset, nTotalCount, nCount;
-	FILE *file;
-	char *pBuffer;
+    string path;
+	uint32_t nBeginOffset, nOffset, nTotalCount;
 
-	Log("WRITE");
 	GetPath(path);
+    Log("WRITE %s", path.c_str());
 	if (!(CheckFile(path)))
 		return PRC_OK;
 
 	m_in->Read(&nBeginOffset);
 	m_in->Read(&nOffset);
 	m_in->Read(&nTotalCount);
-	m_in->Read(&nCount);
-	pBuffer = new char[nCount];
-	m_in->Read(pBuffer, nCount);
 
-	file = fopen(path.c_str(), "r+b");
-	fseek(file, nOffset, SEEK_SET);
-	nCount = fwrite(pBuffer, sizeof(char), nCount, file);
-	fclose(file);
-	delete[] pBuffer;
+    XDROpaque buffer;
+	m_in->Read(buffer);
 
-	m_out->Write(NFS_OK);
+	FILE* file = fopen(path.c_str(), "r+b");
+    if(file) {
+        fseek(file, nOffset, SEEK_SET);
+        fwrite(buffer.m_data, sizeof(uint8_t), buffer.m_size, file);
+        fclose(file);
+
+        m_out->Write(NFS_OK);
+    } else {
+        m_out->Write(nfs_err(errno));
+    }
 	WriteFileAttributes(path);
 
     return PRC_OK;
 }
 
-int CNFS2Prog::ProcedureCREATE(void)
-{
-    std::string path;
-	FILE *file;
-
+int CNFS2Prog::ProcedureCREATE(void) {
+    string path;
+    
 	Log("CREATE");
 	if(!(GetFullPath(path)))
 		return PRC_OK;
+    
+    uint32_t mode;
+    uint32_t uid;
+    uint32_t gid;
+    uint32_t size;
+    uint64_t atime;
+    uint64_t mtime;
+    
+    m_in->Read(&mode);
+    m_in->Read(&uid);
+    m_in->Read(&gid);
+    m_in->Read(&size);
+    m_in->Read(&atime);
+    m_in->Read(&mtime);
 
-	file = fopen(path.c_str(), "wb");
-	fclose(file);
+    fclose(fopen(path.c_str(), "wb")); // touch
+    
+    set_attrs(path, mode, uid, gid);
+    
 	m_out->Write(NFS_OK);
-    m_out->Write(GetFileHandle(path.c_str()), FHSIZE);
+    m_out->Write(nfsd_ft.GetFileHandle(path), FHSIZE);
 	WriteFileAttributes(path);
-
+    
     return PRC_OK;
 }
 
 int CNFS2Prog::ProcedureREMOVE(void) {
-    std::string path;
+    string path;
 
 	Log("REMOVE");
 	GetFullPath(path);
 	if (!(CheckFile(path)))
 		return PRC_OK;
 
+    nfsd_ft.Remove(path);
 	remove(path.c_str());
 	m_out->Write(NFS_OK);
     
@@ -209,46 +246,62 @@ int CNFS2Prog::ProcedureREMOVE(void) {
 }
 
 int CNFS2Prog::ProcedureRENAME(void) {
-    std::string path;
-    std::string pathFrom;
-    std::string pathTo;
+    string pathFrom;
+    string pathTo;
 
 	Log("RENAME");
-	GetFullPath(path);
-	if (!(CheckFile(path)))
+	GetFullPath(pathFrom);
+	if (!(CheckFile(pathFrom)))
 		return PRC_OK;
-    pathFrom = path;
 	GetFullPath(pathTo);
-
-    RenameFile(pathFrom.c_str(), pathTo.c_str());
+    
+    nfsd_ft.Rename(pathFrom, pathTo);
+    rename(pathFrom.c_str(), pathTo.c_str());
 	m_out->Write(NFS_OK);
 
     return PRC_OK;
 }
 
 int CNFS2Prog::ProcedureMKDIR(void) {
-    std::string path;
+    string path;
 
 	Log("MKDIR");
 	if(!(GetFullPath(path)))
 		return PRC_OK;
 
+    uint32_t mode;
+    uint32_t uid;
+    uint32_t gid;
+    uint32_t size;
+    uint64_t atime;
+    uint64_t mtime;
+    
+    m_in->Read(&mode);
+    m_in->Read(&uid);
+    m_in->Read(&gid);
+    m_in->Read(&size);
+    m_in->Read(&atime);
+    m_in->Read(&mtime);
+
 	mkdir(path.c_str(), ACCESSPERMS);
+    set_attrs(path, mode, uid, gid);
+    
 	m_out->Write(NFS_OK);
-    m_out->Write(GetFileHandle(path.c_str()), FHSIZE);
+    m_out->Write(nfsd_ft.GetFileHandle(path), FHSIZE);
 	WriteFileAttributes(path);
     
     return PRC_OK;
 }
 
 int CNFS2Prog::ProcedureRMDIR(void) {
-    std::string path;
+    string path;
 
 	Log("RMDIR");
 	GetFullPath(path);
 	if (!(CheckFile(path)))
 		return PRC_OK;
 
+    nfsd_ft.Remove(path);
 	rmdir(path.c_str());
 	m_out->Write(NFS_OK);
     
@@ -256,26 +309,27 @@ int CNFS2Prog::ProcedureRMDIR(void) {
 }
 
 int CNFS2Prog::ProcedureREADDIR(void) {
-    std::string path;
-    char filePath[MAXPATHLEN + 1];
-	DIR* handle;
-	uint32_t count;
+    string path;
+	DIR*   handle;
 
 	GetPath(path);
 	if (!(CheckFile(path)))
 		return PRC_OK;
 
 	m_out->Write(NFS_OK);
-	count = 0;
     handle = opendir(path.c_str());
 	if (handle) {
         for(struct dirent* fileinfo = readdir(handle); fileinfo; fileinfo = readdir(handle)) {
-			m_out->Write(1);  //value follows
-			sprintf(filePath, "%s"PATH_SEPS"%s", path.c_str(), fileinfo->d_name);
-            m_out->Write(GetFileID(filePath));  //file id
-            XDRString name(fileinfo->d_name);
-            m_out->Write(name);
-			m_out->Write(++count);  //cookie
+            if(strcmp(FILE_TABLE_NAME, fileinfo->d_name)) {
+                m_out->Write(1);  //value follows
+                string fpath = path;
+                fpath += "/";
+                fpath += fileinfo->d_name;
+                m_out->Write((uint32_t)nfsd_ft.GetFileId(fpath));  //file id
+                XDRString name(fileinfo->d_name);
+                m_out->Write(name);
+                m_out->Write(nfsd_ft.cookie);  //cookie
+            }
 		};
 		closedir(handle);
 	}
@@ -286,7 +340,7 @@ int CNFS2Prog::ProcedureREADDIR(void) {
 }
 
 int CNFS2Prog::ProcedureSTATFS(void) {
-    std::string path;
+    string path;
 	struct statvfs data;
 
 	Log("STATFS");
@@ -306,90 +360,59 @@ int CNFS2Prog::ProcedureSTATFS(void) {
     return PRC_OK;
 }
 
-bool CNFS2Prog::GetPath(std::string& path) {
-	FILE_HANDLE fhandle(0);
-
+bool CNFS2Prog::GetPath(string& result) {
+	FileHandle fhandle;
 	m_in->Read((void*)&fhandle, FHSIZE);
-    return GetFilePath(&fhandle, path);
+    return nfsd_ft.GetAbsolutePath(fhandle, result);
 }
 
-bool CNFS2Prog::GetFullPath(std::string& path) {
-    static char filePath[MAXPATHLEN + 1];
-    
-    if(!(GetPath(path)))
+bool CNFS2Prog::GetFullPath(string& result) {
+    if(!(GetPath(result)))
         return false;
     
-    size_t nLen1 = path.length();
-    uint32_t nLen2;
-    m_in->Read(&nLen2);
-    sprintf(filePath, "%s"PATH_SEPS, path.c_str());
-    m_in->Read(filePath + nLen1 + 1, nLen2);
-    filePath[nLen1 + 1 + nLen2] = '\0';
-    Log("%s", filePath + nLen1);
-    uint32_t nBytes;
-    if ((nLen2 & 3) != 0)
-        m_in->Read(&nBytes, 4 - (nLen2 & 3));
-    return filePath;
+    XDRString path;
+    m_in->Read(path);
+    result += "/";
+    result += path.Get();
+    return true;
 }
 
-bool CNFS2Prog::CheckFile(std::string path)
-{
+bool CNFS2Prog::CheckFile(const string& path) {
 	if (path.length() == 0) {
 		m_out->Write(NFSERR_STALE);
 		return false;
 	}
-    if (!(FileExists(path.c_str()))) {
+    if(access(path.c_str(), R_OK)) {
 		m_out->Write(NFSERR_NOENT);
 		return false;
 	}
 	return true;
 }
 
-bool CNFS2Prog::WriteFileAttributes(std::string path) {
+bool CNFS2Prog::WriteFileAttributes(const string& path) {
 	struct stat data;
-	uint32_t nValue;
 
-	if (stat(path.c_str(), &data) != 0)
+	if (nfsd_ft.Stat(path, &data) != 0)
 		return false;
 
-	switch (data.st_mode & S_IFMT)
-	{
-		case S_IFREG:
-			nValue = NFREG;
-			break;
-		case S_IFDIR:
-			nValue = NFDIR;
-			break;
-		case S_IFCHR:
-			nValue = NFCHR;
-			break;
-		default:
-			nValue = NFNON;
-			break;
+    uint32_t type;
+	switch (data.st_mode & S_IFMT) {
+		case S_IFREG: type = NFREG; break;
+		case S_IFDIR: type = NFDIR; break;
+		case S_IFCHR: type = NFCHR; break;
+		default:      type = NFNON; break;
 	}
-	m_out->Write(nValue);  //type
-	if (nValue == NFREG)
-		nValue = 0x8000;
-	else if (nValue == NFDIR)
-		nValue = 0x4000;
-	else
-		nValue = 0;
-	if ((data.st_mode & S_IREAD) != 0)
-		nValue |= 0x124;
-	if ((data.st_mode & S_IWRITE) != 0)
-		nValue |= 0x92;
-	if ((data.st_mode & S_IEXEC) != 0)
-		nValue |= 0x49;
-	m_out->Write(nValue);  //mode
+	m_out->Write(type);  //type
+	m_out->Write(data.st_mode);  //mode
 	m_out->Write(data.st_nlink);  //nlink	
-	m_out->Write(m_nUID);  //uid
-	m_out->Write(m_nGID);  //gid
+	m_out->Write(data.st_uid);  //uid
+	m_out->Write(data.st_gid);  //gid
 	m_out->Write(data.st_size);  //size
-	m_out->Write(8192);  //blocksize
-	m_out->Write(0);  //rdev
-	m_out->Write((data.st_size + 8191) / 8192);  //blocks
-	m_out->Write(4);  //fsid
-    m_out->Write(GetFileID(path.c_str()));  //fileid
+	m_out->Write(data.st_blksize);  //blocksize
+	m_out->Write(data.st_rdev);  //rdev
+	m_out->Write(data.st_blocks);  //blocks
+	m_out->Write(data.st_dev);  //fsid
+    m_out->Write(data.st_ino);  //fileid
 	m_out->Write(data.st_atime);  //atime
 	m_out->Write(0);  //atime
 	m_out->Write(data.st_mtime);  //mtime
