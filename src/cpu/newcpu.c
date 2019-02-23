@@ -786,9 +786,6 @@ static void Exception_build_stack_frame (uae_u32 oldpc, uae_u32 currpc, uae_u32 
 			x_put_long (m68k_areg (regs, 7), oldpc);
 			break;
 		case 0xB: // long bus cycle fault stack frame (68020, 68030)
-			// We always use B frame because it is easier to emulate,
-			// our PC always points at start of instruction but A frame assumes
-			// it is + 2 and handling this properly is not easy.
 			// Store state information to internal register space
 #if MMU030_DEBUG
             if (mmu030_idx >= MAX_MMU030_ACCESS) {
@@ -853,14 +850,21 @@ static void Exception_build_stack_frame (uae_u32 oldpc, uae_u32 currpc, uae_u32 
 			x_put_long (m68k_areg (regs, 7), mmu030_disp_store[1]);
 		/* fall through */
 		case 0xA: // short bus cycle fault stack frame (68020, 68030)
+            // used when instruction's last write causes bus fault
 			m68k_areg (regs, 7) -= 4;
-			x_put_long (m68k_areg (regs, 7), mmu030_disp_store[0]);
-			m68k_areg (regs, 7) -= 4;
+            if (format == 0xb) {
+                x_put_long(m68k_areg(regs, 7), mmu030_disp_store[0]);
+            }
+            m68k_areg (regs, 7) -= 4;
 			 // Data output buffer = value that was going to be written
 			x_put_long (m68k_areg (regs, 7), regs.wb3_data);
 			m68k_areg (regs, 7) -= 4;
-			x_put_long (m68k_areg (regs, 7), mmu030_opcode);  // Internal register (opcode storage)
-			m68k_areg (regs, 7) -= 4;
+            if (format == 0xb) {
+                x_put_long(m68k_areg(regs, 7), (mmu030_opcode & 0xffff) | (regs.prefetch020[0] << 16));  // Internal register (opcode storage)
+            } else {
+                x_put_long(m68k_areg(regs, 7), regs.irc | (regs.prefetch020[0] << 16));  // Internal register (opcode storage)
+            }
+            m68k_areg (regs, 7) -= 4;
 			x_put_long (m68k_areg (regs, 7), regs.mmu_fault_addr); // data cycle fault address
 			m68k_areg (regs, 7) -= 2;
 			x_put_word (m68k_areg (regs, 7), 0);  // Instr. pipe stage B
@@ -869,7 +873,7 @@ static void Exception_build_stack_frame (uae_u32 oldpc, uae_u32 currpc, uae_u32 
 			m68k_areg (regs, 7) -= 2;
 			x_put_word (m68k_areg (regs, 7), ssw);
 			m68k_areg (regs, 7) -= 2;
-			x_put_word (m68k_areg (regs, 7), 0);  // Internal register
+			x_put_word (m68k_areg (regs, 7), regs.wb2_address); // = mmu030_state[1]);
 			break;
 		default:
             write_log(_T("Unknown exception stack frame format: %X\n"), format);
@@ -922,8 +926,7 @@ static void Exception_mmu030 (int nr, uaecptr oldpc)
     } else if (nr ==5 || nr == 6 || nr == 7 || nr == 9 || nr == 56) {
         Exception_build_stack_frame (oldpc, currpc, regs.mmu_ssw, nr, 0x2);
     } else if (nr == 2) {
-        if (0) {
-            // not that simple
+        if (mmu030_state[1] & MMU030_STATEFLAG1_LASTWRITE) {
             Exception_build_stack_frame(oldpc, currpc, regs.mmu_ssw, nr, 0xA);
         } else {
             Exception_build_stack_frame(oldpc, currpc, regs.mmu_ssw, nr, 0xB);
@@ -1406,10 +1409,12 @@ insretry:
 
         if (mmu030_opcode == -1) {
             // full prefetch fill access fault
-            // TODO: this should create shorter A-frame
             mmufixup[0].reg = -1;
             mmufixup[1].reg = -1;
-        } else if (!(mmu030_state[1] & MMU030_STATEFLAG1_LASTWRITE)) {
+        } else if (mmu030_state[1] & MMU030_STATEFLAG1_LASTWRITE) {
+            mmufixup[0].reg = -1;
+            mmufixup[1].reg = -1;
+        } else {
             regflags.cznv = f.cznv;
             regflags.x = f.x;
             
