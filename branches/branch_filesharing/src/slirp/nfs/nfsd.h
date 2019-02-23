@@ -7,16 +7,23 @@
 
 #include "RPCProg.h"
 
-extern int  mapped_udp_portmap_port;
-extern int  udp_mount_port;
-extern int  mapped_udp_nfs_port;
+typedef struct {
+    int portmap;
+    int nfs;
+    int mount;
+    int dns;
+} nfsd_mapped_ports;
 
-extern int  mapped_tcp_portmap_port;
-extern int  tcp_mount_port;
-extern int  mapped_tcp_nfs_port;
+typedef struct {
+    nfsd_mapped_ports tcp;
+    nfsd_mapped_ports udp;
+} nfsd_NAT;
+
+extern nfsd_NAT nfsd_ports;
 
 extern char nfsd_export_path[MAXPATHLEN];
 
+#define PORT_DNS      53
 #define PORT_PORTMAP  111
 #define PORT_NFS      2049
 
@@ -25,6 +32,7 @@ enum {
     PROG_NFS       = 100003,
     PROG_MOUNT     = 100005,
     PROG_BOOTPARAM = 100026,
+    PROG_VDNS      = 200053, // virtual DNS
 };
 
 extern char nfsd_hostname[_SC_HOST_NAME_MAX];

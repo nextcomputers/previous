@@ -89,7 +89,7 @@ size_t CRPCProg::Log(const char *format, ...) const {
 	if (m_bLogOn)
 	{
 		va_start(vargs, format);
-        printf("[NFSD:%s:%d:%d] ", m_name, GetPortTCP(), GetPortUDP());
+        printf("[NFSD:%s:%d] ", m_name, GetProgNum());
 		nResult = vprintf(format, vargs);
         printf("\n");
 		va_end(vargs);

@@ -7,9 +7,8 @@
 class TCPServerSocket
 {
 public:
-	TCPServerSocket();
+	TCPServerSocket(ISocketListener* pListener);
 	~TCPServerSocket();
-	void SetListener(ISocketListener *pListener);
 	bool Open(int progNum, uint16_t port = 0);
 	void Close(void);
 	int GetPort(void);

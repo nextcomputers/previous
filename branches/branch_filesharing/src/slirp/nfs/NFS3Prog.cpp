@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <sys/errno.h>
 #include <stdio.h>
+#include <dirent.h>
 
 #include <string>
 #include <algorithm>
@@ -1042,8 +1043,7 @@ nfsstat3 CNFS3Prog::ProcedureLINK(void) {
 #endif
 }
 
-nfsstat3 CNFS3Prog::ProcedureREADDIR(void)
-{
+nfsstat3 CNFS3Prog::ProcedureREADDIR(void) {
     std::string path;
     cookie3 cookie;
     cookieverf3 cookieverf;
@@ -1055,10 +1055,9 @@ nfsstat3 CNFS3Prog::ProcedureREADDIR(void)
     bool bFollows;
     nfsstat3 stat;
     char filePath[MAXPATHLEN];
-    int handle, nFound;
-    struct _finddata_t fileinfo;
-    unsigned int i, j;
-
+    DIR* handle;
+    struct dirent* fileinfo;
+    
     Log("READDIR");
     bool validHandle = GetPath(path);
     const char* cStr = validHandle ? path.c_str() : NULL;
@@ -1082,27 +1081,24 @@ nfsstat3 CNFS3Prog::ProcedureREADDIR(void)
         Write(&cookieverf);
         sprintf(filePath, "%s"PATH_SEPS"*", cStr);
         eof = true;
-        handle = _findfirst(filePath, &fileinfo);
+        handle = opendir(cStr);
         bFollows = true;
 
         if (handle) {
-            nFound = 0;
-
-            for (i = (unsigned int)cookie; i > 0; i--) {
-                nFound = _findnext(handle, &fileinfo);
-            }
+            for (cookie3 i = cookie; i > 0; i--)
+                fileinfo = readdir(handle);
 
             // TODO: Implement this workaround correctly with the
             // count variable and not a fixed threshold of 10
-            if (nFound == 0) {
-                j = 10;
+            if (fileinfo) {
+                int j = 10;
 
-                do {
+                for(fileinfo = readdir(handle); fileinfo; fileinfo = readdir(handle)) {
                     Write(&bFollows); //value follows
-                    sprintf(filePath, "%s"PATH_SEPS"%s", cStr, fileinfo.name);
+                    sprintf(filePath, "%s"PATH_SEPS"%s", cStr, fileinfo->d_name);
                     fileid = GetFileID(filePath);
                     Write(&fileid); //file id
-                    name.Set(fileinfo.name);
+                    name.Set(fileinfo->d_name);
                     Write(&name); //name
                     ++cookie;
                     Write(&cookie); //cookie
@@ -1110,10 +1106,10 @@ nfsstat3 CNFS3Prog::ProcedureREADDIR(void)
                         eof = false;
                         break;
                     }
-                } while (_findnext(handle, &fileinfo) == 0);
+                };
             }
 
-            _findclose(handle);
+            closedir(handle);
         }
 
         bFollows = false;
@@ -1138,9 +1134,8 @@ nfsstat3 CNFS3Prog::ProcedureREADDIRPLUS(void)
     bool eof;
     nfsstat3 stat;
     char filePath[MAXPATHLEN];
-    int handle, nFound;
-    struct _finddata_t fileinfo;
-    unsigned int i, j;
+    DIR* handle;
+    struct dirent* fileinfo;
     bool bFollows;
 
     Log("READDIRPLUS");
@@ -1165,27 +1160,23 @@ nfsstat3 CNFS3Prog::ProcedureREADDIRPLUS(void)
 
     if (stat == NFS3_OK) {
         Write(&cookieverf);
-        sprintf(filePath, "%s"PATH_SEPS"*", cStr);
-        handle = _findfirst(filePath, &fileinfo);
+        handle = opendir(cStr);
         eof = true;
 
         if (handle) {
-            nFound = 0;
+            for (cookie3 i = cookie; i > 0; i--)
+                fileinfo = readdir(handle);
 
-            for (i = (unsigned int)cookie; i > 0; i--) {
-                nFound = _findnext(handle, &fileinfo);
-            }              
-
-            if (nFound == 0) {
+            if (fileinfo) {
                 bFollows = true;
-                j = 10;
+                int j = 10;
 
-                do {
+                for(fileinfo =  readdir(handle); fileinfo; fileinfo = readdir(handle)) {
                     Write(&bFollows); //value follows
-                    sprintf(filePath, "%s"PATH_SEPS"%s", cStr, fileinfo.name);
+                    sprintf(filePath, "%s"PATH_SEPS"%s", cStr, fileinfo->d_name);
                     fileid = GetFileID(filePath);
                     Write(&fileid); //file id
-                    name.Set(fileinfo.name);
+                    name.Set(fileinfo->d_name);
                     Write(&name); //name
                     ++cookie;
                     Write(&cookie); //cookie
@@ -1198,10 +1189,10 @@ nfsstat3 CNFS3Prog::ProcedureREADDIRPLUS(void)
                         eof = false;
                         break;
                     }
-                } while (_findnext(handle, &fileinfo) == 0);
+                };
             }
 
-            _findclose(handle);
+            closedir(handle);
         }
 
         bFollows = false;

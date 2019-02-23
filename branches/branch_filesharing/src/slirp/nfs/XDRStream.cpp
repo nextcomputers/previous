@@ -178,8 +178,7 @@ void XDROutput::Write(XDROpaque& opaque) {
 }
 
 void XDROutput::Write(XDRString& string) {
-    Write(string.m_data, string.m_size);
-    AlignIndex();
+    Write((XDROpaque&)string);
 }
 
 void XDROutput::Write(uint32_t nValue) {

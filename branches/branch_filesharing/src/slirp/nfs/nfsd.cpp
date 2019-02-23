@@ -11,6 +11,8 @@
 #include "MountProg.h"
 #include "BootparamProg.h"
 #include "configuration.h"
+#include "SocketListener.h"
+#include "VDNS.h"
 
 static bool         g_bLogOn = true;
 static CPortmapProg g_PortmapProg;
@@ -18,23 +20,17 @@ static CRPCServer   g_RPCServer;
 char                nfsd_hostname[_SC_HOST_NAME_MAX];
 char                nfsd_export_path[MAXPATHLEN];
 
-int mapped_udp_portmap_port = 0;
-int udp_mount_port          = 0;
-int mapped_udp_nfs_port     = 0;
-
-int mapped_tcp_portmap_port = 0;
-int tcp_mount_port          = 0;
-int mapped_tcp_nfs_port     = 0;
+nfsd_NAT nfsd_ports = {{0},{0}};
 
 static std::vector<UDPServerSocket*> SERVER_UDP;
 static std::vector<TCPServerSocket*> SERVER_TCP;
 
+static bool initialized = false;
+
 static void add_program(CRPCProg *pRPCProg, uint16_t port = 0) {
-    UDPServerSocket* udp = new UDPServerSocket();
-    TCPServerSocket*   tcp = new TCPServerSocket();
+    UDPServerSocket* udp = new UDPServerSocket(&g_RPCServer);
+    TCPServerSocket* tcp = new TCPServerSocket(&g_RPCServer);
     
-    tcp->SetListener(&g_RPCServer);
-    udp->SetListener(&g_RPCServer);
     g_RPCServer.Set(pRPCProg->GetProgNum(), pRPCProg);
 
     if (tcp->Open(pRPCProg->GetProgNum(), port) && udp->Open(pRPCProg->GetProgNum(), port)) {
@@ -68,6 +64,8 @@ extern "C" void nfsd_start(void) {
     printf("[NFSD] starting local NFS daemon on '%s', exporting '%s'\n", nfsd_hostname, ConfigureParams.Ethernet.szNFSroot);
     printAbout();
     
+    if(initialized) return;
+    
     static CNFSProg       NFSProg;
     static CMountProg     MountProg;
     static CBootparamProg BootparamProg;
@@ -81,11 +79,13 @@ extern "C" void nfsd_start(void) {
     add_program(&NFSProg,       PORT_NFS);
     add_program(&MountProg);
     add_program(&BootparamProg);
+    
+    static VDNS vdns;
+    
+    initialized = true;
 }
 
 static void cleanup(void) {
-    for (int i = 0; i < SERVER_TCP.size(); i++) SERVER_TCP[i]->Close();
-    for (int i = 0; i < SERVER_UDP.size(); i++) SERVER_UDP[i]->Close();
 }
 
 extern "C" void nfsd_cleanup(void) {

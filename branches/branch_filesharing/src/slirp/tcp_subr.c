@@ -43,6 +43,7 @@
 #include <slirp.h>
 
 #include "nfs/nfsd.h"
+#include "nfs/VDNS.h"
 
 /* patchable/settable parameters for tcp */
 int 	tcp_mssdflt = TCP_MSS;
@@ -398,7 +399,7 @@ int tcp_fconnect(struct socket *so)
       case CTL_DNS:
         addr.sin_addr = dns_addr;
         break;
-      case CTL_ALIAS:
+    case CTL_ALIAS:
       default:
         addr.sin_addr = loopback_addr;
         break;
@@ -410,10 +411,10 @@ int tcp_fconnect(struct socket *so)
       if(nfsd_match_addr(ntohl(so->so_faddr.s_addr))) {
           switch(ntohs(so->so_fport)) {
               case PORT_PORTMAP:
-                  addr.sin_port = htons(mapped_tcp_portmap_port);
+                  addr.sin_port = htons(nfsd_ports.tcp.portmap);
                   break;
               case PORT_NFS:
-                  addr.sin_port = htons(mapped_tcp_nfs_port);
+                  addr.sin_port = htons(nfsd_ports.tcp.nfs);
                   break;
           }
       }

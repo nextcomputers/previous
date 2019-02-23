@@ -40,34 +40,10 @@ public:
     uint64_t Get() {return handle;}
 };
 
-/*
- * The following structure is filled in by _findfirst or _findnext when
- * they succeed in finding a match.
- */
-struct _finddata_t
-{
-    uint32_t    attrib;        /* Attributes, see constants above. */
-    time_t      time_create;
-    time_t      time_access;    /* always midnight local time */
-    time_t      time_write;
-    size_t      size;
-    char        name[FILENAME_MAX];    /* may include spaces. */
-};
-
 char*   strcpy_s (char* dst,  size_t  maxLen, const char* src);
 char*   strncpy_s(char* dst,  size_t  maxLen, const char* src, size_t len);
 errno_t strcat_s (char* dest, rsize_t maxLen, const char* src);
 char*   strcat_s (char* s1, const char* s2);
-
-/*
- * Functions for searching for files. _findfirst returns -1 if no match
- * is found. Otherwise it returns a handle to be used in _findnext and
- * _findclose calls. _findnext also returns -1 if no match could be found,
- * and 0 if a match was found. Call _findclose when you are finished.
- */
-int    _findfirst (const char*, struct _finddata_t*);
-int    _findnext (int, struct _finddata_t*);
-int    _findclose (int);
 
 int    _chsize(int fd, size_t size);
 

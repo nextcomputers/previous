@@ -44,17 +44,12 @@ typedef struct
 	OPAQUE_AUTH verf;
 } RPC_HEADER;
 
-CRPCServer::CRPCServer()
-{
-	int i;
-
-	for (i = 0; i < PROG_NUM; i++)
+CRPCServer::CRPCServer() : m_hMutex(host_mutex_create()) {
+	for(int i = 0; i < PROG_NUM; i++)
 		m_pProgTable[i] = NULL;
-    m_hMutex = host_mutex_create();
 }
 
-CRPCServer::~CRPCServer()
-{
+CRPCServer::~CRPCServer() {
 	host_mutex_destroy(m_hMutex);
 }
 
@@ -72,8 +67,7 @@ void CRPCServer::SetLogOn(bool bLogOn)
 			m_pProgTable[i]->SetLogOn(bLogOn);
 }
 
-void CRPCServer::SocketReceived(CSocket *pSocket)
-{
+void CRPCServer::SocketReceived(CSocket *pSocket) {
 	XDRInput *pInStream;
 	int nResult;
 
@@ -89,8 +83,7 @@ void CRPCServer::SocketReceived(CSocket *pSocket)
 	host_mutex_unlock(m_hMutex);
 }
 
-int CRPCServer::Process(int sockType, XDRInput* pInStream, XDROutput* pOutStream, const char* pRemoteAddr)
-{
+int CRPCServer::Process(int sockType, XDRInput* pInStream, XDROutput* pOutStream, const char* pRemoteAddr) {
 	RPC_HEADER header;
 	int nPos, nSize;
 	ProcessParam param;

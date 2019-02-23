@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <dirent.h>
 
 #include "NFS2Prog.h"
 #include "FileTable.h"
@@ -255,47 +256,33 @@ int CNFS2Prog::ProcedureRMDIR(void) {
 }
 
 int CNFS2Prog::ProcedureREADDIR(void) {
-    NFSD_NOTIMPL
-    return PRC_FAIL;
-#if 0
-	unsigned char opaque[3] = {0, 0, 0};
     std::string path;
     char filePath[MAXPATHLEN + 1];
-	int handle;
-	struct _finddata_t fileinfo;
+	DIR* handle;
 	uint32_t count;
-	uint32_t nLen;
 
-	Log("READDIR");
 	GetPath(path);
 	if (!(CheckFile(path)))
 		return PRC_OK;
 
 	m_out->Write(NFS_OK);
-	sprintf(filePath, "%s"PATH_SEPS"*", path.c_str());
 	count = 0;
-	handle = _findfirst(filePath, &fileinfo);
-	if (handle)
-	{
-		do
-		{
+    handle = opendir(path.c_str());
+	if (handle) {
+        for(struct dirent* fileinfo = readdir(handle); fileinfo; fileinfo = readdir(handle)) {
 			m_out->Write(1);  //value follows
-			sprintf(filePath, "%s"PATH_SEPS"%s", path, fileinfo.name);
+			sprintf(filePath, "%s"PATH_SEPS"%s", path.c_str(), fileinfo->d_name);
             m_out->Write(GetFileID(filePath));  //file id
-			m_out->Write(nLen = strlen(fileinfo.name));
-			m_out->Write((void*)fileinfo.name, nLen);
-			nLen &= 3;
-			if (nLen != 0)
-				m_out->Write(opaque, 4 - nLen);  //opaque bytes
+            XDRString name(fileinfo->d_name);
+            m_out->Write(name);
 			m_out->Write(++count);  //cookie
-		} while (_findnext(handle, &fileinfo) == 0);
-		_findclose(handle);
+		};
+		closedir(handle);
 	}
 	m_out->Write(0);  //no value follows
 	m_out->Write(1);  //EOF
 
     return PRC_OK;
-#endif
 }
 
 int CNFS2Prog::ProcedureSTATFS(void) {
@@ -327,24 +314,22 @@ bool CNFS2Prog::GetPath(std::string& path) {
 }
 
 bool CNFS2Prog::GetFullPath(std::string& path) {
-	static char filePath[MAXPATHLEN + 1];
-	unsigned int nLen1, nBytes;
-	uint32_t nLen2;
-
-	if(!(GetPath(path)))
-       return false;
-/*
-	nLen1 = path.length();
-	m_in->Read(&nLen2);
-	sprintf(filePath, "%s\\", path);
-	m_in->Read(filePath + nLen1 + 1, nLen2);
-	filePath[nLen1 + 1 + nLen2] = '\0';
-	Log("%s", filePath + nLen1);
-
-	if ((nLen2 & 3) != 0)
-		m_in->Read(&nBytes, 4 - (nLen2 & 3));
-  */
-    return true;
+    static char filePath[MAXPATHLEN + 1];
+    
+    if(!(GetPath(path)))
+        return false;
+    
+    size_t nLen1 = path.length();
+    uint32_t nLen2;
+    m_in->Read(&nLen2);
+    sprintf(filePath, "%s"PATH_SEPS, path.c_str());
+    m_in->Read(filePath + nLen1 + 1, nLen2);
+    filePath[nLen1 + 1 + nLen2] = '\0';
+    Log("%s", filePath + nLen1);
+    uint32_t nBytes;
+    if ((nLen2 & 3) != 0)
+        m_in->Read(&nBytes, 4 - (nLen2 & 3));
+    return filePath;
 }
 
 bool CNFS2Prog::CheckFile(std::string path)
