@@ -57,8 +57,6 @@ int CPortmapProg::ProcedureGETPORT(void) {
 }
 
 int CPortmapProg::ProcedureDUMP(void) {
-    Log("DUMP");
-    
     for(int i = 0; i < PORT_NUM; i++)
         if(m_nProgTable[i]) Write(m_nProgTable[i]);
     
@@ -67,8 +65,7 @@ int CPortmapProg::ProcedureDUMP(void) {
     return PRC_OK;
 }
 
-int CPortmapProg::ProcedureCALLIT(void)
-{
+int CPortmapProg::ProcedureCALLIT(void) {
     uint32_t prog;
     uint32_t vers;
     uint32_t proc;

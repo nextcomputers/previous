@@ -5,28 +5,15 @@
 
 const int BACKLOG = 16;
 
-static int ThreadProc(void *lpParameter)
-{
+static int ThreadProc(void *lpParameter) {
 	((TCPServerSocket *)lpParameter)->Run();
 	return 0;
 }
 
-TCPServerSocket::TCPServerSocket()
-{
-	m_nPort = 0;
-	m_bClosed = true;
-	m_pListener = NULL;
-	m_pSockets = NULL;
-}
+TCPServerSocket::TCPServerSocket(ISocketListener *pListener) : m_nPort(0), m_ServerSocket(0), m_bClosed(true), m_pListener(pListener), m_hThread(NULL), m_pSockets(NULL) {}
 
-TCPServerSocket::~TCPServerSocket()
-{
+TCPServerSocket::~TCPServerSocket() {
 	Close();
-}
-
-void TCPServerSocket::SetListener(ISocketListener *pListener)
-{
-	m_pListener = pListener;
 }
 
 bool TCPServerSocket::Open(int progNum, uint16_t nPort) {
@@ -80,9 +67,10 @@ void TCPServerSocket::Close(void)
 
 	close(m_ServerSocket);
 
-    if      (m_nPort == PORT_PORTMAP)   mapped_tcp_portmap_port = 0;
-    else if (m_nPort == udp_mount_port) tcp_mount_port          = 0;
-    else if (m_nPort == PORT_NFS)       mapped_tcp_nfs_port     = 0;
+    if      (m_nPort == PORT_DNS)             nfsd_ports.tcp.dns     = 0;
+    else if (m_nPort == PORT_PORTMAP)         nfsd_ports.tcp.portmap = 0;
+    else if (m_nPort == nfsd_ports.tcp.mount) nfsd_ports.tcp.mount   = 0;
+    else if (m_nPort == PORT_NFS)             nfsd_ports.tcp.nfs     = 0;
     
 	if (m_hThread != NULL)
 	{

@@ -42,19 +42,13 @@ void CSocket::Open(int socket, ISocketListener *pListener, struct sockaddr_in *p
 	}
 }
 
-void CSocket::Close(void)
-{
-	if (m_Socket != INVALID_SOCKET)
-	{
+void CSocket::Close(void) {
+	if (m_Socket != INVALID_SOCKET) {
 		close(m_Socket);
 		m_Socket = INVALID_SOCKET;
 	}
 
-	if (m_hThread != NULL)
-	{
-        host_thread_wait(m_hThread);
-		m_hThread = NULL;
-	}
+    m_hThread = NULL;
 }
 
 void CSocket::Send(void) {
@@ -83,8 +77,7 @@ int CSocket::GetRemotePort(void)
     return htons(m_RemoteAddr.sin_port);
 }
 
-XDRInput* CSocket::GetInputStream(void)
-{
+XDRInput* CSocket::GetInputStream(void) {
 	return &m_Input;
 }
 
@@ -95,17 +88,16 @@ XDROutput* CSocket::GetOutputStream(void)
 
 void CSocket::Run(void)
 {
-	socklen_t nSize, nBytes;
+    socklen_t nSize;
+    ssize_t   nBytes;
 
 	nSize = sizeof(m_RemoteAddr);
-	for (;;)
-	{
+	for (;;) {
 		if (m_nType == SOCK_STREAM)
 			nBytes = recv(m_Socket, m_Input.GetBuffer(), 1024 /*m_Input.GetCapacity()*/, 0);
 		else if (m_nType == SOCK_DGRAM)
 			nBytes = recvfrom(m_Socket, m_Input.GetBuffer(), m_Input.GetCapacity(), 0, (struct sockaddr *)&m_RemoteAddr, &nSize);
-		if (nBytes > 0)
-		{
+		if (nBytes > 0) {
 			m_Input.SetSize(nBytes);  //bytes received
 			if (m_pListener != NULL)
 				m_pListener->SocketReceived(this);  //notify listener
@@ -120,25 +112,36 @@ void CSocket::map_port(int type, int progNum, uint16_t port) {
     switch(type) {
         case SOCK_DGRAM:
             switch(progNum) {
-                case PROG_PORTMAP: mapped_udp_portmap_port = port; break;
-                case PROG_MOUNT:   udp_mount_port          = port; break;
-                case PROG_NFS:     mapped_udp_nfs_port     = port; break;
+                case PROG_VDNS:    nfsd_ports.udp.dns     = port; break;
+                case PROG_PORTMAP: nfsd_ports.udp.portmap = port; break;
+                case PROG_MOUNT:   nfsd_ports.udp.mount   = port; break;
+                case PROG_NFS:     nfsd_ports.udp.nfs     = port; break;
             }
             break;
         case SOCK_STREAM:
             switch(progNum) {
-                case PROG_PORTMAP: mapped_tcp_portmap_port = port; break;
-                case PROG_MOUNT:   tcp_mount_port          = port; break;
-                case PROG_NFS:     mapped_tcp_nfs_port     = port; break;
+                case PROG_VDNS:    nfsd_ports.tcp.dns     = port; break;
+                case PROG_PORTMAP: nfsd_ports.tcp.portmap = port; break;
+                case PROG_MOUNT:   nfsd_ports.tcp.mount   = port; break;
+                case PROG_NFS:     nfsd_ports.tcp.nfs     = port; break;
             }
             break;
     }
 }
 
 uint16_t CSocket::map_and_htons(int sockType, uint16_t port) {
-    if     (sockType == SOCK_DGRAM  && port == PORT_PORTMAP) return htons(mapped_udp_portmap_port);
-    else if(sockType == SOCK_STREAM && port == PORT_PORTMAP) return htons(mapped_tcp_portmap_port);
-    if     (sockType == SOCK_DGRAM  && port == PORT_NFS)     return htons(mapped_udp_nfs_port);
-    else if(sockType == SOCK_STREAM && port == PORT_NFS)     return htons(mapped_tcp_nfs_port);
-    else                                                     return htons(port);
+    if(sockType == SOCK_STREAM) {
+        switch (port) {
+            case PORT_DNS:     return htons(nfsd_ports.tcp.dns);
+            case PORT_PORTMAP: return htons(nfsd_ports.tcp.portmap);
+            case PORT_NFS:     return htons(nfsd_ports.tcp.nfs);
+        }
+    } else {
+        switch (port) {
+            case PORT_DNS:     return htons(nfsd_ports.udp.dns);
+            case PORT_PORTMAP: return htons(nfsd_ports.udp.portmap);
+            case PORT_NFS:     return htons(nfsd_ports.udp.nfs);
+        }
+    }
+    return htons(port);
 }

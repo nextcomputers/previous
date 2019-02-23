@@ -151,14 +151,14 @@ int slirp_init(void)
     /* set default addresses */
     inet_aton("127.0.0.1", &loopback_addr);
 
-    /* start local nfs deamon */
-    nfsd_start();
-
     special_addr.s_addr = htonl(CTL_NET);
 	alias_addr.s_addr   = special_addr.s_addr | htonl(CTL_ALIAS);
 	getouraddr();
     get_dns_addr(&dns_addr);
-    
+
+    /* start local nfs deamon */
+    nfsd_start();
+
     return 0;
 }
 
@@ -649,8 +649,12 @@ void if_encap(const uint8_t *ip_data, int ip_data_len)
 
     memcpy(eh->h_dest, client_ethaddr, ETH_ALEN);
     memcpy(eh->h_source, special_ethaddr, ETH_ALEN - 1);
-    /* XXX: not correct */
-    eh->h_source[5] = CTL_ALIAS;
+    
+    uint32_t ip_src  = ntohl(*(uint32_t*)&ip_data[12]);
+    if((ip_src & CTL_NET_MASK) == ntohl(special_addr.s_addr))
+        eh->h_source[5] = ip_src; // map local address to enet addresses
+    else
+        eh->h_source[5] = CTL_GATEWAY; // map all others to the gateway enet address
     eh->h_proto = htons(ETH_P_IP);
     memcpy(buf + sizeof(struct ethhdr), ip_data, ip_data_len);
     slirp_output(buf, ip_data_len + ETH_HLEN);

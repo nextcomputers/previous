@@ -7,9 +7,8 @@
 class UDPServerSocket
 {
 public:
-	UDPServerSocket();
+	UDPServerSocket(ISocketListener* pListener);
 	~UDPServerSocket();
-	void SetListener(ISocketListener *pListener);
 	bool Open(int porgNum, uint16_t nPort = 0);
 	void Close(void);
 	int GetPort(void);

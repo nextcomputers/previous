@@ -1,14 +1,10 @@
 #include "UDPServerSocket.h"
 #include "nfsd.h"
 
-UDPServerSocket::UDPServerSocket() : m_nPort(0), m_Socket(0), m_pSocket(NULL), m_bClosed(true), m_pListener(NULL) {}
+UDPServerSocket::UDPServerSocket(ISocketListener *pListener) : m_nPort(0), m_Socket(0), m_pSocket(NULL), m_bClosed(true), m_pListener(pListener) {}
 
 UDPServerSocket::~UDPServerSocket() {
 	Close();
-}
-
-void UDPServerSocket::SetListener(ISocketListener *pListener) {
-	m_pListener = pListener;
 }
 
 bool UDPServerSocket::Open(int progNum, uint16_t nPort) {
@@ -52,9 +48,10 @@ void UDPServerSocket::Close(void)
 	m_bClosed = true;
 	close(m_Socket);
     
-    if      (m_nPort == PORT_PORTMAP)   mapped_udp_portmap_port = 0;
-    else if (m_nPort == udp_mount_port) udp_mount_port          = 0;
-    else if (m_nPort == PORT_NFS)       mapped_udp_nfs_port     = 0;
+    if      (m_nPort == PORT_DNS)             nfsd_ports.udp.dns     = 0;
+    else if (m_nPort == PORT_PORTMAP)         nfsd_ports.udp.portmap = 0;
+    else if (m_nPort == nfsd_ports.udp.mount) nfsd_ports.udp.mount   = 0;
+    else if (m_nPort == PORT_NFS)             nfsd_ports.udp.nfs     = 0;
     
 	delete m_pSocket;
 }
