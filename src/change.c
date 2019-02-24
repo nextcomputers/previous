@@ -76,6 +76,12 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
         }
     }
     
+    /* Did we change NFS root directory? */
+    if (strcmp(current->Ethernet.szNFSroot, changed->Ethernet.szNFSroot)) {
+        printf("nfs reset\n");
+        return true;
+    }
+    
     /* Did we change machine type? */
     if (current->System.nMachineType != changed->System.nMachineType) {
         printf("machine type reset\n");

@@ -45,7 +45,7 @@ static const uint8_t rfc1533_cookie[] = { RFC1533_COOKIE };
 #if BOOTP_VEND_NEXT
 static const uint8_t magic_next[]  = {'N','e','X','T'};
 static const char    kernel_next[] = "mach";
-static const char    tftp_root[]   = "/tftpboot/";
+static const char    tftp_root[]   = "/private/tftpboot/";
 #endif
 
 static char hostname[_SC_HOST_NAME_MAX];

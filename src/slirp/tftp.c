@@ -24,6 +24,7 @@
 
 #include <slirp.h>
 #include "configuration.h"
+#include "nfs/nfsd.h"
 
 struct tftp_session {
     int in_use;
@@ -101,23 +102,19 @@ static int tftp_session_find(struct tftp_t *tp)
 static int tftp_read_data(struct tftp_session *spt, u_int16_t block_nr,
 			  u_int8_t *buf, int len)
 {
-  int fd;
   int bytes_read = 0;
-  char path[1024];
-  sprintf(path, "%s%s", ConfigureParams.Ethernet.szNFSroot, spt->filename);
-  fd = open(path, O_RDONLY | O_BINARY);
+  FILE* fd = nfsd_fopen(spt->filename, "rb");
 
-  if (fd < 0) {
+  if (!(fd)) {
     return -1;
   }
 
   if (len) {
-    lseek(fd, block_nr * 512, SEEK_SET);
-
-    bytes_read = read(fd, buf, len);
+    fseek(fd, block_nr * 512, SEEK_SET);
+    bytes_read = fread(buf, sizeof(uint8_t), len, fd);
   }
 
-  close(fd);
+  fclose(fd);
 
   return bytes_read;
 }

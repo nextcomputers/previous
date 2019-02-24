@@ -13,17 +13,19 @@
 #include "configuration.h"
 #include "SocketListener.h"
 #include "VDNS.h"
+#include "FileTable.h"
 
 static bool         g_bLogOn = true;
 static CPortmapProg g_PortmapProg;
 static CRPCServer   g_RPCServer;
 char                nfsd_hostname[_SC_HOST_NAME_MAX];
-char                nfsd_export_path[MAXPATHLEN];
 
 nfsd_NAT nfsd_ports = {{0},{0}};
 
 static std::vector<UDPServerSocket*> SERVER_UDP;
 static std::vector<TCPServerSocket*> SERVER_TCP;
+
+FileTable* nfsd_fts[1]; // to be extended for multiple exports
 
 static bool initialized = false;
 
@@ -61,19 +63,20 @@ extern "C" void nfsd_start(void) {
     }
     
     gethostname(nfsd_hostname, sizeof(nfsd_hostname));
-    printf("[NFSD] starting local NFS daemon on '%s', exporting '%s'\n", nfsd_hostname, ConfigureParams.Ethernet.szNFSroot);
+    printf("[NFSD] starting local NFS daemon on '%s', exporting '%s' as '/'\n", nfsd_hostname, ConfigureParams.Ethernet.szNFSroot);
     printAbout();
     
     if(initialized) return;
     
+    nfsd_fts[0] = new FileTable(ConfigureParams.Ethernet.szNFSroot);
+
     static CNFSProg       NFSProg;
     static CMountProg     MountProg;
     static CBootparamProg BootparamProg;
     
 	NFSProg.SetUserID(0, 0);
-    strcpy(nfsd_export_path, ConfigureParams.Ethernet.szNFSroot);
-	MountProg.Export(nfsd_export_path, nfsd_export_path);
-	g_RPCServer.SetLogOn(g_bLogOn);
+    
+    g_RPCServer.SetLogOn(g_bLogOn);
 
     add_program(&g_PortmapProg, PORT_PORTMAP);
     add_program(&NFSProg,       PORT_NFS);
@@ -99,4 +102,8 @@ extern "C" int nfsd_match_addr(uint32_t addr) {
 extern "C" void nfsd_not_implemented(const char* file, int line) {
     printf("[NFSD] not implemented file:%s, line %d.", file, line);
     pause();
+}
+
+extern "C" FILE* nfsd_fopen(const char* path, const char* mode) {
+    return nfsd_fts[0]->fopen(path, mode);
 }
