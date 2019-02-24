@@ -17,14 +17,13 @@ class CMountProg : public CRPCProg
 {
 public:
 	CMountProg();
-	virtual ~CMountProg();
-    void        Export(std::string exportPath, std::string pathAlias);
+	~CMountProg();
+    
 	const char* GetClientAddr(int nIndex) const;
 	int         GetMountNumber(void) const;
 
 protected:
-	int                                m_nMountNum;
-    std::map<std::string, std::string> m_PathMap;
+	int m_nMountNum;
     
     char  m_exportPath[MAXPATHLEN];
 	char* m_clientAddr[MOUNT_NUM_MAX];

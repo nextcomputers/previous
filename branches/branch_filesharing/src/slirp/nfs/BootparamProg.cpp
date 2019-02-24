@@ -67,20 +67,20 @@ int CBootparamProg::ProcedureWHOAMI(void) {
     return PRC_OK;
 }
 
+const char* ROOT    = "/";
+const char* PRIVATE = "/private";
+
 int CBootparamProg::ProcedureGETFILE(void) {
     XDRString client;
     XDRString key;
     m_in->Read(client);
     m_in->Read(key);
     bool  deletePath = false;
-    char* path       = NULL;
+    const char* path = NULL;
     if(!(strcmp("root", key.Get())))
-        path = nfsd_export_path;
+        path = ROOT;
     else if(!(strcmp("private", key.Get()))) {
-        deletePath = true;
-        const char* privateDir = "private";
-        path = new char[strlen(nfsd_export_path) + strlen(privateDir) + 2];
-        sprintf(path, "%s/%s", nfsd_export_path, privateDir);
+        path = PRIVATE;
     }
     if(path) {
         m_out->Write(_SC_HOST_NAME_MAX, nfsd_hostname);

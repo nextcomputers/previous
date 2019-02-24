@@ -7,10 +7,9 @@
 
 #include "FileTable.h"
 #include "RPCProg.h"
+#include "nfsd.h"
 
 using namespace std;
-
-FileTable nfsd_ft;
 
 FileAttrs::FileAttrs(XDRInput* xin) : reserved(0) {
     xin->Read(&mode);
@@ -69,9 +68,13 @@ static int ThreadProc(void *lpParameter) {
     return 0;
 }
 
-FileTable::FileTable() : mutex(host_mutex_create()), cookie(rand()) {
+//----- file tyble
+
+FileTable::FileTable(const string& _basePath) : mutex(host_mutex_create()), cookie(rand()) {
+    basePath = _basePath;
+    if(basePath.compare(basePath.size() - 1, 1, "/") == 0) basePath.resize(basePath.size()-1);
     host_atomic_set(&doRun, 1);
-    thread = host_thread_create(&ThreadProc, "FileTyble", this);
+    thread = host_thread_create(&ThreadProc, "FileTable", this);
 }
 
 FileTable::~FileTable() {
@@ -95,7 +98,7 @@ void FileTable::Run(void) {
 }
 
 static string canonicalize(const string& path) {
-    char* rpath   = realpath(path.c_str(), NULL);
+    char* rpath = realpath(path.c_str(), NULL);
     if(rpath) {
         string result = rpath;
         free(rpath);
@@ -110,12 +113,12 @@ int FileTable::Stat(const string& _path, struct stat* fstat) {
     
     string     path   = canonicalize(_path);
     
-    int        result = stat(path.c_str(), fstat);
+    int        result = stat(path, fstat);
     FileAttrs* attrs  = GetFileAttrs(path);
     if(attrs) {
         fstat->st_mode = FileAttrs::Valid(attrs->mode) ? (attrs->mode | (fstat->st_mode & S_IFMT)) : fstat->st_mode;
-        fstat->st_uid  = FileAttrs::Valid(attrs->uid)  ? attrs->uid                                : fstat->st_uid;
-        fstat->st_gid  = FileAttrs::Valid(attrs->gid)  ? attrs->gid                                : fstat->st_gid;
+        fstat->st_uid  = FileAttrs::Valid(attrs->uid)  ?  attrs->uid                               : fstat->st_uid;
+        fstat->st_gid  = FileAttrs::Valid(attrs->gid)  ?  attrs->gid                               : fstat->st_gid;
     }
     return result;
 }
@@ -140,7 +143,7 @@ uint64_t FileTable::GetFileHandle(const string& _path) {
         result = iter->second;
     else {
         struct stat fstat;
-        if(stat(path.c_str(), &fstat) == 0) {
+        if(stat(path, &fstat) == 0) {
             result              = make_file_handle(&fstat);
             path2handle[path]   = result;
             handle2path[result] = path;
@@ -251,10 +254,84 @@ void FileTable::Dirty(FileAttrDB* db) {
     dirty.insert(db);
 }
 
+//----- file io
+
+FILE* FileTable::fopen(const string& _path, const char* mode) {
+    string path = basePath;
+    path += _path;
+    return ::fopen(path.c_str(), mode);
+}
+
+int FileTable::chmod(const string& _path, mode_t mode) {
+    string path = basePath;
+    path += _path;
+    return ::chmod(path.c_str(), mode);
+}
+
+int FileTable::access(const string& _path, int mode) {
+    string path = basePath;
+    path += _path;
+    return ::access(path.c_str(), mode);
+}
+
+DIR* FileTable::opendir(const string& _path) {
+    string path = basePath;
+    path += _path;
+    return ::opendir(path.c_str());
+}
+
+int FileTable::remove(const string& _path) {
+    string path = basePath;
+    path += _path;
+    return ::remove(path.c_str());
+}
+
+int FileTable::rename(const string& _from, const string& _to) {
+    string from = basePath;
+    from += _from;
+    string to = basePath;
+    to += _to;
+    return ::rename(from.c_str(), to.c_str());
+}
+
+int FileTable::symlink(const string& _path1, const string& _path2) {
+    string path1 = basePath;
+    path1 += _path1;
+    string path2 = basePath;
+    path2 += _path2;
+    return ::symlink(path1.c_str(), path2.c_str());
+}
+
+int FileTable::mkdir(const string& _path, mode_t mode) {
+    string path = basePath;
+    path += _path;
+    return ::mkdir(path.c_str(), mode);
+}
+
+int FileTable::nftw(const std::string& _path, int (*fn)(const char *, const struct stat *ptr, int flag, struct FTW *), int depth, int flags) {
+    string path = basePath;
+    path += _path;
+    return ::nftw(path.c_str(), fn, depth, flags);
+}
+
+int FileTable::statvfs(const std::string& _path, struct statvfs* buf) {
+    string path = basePath;
+    path += _path;
+    return ::statvfs(path.c_str(), buf);
+}
+
+int FileTable::stat(const std::string& _path, struct stat* buf) {
+    string path = basePath;
+    path += _path;
+    return ::stat(path.c_str(), buf);
+}
+
+//----- file attribute database
+
 FileAttrDB::FileAttrDB(FileTable& ft, const string& directory) : ft(ft) {
     path = directory;
     path += "/" FILE_TABLE_NAME;
-    FILE* file = fopen(path.c_str(), "r");
+    FILE* file = ft.fopen(path, "r");
     if(file) {
         for(;;) {
             string fname;
@@ -272,7 +349,10 @@ FileAttrDB::~FileAttrDB() {
 }
 
 FileAttrs* FileAttrDB::GetFileAttrs(const std::string& path) {
-    return attrs[filename(path)];
+    string fname = filename(path);
+    
+    map<string, FileAttrs*>::iterator iter = attrs.find(fname);
+    return iter == attrs.end() ? NULL : iter->second;
 }
 
 void FileAttrDB::SetFileAttrs(const std::string& path, const FileAttrs& fattrs) {
@@ -299,16 +379,11 @@ void FileAttrDB::Remove(const std::string& path) {
 
 void FileAttrDB::Write(void) {
     if(attrs.size() > 0) {
-        FILE* file = fopen(path.c_str(), "w");
-                
+        FILE* file = ft.fopen(path, "w");
+        
         if(file) {
-            for(map<string, FileAttrs*>::iterator it = attrs.begin(), next_it = it; it != attrs.end(); it = next_it) {
-                ++next_it;
-                if(it->second)
-                    it->second->Write(file, it->first);
-                else
-                    attrs.erase(it); // TODO: figure out why we hit this case. Should not happen.
-            }
+            for(map<string, FileAttrs*>::iterator it = attrs.begin(); it != attrs.end(); it++)
+                it->second->Write(file, it->first);
             fclose(file);
         }
     }

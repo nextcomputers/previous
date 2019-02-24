@@ -5,7 +5,10 @@
 #include <string>
 #include <map>
 #include <set>
+#include <dirent.h>
+#include <ftw.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 
 #include "XDRStream.h"
 #include "compat.h"
@@ -58,13 +61,14 @@ class FileTable {
     std::map<uint64_t,    std::string> handle2path;
     std::map<std::string, FileAttrDB*> path2db;
     std::set<FileAttrDB*>              dirty;
-    
+    std::string                        basePath;
+
     void        Write(void);
     FileAttrDB* GetDB(const std::string& path);
 public:
     uint32_t     cookie;
     
-    FileTable();
+    FileTable(const std::string& basePath);
     ~FileTable();
     
     int         Stat           (const std::string& path, struct stat* stat);
@@ -76,8 +80,18 @@ public:
     void        SetFileAttrs   (const std::string& path, const FileAttrs& fstat);
     void        Dirty          (FileAttrDB* db);
     void        Run            (void);
+    
+    FILE*       fopen  (const std::string& path, const char* mode);
+    int         chmod  (const std::string& path, mode_t mode);
+    int         access (const std::string& path, int mode);
+    DIR*        opendir(const std::string& path);
+    int         remove (const std::string& path);
+    int         rename (const std::string& from, const std::string& to);
+    int         symlink(const std::string& path1, const std::string& path2);
+    int         mkdir  (const std::string& path, mode_t mode);
+    int         nftw   (const std::string& path, int (*fn)(const char *, const struct stat *ptr, int flag, struct FTW *), int depth, int flags);
+    int         statvfs(const std::string& path, struct statvfs* buf);
+    int         stat   (const std::string& path, struct stat* buf);
 };
-
-extern FileTable nfsd_ft;
 
 #endif

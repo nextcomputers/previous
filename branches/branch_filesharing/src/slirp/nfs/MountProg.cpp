@@ -6,6 +6,8 @@
 #include "nfsd.h"
 #include "compat.h"
 
+using namespace std;
+
 enum
 {
 	MNT_OK = 0,
@@ -28,21 +30,6 @@ CMountProg::CMountProg() : CRPCProg(PROG_MOUNT, 3, "mountd"), m_nMountNum(0) {
 
 CMountProg::~CMountProg() {
 	for (int i = 0; i < MOUNT_NUM_MAX; i++) delete[] m_clientAddr[i];
-}
-
-void CMountProg::Export(std::string path, std::string pathAlias) {
-    char *formattedPath = FormatPath(path.c_str(), FORMAT_PATH);
-    if(formattedPath) {
-        pathAlias = FormatPath(pathAlias.c_str(), FORMAT_PATHALIAS);
-        
-        if (m_PathMap.count(pathAlias) == 0) {
-            m_PathMap[pathAlias] = std::string(formattedPath);
-            printf("Path #%zu is: %s, path alias is: %s\n", m_PathMap.size(), path.c_str(), pathAlias.c_str());
-        } else {
-            printf("Path %s with path alias %s already known\n", path.c_str(), pathAlias.c_str());
-        }
-        free(formattedPath);
-    }
 }
 
 int CMountProg::GetMountNumber(void) const {
@@ -74,7 +61,7 @@ int CMountProg::ProcedureMNT(void) {
     if (path.Get()) {
         m_out->Write(MNT_OK); //OK
         
-        uint64_t handle = nfsd_ft.GetFileHandle(path.Get());
+        uint64_t handle = nfsd_fts[0]->GetFileHandle(path.Get());
         if(handle) {
             uint64_t data[8] = {handle, 0, 0, 0, 0, 0, 0, 0};
             
@@ -129,17 +116,15 @@ int CMountProg::ProcedureUMNT(void) {
 int CMountProg::ProcedureEXPORT(void) {
     Log("EXPORT");
     
-    for (auto const &exportedPath : m_PathMap) {
-        const char* path = exportedPath.first.c_str();
-        // dirpath
-        m_out->Write(1);
-        m_out->Write(MAXPATHLEN, path);
-        // groups
-        m_out->Write(1);
-        m_out->Write(1);
-        m_out->Write((void*)"*...", 4);
-        m_out->Write(0);
-    }
+    const char* path = "/";
+    // dirpath
+    m_out->Write(1);
+    m_out->Write(MAXPATHLEN, path);
+    // groups
+    m_out->Write(1);
+    m_out->Write(1);
+    m_out->Write((void*)"*...", 4);
+    m_out->Write(0);
     
     m_out->Write(0);
     m_out->Write(0);
