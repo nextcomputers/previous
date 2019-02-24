@@ -9,7 +9,7 @@ XDROpaque::XDROpaque() : m_size(0), m_data(NULL), m_deleteData(false) {}
 
 XDROpaque::XDROpaque(size_t size) : m_size(size), m_data(new uint8_t[size]), m_deleteData(true) {}
 
-XDROpaque::XDROpaque(const void* data, size_t size) {
+XDROpaque::XDROpaque(const void* data, size_t size) : m_size(0), m_data(NULL), m_deleteData(false) {
     Set(data, size);
 }
 
