@@ -13,6 +13,15 @@
 #include <time.h>
 #include <stdio.h>
 
+#include "host.h"
+
+class NFSDLock {
+    mutex_t* mutex;
+public:
+    NFSDLock(mutex_t* mutex) : mutex(mutex) {host_mutex_lock(mutex);}
+    ~NFSDLock()                             {host_mutex_unlock(mutex);}
+};
+
 char*   strcpy_s (char* dst,  size_t  maxLen, const char* src);
 char*   strncpy_s(char* dst,  size_t  maxLen, const char* src, size_t len);
 errno_t strcat_s (char* dest, rsize_t maxLen, const char* src);

@@ -23,6 +23,7 @@ protected:
 	int ProcedureCREATE(void);
 	int ProcedureREMOVE(void);
 	int ProcedureRENAME(void);
+    int ProcedureSYMLINK(void);
 	int ProcedureMKDIR(void);
 	int ProcedureRMDIR(void);
 	int ProcedureREADDIR(void);

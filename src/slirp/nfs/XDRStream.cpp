@@ -30,14 +30,15 @@ void XDROpaque::SetSize(size_t size) {
 }
 
 void XDROpaque::Set(const void* data, size_t size) {
-    if(data == m_data) {
+    if(data == m_data && size <= m_size) {
         m_size = size;
     } else {
-        if(m_deleteData) delete [] m_data;
+        uint8_t* toDelete = m_deleteData ? m_data : NULL;
         m_deleteData = true;
         m_size       = size;
         m_data       = new uint8_t[size];
         if(data) memcpy(m_data, data, size);
+        delete[] toDelete;
     }
 }
 

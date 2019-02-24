@@ -24,6 +24,7 @@
 #include <slirp.h>
 #include <unistd.h>
 #include "ctl.h"
+#include "nfs/nfsd.h"
 
 /* XXX: only DHCP is supported */
 
@@ -172,19 +173,21 @@ static void bootp_reply(struct bootp_t *bp)
         }
     }
 
-    saddr.sin_addr.s_addr = htonl(ntohl(special_addr.s_addr) | CTL_ALIAS);
-    saddr.sin_port = htons(BOOTP_SERVER);
-    daddr.sin_port = htons(BOOTP_CLIENT);
+    saddr.sin_addr.s_addr = htonl(ntohl(special_addr.s_addr) | CTL_NFSD);
+    saddr.sin_port        = htons(BOOTP_SERVER);
+    daddr.sin_port        = htons(BOOTP_CLIENT);
 
-    rbp->bp_op = BOOTP_REPLY;
-    rbp->bp_xid = bp->bp_xid;
+    rbp->bp_op    = BOOTP_REPLY;
+    rbp->bp_xid   = bp->bp_xid;
     rbp->bp_htype = 1;
-    rbp->bp_hlen = 6;
+    rbp->bp_hlen  = 6;
     memcpy(rbp->bp_hwaddr, bp->bp_hwaddr, 6);
 
-    rbp->bp_yiaddr = daddr.sin_addr; /* Client IP address */
-    rbp->bp_siaddr = saddr.sin_addr; /* Server IP address */
-    
+    rbp->bp_yiaddr        = daddr.sin_addr; /* Client IP address */
+    rbp->bp_siaddr        = saddr.sin_addr; /* Server IP address */
+    rbp->bp_giaddr.s_addr = htonl(ntohl(special_addr.s_addr) | CTL_GATEWAY); /* Gateway IP address */
+    strcpy((char*)rbp->bp_sname, nfsd_hostname); /* Server namne */
+
     q = rbp->bp_vend;
 #if BOOTP_VEND_NEXT
     char path[TFTP_FILENAME_MAX];
@@ -197,10 +200,8 @@ static void bootp_reply(struct bootp_t *bp)
     q += 4;
     *q++ = 1;
     *q++ = 0;
-    *q++ = 0;
-    memset(q, 0, 56);
-    q += 56;
-    *q++ = 0;
+    memset(q, 0, 57);
+    q += 57;
 #else
     uint32_t val;
     memcpy(q, rfc1533_cookie, 4);

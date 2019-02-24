@@ -36,7 +36,8 @@ int CRPCProg::Process(void) {
         name = m_procNames[m_param->proc];
     }
     int result = (this->*proc)();
-    Log(".%s() = %d", name, result);
+    if(result == PRC_NOTIMP) Log(" %d(...) = %d", m_param->proc, result);
+    else                     Log(" %s(...) = %d", name,          result);
     return result;
 }
 

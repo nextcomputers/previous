@@ -74,13 +74,15 @@ int CMountProg::ProcedureMNT(void) {
     if (path.Get()) {
         m_out->Write(MNT_OK); //OK
         
-        FileHandle* handle = nfsd_ft.GetFileHandle(path.Get());
+        uint64_t handle = nfsd_ft.GetFileHandle(path.Get());
         if(handle) {
+            uint64_t data[8] = {handle, 0, 0, 0, 0, 0, 0, 0};
+            
             if (m_param->version == 1) {
-                m_out->Write(handle, FHSIZE);
+                m_out->Write(data, FHSIZE);
             } else {
                 m_out->Write(FHSIZE_NFS3);
-                m_out->Write(handle, FHSIZE_NFS3);
+                m_out->Write(data, FHSIZE_NFS3);
                 m_out->Write(0);  //flavor
             }
             

@@ -28,6 +28,6 @@ add_library(Slirp
             nfs/compat.cpp nfs/unicode.cpp
             nfs/XDRStream.cpp nfs/Socket.cpp nfs/TCPServerSocket.cpp nfs/UDPServerSocket.cpp
             nfs/nfsd.cpp nfs/RPCServer.cpp nfs/VDNS.cpp
-            nfs/RPCProg.cpp nfs/PortmapProg.cpp nfs/MountProg.cpp nfs/NFSProg.cpp nfs/NFS2Prog.cpp nfs/NFS3Prog.cpp nfs/BootparamProg.cpp
+            nfs/RPCProg.cpp nfs/PortmapProg.cpp nfs/MountProg.cpp nfs/NFSProg.cpp nfs/NFS2Prog.cpp nfs/BootparamProg.cpp
             nfs/FileTable.cpp
 			)

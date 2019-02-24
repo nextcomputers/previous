@@ -94,7 +94,7 @@ void CSocket::Run(void)
 	nSize = sizeof(m_RemoteAddr);
 	for (;;) {
 		if (m_nType == SOCK_STREAM)
-			nBytes = recv(m_Socket, m_Input.GetBuffer(), 1024 /*m_Input.GetCapacity()*/, 0);
+			nBytes = recv(m_Socket, m_Input.GetBuffer(), m_Input.GetCapacity(), 0);
 		else if (m_nType == SOCK_DGRAM)
 			nBytes = recvfrom(m_Socket, m_Input.GetBuffer(), m_Input.GetCapacity(), 0, (struct sockaddr *)&m_RemoteAddr, &nSize);
 		if (nBytes > 0) {

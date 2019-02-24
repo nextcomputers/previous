@@ -20,7 +20,7 @@ const char DlgMain_fileid[] = "Hatari dlgMain.c : " __DATE__ " " __TIME__;
 #define MAINDLG_SYSTEM   3
 #define MAINDLG_ROM      4
 #define MAINDLG_GRAPH    5
-#define MAINDLG_ENET     6
+#define MAINDLG_NET      6
 #define MAINDLG_BOOT     7
 #define MAINDLG_SCSI     8
 #define MAINDLG_MO       9
@@ -46,8 +46,8 @@ static SGOBJ maindlg[] =
     { SGHIDDEN, 0, 0, 15,1, 8,1, "Previous" },
 	{ SGBUTTON, 0, 0, 2,4, 13,1, "System" },
 	{ SGBUTTON, 0, 0, 2,6, 13,1, "ROM" },
-	{ SGBUTTON, 0, 0, 2,8, 13,1, "Graphics" },
-	{ SGBUTTON, 0, 0, 2,10, 13,1, "Ethernet" },
+	{ SGBUTTON, 0, 0, 2,8, 13,1, "Display" },
+	{ SGBUTTON, 0, 0, 2,10, 13,1, "Network" },
 	{ SGBUTTON, 0, 0, 17,4, 16,1, "Boot options" },
 	{ SGBUTTON, 0, 0, 17,6, 16,1, "SCSI disks" },
 	{ SGBUTTON, 0, 0, 17,8, 16,1, "MO disks" },
@@ -109,7 +109,7 @@ int Dialog_MainDlg(bool *bReset, bool *bLoadedSnapshot)
 		 case MAINDLG_GRAPH:
 			Dialog_GraphicsDlg();
 			break;
-		 case MAINDLG_ENET:
+		 case MAINDLG_NET:
 			DlgEthernet_Main();
 			break;
 		 case MAINDLG_SCSI:
