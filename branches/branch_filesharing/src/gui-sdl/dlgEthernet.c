@@ -15,6 +15,7 @@ const char DlgEthernet_fileid[] = "Previous dlgEthernet.c : " __DATE__ " " __TIM
 
 Uint8 mac_addr[6];
 char mac_addr_string[20] = "00:00:0f:00:00:00";
+char nfs_root_string[64] = "";
 
 #if HAVE_PCAP
 #define DLGENET_ENABLE      4
@@ -26,7 +27,10 @@ char mac_addr_string[20] = "00:00:0f:00:00:00";
 
 #define DLGENET_MAC         14
 
-#define DLGENET_EXIT        16
+#define DLGENET_NFSBROWSE   17
+#define DLGENET_NFSROOT     18
+
+#define DLGENET_EXIT        20
 
 #define PCAP_INTERFACE_LEN  19
 
@@ -36,8 +40,8 @@ char pcap_interface[PCAP_INTERFACE_LEN] = "PCAP";
 /* The Ethernet options dialog: */
 static SGOBJ enetdlg[] =
 {
-    { SGBOX, 0, 0, 0,0, 51,23, NULL },
-    { SGTEXT, 0, 0, 17,1, 16,1, "Ethernet options" },
+    { SGBOX, 0, 0, 0,0, 51,29, NULL },
+    { SGTEXT, 0, 0, 18,1, 15,1, "Network options" },
     
     { SGBOX, 0, 0, 1,3, 24,9, NULL },
     { SGTEXT, 0, 0, 3,4, 15,1, "Guest interface" },
@@ -54,10 +58,15 @@ static SGOBJ enetdlg[] =
     { SGTEXT, 0, 0, 3,14, 12,1, "MAC address:" },
     { SGTEXT, 0, 0, 16,14, 17,1, mac_addr_string },
     { SGBUTTON, 0, 0, 37,14, 10,1, "Select" },
-
-    { SGTEXT, 0, 0, 4,17, 22,1, "Note: PCAP requires super user privileges." },
     
-    { SGBUTTON, SG_DEFAULT, 0, 15,20, 21,1, "Back to main menu" },
+    { SGBOX, 0, 0, 1,17, 49,5, NULL },
+    { SGTEXT, 0, 0, 3,18, 12,1, "NFS shared directory:" },
+    { SGBUTTON, 0, 0, 37,18, 10,1, "Browse" },
+    { SGTEXT, 0, 0, 3,20, 44,1, nfs_root_string },
+
+    { SGTEXT, 0, 0, 4,23, 22,1, "Note: PCAP requires super user privileges." },
+    
+    { SGBUTTON, SG_DEFAULT, 0, 15,26, 21,1, "Back to main menu" },
     { -1, 0, 0, 0,0, 0,0, NULL }
 };
 #else // !HAVE_PCAP
@@ -65,14 +74,16 @@ static SGOBJ enetdlg[] =
 #define DLGENET_THIN        4
 #define DLGENET_TWISTED     5
 #define DLGENET_MAC         9
-#define DLGENET_EXIT        10
+#define DLGENET_NFSBROWSE   12
+#define DLGENET_NFSROOT     13
+#define DLGENET_EXIT        14
 
 
 /* The Ethernet options dialog: */
 static SGOBJ enetdlg[] =
 {
-    { SGBOX, 0, 0, 0,0, 53,17, NULL },
-    { SGTEXT, 0, 0, 18,1, 16,1, "Ethernet options" },
+    { SGBOX, 0, 0, 0,0, 53,23, NULL },
+    { SGTEXT, 0, 0, 19,1, 16,1, "Network options" },
     
     { SGBOX, 0, 0, 1,3, 25,9, NULL },
     { SGCHECKBOX, 0, 0, 3,5, 20,1, "Ethernet connected" },
@@ -84,7 +95,12 @@ static SGOBJ enetdlg[] =
     { SGTEXT, 0, 0, 31,7, 17,1, mac_addr_string },
     { SGBUTTON, 0, 0, 42,5, 8,1, "Select" },
     
-    { SGBUTTON, SG_DEFAULT, 0, 16,14, 21,1, "Back to main menu" },
+    { SGBOX, 0, 0, 1,13, 51,5, NULL },
+    { SGTEXT, 0, 0, 3,14, 12,1, "NFS shared directory:" },
+    { SGBUTTON, 0, 0, 40,14, 10,1, "Browse" },
+    { SGTEXT, 0, 0, 3,16, 47,1, nfs_root_string },
+    
+    { SGBUTTON, SG_DEFAULT, 0, 16,20, 21,1, "Back to main menu" },
     { -1, 0, 0, 0,0, 0,0, NULL }
 };
 #endif
@@ -127,6 +143,9 @@ void DlgEthernet_Main(void)
     }
 #endif
     
+    File_ShrinkName(nfs_root_string, ConfigureParams.Ethernet.szNFSroot,
+                    enetdlg[DLGENET_NFSROOT].w);
+
     /* Draw and process the dialog */
     
 	do
@@ -173,6 +192,12 @@ void DlgEthernet_Main(void)
 #endif
             case DLGENET_MAC:
                 DlgEthernetAdvancedMAC(mac_addr);
+                break;
+                
+            case DLGENET_NFSBROWSE:
+                SDLGui_DirectorySelect(nfs_root_string,
+                                       ConfigureParams.Ethernet.szNFSroot,
+                                       enetdlg[DLGENET_NFSROOT].w);
                 break;
                 
 			default:

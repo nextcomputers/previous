@@ -4,7 +4,11 @@
 #include<iostream>
 #include <string>
 #include <map>
+#include <set>
 #include <sys/stat.h>
+
+#include "XDRStream.h"
+#include "compat.h"
 
 #define FILE_TABLE_NAME ".nfsd_fattrs"
 
@@ -13,66 +17,65 @@ public:
     uint32_t mode;
     uint32_t uid;
     uint32_t gid;
+    uint32_t size;
+    uint32_t atime_sec;
+    uint32_t atime_nsec;
+    uint32_t mtime_sec;
+    uint32_t mtime_nsec;
     int      reserved; // for future extensions
-    
-    FileAttrs(const struct stat* stat = NULL);
+
+    FileAttrs(XDRInput* xin);
+    FileAttrs(const struct stat* stat);
     FileAttrs(FILE* fin, std::string& name);
     FileAttrs(const FileAttrs& attrs);
+    void Update(const FileAttrs& attrs);
     void Write(FILE* fout, const std::string& name);
-    ~FileAttrs(void);
+    
+    static bool Valid(uint32_t statval);
 };
 
+class FileTable;
+
 class FileAttrDB {
+    FileTable&                        ft;
     std::string                       path;
     std::map<std::string, FileAttrs*> attrs;
 public:
-    FileAttrDB(const std::string& directory);
-    void Add(const std::string& name, const FileAttrs& attrs);
-    void Remove(const std::string& name);
+    FileAttrDB(FileTable& ft, const std::string& directory);
     ~FileAttrDB();
-};
-
-class FileHandle {
-public:
-    uint64_t magic;
-    uint64_t handle0;
-    uint64_t handle1;
-    uint64_t pad3;
-// NFS3 fields
-    uint64_t pad4;
-    uint64_t pad5;
-    uint64_t pad6;
-    uint64_t pad7;
-// internal use only
-    FileAttrs attrs;
-    bool      dirty;
-public:
-    FileHandle(const struct stat* stat = NULL);
     
-    void SetMode(uint32_t mode);
-    void SetUID (uint32_t uid);
-    void SetGID (uint32_t gid);
+    void     Remove      (const std::string& name);
+    FileAttrs *GetFileAttrs(const std::string& name);
+    void     SetFileAttrs(const std::string& path, const FileAttrs& fstat);
+    void     Write(void);
 };
 
 class FileTable {
-    std::map<std::string, FileHandle*> path2handle;
-    std::map<uint64_t,    std::string>  id2path;
+    atomic_int                         doRun;
+    thread_t*                          thread;
+    mutex_t*                           mutex;
+    std::map<std::string, uint64_t>    path2handle;
+    std::map<uint64_t,    std::string> handle2path;
+    std::map<std::string, FileAttrDB*> path2db;
+    std::set<FileAttrDB*>              dirty;
+    
+    void        Write(void);
+    FileAttrDB* GetDB(const std::string& path);
 public:
+    uint32_t     cookie;
+    
     FileTable();
     ~FileTable();
     
-    uint32_t     cookie;
-    
-    int         Stat(const std::string& path, struct stat* stat);
-    FileHandle* GetFileHandle(const std::string& path);
-    bool        GetAbsolutePath(const FileHandle& fhandle, std::string& result);
-    uint64_t    GetFileId(const std::string& path);
-    void        Rename(const std::string& pathFrom, const std::string& pathTo);
-    void        Remove(const std::string& path);
-    void        SetMode(const std::string& path, uint32_t mode);
-    void        SetUID (const std::string& path, uint32_t uid);
-    void        SetGID (const std::string& path, uint32_t gid);
-    void        Sync(void);
+    int         Stat           (const std::string& path, struct stat* stat);
+    bool        GetAbsolutePath(uint64_t fhandle, std::string& result);
+    void        Move           (const std::string& pathFrom, const std::string& pathTo);
+    void        Remove         (const std::string& path);
+    uint64_t    GetFileHandle  (const std::string& path);
+    FileAttrs*  GetFileAttrs   (const std::string& path);
+    void        SetFileAttrs   (const std::string& path, const FileAttrs& fstat);
+    void        Dirty          (FileAttrDB* db);
+    void        Run            (void);
 };
 
 extern FileTable nfsd_ft;

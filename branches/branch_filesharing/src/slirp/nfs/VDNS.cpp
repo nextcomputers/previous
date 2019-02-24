@@ -10,6 +10,8 @@
 #include "VDNS.h"
 #include "nfsd.h"
 
+#include "compat.h"
+
 vdns_record VDNS::s_dns_db[32];
 size_t      VDNS::s_dns_db_sz = 0;
 
@@ -107,7 +109,7 @@ extern "C" int nfsd_vdns_match(struct mbuf *m) {
 }
 
 void VDNS::SocketReceived(CSocket* pSocket) {
-    host_mutex_lock(m_hMutex);
+    NFSDLock lock(m_hMutex);
     
     XDRInput*  in    = pSocket->GetInputStream();
     XDROutput* out   = pSocket->GetOutputStream();
@@ -153,6 +155,4 @@ void VDNS::SocketReceived(CSocket* pSocket) {
     
     out->Write(msg, n);
     pSocket->Send();  //send response
-
-    host_mutex_unlock(m_hMutex);
 }

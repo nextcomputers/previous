@@ -3,6 +3,8 @@
 #include "RPCServer.h"
 #include "TCPServerSocket.h"
 
+#include "compat.h"
+
 #define MIN_PROG_NUM 100000
 enum
 {
@@ -68,19 +70,15 @@ void CRPCServer::SetLogOn(bool bLogOn)
 }
 
 void CRPCServer::SocketReceived(CSocket *pSocket) {
-	XDRInput *pInStream;
-	int nResult;
+    NFSDLock lock(m_hMutex);
 
-    host_mutex_lock(m_hMutex);
-	pInStream = pSocket->GetInputStream();
-	while (pInStream->GetSize() > 0)
-	{
-		nResult = Process(pSocket->GetType(), pInStream, pSocket->GetOutputStream(), pSocket->GetRemoteAddress());  //process input data
+    XDRInput* pInStream = pSocket->GetInputStream();
+	while (pInStream->GetSize() > 0) {
+		int nResult = Process(pSocket->GetType(), pInStream, pSocket->GetOutputStream(), pSocket->GetRemoteAddress());  //process input data
 		pSocket->Send();  //send response
 		if (nResult != PRC_OK || pSocket->GetType() == SOCK_DGRAM)
 			break;
 	}
-	host_mutex_unlock(m_hMutex);
 }
 
 int CRPCServer::Process(int sockType, XDRInput* pInStream, XDROutput* pOutStream, const char* pRemoteAddr) {
