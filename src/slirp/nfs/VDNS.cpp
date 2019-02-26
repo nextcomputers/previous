@@ -70,6 +70,9 @@ VDNS::VDNS(void)  : m_hMutex(host_mutex_create()) {
     m_udp = new UDPServerSocket(this);
     m_udp->Open(PROG_VDNS, PORT_DNS);
     
+    char nfsd_hostname[_SC_HOST_NAME_MAX];
+    gethostname(nfsd_hostname, sizeof(nfsd_hostname));
+    
     AddRecord(ntohl(special_addr.s_addr) | CTL_ALIAS, NAME_HOST);
     AddRecord(ntohl(special_addr.s_addr) | CTL_DNS,   NAME_DNS);
     AddRecord(ntohl(special_addr.s_addr) | CTL_NFSD,  nfsd_hostname);
