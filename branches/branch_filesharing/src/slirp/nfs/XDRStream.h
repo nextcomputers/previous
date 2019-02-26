@@ -58,7 +58,6 @@ public:
     ~XDROutput();
     void     Write(void *pData, size_t nSize);
     void     Write(uint32_t nValue);
-    void     Write8(uint64_t nValue);
     void     Seek(int nOffset, int nFrom);
     void     Write(XDROpaque& opaque);
     void     Write(XDRString& string);
@@ -72,11 +71,9 @@ public:
     XDRInput(uint8_t* data, size_t size);
     ~XDRInput();
     size_t   Read(void *pData, size_t nSize);
-    size_t   Read(uint8_t* pnValue);
     size_t   Read(uint32_t* pnValue);
-    size_t   Read(uint64_t* pnValue);
     size_t   Read(XDROpaque& opaque);
-    size_t   Skip(size_t nSize);
+    size_t   Skip(ssize_t nSize);
 };
 
 #endif

@@ -183,7 +183,7 @@ static void bootp_reply(struct bootp_t *bp)
     rbp->bp_yiaddr        = daddr.sin_addr; /* Client IP address */
     rbp->bp_siaddr        = saddr.sin_addr; /* Server IP address */
     rbp->bp_giaddr.s_addr = htonl(ntohl(special_addr.s_addr) | CTL_GATEWAY); /* Gateway IP address */
-    strcpy((char*)rbp->bp_sname, nfsd_hostname); /* Server namne */
+    strcpy((char*)rbp->bp_sname, NAME_NFSD); /* Server namne */
 
     q = rbp->bp_vend;
 #if BOOTP_VEND_NEXT

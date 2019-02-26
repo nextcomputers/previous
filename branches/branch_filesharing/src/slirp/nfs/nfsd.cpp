@@ -18,7 +18,6 @@
 static bool         g_bLogOn = true;
 static CPortmapProg g_PortmapProg;
 static CRPCServer   g_RPCServer;
-char                nfsd_hostname[_SC_HOST_NAME_MAX];
 
 nfsd_NAT nfsd_ports = {{0},{0}};
 
@@ -62,7 +61,9 @@ extern "C" void nfsd_start(void) {
         return;
     }
     
+    char nfsd_hostname[_SC_HOST_NAME_MAX];
     gethostname(nfsd_hostname, sizeof(nfsd_hostname));
+    
     printf("[NFSD] starting local NFS daemon on '%s', exporting '%s' as '/'\n", nfsd_hostname, ConfigureParams.Ethernet.szNFSroot);
     printAbout();
     

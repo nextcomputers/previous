@@ -34,18 +34,12 @@ extern "C" struct in_addr special_addr;
 
 int CBootparamProg::ProcedureWHOAMI(void) {
     uint32_t address_type;
-    uint8_t  net;
-    uint8_t  host;
-    uint8_t  lh;
-    uint8_t  impno;
+    uint32_t address;
     
     m_in->Read(&address_type);
     switch (address_type) {
         case IP_ADDR_TYPE:
-            m_in->Read(&net);
-            m_in->Read(&host);
-            m_in->Read(&lh);
-            m_in->Read(&impno);
+            m_in->Read(&address);
             break;
         default:
             return PRC_FAIL;
@@ -83,7 +77,7 @@ int CBootparamProg::ProcedureGETFILE(void) {
         path = PRIVATE;
     }
     if(path) {
-        m_out->Write(_SC_HOST_NAME_MAX, nfsd_hostname);
+        m_out->Write(_SC_HOST_NAME_MAX, NAME_NFSD);
         WriteInAddr(m_out, ntohl(special_addr.s_addr) | CTL_NFSD);
         m_out->Write(PATH_MAX, path);
         if(deletePath) delete[] path;

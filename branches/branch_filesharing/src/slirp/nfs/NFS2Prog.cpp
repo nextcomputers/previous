@@ -352,8 +352,9 @@ int CNFS2Prog::ProcedureRMDIR(void) {
     return PRC_OK;
 }
 
-uint32_t make_file_id(uint64_t handle) {
-    return (uint32_t)(handle ^ (handle >> 32LL));
+static uint32_t fileid(uint64_t ino) {
+    uint32_t result = ino;
+    return result ^ (ino >> 32LL);
 }
 
 int CNFS2Prog::ProcedureREADDIR(void) {
@@ -361,7 +362,7 @@ int CNFS2Prog::ProcedureREADDIR(void) {
 	DIR*     handle;
     uint32_t cookie;
     uint32_t count;
-
+    
 	GetPath(path);
 	if (!(CheckFile(path)))
 		return PRC_OK;
@@ -377,7 +378,7 @@ int CNFS2Prog::ProcedureREADDIR(void) {
             if(strcmp(FILE_TABLE_NAME, fileinfo->d_name)) {
                 if(--skip <= 0) {
                     m_out->Write(1);  //value follows
-                    m_out->Write(make_file_id(nfsd_fts[0]->GetFileHandle(FileTable::MakePath(path, fileinfo->d_name))));  //file id
+                    m_out->Write(fileid(fileinfo->d_ino));
                     string dname = fileinfo->d_name;
                     XDRString name(dname);
                     m_out->Write(name);
@@ -483,7 +484,7 @@ bool CNFS2Prog::WriteFileAttributes(const string& path) {
 	m_out->Write(data.st_rdev);  //rdev
 	m_out->Write(data.st_blocks);  //blocks
 	m_out->Write(data.st_dev);  //fsid
-    m_out->Write(data.st_ino);  //fileid
+    m_out->Write(fileid(data.st_ino));
 	m_out->Write(data.st_atimespec.tv_sec);  //atime
 	m_out->Write(data.st_atimespec.tv_nsec / 1000);  //atime
 	m_out->Write(data.st_mtimespec.tv_sec);  //mtime

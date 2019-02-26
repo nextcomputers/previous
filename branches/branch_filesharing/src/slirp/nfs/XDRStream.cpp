@@ -113,22 +113,11 @@ size_t XDRInput::Read(void *pData, size_t nSize) {
 	return nSize;
 }
 
-size_t XDRInput::Read(uint32_t *pnValue) {
-	size_t i, n;
-	uint8_t *p, pBuffer[sizeof(uint32_t)];
-
-	p = (uint8_t *)pnValue;
-	n = Read(pBuffer, sizeof(uint32_t));
-	for (i = 0; i < n; i++)  //reverse byte order
-		p[sizeof(uint32_t) - 1 - i] = pBuffer[i];
-	return n;
-}
-
-size_t XDRInput::Read(uint8_t* pnValue) {
-    uint32_t val;
-    size_t n = Read(&val);
-    *pnValue = (uint8_t)val;
-    return n;
+size_t XDRInput::Read(uint32_t* val) {
+    uint32_t hval;
+    size_t count = Read(&hval, sizeof(uint32_t));
+    *val         = ntohl(hval);
+    return count;
 }
 
 size_t XDRInput::Read(XDROpaque& opaque) {
@@ -141,26 +130,13 @@ size_t XDRInput::Read(XDROpaque& opaque) {
     return 4 + opaque.m_size;
 }
 
-size_t XDRInput::Read(uint64_t *pnValue)
-{
-	size_t i, n;
-	uint8_t *p, pBuffer[sizeof(uint64_t)];
-
-	p = (uint8_t *)pnValue;
-	n = Read(pBuffer, sizeof(uint64_t));
-	for (i = 0; i < n; i++)  //reverse byte order
-		p[sizeof(uint64_t) - 1 - i] = pBuffer[i];
-	return n;
-}
-
-size_t XDRInput::Skip(size_t nSize)
+size_t XDRInput::Skip(ssize_t nSize)
 {
 	if (nSize > m_size - m_index)  //over the number of bytes of data in the input buffer
 		nSize = m_size - m_index;
 	m_index += nSize;
 	return nSize;
 }
-
 
 XDROutput::XDROutput() : XDRStream(true,  new uint8_t[MAXDATA], MAXDATA, 0) {}
 
@@ -187,33 +163,15 @@ void XDROutput::Write(XDRString& string) {
     Write((XDROpaque&)string);
 }
 
-void XDROutput::Write(uint32_t nValue) {
-	int i;
-	uint8_t *p, pBuffer[sizeof(uint32_t)];
-
-	p = (uint8_t *)&nValue;
-	for (i = sizeof(uint32_t) - 1; i >= 0; i--)  //reverse byte order
-		pBuffer[i] = p[sizeof(uint32_t) - 1 - i];
-	Write(pBuffer, sizeof(uint32_t));
-}
-
-void XDROutput::Write8(uint64_t nValue) {
-	int i;
-	unsigned char *p, pBuffer[sizeof(uint64_t)];
-
-	p = (uint8_t *)&nValue;
-	for (i = sizeof(uint64_t) - 1; i >= 0; i--)  //reverse byte order
-		pBuffer[i] = p[sizeof(uint64_t) - 1 - i];
-	Write(pBuffer, sizeof(uint64_t));
+void XDROutput::Write(uint32_t val) {
+    uint32_t nval= htonl(val);
+	Write(&nval, sizeof(uint32_t));
 }
 
 void XDROutput::Seek(int nOffset, int nFrom) {
-	if (nFrom == SEEK_SET)
-		m_index = nOffset;
-	else if (nFrom == SEEK_CUR)
-		m_index += nOffset;
-	else if (nFrom == SEEK_END)
-		m_index = m_size + nOffset;
+	if      (nFrom == SEEK_SET) m_index = nOffset;
+	else if (nFrom == SEEK_CUR) m_index += nOffset;
+	else if (nFrom == SEEK_END) m_index = m_size + nOffset;
 }
 
 void XDROutput::Write(size_t maxLen, const char* format, ...) {
