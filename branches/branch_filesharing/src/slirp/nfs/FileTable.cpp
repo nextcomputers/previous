@@ -35,18 +35,28 @@ mtime_sec (stat->st_mtimespec.tv_sec),
 mtime_usec(stat->st_mtimespec.tv_nsec / 1000),
 reserved  (0) {}
 
-FileAttrs::FileAttrs(const FileAttrs& attrs) {Update(attrs);}
+FileAttrs::FileAttrs(const FileAttrs& attrs) :
+mode      (~0),
+uid       (~0),
+gid       (~0),
+size      (~0),
+atime_sec (~0),
+atime_usec(~0),
+mtime_sec (~0),
+mtime_usec(~0),
+reserved  (0) {Update(attrs);}
 
 void FileAttrs::Update(const FileAttrs& attrs) {
-    mode       = attrs.mode;
-    uid        = attrs.uid;
-    gid        = attrs.gid;
-    size       = attrs.size;
-    atime_sec  = attrs.atime_sec;
-    atime_usec = attrs.atime_usec;
-    mtime_sec  = attrs.mtime_sec;
-    mtime_usec = attrs.mtime_usec;
-    reserved   = attrs.reserved;
+#define UPDATE_ATTR(a) a = Valid(attrs. a) ? attrs. a : a
+    UPDATE_ATTR(mode);
+    UPDATE_ATTR(uid);
+    UPDATE_ATTR(gid);
+    UPDATE_ATTR(size);
+    UPDATE_ATTR(atime_sec);
+    UPDATE_ATTR(atime_usec);
+    UPDATE_ATTR(mtime_sec);
+    UPDATE_ATTR(mtime_usec);
+    UPDATE_ATTR(reserved);
 }
 
 FileAttrs::FileAttrs(FILE* fin, string& name) {
@@ -93,9 +103,16 @@ FileTable::~FileTable() {
 }
 
 void FileTable::Run(void) {
-    while(host_atomic_get(&doRun)) {
-        host_sleep_sec(10);
-        if(dirty.size()) Write();
+    const int POLL = 10;
+    for(int count = POLL; host_atomic_get(&doRun); count--) {
+        host_sleep_sec(1);
+        {
+            NFSDLock lock(mutex);
+            if(count <= 0 && dirty.size()) {
+                Write();
+                count = POLL;
+            }
+        }
     }
 }
 
@@ -125,9 +142,6 @@ int FileTable::Stat(const string& _path, struct stat* fstat) {
     
     string     path   = Canonicalize(_path);
     int        result = stat(path, fstat);
-    if(result < 0) {
-        perror("Stat");
-    }
     FileAttrs* attrs  = GetFileAttrs(path);
     if(attrs) {
         fstat->st_mode = FileAttrs::Valid(attrs->mode) ? (attrs->mode | (fstat->st_mode & S_IFMT)) : fstat->st_mode;
