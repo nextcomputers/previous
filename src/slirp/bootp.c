@@ -29,9 +29,6 @@
 /* XXX: only DHCP is supported */
 
 #define NB_ADDR 16
-
-#define START_ADDR 15
-
 #define LEASE_TIME (24 * 3600)
 
 typedef struct {
@@ -63,7 +60,7 @@ static BOOTPClient *get_new_addr(struct in_addr *paddr)
  found:
     bc = &bootp_clients[i];
     bc->allocated = 1;
-    paddr->s_addr = htonl(ntohl(special_addr.s_addr) | (i + START_ADDR));
+    paddr->s_addr = htonl(ntohl(special_addr.s_addr) | (i + CTL_HOST));
     return bc;
 }
 
@@ -80,7 +77,7 @@ static BOOTPClient *find_addr(struct in_addr *paddr, const uint8_t *macaddr)
  found:
     bc = &bootp_clients[i];
     bc->allocated = 1;
-    paddr->s_addr = htonl(ntohl(special_addr.s_addr) | (i + START_ADDR));
+    paddr->s_addr = htonl(ntohl(special_addr.s_addr) | (i + CTL_HOST));
     return bc;
 }
 

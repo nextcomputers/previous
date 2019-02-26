@@ -12,23 +12,19 @@ static int ThreadProc(void *lpParameter)
 	return 0;
 }
 
-CSocket::CSocket(int nType) : m_nType(nType), m_Socket(-1), m_pListener(NULL), m_bActive(false), m_hThread(NULL) 
-{
+CSocket::CSocket(int nType) : m_nType(nType), m_Socket(-1), m_pListener(NULL), m_bActive(false), m_hThread(NULL)  {
 	memset(&m_RemoteAddr, 0, sizeof(m_RemoteAddr));
 }
 
-CSocket::~CSocket()
-{
+CSocket::~CSocket() {
 	Close();
 }
 
-int CSocket::GetType(void)
-{
+int CSocket::GetType(void) {
 	return m_nType;  //socket type
 }
 
-void CSocket::Open(int socket, ISocketListener *pListener, struct sockaddr_in *pRemoteAddr)
-{
+void CSocket::Open(int socket, ISocketListener *pListener, struct sockaddr_in *pRemoteAddr) {
 	Close();
 
 	m_Socket = socket;  //socket
@@ -55,25 +51,25 @@ void CSocket::Send(void) {
 	if (m_Socket == INVALID_SOCKET)
 		return;
 
+    ssize_t nBytes = 0;
 	if (m_nType == SOCK_STREAM)
-		send(m_Socket, (const char *)m_Output.GetBuffer(), m_Output.GetSize(), 0);
+		nBytes = send(m_Socket, (const char *)m_Output.GetBuffer(), m_Output.GetSize(), 0);
 	else if (m_nType == SOCK_DGRAM)
-		sendto(m_Socket, (const char *)m_Output.GetBuffer(), m_Output.GetSize(), 0, (struct sockaddr *)&m_RemoteAddr, sizeof(struct sockaddr));
-	m_Output.Reset();  //clear output buffer
+		nBytes = sendto(m_Socket, (const char *)m_Output.GetBuffer(), m_Output.GetSize(), 0, (struct sockaddr *)&m_RemoteAddr, sizeof(struct sockaddr));
+    if(nBytes < 0)
+        perror("[NFSD]Socket send");
+    m_Output.Reset();  //clear output buffer
 }
 
-bool CSocket::Active(void)
-{
+bool CSocket::Active(void) {
 	return m_bActive;  //thread is active or not
 }
 
-char *CSocket::GetRemoteAddress(void)
-{
+char *CSocket::GetRemoteAddress(void) {
     return inet_ntoa(m_RemoteAddr.sin_addr);
 }
 
-int CSocket::GetRemotePort(void)
-{
+int CSocket::GetRemotePort(void) {
     return htons(m_RemoteAddr.sin_port);
 }
 
@@ -81,29 +77,29 @@ XDRInput* CSocket::GetInputStream(void) {
 	return &m_Input;
 }
 
-XDROutput* CSocket::GetOutputStream(void)
-{
+XDROutput* CSocket::GetOutputStream(void) {
 	return &m_Output;
 }
 
-void CSocket::Run(void)
-{
+void CSocket::Run(void) {
     socklen_t nSize;
-    ssize_t   nBytes;
 
-	nSize = sizeof(m_RemoteAddr);
+    ssize_t nBytes = 0;
 	for (;;) {
 		if (m_nType == SOCK_STREAM)
 			nBytes = recv(m_Socket, m_Input.GetBuffer(), m_Input.GetCapacity(), 0);
-		else if (m_nType == SOCK_DGRAM)
+        else if (m_nType == SOCK_DGRAM) {
+            nSize = sizeof(m_RemoteAddr);
 			nBytes = recvfrom(m_Socket, m_Input.GetBuffer(), m_Input.GetCapacity(), 0, (struct sockaddr *)&m_RemoteAddr, &nSize);
+        }
 		if (nBytes > 0) {
 			m_Input.SetSize(nBytes);  //bytes received
 			if (m_pListener != NULL)
 				m_pListener->SocketReceived(this);  //notify listener
-		}
-		else
-			break;
+        } else {
+            perror("[NFSD] Socket recv");
+            break;
+        }
 	}
 	m_bActive = false;
 }

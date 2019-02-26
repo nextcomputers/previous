@@ -26,14 +26,21 @@ static size_t from_dot(uint8_t* dst, const char* src) {
             src++;
             continue;
         }
-        *dst++ = *src++;
+        *dst++ = tolower(*src++);
         *len = *len + 1;
     }
     *dst++ = '\0';
     return result;
 }
 
-void VDNS::AddRecord(uint32_t addr, const char* name) {
+void VDNS::AddRecord(uint32_t addr, const char* _name) {
+    
+    size_t size = strlen(_name);
+    char name[size + 1];
+    for(int i = 0; i < size; i++)
+        name[i] = tolower(_name[i]);
+    name[size] = '\0';
+    
     vdns_record* rec = &s_dns_db[s_dns_db_sz++];
     rec->type   = REC_A;
     rec->inaddr = addr;
@@ -66,6 +73,7 @@ VDNS::VDNS(void)  : m_hMutex(host_mutex_create()) {
     AddRecord(ntohl(special_addr.s_addr) | CTL_ALIAS, NAME_HOST);
     AddRecord(ntohl(special_addr.s_addr) | CTL_DNS,   NAME_DNS);
     AddRecord(ntohl(special_addr.s_addr) | CTL_NFSD,  nfsd_hostname);
+    AddRecord(ntohl(special_addr.s_addr) | CTL_NFSD,  NAME_NFSD);
 }
 
 VDNS::~VDNS(void) {
@@ -79,7 +87,7 @@ static vdns_rec_type to_dot(char* dst, const uint8_t* src) {
         uint8_t count = *src++;
         if(count > 63) return REC_UNKNOWN;
         for(int j = 0; j < count; j++)
-            *dst++ = *src++;
+            *dst++ = tolower(*src++);
         *dst++ = '.';
     }
     *dst = '\0';

@@ -1,3 +1,5 @@
+#include <sys/socket.h>
+
 #include "UDPServerSocket.h"
 #include "nfsd.h"
 
@@ -16,6 +18,10 @@ bool UDPServerSocket::Open(int progNum, uint16_t nPort) {
     if (m_Socket == INVALID_SOCKET)
         return false;
     
+    socklen_t size = 64 * 1024;
+    socklen_t len  = sizeof(size);
+    setsockopt(m_Socket, SOL_SOCKET, SO_SNDBUF, &size, len);
+    setsockopt(m_Socket, SOL_SOCKET, SO_RCVBUF, &size, len);
     memset(&localAddr, 0, sizeof(localAddr));
     localAddr.sin_family = AF_INET;
     localAddr.sin_port = CSocket::map_and_htons(SOCK_DGRAM, nPort);
@@ -25,7 +31,7 @@ bool UDPServerSocket::Open(int progNum, uint16_t nPort) {
         return false;
     }
     
-    socklen_t size = sizeof(localAddr);
+    size = sizeof(localAddr);
     if(getsockname(m_Socket, (struct sockaddr *)&localAddr, &size) < 0) {
         close(m_Socket);
         return false;

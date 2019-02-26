@@ -3,6 +3,7 @@
 #include "enet_slirp.h"
 #include "queue.h"
 #include "host.h"
+#include "slirp/ctl.h"
 
 #ifndef _WIN32
 #include <arpa/inet.h>
@@ -137,6 +138,8 @@ void enet_slirp_stop(void) {
     }
 }
 
+extern struct in_addr special_addr;
+
 void enet_slirp_start(Uint8 *mac) {
     struct in_addr guest_addr;
     
@@ -144,7 +147,7 @@ void enet_slirp_start(Uint8 *mac) {
         Log_Printf(LOG_WARN, "Initializing SLIRP");
         slirp_inited=1;
         slirp_init();
-        inet_aton("10.0.2.15", &guest_addr);
+        guest_addr.s_addr = special_addr.s_addr | htonl(CTL_HOST);
         slirp_redir(0, 42323, guest_addr, 23);
     }
     if (slirp_inited && !slirp_started) {
