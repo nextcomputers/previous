@@ -1,6 +1,7 @@
 #ifndef _XDRSTREAM_H_
 #define _XDRSTREAM_H_
 
+#include <string>
 #include <stdio.h>
 #include <stdint.h>
 
@@ -17,7 +18,6 @@ public:
     
     void Set(const XDROpaque& src);
     void SetSize(size_t size);
-    void Alloc(size_t size);
     virtual void Set(const void* dataWillBeCopied, size_t size);
 };
 
@@ -25,7 +25,7 @@ class XDRString : public XDROpaque {
     char* m_str;
 public:
     XDRString(void);
-    XDRString(const char* stringWillBeCopied);
+    XDRString(std::string& str);
     virtual ~XDRString();
     
     const char*  Get(void);

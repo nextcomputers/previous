@@ -144,6 +144,37 @@ udp_input(m, iphlen)
 	}
     
     int dport = ntohs(uh->uh_dport);
+
+    if(nfsd_match_addr(ntohl(save_ip.ip_dst.s_addr))) {
+        switch(dport) {
+            case PORT_PORTMAP:
+                // map port & address for portmap
+                uh->uh_dport = htons(nfsd_ports.udp.portmap);
+                ip->ip_dst   = loopback_addr;
+                break;
+            case PORT_NFS:
+                // map port & address for NFS
+                uh->uh_dport = htons(nfsd_ports.udp.nfs);
+                ip->ip_dst   = loopback_addr;
+                break;
+            default:
+                // map port & address for mountd
+                if(dport == nfsd_ports.udp.mount)
+                    ip->ip_dst   = loopback_addr;
+                break;
+        }
+    } else if(nfsd_vdns_match(m)) {
+        switch(dport) {
+            case PORT_DNS:
+                // map port & address for virtual DNS
+                uh->uh_dport = htons(nfsd_ports.udp.dns);
+                ip->ip_dst   = loopback_addr;
+                break;
+            default:
+                break;
+        }
+    }
+    
     switch(dport) {
         case BOOTP_SERVER:
             bootp_input(m);
@@ -153,32 +184,7 @@ udp_input(m, iphlen)
             tftp_input(m);
             goto done;
             break;
-        case PORT_PORTMAP:
-            if(nfsd_match_addr(ntohl(save_ip.ip_dst.s_addr))) {
-                // map port & address for portmap
-                uh->uh_dport = htons(nfsd_ports.udp.portmap);
-                ip->ip_dst   = loopback_addr;
-            }
-            break;
-        case PORT_NFS:
-            if(nfsd_match_addr(ntohl(save_ip.ip_dst.s_addr))) {
-                // map port & address for NFS
-                uh->uh_dport = htons(nfsd_ports.udp.nfs);
-                ip->ip_dst   = loopback_addr;
-            }
-            break;
-        case PORT_DNS:
-            if(nfsd_vdns_match(m)) {
-                // map port & address for virtual DNS
-                uh->uh_dport = htons(nfsd_ports.udp.dns);
-                ip->ip_dst   = loopback_addr;
-            }
-            break;
         default:
-            if(nfsd_match_addr(ntohl(save_ip.ip_dst.s_addr))) {
-                if(dport == nfsd_ports.udp.mount)
-                    ip->ip_dst   = loopback_addr;
-            }
             break;
     }
 

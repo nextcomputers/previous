@@ -18,11 +18,14 @@ protected:
 	int ProcedureGETATTR(void);
 	int ProcedureSETATTR(void);
 	int ProcedureLOOKUP(void);
+    int ProcedureREADLINK(void);
 	int ProcedureREAD(void);
+    int ProcedureWRITECACHE(void);
 	int ProcedureWRITE(void);
 	int ProcedureCREATE(void);
 	int ProcedureREMOVE(void);
 	int ProcedureRENAME(void);
+    int ProcedureLINK(void);
     int ProcedureSYMLINK(void);
 	int ProcedureMKDIR(void);
 	int ProcedureRMDIR(void);

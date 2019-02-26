@@ -51,7 +51,7 @@ int CBootparamProg::ProcedureWHOAMI(void) {
             return PRC_FAIL;
     }
     char hostname[_SC_HOST_NAME_MAX];
-    strcpy(hostname, nfsd_hostname);
+    strcpy(hostname, NAME_HOST);
     char* client = hostname;
     char* domain = hostname;
     while(*++domain) {

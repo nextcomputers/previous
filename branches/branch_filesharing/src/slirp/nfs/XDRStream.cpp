@@ -1,7 +1,10 @@
-#include "XDRStream.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+
+#include "XDRStream.h"
+
+using namespace std;
 
 #define MAXDATA (1024 * 1024)
 
@@ -15,10 +18,6 @@ XDROpaque::XDROpaque(const void* data, size_t size) : m_size(0), m_data(NULL), m
 
 XDROpaque::~XDROpaque() {
     if(m_deleteData) delete[] m_data;
-}
-
-void XDROpaque::Alloc(size_t size) {
-    Set(NULL, size);
 }
 
 void XDROpaque::Set(const XDROpaque& src) {
@@ -42,9 +41,7 @@ void XDROpaque::Set(const void* data, size_t size) {
     }
 }
 
-XDRString::XDRString(const char* stringWillBeCopied) : XDROpaque(strlen(stringWillBeCopied)), m_str(NULL) {
-    memcpy(m_data, stringWillBeCopied, m_size);
-}
+XDRString::XDRString(string& str) : XDROpaque(str.c_str(), str.size() + 1), m_str(NULL) {}
 
 XDRString::XDRString(void) : XDROpaque(), m_str(NULL) {}
 
