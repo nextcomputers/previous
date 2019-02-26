@@ -61,8 +61,10 @@ void FileAttrs::Update(const FileAttrs& attrs) {
 
 FileAttrs::FileAttrs(FILE* fin, string& name) {
     char cname[MAXNAMELEN];
-    if(fscanf(fin, "0%o:%d:%d:%d:%s\n", &mode, &uid, &gid, &reserved, cname))
+    if(fscanf(fin, "0%o:%d:%d:%d:%s\n", &mode, &uid, &gid, &reserved, cname) == 5)
         name = cname;
+    else
+        name.resize(0);
 }
 
 void FileAttrs::Write(FILE* fout, const string& name) {
@@ -409,7 +411,10 @@ FileAttrDB::FileAttrDB(FileTable& ft, const string& directory) : ft(ft) {
         for(;;) {
             string fname;
             FileAttrs* fattrs = new FileAttrs(file, fname);
-            if(fname.length() == 0) break;
+            if(fname.length() == 0) {
+                delete fattrs;
+                break;
+            }
             attrs[fname] = fattrs;
         }
         fclose(file);

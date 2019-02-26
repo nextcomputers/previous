@@ -56,8 +56,10 @@ static void printAbout(void) {
 }
 
 extern "C" void nfsd_start(void) {
+    nfsd_fts[0] = NULL;
+    
     if(access(ConfigureParams.Ethernet.szNFSroot, F_OK | R_OK | W_OK) < 0) {
-        printf("[NFSD] can not access directory '%s'. nfsd startup canceled.", ConfigureParams.Ethernet.szNFSroot);
+        printf("[NFSD] can not access directory '%s'. nfsd startup canceled.\n", ConfigureParams.Ethernet.szNFSroot);
         return;
     }
     
@@ -106,5 +108,5 @@ extern "C" void nfsd_not_implemented(const char* file, int line) {
 }
 
 extern "C" FILE* nfsd_fopen(const char* path, const char* mode) {
-    return nfsd_fts[0]->fopen(path, mode);
+    return nfsd_fts[0] ? nfsd_fts[0]->fopen(path, mode) : NULL;
 }
