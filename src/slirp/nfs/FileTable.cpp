@@ -77,7 +77,7 @@ string filename(const string& path) {
     return path.substr(path.find_last_of("/\\") + 1);
 }
 
-static int ThreadProc(void *lpParameter) {
+int FileTable::ThreadProc(void *lpParameter) {
     ((FileTable*)lpParameter)->Run();
     return 0;
 }
@@ -87,6 +87,20 @@ static int ThreadProc(void *lpParameter) {
 FileTable::FileTable(const string& _basePath) : mutex(host_mutex_create()) {
     basePath = _basePath;
     if(basePath[basePath.length()-1] == '/') basePath.resize(basePath.size()-1);
+    
+    string path = basePath;
+    struct stat fstat;
+    if(::stat(path.c_str(), &fstat))
+        throw __LINE__;
+    else
+        rootIno = fstat.st_ino;
+    
+    path += "/..";
+    if(::stat(path.c_str(), &fstat))
+        throw __LINE__;
+    else
+        rootParentIno = fstat.st_ino;
+
     host_atomic_set(&doRun, 1);
     thread = host_thread_create(&ThreadProc, "FileTable", this);
 }
@@ -281,6 +295,13 @@ void FileTable::Dirty(FileAttrDB* db) {
     NFSDLock lock(mutex);
 
     dirty.insert(db);
+}
+
+uint32_t FileTable::FileId(uint64_t ino) {
+    if(ino == rootParentIno)
+        ino = rootIno;
+    uint32_t result = ino;
+    return result ^ (ino >> 32LL);
 }
 
 //----- file io
