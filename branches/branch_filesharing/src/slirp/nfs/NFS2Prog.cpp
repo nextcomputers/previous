@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <string.h>
 #include <stdio.h>
 #include <dirent.h>
@@ -128,7 +129,9 @@ int CNFS2Prog::ProcedureLOOKUP(void) {
 		return PRC_OK;
 
 	m_out->Write(NFS_OK);
-    write_handle(m_out, nfsd_fts[0]->GetFileHandle(path));
+    uint64_t handle = nfsd_fts[0]->GetFileHandle(path);
+    Log("LOOKUP %s=%" PRIu64, path.c_str(), handle);
+    write_handle(m_out, handle);
 	WriteFileAttributes(path);
     return PRC_OK;
 }
@@ -352,11 +355,6 @@ int CNFS2Prog::ProcedureRMDIR(void) {
     return PRC_OK;
 }
 
-static uint32_t fileid(uint64_t ino) {
-    uint32_t result = ino;
-    return result ^ (ino >> 32LL);
-}
-
 int CNFS2Prog::ProcedureREADDIR(void) {
     string   path;
 	DIR*     handle;
@@ -369,17 +367,20 @@ int CNFS2Prog::ProcedureREADDIR(void) {
     m_in->Read(&cookie);
     m_in->Read(&count);
     
+    Log("READDIR %s", path.c_str());
+    
 	m_out->Write(NFS_OK);
     handle = nfsd_fts[0]->opendir(path);
     uint32_t eof = true;
+    size_t   ftnlen = strlen(FILE_TABLE_NAME);
 	if (handle) {
         int skip = cookie;
         for(struct dirent* fileinfo = readdir(handle); fileinfo; fileinfo = readdir(handle)) {
-            if(strcmp(FILE_TABLE_NAME, fileinfo->d_name)) {
+            if(ftnlen != fileinfo->d_namlen || strncmp(FILE_TABLE_NAME, fileinfo->d_name, fileinfo->d_namlen)) {
                 if(--skip <= 0) {
                     m_out->Write(1);  //value follows
-                    m_out->Write(fileid(fileinfo->d_ino));
-                    string dname = fileinfo->d_name;
+                    m_out->Write(nfsd_fts[0]->FileId(fileinfo->d_ino));
+                    string dname(fileinfo->d_name, fileinfo->d_namlen);
                     XDRString name(dname);
                     m_out->Write(name);
                     m_out->Write(cookie);
@@ -484,7 +485,7 @@ bool CNFS2Prog::WriteFileAttributes(const string& path) {
 	m_out->Write(data.st_rdev);  //rdev
 	m_out->Write(data.st_blocks);  //blocks
 	m_out->Write(data.st_dev);  //fsid
-    m_out->Write(fileid(data.st_ino));
+    m_out->Write(nfsd_fts[0]->FileId(data.st_ino));
 	m_out->Write(data.st_atimespec.tv_sec);  //atime
 	m_out->Write(data.st_atimespec.tv_nsec / 1000);  //atime
 	m_out->Write(data.st_mtimespec.tv_sec);  //mtime

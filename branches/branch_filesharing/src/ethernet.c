@@ -279,6 +279,28 @@ static void enet_rx_interrupt(Uint8 intr) {
 #define RX_ANY          0x01    // Accept any packets
 #define RX_OWN          0x02    // Accept own packets
 
+#define ENET_FRAMESIZE_MIN  64      /* 46 byte data and 14 byte header, 4 byte CRC */
+#define ENET_FRAMESIZE_MAX  1518    /* 1500 byte data and 14 byte header, 4 byte CRC */
+
+/* Ethernet periodic check */
+#define ENET_IO_DELAY   500     /* use 500 for NeXT hardware test, 20 for status test */
+#define ENET_IO_SHORT   40      /* use 40 for 68030 hardware test */
+
+enum {
+    RECV_STATE_WAITING,
+    RECV_STATE_RECEIVING
+} receiver_state;
+
+bool tx_done;
+bool rx_chain;
+int old_size;
+int en_state;
+
+#define EN_DISCONNECTED    0
+#define EN_LOOPBACK        1
+#define EN_THINWIRE        2
+#define EN_TWISTEDPAIR    3
+
 static bool recv_multicast(Uint8 *packet) {
     if (packet[0]&0x01)
         return true;
@@ -354,23 +376,14 @@ static bool enet_packet_for_me(Uint8 *packet) {
     switch (enet.rx_mode&RXMODE_MATCH_MODE) {
         case RX_NOPACKETS:
             return false;
-            
         case RX_LIMITED:
-            if (recv_broadcast(packet) || recv_me(packet) || recv_local_multicast(packet))
-                return true;
-            else
-                return false;
-            
+            return recv_broadcast(packet) || recv_me(packet) || recv_local_multicast(packet);
         case RX_NORMAL:
-            if (recv_broadcast(packet) || recv_me(packet) || recv_multicast(packet))
-                return true;
-            else
-                return false;
-            
+            return recv_broadcast(packet) || recv_me(packet) || recv_multicast(packet);
         case RX_PROMISCUOUS:
             return true;
-            
-        default: return false;
+        default:
+            return false;
     }
 }
 
@@ -386,7 +399,8 @@ void enet_receive(Uint8 *pkt, int len) {
         enet_rx_buffer.size=enet_rx_buffer.limit=len;
 		enet.tx_status |= TXSTAT_NET_BUSY;
     } else {
-        Log_Printf(LOG_WARN, "[EN] Packet is not for me.");
+        if (en_state != EN_LOOPBACK && en_state != EN_THINWIRE) // don't log warning if it is a self-sent packed
+            Log_Printf(LOG_WARN, "[EN] Packet is not for me.");
     }
 }
 
@@ -402,29 +416,6 @@ static void print_buf(Uint8 *buf, Uint32 size) {
     printf("\n");
 #endif
 }
-
-
-#define ENET_FRAMESIZE_MIN  64      /* 46 byte data and 14 byte header, 4 byte CRC */
-#define ENET_FRAMESIZE_MAX  1518    /* 1500 byte data and 14 byte header, 4 byte CRC */
-
-/* Ethernet periodic check */
-#define ENET_IO_DELAY   500     /* use 500 for NeXT hardware test, 20 for status test */
-#define ENET_IO_SHORT   40      /* use 40 for 68030 hardware test */
-
-enum {
-    RECV_STATE_WAITING,
-    RECV_STATE_RECEIVING
-} receiver_state;
-
-bool tx_done;
-bool rx_chain;
-int old_size;
-int en_state;
-
-#define EN_DISCONNECTED	0
-#define EN_LOOPBACK		1
-#define EN_THINWIRE		2
-#define EN_TWISTEDPAIR	3
 
 /* Fujitsu ethernet controller */
 static int enet_state(void) {

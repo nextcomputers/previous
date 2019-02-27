@@ -62,12 +62,18 @@ class FileTable {
     std::map<uint64_t, FileAttrDB*> handle2db;
     std::set<FileAttrDB*>           dirty;
     std::string                     basePath;
+    uint64_t                        rootIno;
+    uint64_t                        rootParentIno;
 
+    static int  ThreadProc(void *lpParameter);
+    
     void        Write(void);
     FileAttrDB* GetDB       (uint64_t handle);
     std::string Canonicalize(const std::string& path);
     void        Insert      (uint64_t handle, const std::string& path);
     FileAttrs*  GetFileAttrs(const std::string& path);
+    void        Dirty          (FileAttrDB* db);
+    void        Run            (void);
 public:
     FileTable(const std::string& basePath);
     ~FileTable();
@@ -78,8 +84,7 @@ public:
     void        Remove         (const std::string& path);
     uint64_t    GetFileHandle  (const std::string& path);
     void        SetFileAttrs   (const std::string& path, const FileAttrs& fstat);
-    void        Dirty          (FileAttrDB* db);
-    void        Run            (void);
+    uint32_t    FileId         (uint64_t ino);
 
     FILE*       fopen   (const std::string& path, const char* mode);
     int         chmod   (const std::string& path, mode_t mode);
@@ -96,6 +101,8 @@ public:
     int         utimes  (const std::string& path, const struct timeval times[2]);
     
     static std::string MakePath(const std::string& directory, const std::string& file);
+    
+    friend class FileAttrDB;
 };
 
 #endif
