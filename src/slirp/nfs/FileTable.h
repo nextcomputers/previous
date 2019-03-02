@@ -43,6 +43,7 @@ class FileAttrDB {
     FileTable&                        ft;
     std::string                       path;
     std::map<std::string, FileAttrs*> attrs;
+    
 public:
     FileAttrDB(FileTable& ft, const std::string& directory);
     ~FileAttrDB();
@@ -59,11 +60,11 @@ class FileTable {
     mutex_t*                        mutex;
     std::map<uint64_t, std::string> handle2path;
     std::map<uint64_t, FileAttrDB*> handle2db;
+    std::map<std::string, uint32_t> blockDevices;
+    std::map<std::string, uint32_t> characterDevices;
     std::set<FileAttrDB*>           dirty;
     std::string                     basePathAlias;
     std::string                     basePath;
-    uint64_t                        rootIno;
-    uint64_t                        rootParentIno;
 
     static int  ThreadProc(void *lpParameter);
     
@@ -76,6 +77,9 @@ class FileTable {
     void        Dirty       (FileAttrDB* db);
     void        Run         (void);
     std::string ToHostPath  (const std::string& _path);
+    bool        IsBlockDevice(const std::string& fname);
+    bool        IsCharDevice(const std::string& fname);
+    bool        IsDevice    (const std::string& path, std::string& fname);
 public:
     FileTable(const std::string& basePath, const std::string& basePathAlias);
     ~FileTable();
