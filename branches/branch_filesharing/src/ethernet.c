@@ -19,7 +19,7 @@
 #include "enet_pcap.h"
 #include "cycInt.h"
 #include "statusbar.h"
-
+#include "slirp/nfs/nfsd.h"
 
 #define LOG_EN_LEVEL        LOG_DEBUG
 #define LOG_EN_REG_LEVEL    LOG_DEBUG
@@ -744,7 +744,7 @@ void enet_reset(void) {
     }
 }
 
-void Ethernet_Reset(bool hard) {
+void Network_Reset(bool hard) {
     static int init_done = 0;
 
     if (hard) {
@@ -782,4 +782,7 @@ void Ethernet_Reset(bool hard) {
         /* Stop SLIRP/PCAP */
         enet_stop();
     }
+    
+    /* (re)start local nfs deamon */
+    nfsd_start();
 }

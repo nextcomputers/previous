@@ -120,11 +120,10 @@ FileTable::FileTable(const string& _basePath, const string& _basePathAlais) : mu
 }
 
 FileTable::~FileTable() {
+    host_atomic_set(&doRun, 0);
+    host_thread_wait(thread);
     {
         NFSDLock lock(mutex);
-        
-        host_atomic_set(&doRun, 0);
-        host_thread_wait(thread);
         
         for(map<uint64_t,FileAttrDB*>::iterator it = handle2db.begin(); it != handle2db.end(); it++)
             delete it->second;

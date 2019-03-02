@@ -24,7 +24,7 @@ nfsd_NAT nfsd_ports = {{0},{0}};
 static std::vector<UDPServerSocket*> SERVER_UDP;
 static std::vector<TCPServerSocket*> SERVER_TCP;
 
-FileTable* nfsd_fts[1]; // to be extended for multiple exports
+FileTable* nfsd_fts[] = {NULL}; // to be extended for multiple exports
 
 static bool initialized = false;
 
@@ -56,6 +56,7 @@ static void printAbout(void) {
 }
 
 extern "C" void nfsd_start(void) {
+    delete nfsd_fts[0];
     nfsd_fts[0] = NULL;
     
     if(access(ConfigureParams.Ethernet.szNFSroot, F_OK | R_OK | W_OK) < 0) {
@@ -69,9 +70,9 @@ extern "C" void nfsd_start(void) {
     printf("[NFSD] starting local NFS daemon on '%s', exporting '%s'\n", nfsd_hostname, ConfigureParams.Ethernet.szNFSroot);
     printAbout();
     
-    if(initialized) return;
-    
     nfsd_fts[0] = new FileTable(ConfigureParams.Ethernet.szNFSroot, "/netboot");
+
+    if(initialized) return;
 
     static CNFSProg       NFSProg;
     static CMountProg     MountProg;
@@ -89,9 +90,6 @@ extern "C" void nfsd_start(void) {
     static VDNS vdns;
     
     initialized = true;
-}
-
-extern "C" void nfsd_cleanup(void) {
 }
 
 extern "C" int nfsd_match_addr(uint32_t addr) {
