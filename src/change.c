@@ -261,8 +261,8 @@ bool Change_DoNeedReset(CNF_PARAMS *current, CNF_PARAMS *changed)
 bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *changed, bool bForceReset)
 {
 	bool NeedReset;
-	bool bReInitEnetEmu = false;
-    bool bReInitSoundEmu = false;
+	bool bReInitNetworkEmu = false;
+    bool bReInitSoundEmu   = false;
 	bool bScreenModeChange = false;
 
 	Dprintf("Changes for:\n");
@@ -276,10 +276,11 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
     
     /* Do we need to change Ethernet connection? */
     if (!NeedReset &&
-        (current->Ethernet.bEthernetConnected != changed->Ethernet.bEthernetConnected ||
-         current->Ethernet.nHostInterface != changed->Ethernet.nHostInterface ||
+        (current->Ethernet.bEthernetConnected   != changed->Ethernet.bEthernetConnected ||
+         current->Ethernet.nHostInterface       != changed->Ethernet.nHostInterface     ||
+         strcmp(current->Ethernet.szNFSroot,       changed->Ethernet.szNFSroot)         ||
          strcmp(current->Ethernet.szInterfaceName, changed->Ethernet.szInterfaceName))) {
-        bReInitEnetEmu = true;
+        bReInitNetworkEmu = true;
     }
     
     /* Do we need to change Sound configuration? */
@@ -305,10 +306,10 @@ bool Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
 	/* Copy details to global, if we reset copy them all */
 	Configuration_Apply(NeedReset);
     
-    /* Re-init Ethernet? */
-    if (bReInitEnetEmu) {
-        Dprintf("- Ethernet<\n");
-        Ethernet_Reset(false);
+    /* Re-init Network (Ethernet etc.)? */
+    if (bReInitNetworkEmu) {
+        Dprintf("- Network<\n");
+        Network_Reset(false);
     }
     
     /* Re-init Sound? */

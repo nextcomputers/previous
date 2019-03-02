@@ -156,9 +156,6 @@ int slirp_init(void)
 	getouraddr();
     get_dns_addr(&dns_addr);
 
-    /* start local nfs deamon */
-    nfsd_start();
-
     return 0;
 }
 
