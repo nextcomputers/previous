@@ -66,12 +66,12 @@ extern "C" void nfsd_start(void) {
     char nfsd_hostname[_SC_HOST_NAME_MAX];
     gethostname(nfsd_hostname, sizeof(nfsd_hostname));
     
-    printf("[NFSD] starting local NFS daemon on '%s', exporting '%s' as '/'\n", nfsd_hostname, ConfigureParams.Ethernet.szNFSroot);
+    printf("[NFSD] starting local NFS daemon on '%s', exporting '%s'\n", nfsd_hostname, ConfigureParams.Ethernet.szNFSroot);
     printAbout();
     
     if(initialized) return;
     
-    nfsd_fts[0] = new FileTable(ConfigureParams.Ethernet.szNFSroot);
+    nfsd_fts[0] = new FileTable(ConfigureParams.Ethernet.szNFSroot, "/netboot");
 
     static CNFSProg       NFSProg;
     static CMountProg     MountProg;
@@ -91,11 +91,7 @@ extern "C" void nfsd_start(void) {
     initialized = true;
 }
 
-static void cleanup(void) {
-}
-
 extern "C" void nfsd_cleanup(void) {
-    cleanup();
 }
 
 extern "C" int nfsd_match_addr(uint32_t addr) {
@@ -109,4 +105,9 @@ extern "C" void nfsd_not_implemented(const char* file, int line) {
 
 extern "C" FILE* nfsd_fopen(const char* path, const char* mode) {
     return nfsd_fts[0] ? nfsd_fts[0]->fopen(path, mode) : NULL;
+}
+
+extern "C" const char* nfsd_export_path(void) {
+    static const char* exportPath = nfsd_fts[0]->GetBasePathAlias().c_str();
+    return exportPath;
 }

@@ -70,13 +70,15 @@ VDNS::VDNS(void)  : m_hMutex(host_mutex_create()) {
     m_udp = new UDPServerSocket(this);
     m_udp->Open(PROG_VDNS, PORT_DNS);
     
-    char nfsd_hostname[_SC_HOST_NAME_MAX];
-    gethostname(nfsd_hostname, sizeof(nfsd_hostname));
+    char hostname[_SC_HOST_NAME_MAX];
+    hostname[0] = '\0';
+    gethostname(hostname, sizeof(hostname));
     
-    AddRecord(ntohl(special_addr.s_addr) | CTL_ALIAS, NAME_HOST);
+    AddRecord(ntohl(special_addr.s_addr) | CTL_ALIAS, hostname);
+    AddRecord(ntohl(special_addr.s_addr) | CTL_HOST,  NAME_HOST);
     AddRecord(ntohl(special_addr.s_addr) | CTL_DNS,   NAME_DNS);
-    AddRecord(ntohl(special_addr.s_addr) | CTL_NFSD,  nfsd_hostname);
     AddRecord(ntohl(special_addr.s_addr) | CTL_NFSD,  NAME_NFSD);
+    AddRecord(0x7F000001,                             "localhost");
 }
 
 VDNS::~VDNS(void) {
@@ -85,25 +87,32 @@ VDNS::~VDNS(void) {
     host_mutex_destroy(m_hMutex);
 }
 
-static vdns_rec_type to_dot(char* dst, const uint8_t* src) {
+static vdns_rec_type to_dot(char* dst, const uint8_t* src, size_t size) {
+    const uint8_t* end   = &src[size];
+    uint8_t        count = 0;
+    int            result = REC_UNKNOWN;
     while(*src) {
-        uint8_t count = *src++;
-        if(count > 63) return REC_UNKNOWN;
-        for(int j = 0; j < count; j++)
+        if(src >= end) goto error;
+        count = *src++;
+        if(count > 63) goto error;
+        for(int j = 0; j < count; j++) {
+            if(src >= end) goto error;
             *dst++ = tolower(*src++);
+        }
         *dst++ = '.';
     }
-    *dst = '\0';
     src++;
-    int result = *src++;
+    result = *src++;
     result <<= 8;
     result |= *src;
+error:
+    *dst = '\0';
     return (vdns_rec_type)result;
 }
 
-vdns_record* VDNS::Query(uint8_t* data) {
+vdns_record* VDNS::Query(uint8_t* data, size_t size) {
     char  qname[_SC_HOST_NAME_MAX];
-    vdns_rec_type qtype = to_dot(qname, data);
+    vdns_rec_type qtype = to_dot(qname, data, size);
     printf("[VDNS] query(%d) '%s'\n", qtype, qname);
     
     if(qtype < 0) return NULL;
@@ -116,7 +125,8 @@ vdns_record* VDNS::Query(uint8_t* data) {
 }
 
 extern "C" int nfsd_vdns_match(struct mbuf *m) {
-    return VDNS::Query((uint8_t*)&m->m_data[40]) != NULL;
+    if(m->m_hdr.mh_len <= 40) return false;
+    return VDNS::Query((uint8_t*)&m->m_data[40], m->m_hdr.mh_len-40) != NULL;
 }
 
 void VDNS::SocketReceived(CSocket* pSocket) {
@@ -135,7 +145,7 @@ void VDNS::SocketReceived(CSocket* pSocket) {
     // Keep request in message and add answer
     size_t off = 12;
     msg[n++]=0xC0; msg[n++]=off; // Offset to the domain name
-    vdns_record* rec = Query(&msg[off]);
+    vdns_record* rec = Query(&msg[off], in->GetSize()-(in->GetPosition()+off));
 
     msg[n++]=0x00;
     msg[n++]=rec->type;  // Type

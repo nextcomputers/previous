@@ -33,7 +33,7 @@ protected:
 	int ProcedureSTATFS(void);
 
 private:
-    bool GetPath(std::string& result);
+    bool GetPath(std::string& result, uint64_t* handle = NULL);
     bool GetFullPath(std::string& result);
 	bool CheckFile(const std::string& path);
     bool WriteFileAttributes(const std::string& path);

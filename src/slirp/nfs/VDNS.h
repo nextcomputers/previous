@@ -48,7 +48,7 @@ public:
     VDNS(void);
     ~VDNS(void);
     
-    static vdns_record* Query(uint8_t* data);
+    static vdns_record* Query(uint8_t* data, size_t size);
     void   SocketReceived(CSocket* pSocket);
 };
 
