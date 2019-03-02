@@ -5,12 +5,16 @@
 //  Created by Simon Schubiger on 18.01.19.
 //
 
+#include <string>
 #include <string.h>
 #include <sys/syslimits.h>
 #include <netinet/in.h>
 
 #include "nfsd.h"
 #include "BootparamProg.h"
+#include "FileTable.h"
+
+using namespace std;
 
 CBootparamProg::CBootparamProg() : CRPCProg(PROG_BOOTPARAM, 1, "bootparamd") {
     #define RPC_PROG_CLASS CBootparamProg
@@ -61,26 +65,21 @@ int CBootparamProg::ProcedureWHOAMI(void) {
     return PRC_OK;
 }
 
-const char* ROOT    = "/";
-const char* PRIVATE = "/private";
-
 int CBootparamProg::ProcedureGETFILE(void) {
     XDRString client;
     XDRString key;
     m_in->Read(client);
     m_in->Read(key);
-    bool  deletePath = false;
-    const char* path = NULL;
-    if(!(strcmp("root", key.Get())))
-        path = ROOT;
-    else if(!(strcmp("private", key.Get()))) {
-        path = PRIVATE;
+    string path = nfsd_fts[0]->GetBasePathAlias();
+    if(strcmp("root", key.Get())) {
+        if(path != "/") path += "/";
+        path += key.Get();
     }
-    if(path) {
+    
+    if(path.size()) {
         m_out->Write(_SC_HOST_NAME_MAX, NAME_NFSD);
         WriteInAddr(m_out, ntohl(special_addr.s_addr) | CTL_NFSD);
-        m_out->Write(PATH_MAX, path);
-        if(deletePath) delete[] path;
+        m_out->Write(PATH_MAX, path.c_str());
         return PRC_OK;
     } else {
         Log("Unknown key: %s", key.Get());

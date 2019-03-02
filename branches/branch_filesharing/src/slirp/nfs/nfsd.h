@@ -50,7 +50,8 @@ extern "C" {
 #ifdef __cplusplus
 }
 #else
-    FILE* nfsd_fopen(const char* path, const char* mode); //  only used by tftp
+    FILE*       nfsd_fopen(const char* path, const char* mode); //  only used by tftp
+    const char* nfsd_export_path(void);
 #endif
 
 #define NFSD_NOTIMPL nfsd_not_implemented(__FILE__, __LINE__);

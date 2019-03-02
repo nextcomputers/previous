@@ -3,7 +3,7 @@
 #include "TCPServerSocket.h"
 #include "nfsd.h"
 
-const int BACKLOG = 16;
+static const int BACKLOG = 16;
 
 static int ThreadProc(void *lpParameter) {
 	((TCPServerSocket *)lpParameter)->Run();

@@ -25,10 +25,10 @@ public:
     uint32_t atime_usec;
     uint32_t mtime_sec;
     uint32_t mtime_usec;
-    int      reserved; // for future extensions
-
+    uint32_t rdev;
+    
     FileAttrs(XDRInput* xin);
-    FileAttrs(const struct stat* stat);
+    FileAttrs(const struct stat& stat);
     FileAttrs(FILE* fin, std::string& name);
     FileAttrs(const FileAttrs& attrs);
     void Update(const FileAttrs& attrs);
@@ -57,28 +57,31 @@ class FileTable {
     atomic_int                      doRun;
     thread_t*                       thread;
     mutex_t*                        mutex;
-    std::map<std::string, uint64_t> path2handle;
     std::map<uint64_t, std::string> handle2path;
     std::map<uint64_t, FileAttrDB*> handle2db;
     std::set<FileAttrDB*>           dirty;
+    std::string                     basePathAlias;
     std::string                     basePath;
     uint64_t                        rootIno;
     uint64_t                        rootParentIno;
 
     static int  ThreadProc(void *lpParameter);
     
-    void        Write(void);
+    void        Write       (void);
     FileAttrDB* GetDB       (uint64_t handle);
+    std::string ResolveAlias       (const std::string& path);
     std::string Canonicalize(const std::string& path);
     void        Insert      (uint64_t handle, const std::string& path);
     FileAttrs*  GetFileAttrs(const std::string& path);
-    void        Dirty          (FileAttrDB* db);
-    void        Run            (void);
+    void        Dirty       (FileAttrDB* db);
+    void        Run         (void);
+    std::string ToHostPath  (const std::string& _path);
 public:
-    FileTable(const std::string& basePath);
+    FileTable(const std::string& basePath, const std::string& basePathAlias);
     ~FileTable();
     
-    int         Stat           (const std::string& path, struct stat* stat);
+    std::string GetBasePathAlias(void);
+    int         Stat           (const std::string& path, struct stat& stat);
     bool        GetAbsolutePath(uint64_t fhandle, std::string& result);
     void        Move           (const std::string& pathFrom, const std::string& pathTo);
     void        Remove         (const std::string& path);
@@ -96,8 +99,8 @@ public:
     int         link    (const std::string& path1, const std::string& path2, bool soft);
     int         mkdir   (const std::string& path, mode_t mode);
     int         nftw    (const std::string& path, int (*fn)(const char *, const struct stat *ptr, int flag, struct FTW *), int depth, int flags);
-    int         statvfs (const std::string& path, struct statvfs* buf);
-    int         stat    (const std::string& path, struct stat* buf);
+    int         statvfs (const std::string& path, struct statvfs& fsstat);
+    int         stat    (const std::string& path, struct stat& fstat);
     int         utimes  (const std::string& path, const struct timeval times[2]);
     
     static std::string MakePath(const std::string& directory, const std::string& file);

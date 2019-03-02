@@ -58,34 +58,28 @@ int CMountProg::ProcedureMNT(void) {
     m_in->Read(path);
     Log("MNT from %s for '%s'\n", m_param->remoteAddr, path.Get());
     
-    if (path.Get()) {
+    uint64_t handle = nfsd_fts[0]->GetFileHandle(path.Get());
+    if(handle) {
         m_out->Write(MNT_OK); //OK
         
-        uint64_t handle = nfsd_fts[0]->GetFileHandle(path.Get());
-        if(handle) {
-            uint64_t data[8] = {handle, 0, 0, 0, 0, 0, 0, 0};
-            
-            if (m_param->version == 1) {
-                m_out->Write(data, FHSIZE);
-            } else {
-                m_out->Write(FHSIZE_NFS3);
-                m_out->Write(data, FHSIZE_NFS3);
-                m_out->Write(0);  //flavor
-            }
-            
-            ++m_nMountNum;
-            
-            for (i = 0; i < MOUNT_NUM_MAX; i++) {
-                if (m_clientAddr[i] == NULL) { //search an empty space
-                    m_clientAddr[i] = new char[strlen(m_param->remoteAddr) + 1];
-                    strncpy(m_clientAddr[i], m_param->remoteAddr, strlen(m_param->remoteAddr) + 1);  //remember the client address
-                    break;
-                }
-            }
-            
-            m_out->Write(MNT_OK); //OK
+        uint64_t data[8] = {handle, 0, 0, 0, 0, 0, 0, 0};
+        
+        if (m_param->version == 1) {
+            m_out->Write(data, FHSIZE);
         } else {
-            m_out->Write(MNTERR_ACCESS);  //permission denied
+            m_out->Write(FHSIZE_NFS3);
+            m_out->Write(data, FHSIZE_NFS3);
+            m_out->Write(0);  //flavor
+        }
+        
+        ++m_nMountNum;
+        
+        for (i = 0; i < MOUNT_NUM_MAX; i++) {
+            if (m_clientAddr[i] == NULL) { //search an empty space
+                m_clientAddr[i] = new char[strlen(m_param->remoteAddr) + 1];
+                strncpy(m_clientAddr[i], m_param->remoteAddr, strlen(m_param->remoteAddr) + 1);  //remember the client address
+                break;
+            }
         }
     } else {
         m_out->Write(MNTERR_ACCESS);  //permission denied
@@ -116,10 +110,10 @@ int CMountProg::ProcedureUMNT(void) {
 int CMountProg::ProcedureEXPORT(void) {
     Log("EXPORT");
     
-    const char* path = "/";
+    string path = nfsd_fts[0]->GetBasePathAlias();
     // dirpath
     m_out->Write(1);
-    m_out->Write(MAXPATHLEN, path);
+    m_out->Write(MAXPATHLEN, path.c_str());
     // groups
     m_out->Write(1);
     m_out->Write(1);
@@ -132,8 +126,7 @@ int CMountProg::ProcedureEXPORT(void) {
     return PRC_OK;
 }
 
-char *CMountProg::FormatPath(const char *pPath, pathFormats format)
-{
+char *CMountProg::FormatPath(const char *pPath, pathFormats format) {
     size_t len = strlen(pPath);
     
     //Remove head spaces
