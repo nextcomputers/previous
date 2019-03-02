@@ -1,4 +1,5 @@
 #include <string.h>
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -16,7 +17,6 @@
 using namespace std;
 
 static const uint32_t INVALID = ~0;
-
 
 FileAttrs::FileAttrs(XDRInput* xin) : rdev(INVALID) {
     xin->Read(&mode);
@@ -81,8 +81,16 @@ void FileAttrs::Write(FILE* fout, const string& name) {
 
 bool FileAttrs::Valid(uint32_t statval) {return statval != 0xFFFFFFFF;}
 
-string filename(const string& path) {
+static string filename(const string& path) {
     return path.substr(path.find_last_of("/\\") + 1);
+}
+
+static string dirname(const string& path) {
+    string result;
+    char tmp[MAXPATHLEN];
+    strncpy(tmp, path.c_str(), MAXPATHLEN-1);
+    result = ::dirname(tmp);
+    return result;
 }
 
 int FileTable::ThreadProc(void *lpParameter) {
@@ -96,20 +104,17 @@ FileTable::FileTable(const string& _basePath, const string& _basePathAlais) : mu
     basePathAlias = _basePathAlais;
     basePath      = _basePath;
     if(basePath[basePath.length()-1] == '/') basePath.resize(basePath.size()-1);
-    
-    string path = basePath;
-    struct stat fstat;
-    if(::stat(path.c_str(), &fstat))
-        throw __LINE__;
-    else
-        rootIno = fstat.st_ino;
-    
-    path += "/..";
-    if(::stat(path.c_str(), &fstat))
-        throw __LINE__;
-    else
-        rootParentIno = fstat.st_ino;
 
+    for(int d = 0; DEVICES[d][0]; d++) {
+        const char* perm  = DEVICES[d][0];
+        uint32_t    major = atoi(DEVICES[d][1]);
+        uint32_t    minor = atoi(DEVICES[d][2]);
+        const char* name  = DEVICES[d][3];
+        uint32_t    rdev  = major << 8 | minor;
+        if(     perm[0] == 'b') blockDevices[name]     = rdev;
+        else if(perm[0] == 'c') characterDevices[name] = rdev;
+    }
+    
     host_atomic_set(&doRun, 1);
     thread = host_thread_create(&ThreadProc, "FileTable", this);
 }
@@ -241,6 +246,28 @@ string FileTable::Canonicalize(const string& _path) {
 #endif
 }
 
+bool FileTable::IsBlockDevice(const string& fname) {
+    return blockDevices.find(fname) != blockDevices.end();
+}
+
+bool FileTable::IsCharDevice(const string& fname) {
+    return characterDevices.find(fname) != characterDevices.end();
+}
+
+bool FileTable::IsDevice(const string& path, string& fname) {
+    string   directory = dirname(path);
+    fname              = filename(path);
+    
+    const size_t len = directory.size();
+    return
+        len >= 4 &&
+        directory[len-4] == '/' &&
+        directory[len-3] == 'd' &&
+        directory[len-2] == 'e' &&
+        directory[len-1] == 'v' &&
+    (IsBlockDevice(fname) || IsCharDevice(fname));
+}
+
 int FileTable::Stat(const string& _path, struct stat& fstat) {
     NFSDLock lock(mutex);
     
@@ -248,12 +275,29 @@ int FileTable::Stat(const string& _path, struct stat& fstat) {
     int        result = stat(path, fstat);
     FileAttrs* attrs  = GetFileAttrs(path);
     if(attrs) {
-        uint32_t mode = attrs->mode & S_IFMT ? attrs->mode : fstat.st_mode;
+        uint32_t mode = attrs->mode & S_IFMT          ? attrs->mode : fstat.st_mode;
         fstat.st_mode = FileAttrs::Valid(attrs->mode) ? mode        : fstat.st_mode;
         fstat.st_uid  = FileAttrs::Valid(attrs->uid)  ? attrs->uid  : fstat.st_uid;
         fstat.st_gid  = FileAttrs::Valid(attrs->gid)  ? attrs->gid  : fstat.st_gid;
         fstat.st_rdev = FileAttrs::Valid(attrs->rdev) ? attrs->rdev : fstat.st_rdev;
     }
+    
+    string fname;
+    if(IsDevice(path, fname)) {
+        map<string,uint32_t>::iterator iter = blockDevices.find(fname);
+        if(iter != blockDevices.end()) {
+            fstat.st_mode &= ~S_IFMT;
+            fstat.st_mode |= S_IFBLK;
+            fstat.st_rdev = iter->second;
+        }
+        iter = characterDevices.find(fname);
+        if(iter != characterDevices.end()) {
+            fstat.st_mode &= ~S_IFMT;
+            fstat.st_mode |= S_IFCHR;
+            fstat.st_rdev = iter->second;
+        }
+    }
+    
     return result;
 }
 
@@ -328,10 +372,8 @@ void FileTable::Remove(const string& path) {
 FileAttrDB* FileTable::GetDB(uint64_t handle) {
     NFSDLock lock(mutex);
     
-    string path = handle2path[handle];
-    char tmp[MAXPATHLEN];
-    strncpy(tmp, path.c_str(), MAXPATHLEN-1);
-    string   dbdir     = dirname(tmp);
+    string   path      = handle2path[handle];
+    string   dbdir     = dirname(path);
     uint64_t dirhandle = GetFileHandle(dbdir);
     
     if(dirhandle) {
@@ -500,29 +542,6 @@ FileAttrDB::FileAttrDB(FileTable& ft, const string& directory) : ft(ft) {
             attrs[fname] = fattrs;
         }
         fclose(file);
-    }
-    
-    const size_t len = directory.size();
-    if( len >= 4 &&
-       directory[len-4] == '/' &&
-       directory[len-3] == 'd' &&
-       directory[len-2] == 'e' &&
-       directory[len-1] == 'v') {
-        for(int d = 0; DEVICES[d][0]; d++) {
-            const char* perm  = DEVICES[d][0];
-            uint32_t    major = atoi(DEVICES[d][1]);
-            uint32_t    minor = atoi(DEVICES[d][2]);
-            const char* name  = DEVICES[d][3];
-            FileAttrs* fattrs = GetFileAttrs(name);
-            if(perm[0] == 'b') {
-                fattrs->mode &= ~S_IFMT;
-                fattrs->mode |= S_IFBLK;
-            } else if(perm[0] == 'c') {
-                fattrs->mode &= ~S_IFMT;
-                fattrs->mode |= S_IFCHR;
-            }
-            fattrs->rdev = major << 8 | minor;
-        }
     }
 }
 
