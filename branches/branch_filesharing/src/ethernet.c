@@ -740,11 +740,15 @@ void enet_reset(void) {
         /* Start SLIRP/PCAP */
         if (ConfigureParams.Ethernet.bEthernetConnected) {
             enet_start(enet.mac_addr);
+            
+            /* (re)start local nfs deamon */
+            nfsd_start();
         }
     }
+    
 }
 
-void Network_Reset(bool hard) {
+void Ethernet_Reset(bool hard) {
     static int init_done = 0;
 
     if (hard) {
@@ -782,7 +786,4 @@ void Network_Reset(bool hard) {
         /* Stop SLIRP/PCAP */
         enet_stop();
     }
-    
-    /* (re)start local nfs deamon */
-    nfsd_start();
 }

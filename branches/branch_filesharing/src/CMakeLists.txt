@@ -46,6 +46,7 @@ add_subdirectory(cpu)
 add_subdirectory(dsp)
 add_subdirectory(dimension)
 add_subdirectory(slirp)
+add_subdirectory(ditool)
 
 # When building for OSX, add specific sources
 if(ENABLE_OSX_BUNDLE)

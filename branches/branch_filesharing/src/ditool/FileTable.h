@@ -1,7 +1,7 @@
 #ifndef _FILETABLE_H_
 #define _FILETABLE_H_
 
-#include<iostream>
+#include <iostream>
 #include <string>
 #include <map>
 #include <set>
@@ -10,10 +10,10 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 
-#include "XDRStream.h"
-#include "compat.h"
-
 #define FILE_TABLE_NAME ".nfsd_fattrs"
+
+#define DEFAULT_PERM 0755
+#define FATTR_INVALID ~0
 
 class FileAttrs {
 public:
@@ -27,7 +27,6 @@ public:
     uint32_t mtime_usec;
     uint32_t rdev;
     
-    FileAttrs(XDRInput* xin);
     FileAttrs(const struct stat& stat);
     FileAttrs(FILE* fin, std::string& name);
     FileAttrs(const FileAttrs& attrs);
@@ -55,35 +54,30 @@ public:
 };
 
 class FileTable {
-    atomic_int                      doRun;
-    thread_t*                       thread;
-    mutex_t*                        mutex;
     std::map<uint64_t, std::string> handle2path;
-    std::map<uint64_t, FileAttrDB*> handle2db;
-    std::map<std::string, uint32_t> blockDevices;
-    std::map<std::string, uint32_t> characterDevices;
-    std::set<FileAttrDB*>           dirty;
     std::string                     basePathAlias;
     std::string                     basePath;
 
-    static int  ThreadProc(void *lpParameter);
-    
-    void        Write       (void);
-    FileAttrDB* GetDB       (uint64_t handle);
     std::string ResolveAlias       (const std::string& path);
     std::string Canonicalize(const std::string& path);
     void        Insert      (uint64_t handle, const std::string& path);
-    FileAttrs*  GetFileAttrs(const std::string& path);
     void        Dirty       (FileAttrDB* db);
-    void        Run         (void);
     std::string ToHostPath  (const std::string& _path);
-    bool        IsBlockDevice(const std::string& fname);
-    bool        IsCharDevice(const std::string& fname);
-    bool        IsDevice    (const std::string& path, std::string& fname);
+protected:
+    std::set<FileAttrDB*>           dirty;
+    std::map<uint64_t, FileAttrDB*> handle2db;
+    
+    static std::string filename(const std::string& path);
+    static std::string dirname (const std::string& path);
+    
+    FileAttrs*  GetFileAttrs(const std::string& path);
+    FileAttrDB* GetDB       (uint64_t handle);
 public:
     FileTable(const std::string& basePath, const std::string& basePathAlias);
-    ~FileTable();
+    virtual ~FileTable(void);
     
+    void        Write          (void);
+    std::string GetBasePath    (void);
     std::string GetBasePathAlias(void);
     int         Stat           (const std::string& path, struct stat& stat);
     bool        GetAbsolutePath(uint64_t fhandle, std::string& result);
