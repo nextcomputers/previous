@@ -13,7 +13,7 @@
 #include "configuration.h"
 #include "SocketListener.h"
 #include "VDNS.h"
-#include "FileTable.h"
+#include "FileTableNFSD.h"
 
 static bool         g_bLogOn = true;
 static CPortmapProg g_PortmapProg;
@@ -24,7 +24,7 @@ nfsd_NAT nfsd_ports = {{0},{0}};
 static std::vector<UDPServerSocket*> SERVER_UDP;
 static std::vector<TCPServerSocket*> SERVER_TCP;
 
-FileTable* nfsd_fts[] = {NULL}; // to be extended for multiple exports
+FileTableNFSD* nfsd_fts[] = {NULL}; // to be extended for multiple exports
 
 static bool initialized = false;
 
@@ -58,7 +58,7 @@ static void printAbout(void) {
 extern "C" void nfsd_start(void) {
     delete nfsd_fts[0];
     nfsd_fts[0] = NULL;
-    
+        
     if(access(ConfigureParams.Ethernet.szNFSroot, F_OK | R_OK | W_OK) < 0) {
         printf("[NFSD] can not access directory '%s'. nfsd startup canceled.\n", ConfigureParams.Ethernet.szNFSroot);
         return;
@@ -70,7 +70,7 @@ extern "C" void nfsd_start(void) {
     printf("[NFSD] starting local NFS daemon on '%s', exporting '%s'\n", nfsd_hostname, ConfigureParams.Ethernet.szNFSroot);
     printAbout();
     
-    nfsd_fts[0] = new FileTable(ConfigureParams.Ethernet.szNFSroot, "/netboot");
+    nfsd_fts[0] = new FileTableNFSD(ConfigureParams.Ethernet.szNFSroot, "/netboot");
 
     if(initialized) return;
 
@@ -96,16 +96,6 @@ extern "C" int nfsd_match_addr(uint32_t addr) {
     return (addr == (ntohl(special_addr.s_addr) | CTL_NFSD)) || (addr == (ntohl(special_addr.s_addr) | 0x00FFFFFF)); // NS kernel seems to braodcast on 10.255.255.255
 }
 
-extern "C" void nfsd_not_implemented(const char* file, int line) {
-    printf("[NFSD] not implemented file:%s, line %d.", file, line);
-    pause();
-}
-
 extern "C" FILE* nfsd_fopen(const char* path, const char* mode) {
     return nfsd_fts[0] ? nfsd_fts[0]->fopen(path, mode) : NULL;
-}
-
-extern "C" const char* nfsd_export_path(void) {
-    static const char* exportPath = nfsd_fts[0]->GetBasePathAlias().c_str();
-    return exportPath;
 }

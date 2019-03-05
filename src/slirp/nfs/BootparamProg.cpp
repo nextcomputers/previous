@@ -12,7 +12,7 @@
 
 #include "nfsd.h"
 #include "BootparamProg.h"
-#include "FileTable.h"
+#include "FileTableNFSD.h"
 
 using namespace std;
 
@@ -71,11 +71,14 @@ int CBootparamProg::ProcedureGETFILE(void) {
     m_in->Read(client);
     m_in->Read(key);
     string path = nfsd_fts[0]->GetBasePathAlias();
-    if(strcmp("root", key.Get())) {
+    /*if(strcmp("private", key.Get()) == 0) {
         if(path != "/") path += "/";
-        path += key.Get();
+        path += "usr/template/client";
+    } else */ if(strcmp("root", key.Get())) {
+        if(path != "/") path += "/";
+            path += key.Get();
     }
-    
+
     if(path.size()) {
         m_out->Write(_SC_HOST_NAME_MAX, NAME_NFSD);
         WriteInAddr(m_out, ntohl(special_addr.s_addr) | CTL_NFSD);

@@ -9,15 +9,11 @@
 #include <sys/time.h>
 
 #include "FileTable.h"
-#include "RPCProg.h"
-#include "nfsd.h"
-
-#include "devices.h"
+#include "compat.h"
 
 using namespace std;
 
-static const uint32_t INVALID = ~0;
-
+#ifdef _XDRSTREAM_H_
 FileAttrs::FileAttrs(XDRInput* xin) : rdev(INVALID) {
     xin->Read(&mode);
     xin->Read(&uid);
@@ -29,6 +25,7 @@ FileAttrs::FileAttrs(XDRInput* xin) : rdev(INVALID) {
     xin->Read(&mtime_usec);
     
 }
+#endif
 
 FileAttrs::FileAttrs(const struct stat& stat) :
 mode      (stat.st_mode),
@@ -43,15 +40,15 @@ rdev      (stat.st_rdev)
 {}
 
 FileAttrs::FileAttrs(const FileAttrs& attrs) :
-mode      (INVALID),
-uid       (INVALID),
-gid       (INVALID),
-size      (INVALID),
-atime_sec (INVALID),
-atime_usec(INVALID),
-mtime_sec (INVALID),
-mtime_usec(INVALID),
-rdev      (INVALID)
+mode      (FATTR_INVALID),
+uid       (FATTR_INVALID),
+gid       (FATTR_INVALID),
+size      (FATTR_INVALID),
+atime_sec (FATTR_INVALID),
+atime_usec(FATTR_INVALID),
+mtime_sec (FATTR_INVALID),
+mtime_usec(FATTR_INVALID),
+rdev      (FATTR_INVALID)
 {Update(attrs);}
 
 void FileAttrs::Update(const FileAttrs& attrs) {
@@ -81,11 +78,25 @@ void FileAttrs::Write(FILE* fout, const string& name) {
 
 bool FileAttrs::Valid(uint32_t statval) {return statval != 0xFFFFFFFF;}
 
-static string filename(const string& path) {
+//----- file table
+
+FileTable::FileTable(const string& _basePath, const string& _basePathAlias) {
+    basePathAlias = _basePathAlias;
+    basePath      = _basePath;
+    if(basePath[basePath.length()-1] == '/') basePath.resize(basePath.size()-1);
+}
+
+FileTable::~FileTable() {
+    for(map<uint64_t,FileAttrDB*>::iterator it = handle2db.begin(); it != handle2db.end(); it++)
+        delete it->second;
+    handle2db.clear();
+}
+
+string FileTable::filename(const string& path) {
     return path.substr(path.find_last_of("/\\") + 1);
 }
 
-static string dirname(const string& path) {
+string FileTable::dirname(const string& path) {
     string result;
     char tmp[MAXPATHLEN];
     strncpy(tmp, path.c_str(), MAXPATHLEN-1);
@@ -93,61 +104,8 @@ static string dirname(const string& path) {
     return result;
 }
 
-int FileTable::ThreadProc(void *lpParameter) {
-    ((FileTable*)lpParameter)->Run();
-    return 0;
-}
-
-//----- file table
-
-FileTable::FileTable(const string& _basePath, const string& _basePathAlais) : mutex(host_mutex_create()) {
-    basePathAlias = _basePathAlais;
-    basePath      = _basePath;
-    if(basePath[basePath.length()-1] == '/') basePath.resize(basePath.size()-1);
-
-    for(int d = 0; DEVICES[d][0]; d++) {
-        const char* perm  = DEVICES[d][0];
-        uint32_t    major = atoi(DEVICES[d][1]);
-        uint32_t    minor = atoi(DEVICES[d][2]);
-        const char* name  = DEVICES[d][3];
-        uint32_t    rdev  = major << 8 | minor;
-        if(     perm[0] == 'b') blockDevices[name]     = rdev;
-        else if(perm[0] == 'c') characterDevices[name] = rdev;
-    }
-    
-    host_atomic_set(&doRun, 1);
-    thread = host_thread_create(&ThreadProc, "FileTable", this);
-}
-
-FileTable::~FileTable() {
-    host_atomic_set(&doRun, 0);
-    host_thread_wait(thread);
-    {
-        NFSDLock lock(mutex);
-        
-        for(map<uint64_t,FileAttrDB*>::iterator it = handle2db.begin(); it != handle2db.end(); it++)
-            delete it->second;
-    }
-    host_mutex_destroy(mutex);
-}
-
-string FileTable::GetBasePathAlias(void) {
-    return basePathAlias;
-}
-
-void FileTable::Run(void) {
-    const int POLL = 10;
-    for(int count = POLL; host_atomic_get(&doRun); count--) {
-        host_sleep_sec(1);
-        {
-            NFSDLock lock(mutex);
-            if(count <= 0 && dirty.size()) {
-                Write();
-                count = POLL;
-            }
-        }
-    }
-}
+string FileTable::GetBasePath(void) {return basePath;}
+string FileTable::GetBasePathAlias(void) {return basePathAlias;}
 
 static const char* memrchr(const char* s, char c, size_t n) {
     if (n > 0) {
@@ -245,31 +203,7 @@ string FileTable::Canonicalize(const string& _path) {
 #endif
 }
 
-bool FileTable::IsBlockDevice(const string& fname) {
-    return blockDevices.find(fname) != blockDevices.end();
-}
-
-bool FileTable::IsCharDevice(const string& fname) {
-    return characterDevices.find(fname) != characterDevices.end();
-}
-
-bool FileTable::IsDevice(const string& path, string& fname) {
-    string   directory = dirname(path);
-    fname              = filename(path);
-    
-    const size_t len = directory.size();
-    return
-        len >= 4 &&
-        directory[len-4] == '/' &&
-        directory[len-3] == 'd' &&
-        directory[len-2] == 'e' &&
-        directory[len-1] == 'v' &&
-    (IsBlockDevice(fname) || IsCharDevice(fname));
-}
-
 int FileTable::Stat(const string& _path, struct stat& fstat) {
-    NFSDLock lock(mutex);
-    
     string     path   = ResolveAlias(_path);
     int        result = stat(path, fstat);
     FileAttrs* attrs  = GetFileAttrs(path);
@@ -279,22 +213,6 @@ int FileTable::Stat(const string& _path, struct stat& fstat) {
         fstat.st_uid  = FileAttrs::Valid(attrs->uid)  ? attrs->uid  : fstat.st_uid;
         fstat.st_gid  = FileAttrs::Valid(attrs->gid)  ? attrs->gid  : fstat.st_gid;
         fstat.st_rdev = FileAttrs::Valid(attrs->rdev) ? attrs->rdev : fstat.st_rdev;
-    }
-    
-    string fname;
-    if(IsDevice(path, fname)) {
-        map<string,uint32_t>::iterator iter = blockDevices.find(fname);
-        if(iter != blockDevices.end()) {
-            fstat.st_mode &= ~S_IFMT;
-            fstat.st_mode |= S_IFBLK;
-            fstat.st_rdev = iter->second;
-        }
-        iter = characterDevices.find(fname);
-        if(iter != characterDevices.end()) {
-            fstat.st_mode &= ~S_IFMT;
-            fstat.st_mode |= S_IFCHR;
-            fstat.st_rdev = iter->second;
-        }
     }
     
     return result;
@@ -318,7 +236,6 @@ static uint64_t make_file_handle(const struct stat& fstat) {
 }
 
 uint64_t FileTable::GetFileHandle(const string& _path) {
-    NFSDLock lock(mutex);
 
     string path = ResolveAlias(_path);
     
@@ -328,14 +245,12 @@ uint64_t FileTable::GetFileHandle(const string& _path) {
         result = make_file_handle(fstat);
         handle2path[result] = path;
     } else {
-        printf("No file handle for %s", _path.c_str());
+        printf("No file handle for %s\n", _path.c_str());
     }
     return result;
 }
 
 bool FileTable::GetAbsolutePath(uint64_t handle, string& result) {
-    NFSDLock lock(mutex);
-
     map<uint64_t, string>::iterator iter = handle2path.find(handle);
     if(iter != handle2path.end()) {
         result = iter->second;
@@ -345,8 +260,6 @@ bool FileTable::GetAbsolutePath(uint64_t handle, string& result) {
 }
 
 void FileTable::Move(const string& pathFrom, const string& pathTo) {
-    NFSDLock lock(mutex);
-
     uint64_t handle = GetFileHandle(pathFrom);
     if(handle) {
         map<uint64_t, string>::iterator iter = handle2path.find(handle);
@@ -356,8 +269,6 @@ void FileTable::Move(const string& pathFrom, const string& pathTo) {
 }
 
 void FileTable::Remove(const string& path) {
-    NFSDLock lock(mutex);
-
     uint64_t handle = GetFileHandle(path);
     if(handle) {
         map<uint64_t, string>::iterator iter = handle2path.find(handle);
@@ -369,8 +280,6 @@ void FileTable::Remove(const string& path) {
 }
 
 FileAttrDB* FileTable::GetDB(uint64_t handle) {
-    NFSDLock lock(mutex);
-    
     string   path      = handle2path[handle];
     string   dbdir     = dirname(path);
     uint64_t dirhandle = GetFileHandle(dbdir);
@@ -390,22 +299,16 @@ FileAttrDB* FileTable::GetDB(uint64_t handle) {
 }
 
 void FileTable::SetFileAttrs(const std::string& path, const FileAttrs& fstat) {
-    NFSDLock lock(mutex);
-
     uint64_t handle = GetFileHandle(path);
     if(handle) GetDB(handle)->SetFileAttrs(path, fstat);
 }
 
 FileAttrs* FileTable::GetFileAttrs(const std::string& path) {
-    NFSDLock lock(mutex);
-
     uint64_t handle = GetFileHandle(path);
     return handle ? GetDB(handle)->GetFileAttrs(path) : NULL;
 }
 
 void FileTable::Write(void) {
-    NFSDLock lock(mutex);
-
     for(set<FileAttrDB*>::iterator it = dirty.begin(); it != dirty.end(); it++)
         (*it)->Write();
     
@@ -413,14 +316,10 @@ void FileTable::Write(void) {
 }
 
 void FileTable::Dirty(FileAttrDB* db) {
-    NFSDLock lock(mutex);
-
     dirty.insert(db);
 }
 
 uint32_t FileTable::FileId(uint64_t ino) {
-    /*if(ino == rootParentIno)
-        ino = rootIno;*/
     uint32_t result = ino;
     return (result ^ (ino >> 32LL)) & 0x7FFFFFFF;
 }
@@ -550,14 +449,14 @@ FileAttrDB::~FileAttrDB() {
 }
 
 FileAttrs* FileAttrDB::GetFileAttrs(const std::string& path) {
-    string fname = filename(path);
+    string fname = FileTable::filename(path);
     
     map<string, FileAttrs*>::iterator iter = attrs.find(fname);
     return iter == attrs.end() ? NULL : iter->second;
 }
 
 void FileAttrDB::SetFileAttrs(const std::string& path, const FileAttrs& fattrs) {
-    string fname = filename(path);
+    string fname = FileTable::filename(path);
     if("." == fname || ".." == fname) return;
     
     map<string, FileAttrs*>::iterator iter = attrs.find(fname);
@@ -568,7 +467,7 @@ void FileAttrDB::SetFileAttrs(const std::string& path, const FileAttrs& fattrs) 
 }
 
 void FileAttrDB::Remove(const std::string& path) {
-    string fname = filename(path);
+    string fname = FileTable::filename(path);
     
     map<string, FileAttrs*>::iterator iter = attrs.find(fname);
     if(iter != attrs.end()) {

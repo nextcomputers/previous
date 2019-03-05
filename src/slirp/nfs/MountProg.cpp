@@ -2,7 +2,7 @@
 #include <sstream>
 
 #include "MountProg.h"
-#include "FileTable.h"
+#include "FileTableNFSD.h"
 #include "nfsd.h"
 #include "compat.h"
 

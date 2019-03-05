@@ -38,20 +38,17 @@ extern char nfsd_hostname[_SC_HOST_NAME_MAX];
 #ifdef __cplusplus
 extern "C" {
 
-    class  FileTable;
-    extern FileTable* nfsd_fts[1]; // to be extended for multiple exports
+    class  FileTableNFSD;
+    extern FileTableNFSD* nfsd_fts[1]; // to be extended for multiple exports
 
 #endif
     
     void nfsd_start(void);
-    void nfsd_cleanup(void);
     int  nfsd_match_addr(uint32_t addr);
-    void nfsd_not_implemented(const char* file, int line);
 #ifdef __cplusplus
 }
 #else
-    FILE*       nfsd_fopen(const char* path, const char* mode); //  only used by tftp
-    const char* nfsd_export_path(void);
+    FILE* nfsd_fopen(const char* path, const char* mode); //  only used by tftp
 #endif
 
 #define NFSD_NOTIMPL nfsd_not_implemented(__FILE__, __LINE__);

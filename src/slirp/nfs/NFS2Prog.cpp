@@ -9,7 +9,7 @@
 #include <sys/time.h>
 
 #include "NFS2Prog.h"
-#include "FileTable.h"
+#include "FileTableNFSD.h"
 #include "nfsd.h"
 
 using namespace std;
@@ -100,6 +100,39 @@ static void set_attrs(const string& path, const FileAttrs& fstat) {
     nfsd_fts[0]->SetFileAttrs(path, fstat);
 }
 
+static struct stat read_stat(XDRInput* xin) {
+    
+    uint32_t mode;
+    uint32_t uid;
+    uint32_t gid;
+    uint32_t size;
+    uint32_t atime_sec;
+    uint32_t atime_usec;
+    uint32_t mtime_sec;
+    uint32_t mtime_usec;
+    
+    xin->Read(&mode);
+    xin->Read(&uid);
+    xin->Read(&gid);
+    xin->Read(&size);
+    xin->Read(&atime_sec);
+    xin->Read(&atime_usec);
+    xin->Read(&mtime_sec);
+    xin->Read(&mtime_usec);
+    
+    struct stat result;
+    result.st_mode              = mode;
+    result.st_uid               = uid;
+    result.st_gid               = gid;
+    result.st_size              = size;
+    result.st_atimespec.tv_sec  = atime_sec;
+    result.st_atimespec.tv_nsec = atime_usec * 1000;
+    result.st_mtimespec.tv_sec  = mtime_sec;
+    result.st_mtimespec.tv_nsec = mtime_usec * 1000;
+    result.st_rdev              = FATTR_INVALID;
+    return result;
+}
+
 int CNFS2Prog::ProcedureSETATTR(void) {
     string   path;
     
@@ -108,8 +141,7 @@ int CNFS2Prog::ProcedureSETATTR(void) {
 	if (!(CheckFile(path)))
 		return PRC_OK;
 
-    FileAttrs fstat(m_in);
-    set_attrs(path, fstat);
+    set_attrs(path, FileAttrs(read_stat(m_in)));
     
     m_out->Write(NFS_OK);
 	WriteFileAttributes(path);
@@ -145,8 +177,7 @@ int nfs_err(int error) {
         case 0:      return NFS_OK;
         case ENOENT: return NFSERR_NOENT;
         case EACCES: return NFSERR_ACCES;
-        case EINVAL:
-            return NFSERR_IO;
+        case EINVAL: return NFSERR_IO;
         default:
             return NFSERR_IO;
     }
@@ -250,7 +281,7 @@ int CNFS2Prog::ProcedureCREATE(void) {
 		return PRC_OK;
     Log("CREATE %s", path.c_str());
 
-    FileAttrs fstat(m_in);
+    FileAttrs fstat(read_stat(m_in));
     if(!(FileAttrs::Valid(fstat.uid))) fstat.uid = m_defUID;
     if(!(FileAttrs::Valid(fstat.gid))) fstat.gid = m_defGID;
      // touch
@@ -320,7 +351,7 @@ int CNFS2Prog::ProcedureSYMLINK(void) {
     m_in->Read(from);
     Log("SYMLINK %s->%s", from.Get(), to.c_str());
     
-    FileAttrs fstat(m_in);
+    FileAttrs fstat(read_stat(m_in));
     int err = nfsd_fts[0]->link(from.Get(), to, true);
     if(!(err)) set_attrs(to, fstat);
     m_out->Write(nfs_err(err));
@@ -335,8 +366,8 @@ int CNFS2Prog::ProcedureMKDIR(void) {
 	if(!(GetFullPath(path)))
 		return PRC_OK;
 
-    FileAttrs fstat(m_in);
-    if(int err = nfsd_fts[0]->mkdir(path, ACCESSPERMS)) {
+    FileAttrs fstat(read_stat(m_in));
+    if(int err = nfsd_fts[0]->mkdir(path, DEFAULT_PERM)) {
         nfs_err(err);
     } else {
         set_attrs(path, fstat);
@@ -513,7 +544,7 @@ bool CNFS2Prog::WriteFileAttributes(const string& path) {
 	m_out->Write(fstat.st_atimespec.tv_nsec / 1000);  //atime
 	m_out->Write(fstat.st_mtimespec.tv_sec);  //mtime
 	m_out->Write(fstat.st_mtimespec.tv_nsec / 1000);  //mtime
-	m_out->Write(fstat.st_ctimespec.tv_sec);  //ctime
-	m_out->Write(fstat.st_ctimespec.tv_nsec / 1000);  //ctime
+	m_out->Write(fstat.st_mtimespec.tv_sec);  //ctime -- ignored, we use mtime instead
+	m_out->Write(fstat.st_mtimespec.tv_nsec / 1000);  //ctime
 	return true;
 }
