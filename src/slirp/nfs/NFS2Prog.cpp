@@ -452,6 +452,7 @@ static const int BLOCK_SIZE = 4096;
 static uint32_t nfs_blocks(const struct statvfs* fsstat, uint32_t fsblocks) {
     uint64_t result = fsblocks;
     result *= (uint64_t)fsstat->f_bsize;
+    if(result >= 0x7FFFFFFF) result = 0x7FFFFFFF; // fix size for NS 2GB limit
     result /= BLOCK_SIZE;
     return result;
 }
