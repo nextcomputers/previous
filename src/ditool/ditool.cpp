@@ -106,6 +106,7 @@ static void set_attr_recr(UFS& ufs, map<uint32_t, string>& inode2path, uint32_t 
             times[1].tv_sec  = fattr.mtime_sec;
             times[1].tv_usec = fattr.mtime_usec;
             ft->utimes(dirEntPath, times);
+            ft->chmod(dirEntPath, fstat.st_mode);
         }
     }
 }

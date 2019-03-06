@@ -73,8 +73,8 @@ int CBootparamProg::ProcedureGETFILE(void) {
     string path = nfsd_fts[0]->GetBasePathAlias();
     /*if(strcmp("private", key.Get()) == 0) {
         if(path != "/") path += "/";
-        path += "usr/template/client";
-    } else */ if(strcmp("root", key.Get())) {
+        path += "clients/previous";
+    } else */if(strcmp("root", key.Get())) {
         if(path != "/") path += "/";
             path += key.Get();
     }

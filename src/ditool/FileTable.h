@@ -59,7 +59,6 @@ class FileTable {
     std::string                     basePath;
 
     std::string ResolveAlias       (const std::string& path);
-    std::string Canonicalize(const std::string& path);
     void        Insert      (uint64_t handle, const std::string& path);
     void        Dirty       (FileAttrDB* db);
     std::string ToHostPath  (const std::string& _path);
@@ -67,9 +66,10 @@ protected:
     std::set<FileAttrDB*>           dirty;
     std::map<uint64_t, FileAttrDB*> handle2db;
     
-    static std::string filename(const std::string& path);
-    static std::string dirname (const std::string& path);
-    
+    static std::string filename    (const std::string& path);
+    static std::string dirname     (const std::string& path);
+    static std::string canonicalize(const std::string& path);
+
     FileAttrs*  GetFileAttrs(const std::string& path);
     FileAttrDB* GetDB       (uint64_t handle);
 public:
@@ -80,7 +80,7 @@ public:
     std::string GetBasePath    (void);
     std::string GetBasePathAlias(void);
     int         Stat           (const std::string& path, struct stat& stat);
-    bool        GetAbsolutePath(uint64_t fhandle, std::string& result);
+    bool        GetCanonicalPath(uint64_t fhandle, std::string& result);
     void        Move           (const std::string& pathFrom, const std::string& pathTo);
     void        Remove         (const std::string& path);
     uint64_t    GetFileHandle  (const std::string& path);

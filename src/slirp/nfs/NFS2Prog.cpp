@@ -483,7 +483,7 @@ bool CNFS2Prog::GetPath(string& result, uint64_t* handle) {
     uint64_t data[4];
     m_in->Read((void*)data, FHSIZE);
     if(handle) *handle = data[0];
-    return nfsd_fts[0]->GetAbsolutePath(data[0], result);
+    return nfsd_fts[0]->GetCanonicalPath(data[0], result);
 }
 
 bool CNFS2Prog::GetFullPath(string& result) {
