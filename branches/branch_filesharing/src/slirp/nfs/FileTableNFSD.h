@@ -33,7 +33,7 @@ public:
     virtual ~FileTableNFSD(void);
     
     int         Stat           (const std::string& path, struct stat& stat);
-    bool        GetAbsolutePath(uint64_t fhandle, std::string& result);
+    bool        GetCanonicalPath(uint64_t fhandle, std::string& result);
     void        Move           (const std::string& pathFrom, const std::string& pathTo);
     void        Remove         (const std::string& path);
     uint64_t    GetFileHandle  (const std::string& path);

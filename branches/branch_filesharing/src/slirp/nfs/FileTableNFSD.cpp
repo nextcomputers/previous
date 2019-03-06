@@ -105,9 +105,9 @@ int FileTableNFSD::Stat(const std::string& path, struct stat& fstat) {
     
     return result;
 }
-bool FileTableNFSD::GetAbsolutePath(uint64_t fhandle, std::string& result) {
+bool FileTableNFSD::GetCanonicalPath(uint64_t fhandle, std::string& result) {
     NFSDLock lock(mutex);
-    return FileTable::GetAbsolutePath(fhandle, result);
+    return FileTable::GetCanonicalPath(fhandle, result);
 }
 void FileTableNFSD::Move(const std::string& pathFrom, const std::string& pathTo) {
     NFSDLock lock(mutex);

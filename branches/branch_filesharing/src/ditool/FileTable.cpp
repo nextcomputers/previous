@@ -92,7 +92,8 @@ FileTable::~FileTable() {
     handle2db.clear();
 }
 
-string FileTable::filename(const string& path) {
+string FileTable::filename(const string& _path) {
+    string path = canonicalize(_path);
     return path.substr(path.find_last_of("/\\") + 1);
 }
 
@@ -132,21 +133,7 @@ string FileTable::ResolveAlias(const string& path) {
     return result;
 }
 
-string FileTable::Canonicalize(const string& _path) {
-#if 0
-    string path = basePath;
-    path += _path;
-    char* rpath = realpath(path.c_str(), NULL);
-    if(rpath) {
-        string result = rpath;
-        free(rpath);
-        if(result.length() < basePath.length())
-            return "/";
-        else
-            return result == basePath ? "/" : result.substr(basePath.length());
-    }
-    return _path;
-#else
+string FileTable::canonicalize(const string& _path) {
     char pwd[] = "/";
     char res[MAXPATHLEN];
     const char* src = _path.c_str();
@@ -200,16 +187,24 @@ string FileTable::Canonicalize(const string& _path) {
     res[res_len] = '\0';
     
     return res;
-#endif
 }
 
 int FileTable::Stat(const string& _path, struct stat& fstat) {
     string     path   = ResolveAlias(_path);
     int        result = stat(path, fstat);
     FileAttrs* attrs  = GetFileAttrs(path);
+    
     if(attrs) {
-        uint32_t mode = attrs->mode & S_IFMT          ? attrs->mode : fstat.st_mode;
-        fstat.st_mode = FileAttrs::Valid(attrs->mode) ? mode        : fstat.st_mode;
+        if(FileAttrs::Valid(attrs->mode)) {
+            uint32_t mode = (attrs->mode   & ~S_IFMT); // copy permissions from stored attributes
+            mode         |= (fstat.st_mode &  S_IFMT); // copy format from actual file in the file system
+            if(S_ISREG(fstat.st_mode) && fstat.st_size == 0) {
+                // mode heursitics: if file is empty we map it to the various special formats (CHAR, BLOCK, FIFO, etc.) from stored attributes
+                mode &= ~S_IFMT;                // clear format
+                mode |= (attrs->mode & S_IFMT); // copy format from attributes
+            }
+            fstat.st_mode = mode;
+        }
         fstat.st_uid  = FileAttrs::Valid(attrs->uid)  ? attrs->uid  : fstat.st_uid;
         fstat.st_gid  = FileAttrs::Valid(attrs->gid)  ? attrs->gid  : fstat.st_gid;
         fstat.st_rdev = FileAttrs::Valid(attrs->rdev) ? attrs->rdev : fstat.st_rdev;
@@ -243,14 +238,14 @@ uint64_t FileTable::GetFileHandle(const string& _path) {
     struct stat fstat;
     if(stat(path, fstat) == 0) {
         result = make_file_handle(fstat);
-        handle2path[result] = path;
+        handle2path[result] = canonicalize(path);
     } else {
         printf("No file handle for %s\n", _path.c_str());
     }
     return result;
 }
 
-bool FileTable::GetAbsolutePath(uint64_t handle, string& result) {
+bool FileTable::GetCanonicalPath(uint64_t handle, string& result) {
     map<uint64_t, string>::iterator iter = handle2path.find(handle);
     if(iter != handle2path.end()) {
         result = iter->second;
