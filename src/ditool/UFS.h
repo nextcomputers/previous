@@ -38,6 +38,7 @@ public:
     UFS(const Partition& part);
     ~UFS(void);
     
+    std::string         mountPoint(void) const;
     int                 readInode(icommon& inode, uint32_t ino);
     int                 readFile(icommon& inode, uint32_t start, uint32_t len, uint8_t* dst);
     std::vector<direct> list(uint32_t ino);

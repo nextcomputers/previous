@@ -134,6 +134,8 @@ if(CMAKE_COMPILER_IS_GNUCC)
 	#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wshadow -D_FORTIFY_SOURCE=2 -Werror")
 endif(CMAKE_COMPILER_IS_GNUCC)
 
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wpointer-bool-conversion -Wtautological-compare ${CMAKE_CXX_FLAGS}")
+
 # Building Previous w/o optimization is no fun...
 IF (CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(CMAKE_C_FLAGS "-O ${CMAKE_C_FLAGS}")

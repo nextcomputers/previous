@@ -196,8 +196,7 @@ int FileTable::Stat(const string& _path, struct stat& fstat) {
     
     if(attrs) {
         if(FileAttrs::Valid(attrs->mode)) {
-            uint32_t mode = (attrs->mode   & ~S_IFMT); // copy permissions from stored attributes
-            mode         |= (fstat.st_mode &  S_IFMT); // copy format from actual file in the file system
+            uint32_t mode = fstat.st_mode; // copy format & permissions from actual file in the file system
             if(S_ISREG(fstat.st_mode) && fstat.st_size == 0) {
                 // mode heursitics: if file is empty we map it to the various special formats (CHAR, BLOCK, FIFO, etc.) from stored attributes
                 mode &= ~S_IFMT;                // clear format
@@ -221,6 +220,12 @@ string FileTable::MakePath(const string& directory, const string& file) {
         result += "/";
     result += file;
     return result;
+}
+
+int FileTable::Remove(const char* fpath, const struct stat* /*sb*/, int /*typeflag*/, struct FTW* /*ftwbuf*/) {
+    fchmodat(AT_FDCWD, fpath, ACCESSPERMS, AT_SYMLINK_NOFOLLOW);
+    ::remove(fpath);
+    return 0;
 }
 
 static uint64_t make_file_handle(const struct stat& fstat) {
@@ -254,7 +259,7 @@ bool FileTable::GetCanonicalPath(uint64_t handle, string& result) {
     return false;
 }
 
-void FileTable::Move(const string& pathFrom, const string& pathTo) {
+void FileTable::Move(const string& pathFrom, const string&) {
     uint64_t handle = GetFileHandle(pathFrom);
     if(handle) {
         map<uint64_t, string>::iterator iter = handle2path.find(handle);
@@ -339,7 +344,7 @@ static int get_error(int result) {
 }
 
 int FileTable::chmod(const string& path, mode_t mode) {
-    return get_error(::chmod(ToHostPath(path).c_str(), mode));
+    return get_error(::fchmodat(AT_FDCWD, ToHostPath(path).c_str(), mode, AT_SYMLINK_NOFOLLOW));
 }
 
 int FileTable::access(const string& path, int mode) {
@@ -416,7 +421,7 @@ int FileTable::stat(const string& path, struct stat& fstat) {
 }
 
 int FileTable::utimes(const string& path, const struct timeval times[2]) {
-    return get_error(::utimes(ToHostPath(path).c_str(), times));
+    return get_error(::lutimes(ToHostPath(path).c_str(), times));
 }
 
 //----- file attribute database

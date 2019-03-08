@@ -68,7 +68,7 @@ int UFS::fillCacheWithBlock(uint32_t blockNum) {
 }
 
 int32_t UFS::bmap(icommon& inode, uint32_t fBlk) {
-    int32_t iPtrCnt = fsBSize >> 2;
+    uint32_t iPtrCnt = fsBSize >> 2;
     if(fBlk >= NDADDR) {
         int lvl1CacheIndex = -1;
         int lvl2CacheIndex = -1;
@@ -99,7 +99,7 @@ int32_t UFS::bmap(icommon& inode, uint32_t fBlk) {
 
 int UFS::readFile(icommon& inode, uint32_t start, uint32_t len, uint8_t* data) {
     uint32_t fBlk;
-    uint32_t dBlk;
+    int32_t  dBlk;
     uint32_t sOff;
     uint32_t tLen;
     
@@ -182,8 +182,12 @@ std::vector<direct> UFS::list(uint32_t ino) {
     return result;
 }
 
+string UFS::mountPoint(void) const {
+    return (char*)superBlock.fs_u11.fs_u1.fs_fsmnt;
+}
+
 ostream& operator<< (ostream& os, const UFS& ufs) {
-    os << endl << "    Mount point:  '" << ufs.superBlock.fs_u11.fs_u1.fs_fsmnt << "' ";
+    os << endl << "    Mount point:  '" << ufs.mountPoint() << "' ";
     os << endl << "    Fragment size: " << fsv(ufs.superBlock.fs_fsize) << " Bytes";
     os << endl << "    Block size:    " << fsv(ufs.superBlock.fs_bsize) << " Bytes";
     return os;

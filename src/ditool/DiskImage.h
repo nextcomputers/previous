@@ -88,14 +88,15 @@ class Partition;
 class DiskImage {
     std::ifstream& imf;
 public:
-    struct disk_label      dl   = {};
+    struct disk_label      dl;
     std::vector<Partition> parts;
     uint64_t               sectorSize;
     const std::string      path;
     
     DiskImage(const std::string& path, std::ifstream& imf);
-    std::ios_base::iostate read(std::streampos offset, std::streamsize size, void* data);
     ~DiskImage(void);
+    
+    std::ios_base::iostate read(std::streampos offset, std::streamsize size, void* data);
 };
 
 std::ostream& operator<< (std::ostream& stream, const DiskImage& im);

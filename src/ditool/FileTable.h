@@ -102,6 +102,7 @@ public:
     int         utimes  (const std::string& path, const struct timeval times[2]);
     
     static std::string MakePath(const std::string& directory, const std::string& file);
+    static int         Remove(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf);
     
     friend class FileAttrDB;
 };

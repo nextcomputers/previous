@@ -60,7 +60,7 @@ ostream& operator<< (ostream& os, const DiskImage& im) {
     size /= FACT_MB;
     os << "Disk '" << im.dl.dl_dt.d_name << "' '" << im.dl.dl_label << "' '" << im.dl.dl_dt.d_type << "' " << size << " MBytes" << endl;
     os << "  Sector size: " << im.sectorSize << " Bytes" << endl << endl;
-    for(int p = 0; p < im.parts.size(); p++)
+    for(size_t p = 0; p < im.parts.size(); p++)
         os << "  " << im.parts[p] << endl;
     return os;
 }

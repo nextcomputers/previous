@@ -379,10 +379,6 @@ int CNFS2Prog::ProcedureMKDIR(void) {
     return PRC_OK;
 }
 
-static int remove(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf) {
-    return remove(fpath);
-}
-
 int CNFS2Prog::ProcedureRMDIR(void) {
     string path;
 
@@ -391,7 +387,7 @@ int CNFS2Prog::ProcedureRMDIR(void) {
 	if (!(CheckFile(path)))
 		return PRC_OK;
     
-    int err = nfs_err(nfsd_fts[0]->nftw(path, remove, 3, FTW_DEPTH | FTW_PHYS));
+    int err = nfs_err(nfsd_fts[0]->nftw(path, FileTable::Remove, 3, FTW_DEPTH | FTW_PHYS));
     m_out->Write(err);
     if(!(err)) nfsd_fts[0]->Remove(path);
     
