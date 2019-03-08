@@ -133,7 +133,7 @@ size_t XDRInput::Read(XDROpaque& opaque) {
 
 size_t XDRInput::Skip(ssize_t nSize)
 {
-	if (nSize > m_size - m_index)  //over the number of bytes of data in the input buffer
+	if (nSize > (ssize_t)(m_size - m_index))  //over the number of bytes of data in the input buffer
 		nSize = m_size - m_index;
 	m_index += nSize;
 	return nSize;

@@ -19,7 +19,7 @@ static bool         g_bLogOn = true;
 static CPortmapProg g_PortmapProg;
 static CRPCServer   g_RPCServer;
 
-nfsd_NAT nfsd_ports = {{0},{0}};
+nfsd_NAT nfsd_ports = {{0,0,0,0},{0,0,0,0}};
 
 static std::vector<UDPServerSocket*> SERVER_UDP;
 static std::vector<TCPServerSocket*> SERVER_TCP;

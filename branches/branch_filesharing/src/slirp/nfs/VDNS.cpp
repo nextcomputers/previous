@@ -37,7 +37,7 @@ void VDNS::AddRecord(uint32_t addr, const char* _name) {
     
     size_t size = strlen(_name);
     char name[size + 1];
-    for(int i = 0; i < size; i++)
+    for(size_t i = 0; i < size; i++)
         name[i] = tolower(_name[i]);
     name[size] = '\0';
     
@@ -49,7 +49,7 @@ void VDNS::AddRecord(uint32_t addr, const char* _name) {
     rec->size = 4;
     memcpy(rec->data, &inaddr, rec->size);
     
-    if(name) {
+    if(_name) {
         vdns_record* rec = &s_dns_db[s_dns_db_sz++];
         rec->type   = REC_A;
         rec->inaddr = addr;
@@ -117,7 +117,7 @@ vdns_record* VDNS::Query(uint8_t* data, size_t size) {
     
     if(qtype < 0) return NULL;
     
-    for(int n = 0; n < s_dns_db_sz; n++)
+    for(size_t n = 0; n < s_dns_db_sz; n++)
         if(!(strcmp(qname, s_dns_db[n].key)) && s_dns_db[n].type == qtype)
             return &s_dns_db[n];
     
