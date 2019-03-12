@@ -102,21 +102,8 @@ static int tftp_session_find(struct tftp_t *tp)
 static int tftp_read_data(struct tftp_session *spt, u_int16_t block_nr,
 			  u_int8_t *buf, int len)
 {
-  int bytes_read = 0;
-  FILE* fd = nfsd_fopen(spt->filename, "rb");
-
-  if (!(fd)) {
-    return -1;
-  }
-
-  if (len) {
-    fseek(fd, block_nr * 512, SEEK_SET);
-    bytes_read = fread(buf, sizeof(uint8_t), len, fd);
-  }
-
-  fclose(fd);
-
-  return bytes_read;
+    int bytes_read = nfsd_read(spt->filename, block_nr * 512, buf, len);
+    return bytes_read < 0 ? -1 : bytes_read;
 }
 
 static int tftp_send_error(struct tftp_session *spt, 

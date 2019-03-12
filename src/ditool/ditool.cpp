@@ -42,10 +42,7 @@ static bool ignore(const char* name) {
 }
 
 static void touch(FileTable* ft, string path) {
-    if(ft) {
-        FILE* file = ft->fopen(path, "wb");
-        if(file) fclose(file);
-    }
+    if(ft) File file(ft, path, "wb");
 }
 
 static string readlink(UFS& ufs, icommon& inode) {
@@ -60,7 +57,7 @@ static string readlink(UFS& ufs, icommon& inode) {
     }
 }
 
-static void set_attr(UFS& ufs, map<uint32_t, string>& inode2path, uint32_t ino, string path, FileTable* ft) {
+static void set_attr(UFS& ufs, set<string>& skip, uint32_t ino, const string& path, FileTable* ft) {
     if(ft) {
         vector<direct> entries = ufs.list(ino);
         
@@ -73,11 +70,13 @@ static void set_attr(UFS& ufs, map<uint32_t, string>& inode2path, uint32_t ino, 
             dirEntPath += "/";
             dirEntPath += dirEnt.d_name;
             
+            if(skip.find(dirEntPath) != skip.end()) continue;
+
             uint32_t rdev = 0;
             switch(fsv(inode.ic_mode) & IFMT) {
                 case IFDIR:       /* directory */
                     if(!(ignore(dirEnt.d_name)))
-                        set_attr(ufs, inode2path, fsv(dirEnt.d_ino), dirEntPath, ft);
+                        set_attr(ufs, skip, fsv(dirEnt.d_ino), dirEntPath, ft);
                     break;
                 case IFCHR:       /* character special */
                 case IFBLK:       /* block special */
@@ -113,7 +112,7 @@ static void set_attr(UFS& ufs, map<uint32_t, string>& inode2path, uint32_t ino, 
     }
 }
 
-static void verify_attr(UFS& ufs, map<uint32_t, string>& inode2path, uint32_t ino, string path, FileTable* ft) {
+static void verify_attr(UFS& ufs, set<string>& skip, uint32_t ino, const string& path, FileTable* ft) {
     if(ft) {
         vector<direct> entries = ufs.list(ino);
         
@@ -126,11 +125,13 @@ static void verify_attr(UFS& ufs, map<uint32_t, string>& inode2path, uint32_t in
             dirEntPath += "/";
             dirEntPath += dirEnt.d_name;
             
+            if(skip.find(dirEntPath) != skip.end()) continue;
+            
             uint32_t rdev = 0;
             switch(fsv(inode.ic_mode) & IFMT) {
                 case IFDIR:       /* directory */
                     if(!(ignore(dirEnt.d_name)))
-                        verify_attr(ufs, inode2path, fsv(dirEnt.d_ino), dirEntPath, ft);
+                        verify_attr(ufs, skip, fsv(dirEnt.d_ino), dirEntPath, ft);
                     break;
                 case IFCHR:       /* character special */
                 case IFBLK:       /* block special */
@@ -166,7 +167,7 @@ static void verify_attr(UFS& ufs, map<uint32_t, string>& inode2path, uint32_t in
     }
 }
 
-static void copy_inode(UFS& ufs, map<uint32_t, string>& inode2path, uint32_t ino, string path, FileTable* ft, ostream& os) {
+static void copy_inode(UFS& ufs, map<uint32_t, string>& inode2path, set<string>& skip, uint32_t ino, const string& path, FileTable* ft, ostream& os) {
     vector<direct> entries = ufs.list(ino);
     for(size_t i = 0; i < entries.size(); i++) {
         direct& dirEnt = entries[i];
@@ -179,9 +180,34 @@ static void copy_inode(UFS& ufs, map<uint32_t, string>& inode2path, uint32_t ino
         bool doPrint = true;
         
         if(!(ignore(dirEnt.d_name))) {
-            if(ft->access(dirEntPath, F_OK) == 0)
-                cout << "WARNING: file " << dirEntPath << " already exits. Maybe case insensitive host file system or output path not clean" << endl;
-
+            if(ft->access(dirEntPath, F_OK) == 0) {
+                struct stat fstat;
+                ft->stat(dirEntPath, fstat);
+                if((fsv(inode.ic_mode) & IFMT) == IFLNK) {
+                    string link = readlink(ufs, inode);
+                    if(strcasecmp(link.c_str(), dirEnt.d_name) == 0) {
+                        cout << "New file " << dirEntPath << " is link pointing to variant, skipping" << endl;
+                        skip.insert(dirEntPath);
+                        continue;
+                    }
+                }
+                if(S_ISLNK(fstat.st_mode)) {
+                    string link;
+                    ft->readlink(dirEntPath, link);
+                    if(strcasecmp(link.c_str(), dirEnt.d_name) == 0) {
+                        cout << "Existing file " << dirEntPath << " is link pointing to variant, removing link" << endl;
+                        ft->remove(dirEntPath);
+                        string tmp = path;
+                        tmp += "/";
+                        tmp += link;
+                        skip.insert(tmp);
+                    }
+                } else {
+                    cout << "WARNING: file " << dirEntPath << " already exists, skipping" << endl;
+                    skip.insert(dirEntPath);
+                    continue;
+                }
+            }
             if(inode2path.find(fsv(dirEnt.d_ino)) != inode2path.end()) {
                 os << "[HLINK] " << inode2path[fsv(dirEnt.d_ino)] << " - ";
                 if(ft) ft->link(inode2path[fsv(dirEnt.d_ino)], dirEntPath, false);
@@ -204,7 +230,7 @@ static void copy_inode(UFS& ufs, map<uint32_t, string>& inode2path, uint32_t ino
                     os << dirEntPath << endl;
                     doPrint = false;
                     if(ft) ft->mkdir(dirEntPath, DEFAULT_PERM);
-                    copy_inode(ufs, inode2path, fsv(dirEnt.d_ino), dirEntPath, ft, os);
+                    copy_inode(ufs, inode2path, skip, fsv(dirEnt.d_ino), dirEntPath, ft, os);
                 }
                 break;
             case IFBLK:       /* block special */
@@ -214,14 +240,13 @@ static void copy_inode(UFS& ufs, map<uint32_t, string>& inode2path, uint32_t ino
             case IFREG:        /* regular */
                 os << "[FILE]  ";
                 if(ft) {
-                    FILE* file = ft->fopen(dirEntPath, "wb");
-                    if(file) {
+                    File file(ft, dirEntPath, "wb");
+                    if(file.IsOpen()) {
                         size_t size = fsv(inode.ic_size);
                         uint8_t* buffer = new uint8_t[size];
                         ufs.readFile(inode, 0, size, buffer);
-                        fwrite(buffer, sizeof(uint8_t), size, file);
+                        file.Write(0, buffer, size);
                         delete [] buffer;
-                        fclose(file);
                     }
                 }
                 break;
@@ -252,13 +277,14 @@ static void dump_part(DiskImage& im, int part, const char* outPath, ostream& os)
     
     if(ft) cout << "---- copying " << im.path << " to " << ft->GetBasePath() << endl;
     map<uint32_t, string> inode2path;
-    copy_inode(ufs, inode2path, ROOTINO, "", ft, os);
-    set_attr  (ufs, inode2path, ROOTINO, "", ft);
+    set<string>           skip;
+    copy_inode(ufs, inode2path, skip, ROOTINO, "", ft, os);
+    set_attr  (ufs, skip, ROOTINO, "", ft);
     if(ft) {
         cout << "---- writing file attributes for NFSD" << endl;
         ft->Write();
         cout << "---- verifying file attributes and sizes for NFSD" << endl;
-        verify_attr(ufs, inode2path, ROOTINO, "", ft);
+        verify_attr(ufs, skip, ROOTINO, "", ft);
         delete ft;
     }
 }

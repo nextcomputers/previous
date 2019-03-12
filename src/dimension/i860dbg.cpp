@@ -372,7 +372,7 @@ void i860_cpu_device::pause(bool state) {
     }
 }
 
-void i860_cpu_device::dbg_check_wr(UINT32 addr, int size, UINT8* data) {
+void i860_cpu_device::dbg_check_wr(UINT32 addr, int /*size*/, UINT8* data) {
     if(addr == 0xF83FE800 || addr == 0xF80FF800) {
         switch(*((UINT32*)data)) {
             case 0:

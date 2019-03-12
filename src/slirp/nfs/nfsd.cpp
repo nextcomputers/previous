@@ -96,6 +96,11 @@ extern "C" int nfsd_match_addr(uint32_t addr) {
     return (addr == (ntohl(special_addr.s_addr) | CTL_NFSD)) || (addr == (ntohl(special_addr.s_addr) | 0x00FFFFFF)); // NS kernel seems to braodcast on 10.255.255.255
 }
 
-extern "C" FILE* nfsd_fopen(const char* path, const char* mode) {
-    return nfsd_fts[0] ? nfsd_fts[0]->fopen(path, mode) : NULL;
+extern "C" int nfsd_read(const char* path, size_t fileOffset, void* dst, size_t count) {
+    if(nfsd_fts[0]) {
+        File file(nfsd_fts[0], path, "rb");
+        if(file.IsOpen())
+            return file.Read(fileOffset, dst, count);
+    }
+    return -1;
 }

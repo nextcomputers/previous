@@ -22,16 +22,16 @@ Uint32 NextBusSlot::board_lget(Uint32 addr) {return bus_error(addr, "lget");}
 Uint16 NextBusSlot::board_wget(Uint32 addr) {return bus_error(addr, "wget");}
 Uint8  NextBusSlot::board_bget(Uint32 addr) {return bus_error(addr, "bget");}
 
-void NextBusSlot::slot_lput(Uint32 addr, Uint32 val) {bus_error(addr, "lput");}
-void NextBusSlot::slot_wput(Uint32 addr, Uint16 val) {bus_error(addr, "wput");}
-void NextBusSlot::slot_bput(Uint32 addr, Uint8 val)  {bus_error(addr, "bput");}
+void NextBusSlot::slot_lput(Uint32 addr, Uint32 /*val*/) {bus_error(addr, "lput");}
+void NextBusSlot::slot_wput(Uint32 addr, Uint16 /*val*/) {bus_error(addr, "wput");}
+void NextBusSlot::slot_bput(Uint32 addr, Uint8 /*val*/)  {bus_error(addr, "bput");}
 
-void NextBusSlot::board_lput(Uint32 addr, Uint32 val) {bus_error(addr, "lput");}
-void NextBusSlot::board_wput(Uint32 addr, Uint16 val) {bus_error(addr, "wput");}
-void NextBusSlot::board_bput(Uint32 addr, Uint8 val)  {bus_error(addr, "bput");}
+void NextBusSlot::board_lput(Uint32 addr, Uint32 /*val*/) {bus_error(addr, "lput");}
+void NextBusSlot::board_wput(Uint32 addr, Uint16 /*val*/) {bus_error(addr, "wput");}
+void NextBusSlot::board_bput(Uint32 addr, Uint8 /*val*/)  {bus_error(addr, "bput");}
 
 void NextBusSlot::reset(void) {}
-void NextBusSlot::pause(bool pause) {}
+void NextBusSlot::pause(bool /*pause*/) {}
 
 NextBusBoard::NextBusBoard(int slot) : NextBusSlot(slot) {}
 

@@ -64,16 +64,16 @@ void FileAttrs::Update(const FileAttrs& attrs) {
     UPDATE_ATTR(rdev);
 }
 
-FileAttrs::FileAttrs(FILE* fin, string& name) {
+FileAttrs::FileAttrs(File& fin, string& name) {
     char cname[MAXNAMELEN];
-    if(fscanf(fin, "0%o:%d:%d:%d:%s\n", &mode, &uid, &gid, &rdev, cname) == 5)
+    if(fscanf(fin.file, "0%o:%d:%d:%d:%s\n", &mode, &uid, &gid, &rdev, cname) == 5)
         name = cname;
     else
         name.resize(0);
 }
 
-void FileAttrs::Write(FILE* fout, const string& name) {
-    fprintf(fout, "0%o:%d:%d:%d:%s\n", mode, uid, gid, rdev, name.c_str());
+void FileAttrs::Write(File& fout, const string& name) {
+    fprintf(fout.file, "0%o:%d:%d:%d:%s\n", mode, uid, gid, rdev, name.c_str());
 }
 
 bool FileAttrs::Valid(uint32_t statval) {return statval != 0xFFFFFFFF;}
@@ -92,9 +92,12 @@ FileTable::~FileTable() {
     handle2db.clear();
 }
 
-string FileTable::filename(const string& _path) {
-    string path = canonicalize(_path);
-    return path.substr(path.find_last_of("/\\") + 1);
+string FileTable::basename(const string& path) {
+    string result;
+    char tmp[MAXPATHLEN];
+    strncpy(tmp, path.c_str(), MAXPATHLEN-1);
+    result = ::basename(tmp);
+    return result;
 }
 
 string FileTable::dirname(const string& path) {
@@ -108,6 +111,7 @@ string FileTable::dirname(const string& path) {
 string FileTable::GetBasePath(void) {return basePath;}
 string FileTable::GetBasePathAlias(void) {return basePathAlias;}
 
+/*
 static const char* memrchr(const char* s, char c, size_t n) {
     if (n > 0) {
         const char*  p = s;
@@ -123,7 +127,8 @@ static const char* memrchr(const char* s, char c, size_t n) {
     }
     return NULL;
 }
-
+*/
+ 
 string FileTable::ResolveAlias(const string& path) {
     string result = path;
     if(basePathAlias != "/" && path.find(basePathAlias) == 0)
@@ -133,7 +138,29 @@ string FileTable::ResolveAlias(const string& path) {
     return result;
 }
 
-string FileTable::canonicalize(const string& _path) {
+string FileTable::Canonicalize(const string& _path) {
+#if 1
+    string path = basePath;
+    path += ResolveAlias(_path);
+    string dir  = dirname(path);
+    string base = basename(path);
+    
+    string result;
+    char* resolved = ::realpath(dir.c_str(), NULL);
+    if(resolved) {
+        result = resolved;
+        result += "/";
+        result += base;
+        free(resolved);
+        if(basePath != "/" && path.find(basePath) == 0) {
+            result.erase(0, basePath.length());
+            if(result.length()==0)
+                result = "/";
+            return result;
+        }
+    }
+    return _path;
+#else
     char pwd[] = "/";
     char res[MAXPATHLEN];
     const char* src = _path.c_str();
@@ -187,6 +214,7 @@ string FileTable::canonicalize(const string& _path) {
     res[res_len] = '\0';
     
     return res;
+#endif
 }
 
 int FileTable::Stat(const string& _path, struct stat& fstat) {
@@ -197,7 +225,9 @@ int FileTable::Stat(const string& _path, struct stat& fstat) {
     if(attrs) {
         if(FileAttrs::Valid(attrs->mode)) {
             uint32_t mode = fstat.st_mode; // copy format & permissions from actual file in the file system
-            if(S_ISREG(fstat.st_mode) && fstat.st_size == 0) {
+            mode &= ~(S_IWUSR  | S_IRUSR);
+            mode |= attrs->mode & (S_IWUSR | S_IRUSR); // copy user R/W permissions from attributes
+            if(S_ISREG(fstat.st_mode) && fstat.st_size == 0 && (attrs->mode & S_IFMT)) {
                 // mode heursitics: if file is empty we map it to the various special formats (CHAR, BLOCK, FIFO, etc.) from stored attributes
                 mode &= ~S_IFMT;                // clear format
                 mode |= (attrs->mode & S_IFMT); // copy format from attributes
@@ -243,7 +273,7 @@ uint64_t FileTable::GetFileHandle(const string& _path) {
     struct stat fstat;
     if(stat(path, fstat) == 0) {
         result = make_file_handle(fstat);
-        handle2path[result] = canonicalize(path);
+        handle2path[result] = Canonicalize(path);
     } else {
         printf("No file handle for %s\n", _path.c_str());
     }
@@ -326,6 +356,43 @@ uint32_t FileTable::FileId(uint64_t ino) {
 
 //----- file io
 
+File::File(FileTable* ft, const std::string& path, const std::string& mode) : ft(ft), path(path), restoreStat(false), file(NULL) {
+    file = ::fopen(ft->ToHostPath(path).c_str(), mode.c_str());
+    if(!(file) && errno == EACCES) {
+        restoreStat = true;
+        ft->stat(path, fstat);
+        ft->chmod(path, fstat.st_mode);
+        file = ::fopen(ft->ToHostPath(path).c_str(), mode.c_str());
+    }
+}
+
+File::~File(void) {
+    if(restoreStat) {
+        ft->chmod(path, fstat.st_mode);
+        struct timeval times[2];
+        times[0].tv_sec  = fstat.st_atimespec.tv_sec;
+        times[0].tv_usec = fstat.st_atimespec.tv_nsec / 1000;
+        times[1].tv_sec  = fstat.st_mtimespec.tv_sec;
+        times[1].tv_usec = fstat.st_mtimespec.tv_nsec / 1000;
+        ft->utimes(path, times);
+    }
+    if(file) fclose(file);
+}
+
+int File::Read(size_t fileOffset, void* dst, size_t count) {
+    ::fseek(file, fileOffset, SEEK_SET);
+    return ::fread(dst, sizeof(uint8_t), count, file);
+}
+
+int File::Write(size_t fileOffset, void* src, size_t count) {
+    ::fseek(file, fileOffset, SEEK_SET);
+    return ::fwrite(src, sizeof(uint8_t), count, file);
+}
+
+bool File::IsOpen(void) {
+    return file != NULL;
+}
+
 string FileTable::ToHostPath(const string& path) {
     if(path[0] != '/')
         throw __LINE__;
@@ -335,16 +402,12 @@ string FileTable::ToHostPath(const string& path) {
     return result;
 }
 
-FILE* FileTable::fopen(const string& path, const char* mode) {
-    return ::fopen(ToHostPath(path).c_str(), mode);
-}
-
 static int get_error(int result) {
     return result < 0 ? errno : result;
 }
 
 int FileTable::chmod(const string& path, mode_t mode) {
-    return get_error(::fchmodat(AT_FDCWD, ToHostPath(path).c_str(), mode, AT_SYMLINK_NOFOLLOW));
+    return get_error(::fchmodat(AT_FDCWD, ToHostPath(path).c_str(), mode | S_IWUSR  | S_IRUSR, AT_SYMLINK_NOFOLLOW));
 }
 
 int FileTable::access(const string& path, int mode) {
@@ -428,8 +491,8 @@ int FileTable::utimes(const string& path, const struct timeval times[2]) {
 
 FileAttrDB::FileAttrDB(FileTable& ft, const string& directory) : ft(ft) {
     path = FileTable::MakePath(directory, FILE_TABLE_NAME);
-    FILE* file = ft.fopen(path, "r");
-    if(file) {
+    File file(&ft, path, "r");
+    if(file.IsOpen()) {
         for(;;) {
             string fname;
             FileAttrs* fattrs = new FileAttrs(file, fname);
@@ -439,7 +502,6 @@ FileAttrDB::FileAttrDB(FileTable& ft, const string& directory) : ft(ft) {
             }
             attrs[fname] = fattrs;
         }
-        fclose(file);
     }
 }
 
@@ -449,14 +511,14 @@ FileAttrDB::~FileAttrDB() {
 }
 
 FileAttrs* FileAttrDB::GetFileAttrs(const std::string& path) {
-    string fname = FileTable::filename(path);
+    string fname = FileTable::basename(path);
     
     map<string, FileAttrs*>::iterator iter = attrs.find(fname);
     return iter == attrs.end() ? NULL : iter->second;
 }
 
 void FileAttrDB::SetFileAttrs(const std::string& path, const FileAttrs& fattrs) {
-    string fname = FileTable::filename(path);
+    string fname = FileTable::basename(path);
     if("." == fname || ".." == fname) return;
     
     map<string, FileAttrs*>::iterator iter = attrs.find(fname);
@@ -467,7 +529,7 @@ void FileAttrDB::SetFileAttrs(const std::string& path, const FileAttrs& fattrs) 
 }
 
 void FileAttrDB::Remove(const std::string& path) {
-    string fname = FileTable::filename(path);
+    string fname = FileTable::basename(path);
     
     map<string, FileAttrs*>::iterator iter = attrs.find(fname);
     if(iter != attrs.end()) {
@@ -479,12 +541,11 @@ void FileAttrDB::Remove(const std::string& path) {
 
 void FileAttrDB::Write(void) {
     if(attrs.size() > 0) {
-        FILE* file = ft.fopen(path, "w");
+        File file(&ft, path, "w");
         
-        if(file) {
+        if(file.IsOpen()) {
             for(map<string, FileAttrs*>::iterator it = attrs.begin(); it != attrs.end(); it++)
                 it->second->Write(file, it->first);
-            fclose(file);
         }
     }
 }
