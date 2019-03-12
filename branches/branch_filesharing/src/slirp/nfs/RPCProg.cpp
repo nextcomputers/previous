@@ -31,7 +31,7 @@ void CRPCProg::Setup(XDRInput* xin, XDROutput* xout, ProcessParam* param) {
 int CRPCProg::Process(void) {
     PPROC       proc = &CRPCProg::ProcedureNOTIMPL;
     const char* name = "NOTIMPL";
-    if(m_param->proc >= 0 && m_param->proc < MAX_NUM_PROCS) {
+    if(m_param->proc < MAX_NUM_PROCS) {
         proc = m_procs[m_param->proc];
         name = m_procNames[m_param->proc];
     }

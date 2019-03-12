@@ -15,6 +15,8 @@
 #define DEFAULT_PERM 0755
 #define FATTR_INVALID ~0
 
+class File;
+
 class FileAttrs {
 public:
     uint32_t mode;
@@ -28,10 +30,10 @@ public:
     uint32_t rdev;
     
     FileAttrs(const struct stat& stat);
-    FileAttrs(FILE* fin, std::string& name);
+    FileAttrs(File& fin, std::string& name);
     FileAttrs(const FileAttrs& attrs);
     void Update(const FileAttrs& attrs);
-    void Write(FILE* fout, const std::string& name);
+    void Write(File& fout, const std::string& name);
     
     static bool Valid(uint32_t statval);
 };
@@ -66,10 +68,10 @@ protected:
     std::set<FileAttrDB*>           dirty;
     std::map<uint64_t, FileAttrDB*> handle2db;
     
-    static std::string filename    (const std::string& path);
+    static std::string basename    (const std::string& path);
     static std::string dirname     (const std::string& path);
-    static std::string canonicalize(const std::string& path);
 
+    std::string Canonicalize(const std::string& path);
     FileAttrs*  GetFileAttrs(const std::string& path);
     FileAttrDB* GetDB       (uint64_t handle);
 public:
@@ -87,7 +89,6 @@ public:
     void        SetFileAttrs   (const std::string& path, const FileAttrs& fstat);
     uint32_t    FileId         (uint64_t ino);
 
-    FILE*       fopen   (const std::string& path, const char* mode);
     int         chmod   (const std::string& path, mode_t mode);
     int         access  (const std::string& path, int mode);
     DIR*        opendir (const std::string& path);
@@ -105,6 +106,22 @@ public:
     static int         Remove(const char* fpath, const struct stat* sb, int typeflag, struct FTW* ftwbuf);
     
     friend class FileAttrDB;
+    friend class File;
+};
+
+class File {
+    FileTable*         ft;
+    const std::string& path;
+    struct stat        fstat;
+    bool               restoreStat;
+public:
+    FILE*              file;
+    
+    File(FileTable* ft, const std::string& path, const std::string& mode);
+    ~File(void);
+    bool IsOpen(void);
+    int  Read(size_t fileOffset, void* dst, size_t count);
+    int  Write(size_t fileOffset, void* src, size_t count);
 };
 
 #endif

@@ -86,7 +86,7 @@ int CNFS2Prog::ProcedureGETATTR(void) {
 
 static void set_attrs(const string& path, const FileAttrs& fstat) {
     if(FileAttrs::Valid(fstat.mode))
-        nfsd_fts[0]->chmod(path, fstat.mode | S_IWUSR);
+        nfsd_fts[0]->chmod(path, fstat.mode);
     
     timeval times[2];
     timeval now;
@@ -219,11 +219,9 @@ int CNFS2Prog::ProcedureREAD(void) {
 	m_in->Read(&nTotalCount);
     
     XDROpaque buffer(nCount);
-    FILE* file = nfsd_fts[0]->fopen(path, "rb");
-    if(file) {
-        fseek(file, nOffset, SEEK_SET);
-        nCount = fread(buffer.m_data, sizeof(uint8_t), buffer.m_size, file);
-        fclose(file);
+    File file(nfsd_fts[0], path, "rb");
+    if(file.IsOpen()) {
+        nCount = file.Read(nOffset, buffer.m_data, buffer.m_size);
         buffer.SetSize(nCount);
         m_out->Write(NFS_OK);
     } else {
@@ -259,12 +257,9 @@ int CNFS2Prog::ProcedureWRITE(void) {
     XDROpaque buffer;
 	m_in->Read(buffer);
 
-	FILE* file = nfsd_fts[0]->fopen(path, "r+b");
-    if(file) {
-        fseek(file, nOffset, SEEK_SET);
-        fwrite(buffer.m_data, sizeof(uint8_t), buffer.m_size, file);
-        fclose(file);
-
+    File file(nfsd_fts[0], path, "r+b");
+    if(file.IsOpen()) {
+        file.Write(nOffset, buffer.m_data, buffer.m_size);
         m_out->Write(NFS_OK);
     } else {
         m_out->Write(nfs_err(errno));
@@ -285,9 +280,8 @@ int CNFS2Prog::ProcedureCREATE(void) {
     if(!(FileAttrs::Valid(fstat.uid))) fstat.uid = m_defUID;
     if(!(FileAttrs::Valid(fstat.gid))) fstat.gid = m_defGID;
      // touch
-    FILE * file = nfsd_fts[0]->fopen(path, "wb");
-    if(file) {
-        fclose(file);
+    File file(nfsd_fts[0], path, "wb");
+    if(file.IsOpen()) {
         set_attrs(path, fstat);
         m_out->Write(NFS_OK);
         write_handle(m_out, nfsd_fts[0]->GetFileHandle(path));

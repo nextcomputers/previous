@@ -26,11 +26,11 @@
 #include "log.h"
 
 extern "C" {
-    static void i860_run_nop(int nHostCycles) {}
+    static void i860_run_nop(int /*nHostCycles*/) {}
 
     i860_run_func i860_Run = i860_run_nop;
 
-    static void i860_run_thread(int nHostCycles) {
+    static void i860_run_thread(int /*nHostCycles*/) {
         nd_nbic_interrupt();
     }
 
@@ -484,7 +484,7 @@ void i860_cpu_device::init(void) {
             if(get_fregval_d(i*2) != *((FLOAT64*)uint8p))
                 {err = 10100+i; goto error;}
         }
-        for(int i = 2; i < 32; i += 2) {
+        for(uint32 i = 2; i < 32; i += 2) {
             FLOAT32 hi = get_fregval_s(i+1);
             FLOAT32 lo = get_fregval_s(i+0);
             if((*(UINT32*)&hi) != (0x00234567 | (i<<23))) {err = 10100+i; goto error;}

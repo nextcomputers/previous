@@ -1670,7 +1670,7 @@ void i860_cpu_device::insn_xorh_imm (UINT32 insn)
 
 
 /* Execute "trap isrc1ni,isrc2,idest" instruction.  */
-void i860_cpu_device::insn_trap (UINT32 insn)
+void i860_cpu_device::insn_trap (UINT32 /*insn*/)
 {
     debugger('d', "Software TRAP");
 	SET_PSR_IT (1);
@@ -1679,7 +1679,7 @@ void i860_cpu_device::insn_trap (UINT32 insn)
 
 
 /* Execute "intovr" instruction.  */
-void i860_cpu_device::insn_intovr (UINT32 insn)
+void i860_cpu_device::insn_intovr (UINT32 /*insn*/)
 {
 	if (GET_EPSR_OF ())
 	{

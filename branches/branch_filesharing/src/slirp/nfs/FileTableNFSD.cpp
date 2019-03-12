@@ -68,7 +68,7 @@ bool FileTableNFSD::IsCharDevice(const string& fname) {
 
 bool FileTableNFSD::IsDevice(const string& path, string& fname) {
     string   directory = dirname(path);
-    fname              = filename(path);
+    fname              = basename(path);
     
     const size_t len = directory.size();
     return
