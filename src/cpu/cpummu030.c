@@ -185,21 +185,24 @@ static struct {
 
 
 /* -- Helper function for MMU instructions -- */
-static uae_u32 mmu_op30_helper_get_fc(uae_u16 next) {
+static bool mmu_op30_helper_get_fc(uae_u16 next, uae_u32 *fc) {
     switch (next&0x0018) {
         case 0x0010:
-            return (next&0x7);
+            *fc = next&0x7;
+            return true;
         case 0x0008:
-            return (m68k_dreg(regs, next&0x7)&0x7);
+            *fc = m68k_dreg(regs, next&0x7)&0x7;
+            return true;
         case 0x0000:
             if (next&1) {
-                return (regs.dfc);
+                *fc = regs.dfc;
             } else {
-                return (regs.sfc);
+                *fc = regs.sfc;
             }
+            return true;
         default:
             write_log(_T("MMU_OP30 ERROR: bad fc source! (%04X)\n"),next&0x0018);
-            return 0;
+            return false;
     }
 }
 
@@ -347,13 +350,16 @@ bool mmu_op30_ptest (uaecptr pc, uae_u32 opcode, uae_u16 next, uaecptr extra)
     int rw = (next >> 9) & 1;
     int a = (next >> 8) & 1;
     int areg = (next&0xE0)>>5;
-    uae_u32 fc = mmu_op30_helper_get_fc(next);
+    uae_u32 fc = 0;
         
     bool write = rw ? false : true;
 
     uae_u32 ret = 0;
     
     if (mmu_op30_invea(opcode))
+        return true;
+    
+    if (!mmu_op30_helper_get_fc(next, &fc))
         return true;
     
     if (!level && a) {
@@ -395,12 +401,14 @@ bool mmu_op30_pload (uaecptr pc, uae_u32 opcode, uae_u16 next, uaecptr extra)
 {
     int rw = (next >> 9) & 1;
     int unused = (next & (0x100 | 0x80 | 0x40 | 0x20));
-    uae_u32 fc = mmu_op30_helper_get_fc(next);
+    uae_u32 fc = 0;
     bool write = rw ? false : true;
     
     if (mmu_op30_invea(opcode))
         return true;
     if (unused)
+        return true;
+    if (!mmu_op30_helper_get_fc(next, &fc))
         return true;
     
 #if 0
@@ -416,7 +424,7 @@ bool mmu_op30_pflush (uaecptr pc, uae_u32 opcode, uae_u16 next, uaecptr extra)
 {
     uae_u16 mode = (next >> 10) & 0x7;
     uae_u32 fc_mask = (next >> 5) & 0x7;
-    uae_u32 fc_base = mmu_op30_helper_get_fc(next);
+    uae_u32 fc_base = 0;
     uae_u32 fc_bits = next & 0x1f;
     
 #if 0
@@ -445,10 +453,14 @@ bool mmu_op30_pflush (uaecptr pc, uae_u32 opcode, uae_u16 next, uaecptr extra)
             mmu030_flush_atc_all();
             break;
         case 0x4:
+            if (!mmu_op30_helper_get_fc(next, &fc_base))
+                return true;
             mmu030_flush_atc_fc(fc_base, fc_mask);
             break;
         case 0x6:
             if (mmu_op30_invea(opcode))
+                return true;
+            if (!mmu_op30_helper_get_fc(next, &fc_base))
                 return true;
             mmu030_flush_atc_page_fc(extra, fc_base, fc_mask);
             break;
